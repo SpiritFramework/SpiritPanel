@@ -139,7 +139,7 @@ model Nest {
   uuid        String   @unique @default(uuid())
   name        String
   description String   @default("") @db.Text
-  author      String   @default("support@spirithost.co.uk")
+  author      String   @default("SpiritFramework")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -152,7 +152,7 @@ model Egg {
   id                String   @id @default(cuid())
   uuid              String   @unique @default(uuid())
   nestId            String   @map("nest_id")
-  author            String   @default("support@spirithost.co.uk")
+  author            String   @default("SpiritFramework")
   name              String
   description       String   @default("") @db.Text
   features          Json     @default("[]")

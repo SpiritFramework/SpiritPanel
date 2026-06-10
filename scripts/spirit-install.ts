@@ -469,7 +469,7 @@ function setupProductionEnv(
   if (!apiUrl) {
     fail(
       'Production install needs your public panel URL.\n' +
-        '  Pass: --api-url https://panel.spirithost.co.uk',
+        '  Pass: --api-url https://panel.example.com',
     );
   }
   if (!apiUrl.startsWith('https://')) {
@@ -605,10 +605,10 @@ function verifyProduction() {
 }
 
 function readAdminEmail(): string {
-  if (!fs.existsSync(ENV_PATH)) return 'admin@spirithost.co.uk';
+  if (!fs.existsSync(ENV_PATH)) return 'admin@example.com';
   const content = fs.readFileSync(ENV_PATH, 'utf8');
   const match = content.match(/^ADMIN_EMAIL=(.+)$/m);
-  return match?.[1]?.replace(/^"|"$/g, '') ?? 'admin@spirithost.co.uk';
+  return match?.[1]?.replace(/^"|"$/g, '') ?? 'admin@example.com';
 }
 
 function printSummary(creds: InstallCreds) {

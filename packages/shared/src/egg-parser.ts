@@ -67,7 +67,7 @@ export function parseEggJson(raw: unknown): ParsedEgg {
 
   return {
     name: data.name.trim(),
-    author: data.author?.trim() || 'unknown@spirithost.co.uk',
+    author: data.author?.trim() || 'SpiritFramework',
     description: data.description ?? '',
     features: Array.isArray(data.features) ? data.features.filter(Boolean) : [],
     dockerImages,

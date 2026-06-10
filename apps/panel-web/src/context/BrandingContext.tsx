@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DEFAULT_PANEL_BRANDING, type PanelBranding } from '../lib/panel-settings';
+import { PANEL_AUTHOR } from '../lib/product-meta';
 import { BRANDING_DEFAULT_THEME_EVENT, BRANDING_THEME_RESOLVED_EVENT, normalizeAppearance } from '../lib/branding-appearance';
 import { applySurfacePreset } from '../lib/branding-theme-palettes';
 
@@ -59,7 +60,7 @@ function applyBranding(config: PanelBranding) {
   applySurfacePreset(appearance.themePreset, resolvedTheme);
 
   const titleParts = [config.panelName];
-  if (config.general.companyName) titleParts.push(config.general.companyName);
+  titleParts.push(config.general.companyName || PANEL_AUTHOR);
   document.title = titleParts.join(' · ');
 
   setFavicon(config.faviconUrl);

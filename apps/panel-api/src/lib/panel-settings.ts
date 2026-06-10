@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { prisma } from './prisma.js';
+import {
+  DEFAULT_FOOTER_TEXT,
+  PANEL_PRODUCT,
+  PANEL_TAGLINE,
+} from './product-meta.js';
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -234,8 +239,8 @@ export interface SmtpSettings {
 }
 
 export const DEFAULT_BRANDING: BrandingSettings = {
-  panelName: 'Spirit-Panel',
-  tagline: 'Game server panel',
+  panelName: PANEL_PRODUCT,
+  tagline: PANEL_TAGLINE,
   accentColor: '#6366f1',
   secondaryColor: '#8b5cf6',
   logoUrl: '',
@@ -251,7 +256,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
   companyName: '',
   supportEmail: '',
   supportUrl: '',
-  footerText: '',
+  footerText: DEFAULT_FOOTER_TEXT,
 };
 
 export const DEFAULT_MAINTENANCE: MaintenanceSettings = {
@@ -289,7 +294,7 @@ export const DEFAULT_SMTP: SmtpSettings = {
   username: '',
   password: '',
   fromAddress: '',
-  fromName: 'Spirit-Panel',
+  fromName: PANEL_PRODUCT,
 };
 
 export const DEFAULT_EMAIL_TEMPLATES: EmailTemplatesSettings = {

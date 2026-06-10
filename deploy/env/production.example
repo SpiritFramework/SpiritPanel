@@ -11,8 +11,8 @@ JWT_SECRET="CHANGE_ME_GENERATE_WITH_OPENSSL"
 APP_KEY="CHANGE_ME_GENERATE_WITH_OPENSSL"
 
 # Public URLs (no trailing slash) — Wings uses API_URL as remote: in config.yml
-API_URL="https://panel.spirithost.co.uk"
-PANEL_URL="https://panel.spirithost.co.uk"
+API_URL="https://panel.example.com"
+PANEL_URL="https://panel.example.com"
 
 # --- Server ---
 NODE_ENV=production
@@ -25,9 +25,9 @@ REDIS_PORT=6379
 # DISABLE_SCHEDULE_WORKER=true
 
 # --- First deploy seed (required — installer sets these) ---
-ADMIN_EMAIL=admin@spirithost.co.uk
+ADMIN_EMAIL=admin@example.com
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD="CHANGE_ME_STRONG_ADMIN_PASSWORD"
 
-# Or run: pnpm spirit-install --production --api-url https://panel.spirithost.co.uk
+# Or run: pnpm spirit-install --production --api-url https://panel.example.com
 # (installer auto-generates ADMIN_PASSWORD if missing or weak)

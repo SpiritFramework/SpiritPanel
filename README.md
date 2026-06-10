@@ -1,6 +1,6 @@
 # Spirit-Panel
 
-Self-hosted game server control panel for SpiritHost. Manage users, nodes, eggs, and game servers from a web UI — similar in scope to Pterodactyl, built for **FeatherWings** daemons on separate game nodes.
+Self-hosted game server control panel by **SpiritFramework**. Manage users, nodes, eggs, and game servers from a web UI — similar in scope to Pterodactyl, built for **FeatherWings** daemons on separate game nodes.
 
 The panel runs on one machine (Ubuntu in production). **Do not** run game servers on the panel box; Docker workloads live on FeatherWings nodes.
 
@@ -26,7 +26,7 @@ The panel runs on one machine (Ubuntu in production). **Do not** run game server
 
 - Pterodactyl-compatible remote API for FeatherWings
 - Application API for automation
-- HttpOnly session cookies, 2FA, and production secret validation
+- HttpOnly browser sessions, 2FA, API keys for automation, production env validation
 
 ---
 
@@ -79,7 +79,7 @@ pnpm dev
 | Web UI | http://localhost:5173 |
 | API | http://localhost:3000/health |
 
-Default admin: `admin@spirithost.co.uk` / `admin123!` (demo user also seeded).
+Default dev admin credentials are in **[docs/LOCAL.md](docs/LOCAL.md)** (demo user seeded too).
 
 Full dev guide: **[docs/LOCAL.md](docs/LOCAL.md)**
 
@@ -170,11 +170,19 @@ Spirit-Panel/
 
 Spirit-Panel is designed for self-hosting: you are responsible for TLS, firewall rules, and protecting `apps/panel-api/.env`.
 
-- Sessions use HttpOnly cookies (not localStorage)
-- Production refuses weak `JWT_SECRET` / `APP_KEY` and HTTP `API_URL`
-- SVG uploads are disabled; file paths are validated before Wings calls
+**Built-in**
 
-Report vulnerabilities privately — see **[SECURITY.md](SECURITY.md)**.
+- **Browser login** — JWT stored in an HttpOnly `SameSite=Strict` cookie; the web UI does not keep session tokens in `localStorage`. API keys and Bearer JWTs are supported separately for automation.
+- **Production startup checks** — With `NODE_ENV=production`, the API refuses placeholder or short `JWT_SECRET` / `APP_KEY`, identical secrets, and non-HTTPS or localhost `API_URL`.
+- **Branding uploads** — SVG is not accepted for logo/favicon uploads (PNG, JPEG, WebP, ICO only).
+- **File manager** — Client file paths are validated (absolute paths, no `..` traversal) before requests reach FeatherWings.
+
+**Your responsibility**
+
+- Run production with `NODE_ENV=production` and the installer’s `--production` flow.
+- Restrict admin access, rotate API keys, and treat XSS as high impact even with HttpOnly cookies.
+
+Full model and reporting: **[SECURITY.md](SECURITY.md)**.
 
 ---
 

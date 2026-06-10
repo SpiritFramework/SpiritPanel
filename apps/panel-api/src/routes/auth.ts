@@ -26,6 +26,7 @@ import {
 } from '../lib/mailer.js';
 import { isTurnstileEnabled, verifyTurnstileToken } from '../lib/turnstile.js';
 import { getConfig } from '../lib/env.js';
+import { PANEL_AUTHOR } from '../lib/product-meta.js';
 import { encryptSecret, decryptSecret } from '../lib/secret-crypto.js';
 import { validateGithubPat } from '../lib/github-auth.js';
 import {
@@ -467,7 +468,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const secret = generateTotpSecret();
     const general = await getGeneralSettings();
-    const issuer = general.companyName || 'Spirit-Panel';
+    const issuer = general.companyName || PANEL_AUTHOR;
     const otpauth = totpKeyUri(secret, user.email, issuer);
     const qr = await totpQrDataUrl(otpauth);
 

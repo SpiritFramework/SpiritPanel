@@ -91,7 +91,7 @@ export function ImportEggModal({
             <div>
               <h2 className="text-base font-bold">Import egg</h2>
               <p className="mt-0.5 text-xs text-[var(--muted)]">
-                Upload a PTDL_v2 JSON file from your PC, or paste an export from Pterodactyl / Spirit Panel
+                Upload a PTDL_v2 JSON file from your PC, or paste an export from Pterodactyl or Spirit-Panel
               </p>
             </div>
           </div>

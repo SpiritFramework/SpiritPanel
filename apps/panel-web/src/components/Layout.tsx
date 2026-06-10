@@ -22,6 +22,7 @@ import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink } from './Nav';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
+import { PanelAuthorCredit } from './PanelAuthorCredit';
 
 export { SelectControl } from './SelectControl';
 
@@ -104,6 +105,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </div>
         <SidebarFooterLink to="/profile" icon={User} label="Your profile" />
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
+        <PanelAuthorCredit className="mb-2 mt-1" />
         <button
           type="button"
           onClick={logout}
@@ -183,6 +185,7 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
             </span>
           </Link>
         )}
+        <PanelAuthorCredit className="mb-2 mt-1" />
         <button
           type="button"
           onClick={logout}

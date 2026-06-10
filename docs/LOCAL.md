@@ -58,10 +58,10 @@ pnpm dev
 
 | Field | Value |
 |-------|-------|
-| Email | `admin@spirithost.co.uk` |
+| Email | `admin@example.com` |
 | Password | `admin123!` (or `ADMIN_PASSWORD` in `.env`) |
 
-Demo user: `demo@spirithost.co.uk` / `demo123!`
+Demo user: `demo@example.com` / `demo123!`
 
 ### Docker services
 
@@ -80,7 +80,7 @@ Default database URL (Docker): `mysql://spirit:spirit@127.0.0.1:3306/spirit_pane
 | Item | Notes |
 |------|-------|
 | Admin user | From `.env` or defaults above |
-| Demo user | `demo@spirithost.co.uk` |
+| Demo user | `demo@example.com` |
 | UK location | Short code `uk` |
 | Minecraft nest + egg | Vanilla Minecraft |
 | Demo server | UI preview — no real Wings connection |

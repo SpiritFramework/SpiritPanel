@@ -5,6 +5,11 @@ import {
   type PanelBackground,
   type ThemePreset,
 } from './branding-appearance';
+import {
+  DEFAULT_FOOTER_TEXT,
+  PANEL_PRODUCT,
+  PANEL_TAGLINE,
+} from './product-meta';
 
 export interface PanelGeneralSettings {  companyName: string;
   supportEmail: string;
@@ -81,8 +86,8 @@ export const DEFAULT_ANNOUNCEMENT: PanelAnnouncementSettings = {
 };
 
 export const DEFAULT_PANEL_BRANDING: PanelBranding = {
-  panelName: 'Spirit-Panel',
-  tagline: 'Game server panel',
+  panelName: PANEL_PRODUCT,
+  tagline: PANEL_TAGLINE,
   accentColor: '#6366f1',
   secondaryColor: '#8b5cf6',
   logoUrl: '',
@@ -93,7 +98,7 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
     companyName: '',
     supportEmail: '',
     supportUrl: '',
-    footerText: '',
+    footerText: DEFAULT_FOOTER_TEXT,
   },
   maintenance: {
     enabled: false,

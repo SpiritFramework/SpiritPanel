@@ -8,7 +8,7 @@ Security fixes are applied to the latest `main` branch. Deploy the newest releas
 
 If you discover a security issue, **do not** open a public GitHub issue with exploit details.
 
-Email **security@spirithost.co.uk** (or your fork maintainer) with:
+Email your fork maintainer or project contact with:
 
 - Description of the vulnerability
 - Steps to reproduce

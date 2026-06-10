@@ -7,6 +7,7 @@ import { isWeakAdminPassword } from '../src/lib/secret-validation.js';
 import { generateUuidShort } from '../src/services/server-configuration.js';
 import { seedDemoStats } from '../src/services/server-stats.js';
 import { seedMarketplacePlugins } from '../src/services/marketplace-seed.js';
+import { PANEL_PRODUCT, PANEL_TAGLINE, DEFAULT_FOOTER_TEXT } from '../src/lib/product-meta.js';
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -35,7 +36,7 @@ async function seedAdminUser(isProduction: boolean) {
     }
   }
 
-  const email = adminEmail ?? 'admin@spirithost.co.uk';
+  const email = adminEmail ?? 'admin@example.com';
   const username = adminUsername ?? 'admin';
   const password = adminPassword ?? 'admin123!';
 
@@ -69,8 +70,8 @@ async function seedPanelSettings() {
     create: {
       key: 'branding',
       value: {
-        panelName: 'Spirit-Panel',
-        tagline: 'Game server panel',
+        panelName: PANEL_PRODUCT,
+        tagline: PANEL_TAGLINE,
         logoUrl: '',
         faviconUrl: '',
         accentColor: '#6366f1',
@@ -83,7 +84,7 @@ async function seedPanelSettings() {
   await prisma.panelSetting.upsert({
     where: { key: 'general' },
     update: {},
-    create: { key: 'general', value: { companyName: '', supportEmail: '', supportUrl: '', footerText: '' } },
+    create: { key: 'general', value: { companyName: '', supportEmail: '', supportUrl: '', footerText: DEFAULT_FOOTER_TEXT } },
   });
 
   await prisma.panelSetting.upsert({
@@ -190,10 +191,10 @@ async function seedDevelopmentContent(admin: { id: string; username: string }) {
   const demoHash = await bcrypt.hash(demoPassword, 12);
 
   await prisma.user.upsert({
-    where: { email: 'demo@spirithost.co.uk' },
+    where: { email: 'demo@example.com' },
     update: {},
     create: {
-      email: 'demo@spirithost.co.uk',
+      email: 'demo@example.com',
       username: 'demo',
       passwordHash: demoHash,
       role: 'user',
@@ -315,7 +316,7 @@ async function main() {
     if (dev.demoServer) {
       console.log(`  Demo server: "${dev.demoServer.name}" → /servers/${dev.demoServer.id}`);
     }
-    console.log(`  Demo user: demo@spirithost.co.uk / ${dev.demoPassword}`);
+    console.log(`  Demo user: demo@example.com / ${dev.demoPassword}`);
   }
 
   console.log('');

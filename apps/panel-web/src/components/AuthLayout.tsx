@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { Headphones, Mail, Server, Shield, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PanelBranding } from '../lib/panel-settings';
+import { DEFAULT_FOOTER_TEXT, PANEL_AUTHOR } from '../lib/product-meta';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
 
@@ -18,7 +19,7 @@ export function AuthLayout({
   branding: PanelBranding;
   children: ReactNode;
 }) {
-  const companyLabel = branding.general.companyName || branding.panelName;
+  const companyLabel = branding.general.companyName || PANEL_AUTHOR;
 
   const brandGradient = useMemo(
     () =>
@@ -202,9 +203,10 @@ function SupportFooter({
 
   if (!hasContent) {
     return (
-      <p className={`text-xs ${onDark ? 'text-white/45' : 'text-[var(--muted)]'}`}>
-        © {new Date().getFullYear()} {companyLabel}
-      </p>
+      <div className={`space-y-1 text-xs ${onDark ? 'text-white/45' : 'text-[var(--muted)]'}`}>
+        <p>© {new Date().getFullYear()} {companyLabel}</p>
+        <p className="text-[10px] opacity-80">{DEFAULT_FOOTER_TEXT}</p>
+      </div>
     );
   }
 

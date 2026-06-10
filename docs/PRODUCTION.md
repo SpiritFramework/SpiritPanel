@@ -204,7 +204,7 @@ Change these lines:
 
 | Setting | Example |
 |---------|---------|
-| `server_name` (both blocks) | `panel.spirithost.co.uk` |
+| `server_name` (both blocks) | `panel.example.com` |
 | `root` | `/home/spiritpanel/Spirit-Panel/apps/panel-web/dist` |
 | `ssl_certificate` / `ssl_certificate_key` | Certbot paths (after TLS step) |
 
@@ -223,7 +223,7 @@ sudo nginx -t
 DNS must point at this server before running Certbot.
 
 ```bash
-sudo certbot --nginx -d panel.spirithost.co.uk
+sudo certbot --nginx -d panel.example.com
 sudo systemctl reload nginx
 sudo certbot renew --dry-run
 ```
@@ -250,11 +250,11 @@ Only **22, 80, 443** should be public. Do not open 3000, 3306, or 6379.
 ### 6. Verify
 
 ```bash
-curl -s https://panel.spirithost.co.uk/health
-curl -s https://panel.spirithost.co.uk/health/ready
+curl -s https://panel.example.com/health
+curl -s https://panel.example.com/health/ready
 ```
 
-Browser: open `https://panel.spirithost.co.uk/admin`
+Browser: open `https://panel.example.com/admin`
 
 ---
 
