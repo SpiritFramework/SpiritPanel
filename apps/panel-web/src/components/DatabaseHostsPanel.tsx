@@ -246,17 +246,6 @@ function DatabaseHostModal({
     };
   }
 
-  function connectionMatchesVerified(creds: ConnectionCreds): boolean {
-    const verified = verifiedCredsRef.current;
-    if (!verified || !testOk) return false;
-    return (
-      verified.host === creds.host &&
-      verified.port === creds.port &&
-      verified.username === creds.username &&
-      verified.password === creds.password
-    );
-  }
-
   async function handleTest() {
     setTesting(true);
     setError('');
@@ -313,7 +302,6 @@ function DatabaseHostModal({
         username: creds.username,
         password: creds.password,
         maxDatabases: form.maxDatabases,
-        connectionVerified: connectionMatchesVerified(creds),
       };
 
       await onSave(payload);

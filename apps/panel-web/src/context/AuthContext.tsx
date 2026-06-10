@@ -14,7 +14,7 @@ interface AuthContextValue {
     lastName?: string;
     turnstileToken?: string;
   }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<User>;
 }
 
@@ -25,14 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('spirit_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    localStorage.removeItem('spirit_token');
     api.me()
       .then(setUser)
-      .catch(() => localStorage.removeItem('spirit_token'))
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
@@ -41,16 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (res.twoFactorRequired) {
       return { twoFactorRequired: true, challenge: res.challenge };
     }
-    if (res.token && res.user) {
-      localStorage.setItem('spirit_token', res.token);
+    if (res.user) {
       setUser(res.user);
     }
     return { twoFactorRequired: false };
   }
 
   async function completeTwoFactor(challenge: string, code: string) {
-    const { token, user } = await api.loginTwoFactor(challenge, code);
-    localStorage.setItem('spirit_token', token);
+    const { user } = await api.loginTwoFactor(challenge, code);
     setUser(user);
   }
 
@@ -62,14 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastName?: string;
     turnstileToken?: string;
   }) {
-    const { token, user } = await api.register(data);
-    localStorage.setItem('spirit_token', token);
+    const { user } = await api.register(data);
     setUser(user);
   }
 
-  function logout() {
-    localStorage.removeItem('spirit_token');
-    setUser(null);
+  async function logout() {
+    try {
+      await api.logout();
+    } finally {
+      setUser(null);
+    }
   }
 
   const refreshUser = useCallback(async () => {

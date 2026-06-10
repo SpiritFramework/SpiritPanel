@@ -318,7 +318,7 @@ export function ServerProvisionForm({
             min={0}
             value={form.allocationLimit}
             onChange={(e) => patch({ allocationLimit: e.target.value })}
-            hint="Max ports for this server (0 = disabled)"
+            hint="Extra ports (0 = disabled, not unlimited)"
           />
           <Input
             label="Backup limit"
@@ -373,33 +373,33 @@ export function ServerProvisionForm({
 
       <AdminSettingsPanel
         title="Resources"
-        description="Memory, disk, and CPU limits enforced by Wings"
+        description="Memory, disk, and CPU limits enforced by Wings — 0 = unlimited"
         icon={Zap}
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <Input
             label="Memory (MB)"
             type="number"
-            min={1}
+            min={0}
             value={form.memory}
             onChange={(e) => patch({ memory: e.target.value })}
-            required
+            hint="0 = unlimited"
           />
           <Input
             label="Disk (MB)"
             type="number"
-            min={1}
+            min={0}
             value={form.disk}
             onChange={(e) => patch({ disk: e.target.value })}
-            required
+            hint="0 = unlimited"
           />
           <Input
             label="CPU limit (%)"
             type="number"
-            min={1}
+            min={0}
             value={form.cpu}
             onChange={(e) => patch({ cpu: e.target.value })}
-            required
+            hint="0 = unlimited"
           />
         </div>
       </AdminSettingsPanel>

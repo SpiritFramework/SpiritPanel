@@ -365,6 +365,8 @@ curl -s http://127.0.0.1:8080/api/system
 2. **Servers → Create** — pick node, egg, allocation
 3. Customer opens **My servers → Console**
 
+**Server resource limits (admin):** When creating or editing a server, set **memory, disk, CPU, swap, or IO** to **0** for unlimited (Pterodactyl-style). Unlimited servers do not count against node capacity totals. **Allocation, backup, and database limits** still use **0 = disabled** — they are not unlimited.
+
 Pre-pull Docker images on game nodes:
 
 ```bash
@@ -595,6 +597,8 @@ If database was seeded in development mode on production:
 ---
 
 ## Security
+
+See [SECURITY.md](../SECURITY.md) for vulnerability reporting, session handling, and API key guidance.
 
 1. Store admin password safely after install
 2. **Admin → Settings** — disable public registration

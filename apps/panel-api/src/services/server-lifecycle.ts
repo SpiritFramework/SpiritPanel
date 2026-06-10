@@ -4,6 +4,7 @@ import { generateUuidShort } from './server-configuration.js';
 import { getServerFull, serverInclude } from './server-helpers.js';
 import { releaseServerAllocations, resolveAllocationForCreate } from './allocations.js';
 import { effectiveResourceLimit } from '../lib/node-capacity.js';
+import { serverResourceContribution } from '../lib/server-resources.js';
 import { wingsForNode, type WingsClient } from './wings-client.js';
 
 export interface CreateServerInput {
@@ -27,42 +28,69 @@ export interface CreateServerInput {
 }
 
 /**
- * Reject server creation that would exceed a node's configured memory or disk
- * (respecting overallocation). Server feature limits of 0 mean none allowed.
+ * Reject server creation/update that would exceed a node's configured memory or disk.
+ * Server build resources of 0 are unlimited and do not count against the node.
+ * Allocation, backup, and database limits use separate quota rules (0 = disabled).
  */
+async function sumNodeResourceUsage(nodeId: string, excludeServerId?: string) {
+  const servers = await prisma.server.findMany({
+    where: {
+      nodeId,
+      ...(excludeServerId ? { id: { not: excludeServerId } } : {}),
+    },
+    select: { memory: true, disk: true },
+  });
+
+  return servers.reduce(
+    (acc, server) => ({
+      memory: acc.memory + serverResourceContribution(server.memory),
+      disk: acc.disk + serverResourceContribution(server.disk),
+    }),
+    { memory: 0, disk: 0 },
+  );
+}
+
 async function assertNodeHasCapacity(
   node: { id: string; memory: number; disk: number; memoryOverallocate: number; diskOverallocate: number },
   requestedMemory: number,
   requestedDisk: number,
+  excludeServerId?: string,
 ) {
+  const memoryNeed = serverResourceContribution(requestedMemory);
+  const diskNeed = serverResourceContribution(requestedDisk);
   if (node.memory <= 0 && node.disk <= 0) return;
+  if (node.memory > 0 && memoryNeed <= 0 && node.disk > 0 && diskNeed <= 0) return;
 
-  const totals = await prisma.server.aggregate({
-    where: { nodeId: node.id },
-    _sum: { memory: true, disk: true },
-  });
-  const usedMemory = totals._sum.memory ?? 0;
-  const usedDisk = totals._sum.disk ?? 0;
+  const used = await sumNodeResourceUsage(node.id, excludeServerId);
 
-  if (node.memory > 0) {
+  if (node.memory > 0 && memoryNeed > 0) {
     const limit = effectiveResourceLimit(node.memory, node.memoryOverallocate);
-    if (usedMemory + requestedMemory > limit) {
-      const free = Math.max(0, limit - usedMemory);
+    if (used.memory + memoryNeed > limit) {
+      const free = Math.max(0, limit - used.memory);
       throw new Error(
         `Not enough memory on this node. Requested ${requestedMemory} MB but only ${free} MB of ${limit} MB is free.`,
       );
     }
   }
 
-  if (node.disk > 0) {
+  if (node.disk > 0 && diskNeed > 0) {
     const limit = effectiveResourceLimit(node.disk, node.diskOverallocate);
-    if (usedDisk + requestedDisk > limit) {
-      const free = Math.max(0, limit - usedDisk);
+    if (used.disk + diskNeed > limit) {
+      const free = Math.max(0, limit - used.disk);
       throw new Error(
         `Not enough disk on this node. Requested ${requestedDisk} MB but only ${free} MB of ${limit} MB is free.`,
       );
     }
   }
+}
+
+export async function assertNodeHasCapacityForUpdate(
+  node: { id: string; memory: number; disk: number; memoryOverallocate: number; diskOverallocate: number },
+  serverId: string,
+  memory: number,
+  disk: number,
+) {
+  await assertNodeHasCapacity(node, memory, disk, serverId);
 }
 
 export async function createServerOnPanel(input: CreateServerInput) {
@@ -81,9 +109,12 @@ export async function createServerOnPanel(input: CreateServerInput) {
   const startup = input.startup ?? egg.startup;
   const allocationLimit = input.allocationLimit ?? 0;
 
-  const requestedMemory = input.memory ?? 1024;
-  const requestedDisk = input.disk ?? 10240;
-  await assertNodeHasCapacity(node, requestedMemory, requestedDisk);
+  const memory = input.memory !== undefined ? input.memory : 1024;
+  const disk = input.disk !== undefined ? input.disk : 10240;
+  const swap = input.swap !== undefined ? input.swap : 0;
+  const io = input.io !== undefined ? input.io : 500;
+  const cpu = input.cpu !== undefined ? input.cpu : 100;
+  await assertNodeHasCapacity(node, memory, disk);
 
   const server = await prisma.$transaction(async (tx) => {
     const uuid = crypto.randomUUID();
@@ -97,11 +128,11 @@ export async function createServerOnPanel(input: CreateServerInput) {
         allocationId: allocation.id,
         name: input.name,
         description: input.description ?? '',
-        memory: input.memory ?? 1024,
-        swap: input.swap ?? 0,
-        disk: input.disk ?? 10240,
-        io: input.io ?? 500,
-        cpu: input.cpu ?? 100,
+        memory,
+        swap,
+        disk,
+        io,
+        cpu,
         image,
         startup,
         allocationLimit,

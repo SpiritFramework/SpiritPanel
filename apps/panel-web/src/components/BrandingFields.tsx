@@ -225,8 +225,8 @@ export function BrandingAssetField({
                 type="file"
                 accept={
                   kind === 'logo'
-                    ? 'image/png,image/jpeg,image/webp,image/svg+xml'
-                    : 'image/png,image/x-icon,image/svg+xml,image/webp'
+                    ? 'image/png,image/jpeg,image/webp'
+                    : 'image/png,image/x-icon,image/webp'
                 }
                 className="hidden"
                 onChange={(e) => {
@@ -236,8 +236,8 @@ export function BrandingAssetField({
               />
               <p className="text-[11px] text-[var(--muted)]">
                 {kind === 'logo'
-                  ? 'PNG, JPG, WebP, or SVG · max 512 KB'
-                  : 'PNG, ICO, or SVG · max 256 KB'}
+                  ? 'PNG, JPG, or WebP · max 512 KB'
+                  : 'PNG, ICO, or WebP · max 256 KB'}
               </p>
             </>
           )}

@@ -47,7 +47,7 @@ const TWO_FA_PURPOSE = '2fa-challenge';
 export function signTwoFactorChallenge(userId: string): string {
   return jwt.sign({ sub: userId, purpose: TWO_FA_PURPOSE }, getConfig().jwtSecret, {
     expiresIn: '10m',
-  });
+  } as jwt.SignOptions);
 }
 
 export function verifyTwoFactorChallenge(token: string): string | null {

@@ -30,6 +30,7 @@ import { paginateActivityLogs } from '../services/activity.js';
 import { getNodeStats } from '../services/node-stats.js';
 import {
   createServerOnPanel,
+  assertNodeHasCapacityForUpdate,
   deleteServerFromPanel,
   powerServer,
   reinstallServerOnWings,
@@ -345,11 +346,12 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.patch('/users/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
+    const minPasswordLength = await getMinPasswordLength();
     const body = z
       .object({
         email: z.string().email().optional(),
         username: z.string().min(3).optional(),
-        password: z.string().min(8).optional(),
+        password: z.string().min(minPasswordLength).optional(),
         role: z.enum(['admin', 'user']).optional(),
         enabled: z.boolean().optional(),
         suspended: z.boolean().optional(),
@@ -373,7 +375,9 @@ export async function adminRoutes(app: FastifyInstance) {
         ...(body.lastName !== undefined ? { lastName: body.lastName } : {}),
         ...(suspended !== undefined ? { enabled: !suspended } : {}),
         ...(body.role !== undefined ? { role: body.role, rootAdmin: body.role === 'admin' } : {}),
-        ...(body.password ? { passwordHash: await hashPassword(body.password) } : {}),
+        ...(body.password
+          ? { passwordHash: await hashPassword(body.password), tokenVersion: { increment: 1 } }
+          : {}),
       },
     });
 
@@ -1636,11 +1640,11 @@ export async function adminRoutes(app: FastifyInstance) {
         allocationId: z.string().optional(),
         name: z.string(),
         description: z.string().default(''),
-        memory: z.number().default(1024),
-        swap: z.number().default(0),
-        disk: z.number().default(10240),
-        io: z.number().default(500),
-        cpu: z.number().default(100),
+        memory: z.number().int().min(0).default(1024),
+        swap: z.number().int().min(0).default(0),
+        disk: z.number().int().min(0).default(10240),
+        io: z.number().int().min(0).default(500),
+        cpu: z.number().int().min(0).default(100),
         image: z.string().optional(),
         startup: z.string().optional(),
         environment: z.record(z.string()).optional(),
@@ -1696,11 +1700,11 @@ export async function adminRoutes(app: FastifyInstance) {
       .object({
         name: z.string().optional(),
         description: z.string().optional(),
-        memory: z.number().optional(),
-        swap: z.number().optional(),
-        disk: z.number().optional(),
-        io: z.number().optional(),
-        cpu: z.number().optional(),
+        memory: z.number().int().min(0).optional(),
+        swap: z.number().int().min(0).optional(),
+        disk: z.number().int().min(0).optional(),
+        io: z.number().int().min(0).optional(),
+        cpu: z.number().int().min(0).optional(),
         suspended: z.boolean().optional(),
         allocationLimit: z.number().int().min(0).optional(),
         backupLimit: z.number().int().min(0).optional(),
@@ -1708,8 +1712,18 @@ export async function adminRoutes(app: FastifyInstance) {
       })
       .parse(request.body);
 
-    const existing = await prisma.server.findUnique({ where: { id } });
+    const existing = await prisma.server.findUnique({ where: { id }, include: { node: true } });
     if (!existing) return reply.status(404).send({ error: 'Not found' });
+
+    const nextMemory = body.memory ?? existing.memory;
+    const nextDisk = body.disk ?? existing.disk;
+    if (body.memory !== undefined || body.disk !== undefined) {
+      try {
+        await assertNodeHasCapacityForUpdate(existing.node, existing.id, nextMemory, nextDisk);
+      } catch (err) {
+        return reply.status(422).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    }
 
     const server = await prisma.server.update({
       where: { id },
@@ -2256,20 +2270,27 @@ export async function adminRoutes(app: FastifyInstance) {
   // API Keys
   app.get('/api-keys', async (request) => listApiKeysForUser(request.user!.id));
 
-  app.post('/api-keys', async (request) => {
-    const body = z.object({ memo: z.string().max(255).default('') }).parse(request.body ?? {});
-    const key = await createApiKeyForUser(request.user!.id, {
-      memo: body.memo,
-      keyType: API_KEY_TYPE_APPLICATION,
-    });
+  app.post('/api-keys', async (request, reply) => {
+    const body = z.object({ memo: z.string().trim().min(1).max(255) }).parse(request.body ?? {});
+    try {
+      const key = await createApiKeyForUser(request.user!.id, {
+        memo: body.memo,
+        keyType: API_KEY_TYPE_APPLICATION,
+      });
 
-    await logAdminActivity(request, {
-      event: 'admin.api_key.created',
-      description: 'Created an application API key',
-      properties: { keyId: key.id },
-    });
+      await logAdminActivity(request, {
+        event: 'admin.api_key.created',
+        description: 'Created an application API key',
+        properties: { keyId: key.id },
+      });
 
-    return key;
+      return key;
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(statusCode).send({
+        error: err instanceof Error ? err.message : 'Failed to create API key',
+      });
+    }
   });
 
   app.delete('/api-keys/:id', async (request, reply) => {
@@ -2300,8 +2321,17 @@ export async function adminRoutes(app: FastifyInstance) {
 
     const body = z
       .object({
-        memo: z.string().max(255).default(''),
+        memo: z.string().trim().max(255).default(''),
         keyType: z.enum(['account', 'application']).default('account'),
+      })
+      .superRefine((data, ctx) => {
+        if (data.keyType === 'application' && !data.memo) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Application API keys require a memo describing their use',
+            path: ['memo'],
+          });
+        }
       })
       .parse(request.body ?? {});
 
@@ -2311,15 +2341,22 @@ export async function adminRoutes(app: FastifyInstance) {
       return reply.status(422).send({ error: 'Application keys can only be created for admin users' });
     }
 
-    const key = await createApiKeyForUser(id, { memo: body.memo, keyType });
+    try {
+      const key = await createApiKeyForUser(id, { memo: body.memo, keyType });
 
-    await logAdminActivity(request, {
-      event: 'admin.api_key.created',
-      description: `Created ${body.keyType} API key for ${user.username}`,
-      properties: { userId: id, keyId: key.id, keyType: body.keyType },
-    });
+      await logAdminActivity(request, {
+        event: 'admin.api_key.created',
+        description: `Created ${body.keyType} API key for ${user.username}`,
+        properties: { userId: id, keyId: key.id, keyType: body.keyType },
+      });
 
-    return key;
+      return key;
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(statusCode).send({
+        error: err instanceof Error ? err.message : 'Failed to create API key',
+      });
+    }
   });
 
   app.delete('/users/:id/api-keys/:keyId', async (request, reply) => {

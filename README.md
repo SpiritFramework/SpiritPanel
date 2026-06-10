@@ -30,6 +30,8 @@ pnpm spirit-install --production --api-url https://panel.example.com
 
 Then follow [docs/PRODUCTION.md](docs/PRODUCTION.md) for systemd, Nginx, TLS, and FeatherWings nodes.
 
+See [SECURITY.md](SECURITY.md) for security practices and vulnerability reporting.
+
 ## Install commands
 
 ```bash

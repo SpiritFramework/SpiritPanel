@@ -34,7 +34,7 @@ import { UserAvatar } from '../../components/UserAvatar';
 import { formatAllocationAddress } from '../../lib/allocation';
 import { formatActivityTime } from '../../lib/activity';
 import { isServerInstalling } from '../../lib/server-runtime';
-import { formatResource, getServerTheme } from '../../lib/server-theme';
+import { formatCpuLimit, formatResource, getServerTheme } from '../../lib/server-theme';
 import { ServerEggIcon } from '../../components/ServerEggIcon';
 import {
   AdminActivityTimeline,
@@ -288,7 +288,7 @@ export function AdminServerDetail() {
           stats={[
             { icon: HardDrive, label: 'Memory', value: formatResource(detail.memory, 'MiB') },
             { icon: HardDrive, label: 'Disk', value: formatResource(detail.disk, 'MiB') },
-            { icon: Cpu, label: 'CPU', value: `${detail.cpu}%` },
+            { icon: Cpu, label: 'CPU', value: formatCpuLimit(detail.cpu) },
             { icon: User, label: 'Owner', value: detail.owner.username },
           ]}
         />
@@ -426,40 +426,47 @@ export function AdminServerDetail() {
                   </div>
                 </AdminSettingsPanel>
 
-                <AdminSettingsPanel title="Resource limits" description="Memory, disk, and CPU allocated to this server" icon={HardDrive}>
+                <AdminSettingsPanel title="Resource limits" description="Memory, disk, and CPU — set to 0 for unlimited. Feature limits below use 0 to disable." icon={HardDrive}>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Input
                       label="Memory (MB)"
                       type="number"
+                      min={0}
                       value={String(form.memory ?? '')}
                       onChange={(e) => setForm({ ...form, memory: Number(e.target.value) })}
-                      required
+                      hint="0 = unlimited"
                     />
                     <Input
                       label="Disk (MB)"
                       type="number"
+                      min={0}
                       value={String(form.disk ?? '')}
                       onChange={(e) => setForm({ ...form, disk: Number(e.target.value) })}
-                      required
+                      hint="0 = unlimited"
                     />
                     <Input
                       label="CPU (%)"
                       type="number"
+                      min={0}
                       value={String(form.cpu ?? '')}
                       onChange={(e) => setForm({ ...form, cpu: Number(e.target.value) })}
-                      required
+                      hint="0 = unlimited"
                     />
                     <Input
                       label="Swap (MB)"
                       type="number"
+                      min={0}
                       value={String(form.swap ?? '')}
                       onChange={(e) => setForm({ ...form, swap: Number(e.target.value) })}
+                      hint="0 = unlimited"
                     />
                     <Input
                       label="Block IO"
                       type="number"
+                      min={0}
                       value={String(form.io ?? '')}
                       onChange={(e) => setForm({ ...form, io: Number(e.target.value) })}
+                      hint="0 = unlimited"
                     />
                     <Input
                       label="Allocation limit"
@@ -467,7 +474,7 @@ export function AdminServerDetail() {
                       min={0}
                       value={String(form.allocationLimit ?? 0)}
                       onChange={(e) => setForm({ ...form, allocationLimit: Number(e.target.value) })}
-                      hint="Max ports (0 = disabled)"
+                      hint="Extra ports (0 = disabled)"
                     />
                     <Input
                       label="Backup limit"

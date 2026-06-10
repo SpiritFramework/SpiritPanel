@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { serverResourceContribution } from './server-resources.js';
 
 export interface NodeCapacityStats {
   allocatedMemory: number;
@@ -48,14 +49,16 @@ export function computeNodeCapacity(
 export type NodeAllocationMap = Map<string, { memory: number; disk: number }>;
 
 export async function loadNodeAllocationTotals(prisma: PrismaClient): Promise<NodeAllocationMap> {
-  const rows = await prisma.server.groupBy({
-    by: ['nodeId'],
-    _sum: { memory: true, disk: true },
+  const servers = await prisma.server.findMany({
+    select: { nodeId: true, memory: true, disk: true },
   });
-  return new Map(
-    rows.map((row) => [
-      row.nodeId,
-      { memory: row._sum.memory ?? 0, disk: row._sum.disk ?? 0 },
-    ]),
-  );
+  const map: NodeAllocationMap = new Map();
+  for (const row of servers) {
+    const prev = map.get(row.nodeId) ?? { memory: 0, disk: 0 };
+    map.set(row.nodeId, {
+      memory: prev.memory + serverResourceContribution(row.memory),
+      disk: prev.disk + serverResourceContribution(row.disk),
+    });
+  }
+  return map;
 }

@@ -3,11 +3,20 @@ import jwt from 'jsonwebtoken';
 import type { FastifyRequest } from 'fastify';
 import { getConfig } from './env.js';
 import { prisma } from './prisma.js';
+import { getSessionToken } from './session-cookie.js';
 
 export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  tv?: number;
+}
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  role: string;
+  tokenVersion: number;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -18,12 +27,27 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, getConfig().jwtSecret, { expiresIn: '7d' });
+export function sessionExpiresIn(role: string): string {
+  return role === 'admin' ? '24h' : '7d';
+}
+
+export function signToken(user: SessionUser): string {
+  return jwt.sign(
+    { sub: user.id, email: user.email, role: user.role, tv: user.tokenVersion },
+    getConfig().jwtSecret,
+    { expiresIn: sessionExpiresIn(user.role) } as jwt.SignOptions,
+  );
 }
 
 export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, getConfig().jwtSecret) as JwtPayload;
+}
+
+export async function invalidateUserSessions(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
 }
 
 export async function verifyApiKey(identifier: string, token: string) {
@@ -46,12 +70,31 @@ export async function verifyApiKeyDetailed(identifier: string, token: string) {
   return { user, keyType: key.keyType };
 }
 
+async function verifySessionJwt(bearer: string) {
+  try {
+    const payload = verifyToken(bearer);
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.enabled) return null;
+    if (user.tokenVersion !== (payload.tv ?? 0)) return null;
+    return { user, method: 'jwt' as const };
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthFromRequest(
   request: FastifyRequest,
 ): Promise<{ user: NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>; method: 'jwt' | 'api_key'; keyType?: number } | null> {
   const header = request.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return null;
-  const bearer = header.slice(7);
+  let bearer: string | null = null;
+
+  if (header?.startsWith('Bearer ')) {
+    bearer = header.slice(7);
+  } else {
+    bearer = getSessionToken(request);
+  }
+
+  if (!bearer) return null;
 
   const dotIndex = bearer.indexOf('.');
   if (dotIndex > 0 && bearer.startsWith('sp_')) {
@@ -62,14 +105,7 @@ export async function getAuthFromRequest(
     return { user: result.user, method: 'api_key', keyType: result.keyType };
   }
 
-  try {
-    const payload = verifyToken(bearer);
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) return null;
-    return { user, method: 'jwt' };
-  } catch {
-    return null;
-  }
+  return verifySessionJwt(bearer);
 }
 
 export async function getUserFromRequest(request: FastifyRequest) {

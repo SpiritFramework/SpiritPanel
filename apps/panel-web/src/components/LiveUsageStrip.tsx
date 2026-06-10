@@ -50,17 +50,25 @@ export function LiveUsageStrip({ stats, limits, connectionStatus, metricsOnly = 
 
       {online ? (
         <>
-          <MiniMeter label="CPU" value={`${stats.cpu.toFixed(1)}%`} pct={percentOf(stats.cpu, limits.cpu)} color="#818cf8" />
+          <MiniMeter
+            label="CPU"
+            value={limits.cpu > 0 ? `${stats.cpu.toFixed(1)}%` : `${stats.cpu.toFixed(1)}%`}
+            pct={limits.cpu > 0 ? percentOf(stats.cpu, limits.cpu) : 0}
+            suffix={limits.cpu <= 0 ? ' · unlimited' : undefined}
+            color="#818cf8"
+          />
           <MiniMeter
             label="RAM"
             value={formatBytes(stats.memoryBytes)}
-            pct={percentOf(stats.memoryBytes, memoryLimit)}
+            pct={memoryLimit > 0 ? percentOf(stats.memoryBytes, memoryLimit) : 0}
+            suffix={memoryLimit <= 0 ? ' · unlimited' : undefined}
             color="#34d399"
           />
           <MiniMeter
             label="Disk"
             value={formatBytes(stats.diskBytes)}
-            pct={percentOf(stats.diskBytes, diskLimit)}
+            pct={diskLimit > 0 ? percentOf(stats.diskBytes, diskLimit) : 0}
+            suffix={diskLimit <= 0 ? ' · unlimited' : undefined}
             color="#fbbf24"
           />
           <span className="hidden font-mono text-[var(--muted)] sm:inline">
@@ -85,11 +93,13 @@ function MiniMeter({
   value,
   pct,
   color,
+  suffix,
 }: {
   label: string;
   value: string;
   pct: number;
   color: string;
+  suffix?: string;
 }) {
   return (
     <span className="inline-flex min-w-[4.5rem] items-center gap-1.5">
@@ -100,7 +110,10 @@ function MiniMeter({
           style={{ width: `${Math.min(100, pct)}%`, background: color }}
         />
       </span>
-      <span className="font-mono font-medium">{value}</span>
+      <span className="font-mono font-medium">
+        {value}
+        {suffix ?? ''}
+      </span>
     </span>
   );
 }

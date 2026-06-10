@@ -247,7 +247,8 @@ export function UsageMeter({
   limitLabel: string;
   color: string;
 }) {
-  const pct = limit > 0 ? Math.min(100, (value / limit) * 100) : 0;
+  const unlimited = limit <= 0;
+  const pct = unlimited ? 0 : Math.min(100, (value / limit) * 100);
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-3">
@@ -256,15 +257,25 @@ export function UsageMeter({
         <span className="font-mono text-sm font-semibold">{unit}</span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--border)]/80">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: color }}
-        />
+        {unlimited ? (
+          <div className="h-full w-full rounded-full opacity-20" style={{ background: color }} />
+        ) : (
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, background: color }}
+          />
+        )}
       </div>
       <p className="mt-1.5 text-[10px] text-[var(--muted)]">
-        <span className="font-mono text-[var(--text)]">{pct.toFixed(1)}%</span>
-        {' · '}
-        {limitLabel}
+        {unlimited ? (
+          limitLabel
+        ) : (
+          <>
+            <span className="font-mono text-[var(--text)]">{pct.toFixed(1)}%</span>
+            {' · '}
+            {limitLabel}
+          </>
+        )}
       </p>
     </div>
   );

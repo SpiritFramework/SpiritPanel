@@ -3,8 +3,17 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { hashPassword, verifyApiKeyDetailed } from '../lib/auth.js';
 import { API_KEY_TYPE_APPLICATION } from '../lib/api-keys.js';
+import { getPasswordMinLength } from '../lib/password-policy.js';
+import { getConfig } from '../lib/env.js';
 import { createServerOnPanel, deleteServerFromPanel, syncServerToWings } from '../services/server-lifecycle.js';
 import { isMailEnabled, sendServerCreatedEmail } from '../lib/mailer.js';
+
+const APPLICATION_RATE_LIMIT = {
+  rateLimit: {
+    max: getConfig().isProduction ? 60 : 120,
+    timeWindow: '1 minute',
+  },
+};
 
 async function requireApplicationKey(request: import('fastify').FastifyRequest, reply: import('fastify').FastifyReply) {
   const header = request.headers.authorization;
@@ -30,7 +39,7 @@ async function requireApplicationKey(request: import('fastify').FastifyRequest, 
 export async function applicationRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireApplicationKey);
 
-  app.get('/users', async (request) => {
+  app.get('/users', { config: APPLICATION_RATE_LIMIT }, async (request) => {
     const q = (request.query as { email?: string }).email;
     return prisma.user.findMany({
       where: q ? { email: q } : undefined,
@@ -38,12 +47,13 @@ export async function applicationRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/users', async (request) => {
+  app.post('/users', { config: APPLICATION_RATE_LIMIT }, async (request) => {
+    const minPasswordLength = await getPasswordMinLength();
     const body = z
       .object({
         email: z.string().email(),
         username: z.string().min(3),
-        password: z.string().min(8),
+        password: z.string().min(minPasswordLength),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
       })
@@ -58,13 +68,13 @@ export async function applicationRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get('/servers', async () =>
+  app.get('/servers', { config: APPLICATION_RATE_LIMIT }, async () =>
     prisma.server.findMany({
       include: { owner: { select: { email: true } }, defaultAllocation: true },
     }),
   );
 
-  app.post('/servers', async (request, reply) => {
+  app.post('/servers', { config: APPLICATION_RATE_LIMIT }, async (request, reply) => {
     const body = z
       .object({
         ownerId: z.string(),
@@ -72,9 +82,9 @@ export async function applicationRoutes(app: FastifyInstance) {
         eggId: z.string(),
         allocationId: z.string().optional(),
         name: z.string(),
-        memory: z.number().default(1024),
-        disk: z.number().default(10240),
-        cpu: z.number().default(100),
+        memory: z.number().int().min(0).default(1024),
+        disk: z.number().int().min(0).default(10240),
+        cpu: z.number().int().min(0).default(100),
         environment: z.record(z.string()).optional(),
         allocationLimit: z.number().int().min(0).default(0),
         backupLimit: z.number().int().min(0).default(0),
@@ -108,7 +118,7 @@ export async function applicationRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/servers/:id', async (request, reply) => {
+  app.get('/servers/:id', { config: APPLICATION_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findFirst({
       where: { OR: [{ id }, { uuid: id }] },
@@ -118,7 +128,7 @@ export async function applicationRoutes(app: FastifyInstance) {
     return server;
   });
 
-  app.post('/servers/:id/suspend', async (request, reply) => {
+  app.post('/servers/:id/suspend', { config: APPLICATION_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findFirst({ where: { OR: [{ id }, { uuid: id }] } });
     if (!server) return reply.status(404).send({ error: 'Not found' });
@@ -130,7 +140,7 @@ export async function applicationRoutes(app: FastifyInstance) {
     return updated;
   });
 
-  app.post('/servers/:id/unsuspend', async (request, reply) => {
+  app.post('/servers/:id/unsuspend', { config: APPLICATION_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findFirst({ where: { OR: [{ id }, { uuid: id }] } });
     if (!server) return reply.status(404).send({ error: 'Not found' });
@@ -142,7 +152,7 @@ export async function applicationRoutes(app: FastifyInstance) {
     return updated;
   });
 
-  app.delete('/servers/:id', async (request, reply) => {
+  app.delete('/servers/:id', { config: APPLICATION_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findFirst({ where: { OR: [{ id }, { uuid: id }] } });
     if (!server) return reply.status(404).send({ error: 'Not found' });

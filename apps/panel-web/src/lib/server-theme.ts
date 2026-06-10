@@ -52,6 +52,12 @@ export function getServerTheme(eggName: string): ServerTheme {
 }
 
 export function formatResource(value: number, unit: string): string {
+  if (value <= 0) return 'Unlimited';
   if (value >= 1024 && unit === 'MiB') return `${(value / 1024).toFixed(value % 1024 === 0 ? 0 : 1)} GiB`;
   return `${value} ${unit}`;
+}
+
+export function formatCpuLimit(value: number): string {
+  if (value <= 0) return 'Unlimited';
+  return `${value}%`;
 }

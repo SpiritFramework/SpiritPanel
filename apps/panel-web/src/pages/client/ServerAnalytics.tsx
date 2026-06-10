@@ -40,8 +40,8 @@ export function ServerAnalyticsPage() {
   livePointRef.current = livePoint;
   const current = livePoint ?? stats?.series[stats?.series.length - 1] ?? null;
   const limits = stats?.limits ?? { memory: server.memory, disk: server.disk, cpu: server.cpu };
-  const memoryLimitBytes = limits.memory * 1024 * 1024;
-  const diskLimitBytes = limits.disk * 1024 * 1024;
+  const memoryLimitBytes = limits.memory > 0 ? limits.memory * 1024 * 1024 : 0;
+  const diskLimitBytes = limits.disk > 0 ? limits.disk * 1024 * 1024 : 0;
 
   async function load(showRefresh = false) {
     if (!id) return;
@@ -99,8 +99,14 @@ export function ServerAnalyticsPage() {
   const liveOnlyCharts = !hasHistory && series.length > 0;
 
   const cpuData = series.map((p) => ({ x: p.recordedAt, y: p.cpu }));
-  const memoryData = series.map((p) => ({ x: p.recordedAt, y: (p.memoryBytes / memoryLimitBytes) * 100 }));
-  const diskData = series.map((p) => ({ x: p.recordedAt, y: (p.diskBytes / diskLimitBytes) * 100 }));
+  const memoryData = series.map((p) => ({
+    x: p.recordedAt,
+    y: memoryLimitBytes > 0 ? (p.memoryBytes / memoryLimitBytes) * 100 : p.memoryBytes,
+  }));
+  const diskData = series.map((p) => ({
+    x: p.recordedAt,
+    y: diskLimitBytes > 0 ? (p.diskBytes / diskLimitBytes) * 100 : p.diskBytes,
+  }));
   const networkData = networkRateSeries(series);
 
   return (
@@ -147,9 +153,9 @@ export function ServerAnalyticsPage() {
             <UsageMeter
               label="CPU"
               value={current?.cpu ?? 0}
-              limit={limits.cpu}
+              limit={limits.cpu > 0 ? limits.cpu : 0}
               unit={`${(current?.cpu ?? 0).toFixed(1)}%`}
-              limitLabel={`${limits.cpu}% limit`}
+              limitLabel={limits.cpu > 0 ? `${limits.cpu}% limit` : 'Unlimited'}
               color="#818cf8"
             />
             <UsageMeter
@@ -157,7 +163,7 @@ export function ServerAnalyticsPage() {
               value={current?.memoryBytes ?? 0}
               limit={memoryLimitBytes}
               unit={formatBytes(current?.memoryBytes ?? 0)}
-              limitLabel={`${formatResource(limits.memory, 'MiB')} limit`}
+              limitLabel={memoryLimitBytes > 0 ? `${formatResource(limits.memory, 'MiB')} limit` : 'Unlimited'}
               color="#34d399"
             />
             <UsageMeter
@@ -165,7 +171,7 @@ export function ServerAnalyticsPage() {
               value={current?.diskBytes ?? 0}
               limit={diskLimitBytes}
               unit={formatBytes(current?.diskBytes ?? 0)}
-              limitLabel={`${formatResource(limits.disk, 'MiB')} limit`}
+              limitLabel={diskLimitBytes > 0 ? `${formatResource(limits.disk, 'MiB')} limit` : 'Unlimited'}
               color="#fbbf24"
             />
             <StatCard
@@ -178,9 +184,27 @@ export function ServerAnalyticsPage() {
 
           <ServerPanel icon={BarChart3} title="Usage charts" description={`Showing ${range} range`} noPadding bodyClassName="p-4">
             <div className="grid gap-4 lg:grid-cols-2">
-              <UsageChart title="CPU usage" unit={`Limit ${limits.cpu}%`} color="#818cf8" range={range} data={cpuData} max={limits.cpu} valueUnit="percent" formatValue={(v) => `${v.toFixed(1)}%`} />
-              <UsageChart title="Memory usage" unit={`Limit ${formatResource(limits.memory, 'MiB')}`} color="#34d399" range={range} data={memoryData} max={100} valueUnit="percent" formatValue={(v) => `${v.toFixed(1)}%`} />
-              <UsageChart title="Disk usage" unit={`Limit ${formatResource(limits.disk, 'MiB')}`} color="#fbbf24" range={range} data={diskData} max={100} valueUnit="percent" formatValue={(v) => `${v.toFixed(1)}%`} />
+              <UsageChart title="CPU usage" unit={limits.cpu > 0 ? `Limit ${limits.cpu}%` : 'Unlimited'} color="#818cf8" range={range} data={cpuData} max={limits.cpu > 0 ? limits.cpu : undefined} valueUnit="percent" formatValue={(v) => `${v.toFixed(1)}%`} />
+              <UsageChart
+                title="Memory usage"
+                unit={memoryLimitBytes > 0 ? `Limit ${formatResource(limits.memory, 'MiB')}` : 'Unlimited'}
+                color="#34d399"
+                range={range}
+                data={memoryData}
+                max={memoryLimitBytes > 0 ? 100 : undefined}
+                valueUnit={memoryLimitBytes > 0 ? 'percent' : 'bytes'}
+                formatValue={memoryLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
+              />
+              <UsageChart
+                title="Disk usage"
+                unit={diskLimitBytes > 0 ? `Limit ${formatResource(limits.disk, 'MiB')}` : 'Unlimited'}
+                color="#fbbf24"
+                range={range}
+                data={diskData}
+                max={diskLimitBytes > 0 ? 100 : undefined}
+                valueUnit={diskLimitBytes > 0 ? 'percent' : 'bytes'}
+                formatValue={diskLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
+              />
               <UsageChart title="Network throughput" unit="Combined RX + TX rate" color="#38bdf8" range={range} data={networkData} valueUnit="rate" formatValue={formatNetworkRate} />
             </div>
           </ServerPanel>

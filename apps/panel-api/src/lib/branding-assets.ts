@@ -8,20 +8,13 @@ const MIME_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg',
   'image/x-icon': 'ico',
   'image/vnd.microsoft.icon': 'ico',
 };
 
 const ALLOWED_MIMES: Record<'logo' | 'favicon', Set<string>> = {
-  logo: new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']),
-  favicon: new Set([
-    'image/png',
-    'image/x-icon',
-    'image/vnd.microsoft.icon',
-    'image/svg+xml',
-    'image/webp',
-  ]),
+  logo: new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']),
+  favicon: new Set(['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/webp']),
 };
 
 const MAX_BYTES: Record<'logo' | 'favicon', number> = {

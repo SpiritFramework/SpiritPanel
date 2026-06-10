@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { hashPassword, signToken, verifyPassword } from '../lib/auth.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getPasswordMinLength } from '../lib/password-policy.js';
+import { clearSessionCookie, setSessionCookie } from '../lib/session-cookie.js';
 import { logAuthActivity } from '../lib/admin-activity.js';
 import {
   brandingAssetExists,
@@ -79,6 +81,32 @@ async function assertTurnstile(request: { ip: string }, token?: string) {
   }
 }
 
+function issueAuthSession(
+  reply: import('fastify').FastifyReply,
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    tokenVersion: number;
+    uuid: string;
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl?: string | null;
+    rootAdmin: boolean;
+    createdAt: Date;
+  },
+) {
+  const token = signToken({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    tokenVersion: user.tokenVersion,
+  });
+  setSessionCookie(reply, token, user.role);
+  return { user: sanitizeUser(user) };
+}
+
 export async function authRoutes(app: FastifyInstance) {
   app.post('/login', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
     const body = z
@@ -138,8 +166,6 @@ export async function authRoutes(app: FastifyInstance) {
       return { twoFactorRequired: true, challenge: signTwoFactorChallenge(user.id) };
     }
 
-    const token = signToken({ sub: user.id, email: user.email, role: user.role });
-
     await logAuthActivity(request, {
       event: 'auth.login',
       actorId: user.id,
@@ -147,10 +173,7 @@ export async function authRoutes(app: FastifyInstance) {
       properties: { role: user.role },
     });
 
-    return {
-      token,
-      user: sanitizeUser(user),
-    };
+    return issueAuthSession(reply, user);
   });
 
   app.post('/login/2fa', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
@@ -179,8 +202,6 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: 'Invalid authentication code' });
     }
 
-    const token = signToken({ sub: user.id, email: user.email, role: user.role });
-
     await logAuthActivity(request, {
       event: 'auth.login',
       actorId: user.id,
@@ -188,7 +209,7 @@ export async function authRoutes(app: FastifyInstance) {
       properties: { role: user.role },
     });
 
-    return { token, user: sanitizeUser(user) };
+    return issueAuthSession(reply, user);
   });
 
   app.post('/register', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
@@ -239,8 +260,6 @@ export async function authRoutes(app: FastifyInstance) {
       },
     });
 
-    const token = signToken({ sub: user.id, email: user.email, role: user.role });
-
     await logAuthActivity(request, {
       event: 'auth.register',
       actorId: user.id,
@@ -256,7 +275,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
     }
 
-    return { token, user: sanitizeUser(user) };
+    return issueAuthSession(reply, user);
   });
 
   app.post('/forgot-password', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
@@ -316,9 +335,13 @@ export async function authRoutes(app: FastifyInstance) {
 
     const user = await prisma.user.update({
       where: { id: reset.userId },
-      data: { passwordHash: await hashPassword(body.password) },
+      data: {
+        passwordHash: await hashPassword(body.password),
+        tokenVersion: { increment: 1 },
+      },
     });
     await prisma.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date() } });
+    clearSessionCookie(reply);
 
     if (await isMailEnabled()) {
       try {
@@ -336,11 +359,17 @@ export async function authRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
+  app.post('/logout', async (_request, reply) => {
+    clearSessionCookie(reply);
+    return { success: true };
+  });
+
   app.get('/me', { preHandler: requireAuth }, async (request) => {
     return sanitizeUser(request.user!);
   });
 
   app.patch('/me', { preHandler: requireAuth }, async (request, reply) => {
+    const minPasswordLength = await getPasswordMinLength();
     const body = z
       .object({
         email: z.string().email().optional(),
@@ -351,7 +380,7 @@ export async function authRoutes(app: FastifyInstance) {
           .union([z.string().url().max(512), z.literal(''), z.null()])
           .optional(),
         currentPassword: z.string().optional(),
-        newPassword: z.string().min(8).optional(),
+        newPassword: z.string().min(minPasswordLength).optional(),
       })
       .parse(request.body);
 
@@ -390,7 +419,9 @@ export async function authRoutes(app: FastifyInstance) {
         ...(body.avatarUrl !== undefined
           ? { avatarUrl: body.avatarUrl === '' ? null : body.avatarUrl }
           : {}),
-        ...(body.newPassword ? { passwordHash: await hashPassword(body.newPassword) } : {}),
+        ...(body.newPassword
+          ? { passwordHash: await hashPassword(body.newPassword), tokenVersion: { increment: 1 } }
+          : {}),
       },
     });
 
@@ -406,6 +437,10 @@ export async function authRoutes(app: FastifyInstance) {
         actorId: user.id,
         description: `${user.username} updated profile (${changes.join(', ')})`,
       });
+    }
+
+    if (body.newPassword) {
+      return issueAuthSession(reply, updated);
     }
 
     return sanitizeUser(updated);
@@ -612,12 +647,14 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const path = resolveBrandingAssetPath(filename)!;
     const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'svg') {
+      return reply.status(404).send({ error: 'Not found' });
+    }
     const types: Record<string, string> = {
       png: 'image/png',
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',
       webp: 'image/webp',
-      svg: 'image/svg+xml',
       ico: 'image/x-icon',
     };
     reply.header('Cache-Control', 'public, max-age=300');

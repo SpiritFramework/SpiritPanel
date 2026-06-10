@@ -5,7 +5,7 @@ export class ResourceQuotaError extends Error {
   }
 }
 
-/** Limit 0 means none allowed — not unlimited. */
+/** Feature limits (allocations, backups, databases): 0 means none allowed — not unlimited. */
 export function canCreateUnderLimit(limit: number, used: number): boolean {
   const safeLimit = limit ?? 0;
   const safeUsed = used ?? 0;

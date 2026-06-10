@@ -242,8 +242,14 @@ function CreateApiKeyModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    const trimmedMemo = memo.trim();
+    const effectiveType = allowApplicationKeys ? keyType : 'account';
+    if (effectiveType === 'application' && !trimmedMemo) {
+      setError('Application API keys require a memo describing their use.');
+      return;
+    }
     try {
-      await onCreate({ memo: memo.trim(), keyType: allowApplicationKeys ? keyType : 'account' });
+      await onCreate({ memo: trimmedMemo, keyType: effectiveType });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create API key');
     }

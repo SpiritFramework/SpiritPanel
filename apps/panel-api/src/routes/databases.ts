@@ -256,7 +256,6 @@ const databaseHostBody = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   maxDatabases: z.coerce.number().int().min(0).default(0),
-  connectionVerified: z.boolean().optional(),
 });
 
 const databaseHostConnectionBody = z.object({
@@ -334,19 +333,17 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     const host = body.host.trim();
     const username = body.username.trim();
 
-    if (!body.connectionVerified) {
-      try {
-        await testDatabaseHostConnection({
-          host,
-          port: body.port,
-          username,
-          password: body.password,
-        });
-      } catch (err) {
-        return reply.status(422).send({
-          error: `Could not connect to database host: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
+    try {
+      await testDatabaseHostConnection({
+        host,
+        port: body.port,
+        username,
+        password: body.password,
+      });
+    } catch (err) {
+      return reply.status(422).send({
+        error: `Could not connect to database host: ${err instanceof Error ? err.message : String(err)}`,
+      });
     }
 
     try {

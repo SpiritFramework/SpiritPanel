@@ -43,13 +43,13 @@ export function serverProvisionProgress(
         form.nodeId && (options.autoAssign ? options.hasFreeAllocation : form.allocationId),
       ),
     },
-    { id: 'resources', label: 'Resources', done: Boolean(Number(form.memory) > 0 && Number(form.disk) > 0) },
+    { id: 'resources', label: 'Resources', done: Number(form.memory) >= 0 && Number(form.disk) >= 0 },
   ];
 
   const ready =
     Boolean(form.ownerId && form.name.trim() && form.eggId && form.nodeId) &&
-    Number(form.memory) > 0 &&
-    Number(form.disk) > 0 &&
+    Number(form.memory) >= 0 &&
+    Number(form.disk) >= 0 &&
     (options.autoAssign ? options.hasFreeAllocation : Boolean(form.allocationId));
 
   return { steps, ready, done: steps.filter((s) => s.done).length, total: steps.length };

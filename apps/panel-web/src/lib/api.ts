@@ -95,11 +95,7 @@ export interface CreatedApiKey extends ApiKeySummary {
 }
 
 function requestHeaders(options: RequestInit = {}): HeadersInit {
-  const token = localStorage.getItem('spirit_token');
   const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-  // Only send Content-Type when there is a body — Fastify returns 400 on DELETE/GET
-  // with Content-Type: application/json and an empty body.
   if (options.body != null && options.body !== '') {
     headers['Content-Type'] = 'application/json';
   }
@@ -109,6 +105,7 @@ function requestHeaders(options: RequestInit = {}): HeadersInit {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...options,
+    credentials: 'include',
     headers: { ...requestHeaders(options), ...options.headers },
   });
   if (!res.ok) {
@@ -133,6 +130,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 async function requestText(path: string, options: RequestInit = {}): Promise<string> {
   const res = await fetch(`${API}${path}`, {
     ...options,
+    credentials: 'include',
     headers: { ...requestHeaders(options), ...options.headers },
   });
   if (!res.ok) {
@@ -152,7 +150,6 @@ async function requestText(path: string, options: RequestInit = {}): Promise<str
 }
 
 export interface LoginResult {
-  token?: string;
   user?: User;
   twoFactorRequired?: boolean;
   challenge?: string;
@@ -185,10 +182,12 @@ export const api = {
     }),
 
   loginTwoFactor: (challenge: string, code: string) =>
-    request<{ token: string; user: User }>('/auth/login/2fa', {
+    request<{ user: User }>('/auth/login/2fa', {
       method: 'POST',
       body: JSON.stringify({ challenge, code }),
     }),
+
+  logout: () => request<{ success: boolean }>('/auth/logout', { method: 'POST' }),
 
   twoFactorStatus: () => request<TwoFactorStatus>('/auth/me/2fa'),
 
@@ -239,7 +238,7 @@ export const api = {
     lastName?: string;
     turnstileToken?: string;
   }) =>
-    request<{ token: string; user: User }>('/auth/register', {
+    request<{ user: User }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -672,10 +671,9 @@ export const api = {
     downloadFileUrl: (serverId: string, file: string) =>
       `${API}/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`,
     downloadFile: async (serverId: string, file: string) => {
-      const token = localStorage.getItem('spirit_token');
       const res = await fetch(
         `${API}/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+        { credentials: 'include' },
       );
       if (!res.ok) throw new Error((await res.text()) || 'Download failed');
       const blob = await res.blob();
@@ -689,14 +687,13 @@ export const api = {
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     },
     uploadFiles: async (serverId: string, directory: string, files: File[]) => {
-      const token = localStorage.getItem('spirit_token');
       const form = new FormData();
       for (const f of files) form.append('files', f, f.name);
       const res = await fetch(
         `${API}/client/servers/${serverId}/files/upload?directory=${encodeURIComponent(directory)}`,
         {
           method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
           body: form,
         },
       );
@@ -1302,8 +1299,6 @@ export interface CreateDatabaseHostInput {
   username: string;
   password: string;
   maxDatabases?: number;
-  /** Set after a successful Test connection so save skips a redundant MySQL ping. */
-  connectionVerified?: boolean;
 }
 
 export interface UpdateDatabaseHostInput {
