@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { FastifyRequest } from 'fastify';
 import { getConfig } from './env.js';
+import { assertTokenCritHeaderSupported } from './jwt-crit.js';
 import { prisma } from './prisma.js';
 import { getSessionToken } from './session-cookie.js';
 
@@ -40,6 +41,7 @@ export function signToken(user: SessionUser): string {
 }
 
 export function verifyToken(token: string): JwtPayload {
+  assertTokenCritHeaderSupported(token);
   return jwt.verify(token, getConfig().jwtSecret) as JwtPayload;
 }
 

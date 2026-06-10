@@ -2,6 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 import jwt from 'jsonwebtoken';
+import { assertTokenCritHeaderSupported } from './jwt-crit.js';
 import { getConfig } from './env.js';
 
 export function generateTotpSecret(): string {
@@ -52,6 +53,7 @@ export function signTwoFactorChallenge(userId: string): string {
 
 export function verifyTwoFactorChallenge(token: string): string | null {
   try {
+    assertTokenCritHeaderSupported(token);
     const payload = jwt.verify(token, getConfig().jwtSecret) as { sub: string; purpose?: string };
     if (payload.purpose !== TWO_FA_PURPOSE) return null;
     return payload.sub;

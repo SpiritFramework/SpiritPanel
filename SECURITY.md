@@ -32,6 +32,7 @@ Spirit-Panel is a self-hosted game server control panel. You are responsible for
 |-----------|--------|
 | **Browser sessions** | HttpOnly `SameSite=Strict` cookie (`spirit_session`). Not accessible to JavaScript (mitigates XSS token theft). |
 | **JWT lifetime** | Admin: **24 hours**. Users: **7 days**. |
+| **JWT crit headers** | Tokens with unsupported `crit` (critical) header extensions are rejected per RFC 7515 §4.1.11. |
 | **Session revocation** | Password change or reset increments `token_version` and invalidates all existing JWTs. |
 | **API keys** | Account keys for user automation; Application keys for billing (admin-only). Keys are bcrypt-hashed at rest. |
 | **Application keys** | Require a memo, expire after **90 days**, rate-limited to **60 req/min** in production. |
