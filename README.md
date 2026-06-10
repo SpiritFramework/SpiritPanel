@@ -173,6 +173,7 @@ Spirit-Panel is designed for self-hosting: you are responsible for TLS, firewall
 **Built-in**
 
 - **Browser login** — JWT stored in an HttpOnly `SameSite=Strict` cookie; the web UI does not keep session tokens in `localStorage`. API keys and Bearer JWTs are supported separately for automation.
+- **XSS controls** — Content-Security-Policy (`script-src 'self'`), safe URL validation for images/links, no `dangerouslySetInnerHTML` in the UI.
 - **Production startup checks** — With `NODE_ENV=production`, the API refuses placeholder or short `JWT_SECRET` / `APP_KEY`, identical secrets, and non-HTTPS or localhost `API_URL`.
 - **Branding uploads** — SVG is not accepted for logo/favicon uploads (PNG, JPEG, WebP, ICO only).
 - **File manager** — Client file paths are validated (absolute paths, no `..` traversal) before requests reach FeatherWings.

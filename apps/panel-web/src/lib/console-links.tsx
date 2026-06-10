@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { sanitizeLinkHref } from './safe-url';
 
 const URL_PATTERN = /(https?:\/\/[^\s<>"')\]]+)/g;
 
@@ -15,19 +16,24 @@ export function renderConsoleText(text: string): ReactNode[] {
       parts.push(text.slice(lastIndex, match.index));
     }
     const href = match[1].replace(/[.,;:!?)]+$/, '');
+    const safeHref = sanitizeLinkHref(href);
     const trailing = match[1].slice(href.length);
-    parts.push(
-      <a
-        key={`link-${key++}`}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="console-link"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {href}
-      </a>,
-    );
+    if (safeHref) {
+      parts.push(
+        <a
+          key={`link-${key++}`}
+          href={safeHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="console-link"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {safeHref}
+        </a>,
+      );
+    } else {
+      parts.push(match[1]);
+    }
     if (trailing) parts.push(trailing);
     lastIndex = match.index + match[1].length;
   }

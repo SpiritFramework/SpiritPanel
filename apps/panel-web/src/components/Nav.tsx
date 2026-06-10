@@ -2,6 +2,7 @@ import { NavLink, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
+import { sanitizeImageSrc } from '../lib/safe-url';
 
 export function SideNavItem({
   to,
@@ -156,14 +157,15 @@ export function BrandMark({
   logoUrl?: string;
   homeTo?: string;
 }) {
+  const safeLogo = sanitizeImageSrc(logoUrl);
   return (
     <Link
       to={homeTo}
       className="brand-mark group -mx-0.5 flex items-center gap-3 rounded-xl px-1 py-1 transition hover:bg-[var(--surface-hover)]/55"
     >
-      {logoUrl ? (
+      {safeLogo ? (
         <span className="brand-mark-logo relative shrink-0">
-          <img src={logoUrl} alt="" className="relative z-[1] h-10 w-10 rounded-xl object-contain p-1" />
+          <img src={safeLogo} alt="" className="relative z-[1] h-10 w-10 rounded-xl object-contain p-1" />
         </span>
       ) : (
         <span className="brand-mark-logo relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white" style={panelNameGradientStyle()}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImageIcon, Link2, Trash2 } from 'lucide-react';
 import { Button, Input } from './Layout';
+import { sanitizeImageSrc } from '../lib/safe-url';
 
 export function ProfileAvatarField({
   avatarUrl,
@@ -55,12 +56,14 @@ export function ProfileAvatarField({
     await apply(null);
   }
 
+  const safePreview = sanitizeImageSrc(previewUrl);
+
   return (
     <div className="profile-avatar-upload">
       <div className="profile-avatar-preview-wrap">
-        {previewUrl ? (
+        {safePreview ? (
           <img
-            src={previewUrl}
+            src={safePreview}
             alt=""
             className="profile-avatar-preview"
             onError={(e) => {

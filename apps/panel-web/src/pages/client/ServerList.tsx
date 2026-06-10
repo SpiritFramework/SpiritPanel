@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
 import { PanelAnnouncementBanner } from '../../components/PanelAnnouncementBanner';
+import { sanitizeImageSrc } from '../../lib/safe-url';
 import { api, type ServerSummary, type User } from '../../lib/api';
 import { formatAllocationAddress } from '../../lib/allocation';
 import { ServerCard } from '../../components/ServerCard';
@@ -188,9 +189,9 @@ export function ServerListPage() {
         <div className="px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
-              {branding.logoUrl ? (
+              {sanitizeImageSrc(branding.logoUrl) ? (
                 <img
-                  src={branding.logoUrl}
+                  src={sanitizeImageSrc(branding.logoUrl)!}
                   alt=""
                   className="h-10 w-10 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] object-contain p-1.5"
                 />

@@ -1,4 +1,5 @@
 import { getUserTheme } from './UserCard';
+import { sanitizeImageSrc } from '../lib/safe-url';
 
 export type UserAvatarUser = {
   username: string;
@@ -32,8 +33,9 @@ export function UserAvatar({
     .filter(Boolean)
     .join(' ');
 
-  if (user.avatarUrl) {
-    return <img src={user.avatarUrl} alt="" className={`${classes} user-avatar--photo`} />;
+  const avatarSrc = sanitizeImageSrc(user.avatarUrl);
+  if (avatarSrc) {
+    return <img src={avatarSrc} alt="" className={`${classes} user-avatar--photo`} />;
   }
 
   const theme =

@@ -27,6 +27,7 @@ import {
 import { isTurnstileEnabled, verifyTurnstileToken } from '../lib/turnstile.js';
 import { getConfig } from '../lib/env.js';
 import { PANEL_AUTHOR } from '../lib/product-meta.js';
+import { isSafeHttpUrl } from '../lib/safe-url.js';
 import { encryptSecret, decryptSecret } from '../lib/secret-crypto.js';
 import { validateGithubPat } from '../lib/github-auth.js';
 import {
@@ -378,7 +379,11 @@ export async function authRoutes(app: FastifyInstance) {
         firstName: z.string().max(64).optional().nullable(),
         lastName: z.string().max(64).optional().nullable(),
         avatarUrl: z
-          .union([z.string().url().max(512), z.literal(''), z.null()])
+          .union([
+            z.literal(''),
+            z.null(),
+            z.string().max(512).refine(isSafeHttpUrl, { message: 'Avatar URL must use http or https' }),
+          ])
           .optional(),
         currentPassword: z.string().optional(),
         newPassword: z.string().min(minPasswordLength).optional(),

@@ -34,6 +34,7 @@ import { startScheduleWorker, stopScheduleWorker } from './workers/schedule.js';
 import { startStatsCollector, stopStatsCollector } from './workers/stats-collector.js';
 import { pingRedis } from './lib/redis.js';
 import { ensureMarketplaceCatalog, isMarketplaceSchemaMissing } from './lib/marketplace-db.js';
+import { API_SECURITY_HEADERS } from './lib/security-headers.js';
 
 
 
@@ -51,6 +52,15 @@ const app = Fastify({
   // above the per-asset limits so the route returns a friendly error instead of a raw 413.
   bodyLimit: 16 * 1024 * 1024,
 
+});
+
+
+
+app.addHook('onSend', async (_request, reply, payload) => {
+  for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) {
+    reply.header(name, value);
+  }
+  return payload;
 });
 
 

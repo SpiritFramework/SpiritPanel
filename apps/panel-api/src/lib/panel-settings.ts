@@ -5,6 +5,7 @@ import {
   PANEL_PRODUCT,
   PANEL_TAGLINE,
 } from './product-meta.js';
+import { isSafeHttpUrl, isSafeImageSrc } from './safe-url.js';
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -12,13 +13,7 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export function isValidBrandingAssetUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed) return true;
-  if (trimmed.startsWith('/')) return trimmed.length <= 512;
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  return isSafeImageSrc(trimmed);
 }
 
 const brandingAssetUrl = z
@@ -55,7 +50,12 @@ export const brandingSchema = z.object({
 export const generalSchema = z.object({
   companyName: z.string().max(120),
   supportEmail: z.string().max(120),
-  supportUrl: z.string().max(512),
+  supportUrl: z
+    .string()
+    .max(512)
+    .refine((value) => !value.trim() || isSafeHttpUrl(value), {
+      message: 'Support URL must use http or https',
+    }),
   footerText: z.string().max(200),
 });
 

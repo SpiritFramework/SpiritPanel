@@ -3,6 +3,7 @@ import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName
 import { normalizeAppearance, type BrandingAppearance } from '../lib/branding-appearance';
 import { surfacePresetStyle } from '../lib/branding-theme-palettes';
 import { useTheme } from '../context/ThemeContext';
+import { sanitizeImageSrc } from '../lib/safe-url';
 
 interface BrandingPreviewProps {
   panelName: string;
@@ -28,6 +29,8 @@ export function BrandingPreview({
   const presetStyle = surfacePresetStyle(themePreset, resolved);
   const gradient = `linear-gradient(135deg, ${accentColor}, ${secondaryColor || accentColor})`;
 
+  const safeLogo = sanitizeImageSrc(logoUrl);
+
   return (
     <div className="space-y-3">
       <div
@@ -45,8 +48,8 @@ export function BrandingPreview({
             <div className="login-bg-canvas pointer-events-none absolute inset-0" aria-hidden />
             <div className="login-bg-overlay pointer-events-none absolute inset-0" aria-hidden />
             <div className="relative flex items-center gap-2">
-              {logoUrl ? (
-                <img src={logoUrl} alt="" className="h-7 w-7 rounded-md object-contain ring-1 ring-white/15" />
+              {safeLogo ? (
+                <img src={safeLogo} alt="" className="h-7 w-7 rounded-md object-contain ring-1 ring-white/15" />
               ) : (
                 <span
                   className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white"

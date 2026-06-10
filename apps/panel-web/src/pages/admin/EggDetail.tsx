@@ -11,6 +11,7 @@ import {
   Variable,
 } from 'lucide-react';
 import { api, type AdminEggDetail, type UpdateAdminEggInput } from '../../lib/api';
+import { sanitizeImageSrc } from '../../lib/safe-url';
 import {
   AdminCopyButton,
   AdminDetailBody,
@@ -265,16 +266,16 @@ export function AdminEggDetail() {
                   <div className="mt-3">
                     <Input
                       label="Logo URL"
-                      hint="PNG, SVG, or WebP over https — shown on server cards and sidebar"
+                      hint="PNG or WebP over https — shown on server cards and sidebar"
                       value={form.logoUrl ?? ''}
                       onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
                       placeholder="https://example.com/minecraft-icon.png"
                     />
-                    {(form.logoUrl ?? '').trim() ? (
+                    {(form.logoUrl ?? '').trim() && sanitizeImageSrc(form.logoUrl) ? (
                       <div className="mt-2 flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-2.5">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-black/20">
                           <img
-                            src={form.logoUrl}
+                            src={sanitizeImageSrc(form.logoUrl)!}
                             alt=""
                             className="h-7 w-7 object-contain"
                             onError={(e) => {

@@ -3,6 +3,7 @@ import { Headphones, Mail, Server, Shield, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PanelBranding } from '../lib/panel-settings';
 import { DEFAULT_FOOTER_TEXT, PANEL_AUTHOR } from '../lib/product-meta';
+import { sanitizeImageSrc, sanitizeLinkHref } from '../lib/safe-url';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
 
@@ -158,11 +159,12 @@ function BrandBlock({
   large?: boolean;
   gradient: string;
 }) {
+  const safeLogo = sanitizeImageSrc(logoUrl);
   return (
     <div className={`flex items-center gap-3.5 ${large ? 'flex-col items-start gap-4 sm:flex-row sm:items-center' : ''}`}>
-      {logoUrl ? (
+      {safeLogo ? (
         <img
-          src={logoUrl}
+          src={safeLogo}
           alt=""
           className={`shrink-0 rounded-2xl object-contain ring-1 ring-white/15 ${large ? 'h-16 w-16 bg-black/20 p-1.5' : 'h-12 w-12 bg-[var(--surface)] p-1'}`}
         />
@@ -198,7 +200,7 @@ function SupportFooter({
   companyLabel: string;
   onDark?: boolean;
 }) {
-  const hasLinks = general.supportUrl || general.supportEmail;
+  const hasLinks = sanitizeLinkHref(general.supportUrl) || general.supportEmail;
   const hasContent = general.footerText || hasLinks;
 
   if (!hasContent) {
@@ -215,9 +217,9 @@ function SupportFooter({
       {general.footerText && <p className="max-w-sm leading-relaxed">{general.footerText}</p>}
       {hasLinks && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {general.supportUrl && (
+          {sanitizeLinkHref(general.supportUrl) && (
             <a
-              href={general.supportUrl}
+              href={sanitizeLinkHref(general.supportUrl)!}
               target="_blank"
               rel="noreferrer"
               className={`inline-flex items-center gap-1 transition ${onDark ? 'hover:text-white' : 'hover:accent-text'}`}

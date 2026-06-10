@@ -1,4 +1,5 @@
 import { createElement, useMemo, useState, type ReactNode } from 'react';
+import { sanitizeLinkHref } from '../lib/safe-url';
 
 
 
@@ -20,6 +21,16 @@ type Block =
 
 
 
+function safeLink(href: string, label: ReactNode, key: number) {
+  const safe = sanitizeLinkHref(href);
+  if (!safe) return label;
+  return (
+    <a key={key} href={safe} target="_blank" rel="noopener noreferrer" className="mp-readme-link">
+      {label}
+    </a>
+  );
+}
+
 function inlineMarkdown(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   const pattern =
@@ -33,24 +44,11 @@ function inlineMarkdown(text: string): ReactNode[] {
       nodes.push(text.slice(last, match.index));
     }
     if (match[2] && match[3]) {
-      nodes.push(
-        <a key={key++} href={match[3]} target="_blank" rel="noreferrer" className="mp-readme-link">
-          {match[2]}
-        </a>,
-      );
+      nodes.push(safeLink(match[3], match[2], key++));
     } else if (match[4]) {
-      nodes.push(
-        <a key={key++} href={match[4]} target="_blank" rel="noreferrer" className="mp-readme-link">
-          {match[4]}
-        </a>,
-      );
+      nodes.push(safeLink(match[4], match[4], key++));
     } else if (match[5]) {
-      const href = match[5];
-      nodes.push(
-        <a key={key++} href={href} target="_blank" rel="noreferrer" className="mp-readme-link">
-          {href}
-        </a>,
-      );
+      nodes.push(safeLink(match[5], match[5], key++));
     } else if (match[6]) {
       nodes.push(
         <code key={key++} className="mp-readme-inline-code">

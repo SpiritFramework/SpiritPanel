@@ -192,13 +192,32 @@ Force users to sign in again after deploys that change session or cookie behavio
 
 ---
 
+## Cross-site scripting (XSS) mitigations
+
+The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are rendered as React text nodes by default.
+
+| Layer | Mitigation |
+|-------|------------|
+| **Content-Security-Policy** | `script-src 'self'` on static UI (Nginx + Vite dev). Inline boot script moved to `/theme-bootstrap.js`. |
+| **URL sinks** | Avatar, logo, egg icon, support, markdown, and console link URLs are validated client-side (`sanitizeImageSrc` / `sanitizeLinkHref`) and server-side (`safe-url.ts`) — only `http:`/`https:` or same-origin asset paths. |
+| **Branding uploads** | SVG blocked; MIME allowlist on upload. |
+| **Email template preview** | Sandboxed iframe (`sandbox=""`) with no script execution. |
+| **Session cookies** | HttpOnly + `SameSite=Strict` — stolen tokens via `document.cookie` are blocked. |
+| **CSRF** | `SameSite=Strict` session cookies are not sent on cross-site POST requests from other origins. |
+
+A compromised admin account can still change panel settings and email HTML — treat admin access as trusted. XSS from **untrusted** users should not execute script in the panel origin with these controls in place.
+
+Residual risk: a future code path that injects unsanitized HTML or loosens CSP would re-open XSS. Review UI changes that render HTML or accept URLs.
+
+---
+
 ## Known limitations
 
 - No bug bounty program at this time
 - No independent penetration test has been published
 - Security depends on correct operator configuration (production env, TLS, firewall)
 - FeatherWings, Docker, and game eggs introduce separate risk outside this codebase
-- XSS in the panel UI remains high impact — HttpOnly cookies reduce token theft but do not stop authenticated actions from the victim's browser
+- Malicious **admins** can configure HTML email bodies and external URLs within allowed schemes
 
 ---
 

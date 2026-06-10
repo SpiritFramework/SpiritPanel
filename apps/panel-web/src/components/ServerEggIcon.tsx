@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { getServerTheme } from '../lib/server-theme';
+import { sanitizeImageSrc } from '../lib/safe-url';
 
 interface ServerEggIconProps {
   eggName: string;
@@ -19,7 +20,7 @@ export function ServerEggIcon({
   const FallbackIcon: LucideIcon = theme.icon;
   const [failed, setFailed] = useState(false);
 
-  const trimmed = logoUrl?.trim();
+  const trimmed = sanitizeImageSrc(logoUrl);
   if (trimmed && !failed) {
     return (
       <img
