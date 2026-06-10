@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.turbo
+coverage
+apps/panel-api/prisma/migrations/**/migration_lock.toml
+deploy/mysql/.install-bootstrap.sql
+apps/panel-api/data/branding/

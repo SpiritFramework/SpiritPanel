@@ -1,0 +1,24 @@
+[Unit]
+Description=Spirit-Panel API
+After=network-online.target mariadb.service mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=spiritpanel
+Group=spiritpanel
+WorkingDirectory=/home/spiritpanel/Spirit-Panel/apps/panel-api
+EnvironmentFile=/home/spiritpanel/Spirit-Panel/apps/panel-api/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spirit-panel-api
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

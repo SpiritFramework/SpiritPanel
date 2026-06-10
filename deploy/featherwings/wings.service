@@ -1,0 +1,23 @@
+[Unit]
+Description=FeatherWings Daemon
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+User=root
+WorkingDirectory=/etc/featherpanel
+LimitNOFILE=4096
+# Official FeatherWings install uses /usr/local/bin/featherwings; manual installs may use wings
+ExecStart=/usr/local/bin/featherwings
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=180
+StartLimitBurst=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=featherwings
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+# Spirit-Panel — Production environment
+# Copy to apps/panel-api/.env on your server
+
+# --- Required ---
+DATABASE_URL="mysql://spirit_panel:CHANGE_ME@127.0.0.1:3306/spirit_panel"
+
+# Generate with: openssl rand -base64 48
+JWT_SECRET="CHANGE_ME_GENERATE_WITH_OPENSSL"
+
+# Generate with: openssl rand -base64 32
+APP_KEY="CHANGE_ME_GENERATE_WITH_OPENSSL"
+
+# Public URLs (no trailing slash) — Wings uses API_URL as remote: in config.yml
+API_URL="https://panel.spirithost.co.uk"
+PANEL_URL="https://panel.spirithost.co.uk"
+
+# --- Server ---
+NODE_ENV=production
+PORT=3000
+HOST=127.0.0.1
+
+# --- Redis ---
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+# DISABLE_SCHEDULE_WORKER=true
+
+# --- First deploy seed (required — installer sets these) ---
+ADMIN_EMAIL=admin@spirithost.co.uk
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD="CHANGE_ME_STRONG_ADMIN_PASSWORD"
+
+# Or run: pnpm spirit-install --production --api-url https://panel.spirithost.co.uk
+# (installer auto-generates ADMIN_PASSWORD if missing or weak)

@@ -1,0 +1,35 @@
+{
+  "name": "spirit-panel",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "spirit-install": "./scripts/spirit-install-bin.cjs"
+  },
+  "scripts": {
+    "spirit-install": "tsx scripts/spirit-install.ts",
+    "setup": "tsx scripts/spirit-install.ts",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "start:prod": "pnpm --filter @spirit/panel-api start",
+    "lint": "turbo lint",
+    "db:generate": "pnpm --filter @spirit/panel-api db:generate",
+    "db:migrate": "pnpm --filter @spirit/panel-api db:migrate",
+    "db:deploy": "pnpm --filter @spirit/panel-api db:deploy",
+    "db:push": "pnpm --filter @spirit/panel-api db:push",
+    "db:seed": "pnpm --filter @spirit/panel-api db:seed",
+    "import-eggs": "tsx scripts/import-eggs.ts",
+    "verify:prod": "tsx scripts/verify-production.ts",
+    "postinstall": "pnpm db:generate"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.9.0",
+    "prisma": "^6.9.0",
+    "tsx": "^4.20.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

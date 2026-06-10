@@ -1,0 +1,526 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+enum ServerStatus {
+  installing
+  install_failed
+  suspended
+  restoring_backup
+  normal
+}
+
+enum InstallStatus {
+  none
+  installing
+  installed
+  failed
+}
+
+model User {
+  id           String    @id @default(cuid())
+  uuid         String    @unique @default(uuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  firstName    String?   @map("first_name")
+  lastName     String?   @map("last_name")
+  avatarUrl    String?   @map("avatar_url")
+  role         UserRole  @default(user)
+  rootAdmin    Boolean   @default(false) @map("root_admin")
+  enabled      Boolean   @default(true)
+  totpSecret   String?   @map("totp_secret")
+  totpEnabled  Boolean   @default(false) @map("totp_enabled")
+  totpRecoveryCodes String? @map("totp_recovery_codes") @db.Text
+  githubPatEnc   String?   @map("github_pat_enc") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  servers        Server[]
+  subusers       Subuser[]      @relation("SubuserUser")
+  apiKeys        ApiKey[]
+  activityLogs   ActivityLog[]
+  sshKeys        UserSshKey[]
+  passwordResets PasswordReset[]
+  marketplaceInstalls       MarketplaceInstall[]
+  marketplaceGithubInstalls MarketplaceGithubInstall[]
+
+  @@map("users")
+}
+
+model UserSshKey {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String
+  publicKey String   @map("public_key") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_ssh_keys")
+}
+
+model Location {
+  id          String   @id @default(cuid())
+  uuid        String   @unique @default(uuid())
+  short       String   @unique
+  long        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  nodes Node[]
+
+  @@map("locations")
+}
+
+model Node {
+  id                 String   @id @default(cuid())
+  uuid               String   @unique @default(uuid())
+  locationId         String   @map("location_id")
+  name               String
+  description        String   @default("")
+  fqdn               String
+  scheme             String   @default("https")
+  behindProxy        Boolean  @default(false) @map("behind_proxy")
+  maintenanceMode    Boolean  @default(false) @map("maintenance_mode")
+  memory             Int      @default(0)
+  memoryOverallocate Int      @default(0) @map("memory_overallocate")
+  disk               Int      @default(0)
+  diskOverallocate   Int      @default(0) @map("disk_overallocate")
+  uploadSize         Int      @default(100) @map("upload_size")
+  daemonTokenId      String   @unique @map("daemon_token_id")
+  daemonTokenSecret  String   @map("daemon_token_secret")
+  daemonListen       Int      @default(8080) @map("daemon_listen")
+  daemonSftp         Int      @default(2022) @map("daemon_sftp")
+  daemonBase           String   @default("/var/lib/pterodactyl/volumes") @map("daemon_base")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  location    Location     @relation(fields: [locationId], references: [id])
+  allocations Allocation[]
+  servers     Server[]
+  databaseHosts DatabaseHost[]
+
+  @@map("nodes")
+}
+
+model Allocation {
+  id        String   @id @default(cuid())
+  nodeId    String   @map("node_id")
+  ip        String
+  port      Int
+  alias     String?
+  notes     String?
+  assigned  Boolean  @default(false)
+  serverId  String?  @map("server_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  node           Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  serverDefault  Server? @relation("DefaultAllocation")
+  serverAssigned Server? @relation(fields: [serverId], references: [id])
+
+  @@unique([nodeId, ip, port])
+  @@map("allocations")
+}
+
+model Nest {
+  id          String   @id @default(cuid())
+  uuid        String   @unique @default(uuid())
+  name        String
+  description String   @default("") @db.Text
+  author      String   @default("support@spirithost.co.uk")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  eggs Egg[]
+
+  @@map("nests")
+}
+
+model Egg {
+  id                String   @id @default(cuid())
+  uuid              String   @unique @default(uuid())
+  nestId            String   @map("nest_id")
+  author            String   @default("support@spirithost.co.uk")
+  name              String
+  description       String   @default("") @db.Text
+  features          Json     @default("[]")
+  dockerImages      Json     @map("docker_images")
+  fileDenylist      Json     @default("[]") @map("file_denylist")
+  configFiles       Json?    @map("config_files")
+  configStartup     Json?    @map("config_startup")
+  configLogs        Json?    @map("config_logs")
+  configStop        String   @default("stop") @map("config_stop")
+  startup           String   @db.Text
+  scriptInstall     String   @default("") @map("script_install") @db.Text
+  scriptEntry       String   @default("bash") @map("script_entry")
+  scriptContainer   String   @default("ghcr.io/pterodactyl/installers:debian") @map("script_container")
+  scriptPrivileged  Boolean  @default(false) @map("script_privileged")
+  forceOutgoingIp   Boolean  @default(false) @map("force_outgoing_ip")
+  updateUrl         String?  @map("update_url")
+  logoUrl           String?  @map("logo_url")
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  nest      Nest          @relation(fields: [nestId], references: [id], onDelete: Cascade)
+  variables EggVariable[]
+  servers   Server[]
+
+  @@map("eggs")
+}
+
+model EggVariable {
+  id           String  @id @default(cuid())
+  eggId        String  @map("egg_id")
+  name         String
+  description  String  @default("") @db.Text
+  envVariable  String  @map("env_variable")
+  defaultValue String  @default("") @map("default_value")
+  userViewable Boolean @default(true) @map("user_viewable")
+  userEditable Boolean @default(true) @map("user_editable")
+  rules        String  @default("")
+  fieldType    String  @default("text") @map("field_type")
+
+  egg             Egg              @relation(fields: [eggId], references: [id], onDelete: Cascade)
+  serverVariables ServerVariable[]
+
+  @@map("egg_variables")
+}
+
+model Server {
+  id               String         @id @default(cuid())
+  uuid             String         @unique @default(uuid())
+  uuidShort        String         @unique @map("uuid_short")
+  externalId       String?        @unique @map("external_id")
+  ownerId          String         @map("owner_id")
+  nodeId           String         @map("node_id")
+  eggId            String         @map("egg_id")
+  allocationId     String         @unique @map("allocation_id")
+  name             String
+  description      String         @default("")
+  status           ServerStatus   @default(normal)
+  containerState   String         @default("offline") @map("container_state")
+  suspended        Boolean        @default(false)
+  oomDisabled      Boolean        @default(true) @map("oom_disabled")
+  skipScripts      Boolean        @default(false) @map("skip_scripts")
+  installStatus    InstallStatus  @default(none) @map("install_status")
+  installedAt      DateTime?      @map("installed_at")
+  memory           Int            @default(1024)
+  swap             Int            @default(0)
+  disk             Int            @default(10240)
+  io               Int            @default(500)
+  cpu              Int            @default(100)
+  threads          String?
+  startup          String         @db.Text
+  image            String
+  allocationLimit  Int            @default(0) @map("allocation_limit")
+  backupLimit      Int            @default(0) @map("backup_limit")
+  databaseLimit    Int            @default(0) @map("database_limit")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  owner            User             @relation(fields: [ownerId], references: [id])
+  node             Node             @relation(fields: [nodeId], references: [id])
+  egg              Egg              @relation(fields: [eggId], references: [id])
+  defaultAllocation Allocation      @relation("DefaultAllocation", fields: [allocationId], references: [id])
+  extraAllocations Allocation[]
+  variables        ServerVariable[]
+  subusers         Subuser[]
+  schedules        Schedule[]
+  backups          Backup[]
+  activityLogs     ActivityLog[]
+  statSnapshots    ServerStatSnapshot[]
+  databases        ServerDatabase[]
+  marketplaceInstalls       MarketplaceInstall[]
+  marketplaceGithubInstalls MarketplaceGithubInstall[]
+
+  @@map("servers")
+}
+
+enum MarketplaceCategory {
+  library
+  script
+  map
+  vehicle
+  other
+}
+
+model MarketplacePlugin {
+  id           String              @id @default(cuid())
+  slug         String              @unique
+  name         String
+  description  String              @db.Text
+  category     MarketplaceCategory @default(script)
+  tags         Json                @default("[]")
+  githubOwner  String              @map("github_owner")
+  githubRepo   String              @map("github_repo")
+  githubRef    String              @default("latest-release") @map("github_ref")
+  githubAsset  String?             @map("github_asset")
+  installPath  String              @map("install_path")
+  cfgResource  String              @map("cfg_resource")
+  cfgAction    String              @default("ensure") @map("cfg_action")
+  cfgFile      String              @default("server.cfg") @map("cfg_file")
+  dependencies Json                @default("[]")
+  featured     Boolean             @default(false)
+  enabled      Boolean             @default(true)
+  sortOrder    Int                 @default(0) @map("sort_order")
+  iconUrl      String?             @map("icon_url")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  installs MarketplaceInstall[]
+
+  @@index([enabled, sortOrder])
+  @@map("marketplace_plugins")
+}
+
+model MarketplaceInstall {
+  id            String   @id @default(cuid())
+  serverId      String   @map("server_id")
+  pluginId      String   @map("plugin_id")
+  installedRef  String   @map("installed_ref")
+  installPath   String   @map("install_path")
+  cfgLine       String   @map("cfg_line")
+  cfgFile       String   @default("server.cfg") @map("cfg_file")
+  installedById String   @map("installed_by_id")
+  installedAt   DateTime @default(now()) @map("installed_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  server      Server            @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  plugin      MarketplacePlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  installedBy User              @relation(fields: [installedById], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, pluginId])
+  @@index([serverId])
+  @@map("marketplace_installs")
+}
+
+model MarketplaceGithubInstall {
+  id            String   @id @default(cuid())
+  serverId      String   @map("server_id")
+  githubOwner   String   @map("github_owner")
+  githubRepo    String   @map("github_repo")
+  githubRef     String   @default("latest-release") @map("github_ref")
+  githubAsset   String?  @map("github_asset")
+  displayName   String   @map("display_name")
+  installPath   String   @map("install_path")
+  cfgResource   String   @map("cfg_resource")
+  cfgAction     String   @default("ensure") @map("cfg_action")
+  cfgFile       String   @default("/server.cfg") @map("cfg_file")
+  patchCfg      Boolean  @default(true) @map("patch_cfg")
+  installedRef  String   @map("installed_ref")
+  cfgLine       String   @map("cfg_line")
+  installedById String   @map("installed_by_id")
+  installedAt   DateTime @default(now()) @map("installed_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  server      Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  installedBy User   @relation(fields: [installedById], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, installPath])
+  @@index([serverId])
+  @@map("marketplace_github_installs")
+}
+
+model ServerStatSnapshot {
+  id             String   @id @default(cuid())
+  serverId       String   @map("server_id")
+  cpu            Float    @default(0)
+  memoryBytes    BigInt   @default(0) @map("memory_bytes")
+  diskBytes      BigInt   @default(0) @map("disk_bytes")
+  networkRxBytes BigInt   @default(0) @map("network_rx_bytes")
+  networkTxBytes BigInt   @default(0) @map("network_tx_bytes")
+  state          String   @default("offline")
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, recordedAt])
+  @@map("server_stat_snapshots")
+}
+
+model ServerVariable {
+  id            String @id @default(cuid())
+  serverId      String @map("server_id")
+  eggVariableId String @map("egg_variable_id")
+  variableValue String @map("variable_value")
+
+  server      Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  eggVariable EggVariable @relation(fields: [eggVariableId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, eggVariableId])
+  @@map("server_variables")
+}
+
+model Subuser {
+  id          String   @id @default(cuid())
+  serverId    String   @map("server_id")
+  userId      String   @map("user_id")
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation("SubuserUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@map("subusers")
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  keyType     Int       @default(2) @map("key_type")
+  identifier  String    @unique
+  token       String
+  memo        String    @default("")
+  lastUsedAt  DateTime? @map("last_used_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Schedule {
+  id             String   @id @default(cuid())
+  serverId       String   @map("server_id")
+  name           String
+  cron           String
+  isActive       Boolean  @default(true) @map("is_active")
+  onlyWhenOnline Boolean  @default(false) @map("only_when_online")
+  lastRunAt      DateTime? @map("last_run_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  server  Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  tasks   ScheduleTask[]
+
+  @@map("schedules")
+}
+
+model ScheduleTask {
+  id         String @id @default(cuid())
+  scheduleId String @map("schedule_id")
+  sequenceId Int    @map("sequence_id")
+  action     String
+  payload    String @default("")
+  timeOffset Int    @default(0) @map("time_offset")
+  continueOnFailure Boolean @default(false) @map("continue_on_failure")
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@map("schedule_tasks")
+}
+
+model Backup {
+  id          String   @id @default(cuid())
+  uuid        String   @unique @default(uuid())
+  serverId    String   @map("server_id")
+  name        String
+  ignored     String   @default("[]")
+  isSuccessful Boolean @default(false) @map("is_successful")
+  isLocked    Boolean  @default(false) @map("is_locked")
+  bytes       BigInt   @default(0)
+  checksum    String?
+  uploadId    String?  @map("upload_id")
+  disk        String   @default("local")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("backups")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  batch     String?
+  event     String
+  ip        String?
+  description String?
+  properties Json?
+  actorId   String?  @map("actor_id")
+  serverId  String?  @map("server_id")
+  nodeId    String?  @map("node_id")
+  timestamp DateTime @default(now())
+
+  actor  User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([event])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+model PanelSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+
+  @@map("panel_settings")
+}
+
+model DatabaseHost {
+  id           String   @id @default(cuid())
+  nodeId       String   @map("node_id")
+  name         String
+  host         String
+  port         Int      @default(3306)
+  username     String
+  password     String   @db.Text
+  maxDatabases Int      @default(0) @map("max_databases")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  node      Node              @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  databases ServerDatabase[]
+
+  @@map("database_hosts")
+}
+
+model ServerDatabase {
+  id             String   @id @default(cuid())
+  serverId       String   @map("server_id")
+  databaseHostId String   @map("database_host_id")
+  name           String
+  database       String
+  username       String
+  password       String   @db.Text
+  remote         String   @default("%")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  server       Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  databaseHost DatabaseHost @relation(fields: [databaseHostId], references: [id], onDelete: Restrict)
+
+  @@unique([databaseHostId, database])
+  @@unique([databaseHostId, username])
+  @@index([serverId])
+  @@map("server_databases")
+}
