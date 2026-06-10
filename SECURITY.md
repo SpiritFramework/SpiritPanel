@@ -1,69 +1,167 @@
 # Security Policy
 
+**Spirit-Panel** is developed by **SpiritFramework**. This document describes how the panel handles security and what operators are responsible for when self-hosting.
+
+---
+
 ## Supported versions
 
-Security fixes are applied to the latest `main` branch. Deploy the newest release and run database migrations after pulling updates.
+Security fixes land on the latest `main` branch. After pulling updates:
+
+1. Run database migrations (`pnpm db:deploy` or `prisma migrate deploy`)
+2. Rebuild API and web
+3. Restart `spirit-panel-api`
+
+There is no long-term support policy for older commits — stay current.
+
+---
 
 ## Reporting a vulnerability
 
-If you discover a security issue, **do not** open a public GitHub issue with exploit details.
+If you find a security issue, **do not** open a public GitHub issue with exploit details or proof-of-concept code.
 
-Email your fork maintainer or project contact with:
+Contact the repository maintainer privately with:
 
 - Description of the vulnerability
 - Steps to reproduce
-- Impact assessment
-- Your suggested fix (if any)
+- Impact assessment (confidentiality, integrity, availability)
+- Affected version or commit
+- Suggested fix (if you have one)
 
 We aim to acknowledge reports within **72 hours** and provide a status update within **7 days**.
 
+---
+
 ## Security model
 
-Spirit-Panel is a self-hosted game server control panel. You are responsible for:
+Spirit-Panel is a **self-hosted** control panel. The software provides baseline protections; **you** secure the host, network, `.env` secrets, and FeatherWings nodes.
 
-- Server hardening (firewall, TLS, OS updates)
-- Protecting `apps/panel-api/.env` (`chmod 600`)
-- Restricting admin access and Application API keys
-- Keeping FeatherWings nodes patched
+| Your responsibility | Why it matters |
+|---------------------|----------------|
+| TLS, firewall, OS patches | Panel and Wings are high-value targets |
+| `apps/panel-api/.env` at mode `600` | Contains DB credentials, JWT secret, encryption key |
+| Limit admin / root-admin accounts | Full fleet control |
+| Protect Application API keys | Equivalent to admin API access |
+| Patch FeatherWings and game nodes | Game workloads run outside the panel process |
 
-### Authentication
+---
 
-| Mechanism | Notes |
-|-----------|--------|
-| **Browser sessions** | HttpOnly `SameSite=Strict` cookie (`spirit_session`). Not accessible to JavaScript (mitigates XSS token theft). |
-| **JWT lifetime** | Admin: **24 hours**. Users: **7 days**. |
-| **JWT crit headers** | Tokens with unsupported `crit` (critical) header extensions are rejected per RFC 7515 §4.1.11. |
-| **Session revocation** | Password change or reset increments `token_version` and invalidates all existing JWTs. |
-| **API keys** | Account keys for user automation; Application keys for billing (admin-only). Keys are bcrypt-hashed at rest. |
-| **Application keys** | Require a memo, expire after **90 days**, rate-limited to **60 req/min** in production. |
+## Authentication
 
-### Production requirements
+### Browser sessions
 
-The API refuses to start in production without:
+| Property | Behavior |
+|----------|----------|
+| **Storage** | JWT in HttpOnly `SameSite=Strict` cookie (`spirit_session`). The web UI does **not** store session tokens in `localStorage`. |
+| **Transport** | Frontend uses `credentials: 'include'`. In production the cookie is also `Secure`. |
+| **Lifetime** | Admin: **24 hours**. Other users: **7 days**. |
+| **Revocation** | Password change or reset bumps `token_version` and invalidates all outstanding session JWTs. |
+| **2FA** | Optional TOTP with recovery codes; short-lived challenge JWT for the second step. |
 
-- Strong `JWT_SECRET` and `APP_KEY` (16+ chars, not placeholders)
-- HTTPS `API_URL`
-- Non-localhost public URL
+The API also accepts `Authorization: Bearer <jwt>` for the same session token (automation/scripts). **API keys** use a separate Bearer format (`sp_<id>.<secret>`). These paths are intentional; browser login does not depend on client-side token storage.
 
-Additional recommendations:
+Admin routes require a **session JWT** (`requireSession`), not an API key.
 
-- `HOST=127.0.0.1` — API only reachable via Nginx
-- Disable public registration (**Admin → Settings → Access**)
-- Configure Cloudflare Turnstile for login/register
-- Enable SMTP for password reset emails
-- Never expose MariaDB (3306), Redis (6379), or API port (3000) publicly
+### JWT validation
 
-### File and path safety
+Session and 2FA challenge tokens are verified with **`jsonwebtoken`**. Before signature verification, the API rejects tokens whose JWS header contains unsupported **`crit`** (critical) extensions (RFC 7515 §4.1.11).
 
-Client file operations validate paths and filenames before forwarding to FeatherWings (blocks `..` traversal).
+### API keys
 
-### Branding uploads
+| Type | Scope | Notes |
+|------|-------|-------|
+| **Account** | Owning user's permissions | Bcrypt-hashed at rest; `lastUsedAt` tracked |
+| **Application** | Admin automation (billing, provisioning) | Memo required; **90-day** expiry; **60 req/min** in production |
 
-SVG uploads are **disabled** (XSS risk). Allowed: PNG, JPEG, WebP, ICO.
+Treat Application keys like root passwords — rotate, revoke when unused, never commit to git or ship in client-side code.
 
-### Database hosts
+### Login hardening
 
-MySQL database hosts always require a successful connection test before save (no bypass flag).
+- Optional **Cloudflare Turnstile** on login and registration (**Admin → Settings**)
+- Rate limiting on auth routes
+- Production seed blocks weak default admin passwords
+
+---
+
+## Production startup checks
+
+When `NODE_ENV=production`, the API **refuses to start** unless:
+
+| Check | Requirement |
+|-------|-------------|
+| `JWT_SECRET` | 16+ characters; not a placeholder or dev default |
+| `APP_KEY` | 16+ characters; not a placeholder; **must differ** from `JWT_SECRET` |
+| `DATABASE_URL` | No `CHANGE_ME` placeholder credentials |
+| `API_URL` | HTTPS public URL (not `http://`, not localhost) |
+
+Generate secrets with:
+
+```bash
+openssl rand -base64 48   # JWT_SECRET
+openssl rand -base64 32   # APP_KEY
+```
+
+Development mode relaxes these checks — do not expose a dev-configured API to the internet.
+
+---
+
+## Network and infrastructure
+
+Recommended production layout:
+
+- **`HOST=127.0.0.1`** — API listens on loopback; Nginx terminates TLS and proxies
+- **Public ports** — 22, 80, 443 only on the panel server
+- **Do not expose** MariaDB (3306), Redis (6379), or the raw API port (3000)
+- **`API_URL`** must exactly match `remote:` in every FeatherWings `config.yml` (HTTPS, no trailing slash)
+
+Additional hardening:
+
+- Disable public registration unless needed (**Admin → Settings → Access**)
+- Enable SMTP for password-reset email
+- Restrict admin panel access (VPN, IP allowlist, or separate admin hostname)
+
+---
+
+## File manager path safety
+
+Client **file manager** routes validate paths and filenames **before** forwarding to FeatherWings:
+
+- Paths must be absolute (start with `/`)
+- Rejects `..`, null bytes, and invalid filename segments
+
+This applies to list, read, write, upload, delete, rename, and related file operations — not to unrelated Wings calls (console, power, install).
+
+---
+
+## Uploads and branding
+
+| Surface | Policy |
+|---------|--------|
+| **Logo / favicon upload** | SVG **not** accepted. Allowed: PNG, JPEG, WebP, ICO. MIME type and size limits enforced. |
+| **Branding asset serve** | `.svg` files under branding assets return 404 even if present on disk. |
+| **Egg logo URL** | Admin-configured **external** HTTPS URL, rendered with `<img>` (not inline SVG). Hosters should trust URLs they set. |
+
+User **avatar** URLs follow the same URL validation rules as other branding fields.
+
+---
+
+## Database hosts
+
+Creating or updating a MySQL database host **always** requires a successful live connection test. There is no “skip verification” flag.
+
+Database passwords and host credentials are encrypted at rest when `APP_KEY` is configured.
+
+---
+
+## FeatherWings remote API
+
+- Daemon authentication compares token secrets with **timing-safe** equality
+- Node daemon tokens are rotatable from **Admin → Nodes**
+- Panel → Wings and Wings → panel trust boundaries assume TLS on `API_URL`
+
+Operators must secure Wings nodes separately (firewall 8080/2022, TLS for WSS/SFTP as needed). See [docs/PRODUCTION.md](docs/PRODUCTION.md).
+
+---
 
 ## Deployment checklist
 
@@ -82,23 +180,28 @@ curl -s https://your-panel.example.com/health/ready
 pnpm verify:prod
 ```
 
-## Application API keys
+Force users to sign in again after deploys that change session or cookie behavior.
 
-Application keys grant **full admin API access**. Treat them like root passwords:
+---
 
-- One key per integration (descriptive memo)
-- Rotate before 90-day expiry
-- Revoke unused keys immediately
-- Never commit keys to git or client-side code
+## Dependencies
 
-Account API keys are scoped to the owning user's permissions.
+- Session verification uses **`jsonwebtoken`** with explicit **`crit`** header validation (`apps/panel-api/src/lib/jwt-crit.ts`).
+- Keep dependencies updated (`pnpm install`, review Dependabot alerts).
+- Run production installs with `pnpm install` on the server; avoid copying unverified `node_modules` trees.
+
+---
 
 ## Known limitations
 
 - No bug bounty program at this time
-- Professional penetration testing has not been performed
-- Operators must secure Wings nodes separately
+- No independent penetration test has been published
+- Security depends on correct operator configuration (production env, TLS, firewall)
+- FeatherWings, Docker, and game eggs introduce separate risk outside this codebase
+- XSS in the panel UI remains high impact — HttpOnly cookies reduce token theft but do not stop authenticated actions from the victim's browser
+
+---
 
 ## License
 
-See repository `LICENSE` (if present) for usage terms.
+Spirit-Panel is licensed under the **GNU Affero General Public License v3.0** ([LICENSE](LICENSE)). Network use of modified versions may require source availability to users under AGPL terms.
