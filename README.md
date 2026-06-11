@@ -4,7 +4,15 @@ Spirit-Panel is a self-hosted game server control panel built by **SpiritFramewo
 
 It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons running on separate game nodes.
 
+📚 FeatherWings Documentation: https://docs.mythical.systems/docs/featherpanel/wings
+
 > ⚠️ The panel runs only the control panel (web + API). Game servers are never hosted on the panel machine. All Docker workloads are executed on FeatherWings nodes.
+
+---
+
+## 🖼️ Preview
+
+![Spirit-Panel Preview](https://iili.io/CCK2Esp.md.png)
 
 ---
 
@@ -129,7 +137,7 @@ pnpm start:prod       # run production API
 
 pnpm db:migrate       # run dev migrations
 pnpm db:deploy        # production migrations
-pnpm db:seed         # seed test data
+pnpm db:seed          # seed test data
 
 pnpm import-eggs      # import server templates
 pnpm verify:prod      # production health check
@@ -194,8 +202,28 @@ Spirit-Panel is designed for self-hosting environments. You are responsible for 
 
 ---
 
+## 🖼️ Replace this later
+
+Just swap:
+
+```
+https://your-image-url.com/image.png
+```
+
+with your real panel screenshot (GitHub raw, CDN, or your domain).
+
+---
+
 ## 📄 License
 
 Licensed under **GNU AGPL-3.0**.
 
 If you modify and run this as a network service, you must provide source access under AGPL terms.
+
+---
+
+If you want next step, I can also:
+
+* turn this into a **GitHub README with badges + shields**
+* design a **landing page hero (Tailwind + modern UI)**
+* or add a **live demo section + install one-click script button**
