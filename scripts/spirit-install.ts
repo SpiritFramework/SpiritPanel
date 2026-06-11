@@ -525,6 +525,7 @@ function setupProductionEnv(
   content = content
     .replace(/JWT_SECRET="[^"]*"/, `JWT_SECRET="${secret(48)}"`)
     .replace(/APP_KEY="[^"]*"/, `APP_KEY="${secret(32)}"`)
+    .replace(/REDIS_PASSWORD="[^"]*"/, `REDIS_PASSWORD="${secret(32)}"`)
     .replace(/DATABASE_URL="[^"]*"/, `DATABASE_URL="${databaseUrl}"`)
     .replace(/^API_URL="[^"]*"/m, `API_URL="${apiUrl}"`)
     .replace(/^PANEL_URL="[^"]*"/m, `PANEL_URL="${panelUrl}"`)

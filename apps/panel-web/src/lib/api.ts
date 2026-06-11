@@ -1,4 +1,8 @@
+import { ApiError, dispatchSessionExpired, sanitizeClientError } from './api-errors';
+
 const API = '/api';
+
+export { ApiError } from './api-errors';
 
 export interface User {
   id: string;
@@ -102,24 +106,39 @@ function requestHeaders(options: RequestInit = {}): HeadersInit {
   return headers;
 }
 
+async function parseErrorBody(res: Response): Promise<string | undefined> {
+  const text = await res.text();
+  if (!text.trim()) return undefined;
+  try {
+    const err = JSON.parse(text) as { error?: string; message?: string };
+    return err.error ?? err.message ?? text.trim();
+  } catch {
+    return text.trim();
+  }
+}
+
+async function failRequest(res: Response): Promise<never> {
+  const raw = await parseErrorBody(res);
+  const message = sanitizeClientError(res.status, raw);
+  if (res.status === 401) {
+    dispatchSessionExpired();
+  }
+  throw new ApiError(message, res.status);
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: { ...requestHeaders(options), ...options.headers },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: { ...requestHeaders(options), ...options.headers },
+    });
+  } catch {
+    throw new ApiError(sanitizeClientError(503), 503);
+  }
   if (!res.ok) {
-    const text = await res.text();
-    let message = res.statusText || 'Request failed';
-    if (text.trim()) {
-      try {
-        const err = JSON.parse(text) as { error?: string; message?: string };
-        message = err.error ?? err.message ?? text.trim();
-      } catch {
-        message = text.trim();
-      }
-    }
-    throw new Error(message);
+    await failRequest(res);
   }
   if (res.status === 204 || res.status === 202) return {} as T;
   const text = await res.text();
@@ -134,17 +153,7 @@ async function requestText(path: string, options: RequestInit = {}): Promise<str
     headers: { ...requestHeaders(options), ...options.headers },
   });
   if (!res.ok) {
-    const text = await res.text();
-    let message = res.statusText || 'Request failed';
-    if (text.trim()) {
-      try {
-        const err = JSON.parse(text) as { error?: string; message?: string };
-        message = err.error ?? err.message ?? text.trim();
-      } catch {
-        message = text.trim();
-      }
-    }
-    throw new Error(message);
+    await failRequest(res);
   }
   return res.text();
 }
@@ -675,7 +684,7 @@ export const api = {
         `${API}/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`,
         { credentials: 'include' },
       );
-      if (!res.ok) throw new Error((await res.text()) || 'Download failed');
+      if (!res.ok) await failRequest(res);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -697,7 +706,7 @@ export const api = {
           body: form,
         },
       );
-      if (!res.ok) throw new Error((await res.text()) || 'Upload failed');
+      if (!res.ok) await failRequest(res);
       return res.json() as Promise<{ success: boolean; uploaded: number }>;
     },
     updateSubuser: (serverId: string, subuserId: string, permissions: string[]) =>
@@ -828,8 +837,7 @@ export const api = {
       }),
   },
 
-  branding: () =>
-    fetch(`${API}/auth/branding`).then((r) => r.json()) as Promise<import('./panel-settings').PanelBranding>,
+  branding: () => request<import('./panel-settings').PanelBranding>('/auth/branding'),
 };
 
 export interface AdminLocationSummary {

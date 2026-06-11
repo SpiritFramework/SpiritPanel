@@ -116,8 +116,9 @@ export function ProfilePage() {
       } else {
         setApplicationKeys([]);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setAccountKeys([]);
+      setApplicationKeys([]);
     } finally {
       setKeysLoading(false);
     }
@@ -125,7 +126,7 @@ export function ProfilePage() {
 
   useEffect(() => {
     refreshUser()
-      .catch(console.error)
+      .catch(() => undefined)
       .finally(() => setLoading(false));
   }, [refreshUser]);
 

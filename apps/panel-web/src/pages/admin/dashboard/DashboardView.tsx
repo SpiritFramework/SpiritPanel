@@ -23,7 +23,8 @@ import { useBranding } from '../../../context/BrandingContext';
 import { AdminServerStatusBadge } from '../../../components/admin/AdminServerStatus';
 import { PanelName } from '../../../components/PanelName';
 import { ServerEggIcon } from '../../../components/ServerEggIcon';
-import { Button } from '../../../components/Layout';
+import { Button, Page } from '../../../components/Layout';
+import { AlertBanner, DsIcon, EmptyState, toneStyle } from '../../../components/ui';
 import {
   fleetHealthScore,
   greetingForHour,
@@ -56,130 +57,126 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
   const healthTone = health >= 85 ? 'good' : health >= 60 ? 'warn' : 'bad';
 
   return (
-    <div className="adm-dash">
-      <header className="adm-dash-header">
-        <div className="adm-dash-header-copy">
-          <p className="adm-dash-eyebrow">{greetingForHour()}</p>
-          <h1 className="adm-dash-title">
+    <Page className="ds-stack">
+      <header className="ds-page-header">
+        <div className="min-w-0">
+          <p className="ds-eyebrow">{greetingForHour()}</p>
+          <h1 className="ds-page-title mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             {name}
-            <span className="adm-dash-title-sep">·</span>
-            <PanelName name={branding.panelName} variant="compact" className="adm-dash-title-panel" />
+            <span className="font-normal text-[var(--muted)] opacity-60">·</span>
+            <PanelName name={branding.panelName} variant="compact" />
           </h1>
-          <p className="adm-dash-subtitle">
+          <p className="ds-page-description">
             {stats.servers} servers · {stats.nodesOnline}/{stats.nodes} nodes online · {stats.users} users
           </p>
         </div>
-        <div className="adm-dash-header-actions">
-          <Link to="/admin/servers/new" className="adm-dash-btn adm-dash-btn--primary">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/admin/servers/new" className="ds-btn ds-btn--primary ds-btn--md">
+            <DsIcon icon={Plus} />
             New server
           </Link>
           <button
             type="button"
-            className="adm-dash-btn adm-dash-btn--ghost"
+            className="ds-btn ds-btn--secondary ds-btn--md"
             onClick={() => void refresh()}
             disabled={refreshing}
             aria-label="Refresh dashboard"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+            <RefreshCw className={`ds-icon ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
             Refresh
           </button>
         </div>
       </header>
 
       {error ? (
-        <div className="adm-dash-banner adm-dash-banner--error" role="alert">
-          {error}
-        </div>
+        <AlertBanner tone="error">
+          We couldn&apos;t load the latest fleet data. Try refreshing — your panel is still secure.
+        </AlertBanner>
       ) : null}
 
       {hasAlerts && !error ? (
-        <div className="adm-dash-banner adm-dash-banner--warn" role="status">
-          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-          <p className="adm-dash-banner-text">
-            {nodesOffline > 0 && (
-              <>
-                {nodesOffline} node{nodesOffline === 1 ? '' : 's'} unreachable
-                {(stats.suspended > 0 || stats.installing > 0) && ' · '}
-              </>
-            )}
-            {stats.suspended > 0 && (
-              <>
-                {stats.suspended} suspended
-                {stats.installing > 0 && ' · '}
-              </>
-            )}
-            {stats.installing > 0 && <>{stats.installing} installing</>}
-          </p>
-          <Link to="/admin/nodes" className="adm-dash-banner-link">
+        <AlertBanner tone="warning">
+          <AlertTriangle className="ds-icon ds-icon--md shrink-0" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p>
+              {nodesOffline > 0 && (
+                <>
+                  {nodesOffline} node{nodesOffline === 1 ? '' : 's'} unreachable
+                  {(stats.suspended > 0 || stats.installing > 0) && ' · '}
+                </>
+              )}
+              {stats.suspended > 0 && (
+                <>
+                  {stats.suspended} suspended
+                  {stats.installing > 0 && ' · '}
+                </>
+              )}
+              {stats.installing > 0 && <>{stats.installing} installing</>}
+            </p>
+          </div>
+          <Link to="/admin/nodes" className="ds-link-quiet shrink-0">
             View nodes
+            <ArrowUpRight className="ds-icon ds-icon--sm" aria-hidden />
           </Link>
-        </div>
+        </AlertBanner>
       ) : null}
 
-      <section className="adm-dash-kpis" aria-label="Key metrics">
-        <KpiCard
-          to="/admin/servers"
-          label="Servers"
-          value={String(stats.servers)}
-          hint={
-            stats.installing > 0 || stats.suspended > 0
-              ? `${stats.installing} installing · ${stats.suspended} suspended`
-              : 'Fleet total'
-          }
-          icon={Server}
-        />
-        <KpiCard
+      <section className="ds-metric-grid" aria-label="Key metrics">
+        <MetricLink to="/admin/servers" label="Servers" value={String(stats.servers)} hint={
+          stats.installing > 0 || stats.suspended > 0
+            ? `${stats.installing} installing · ${stats.suspended} suspended`
+            : 'Fleet total'
+        } icon={Server} />
+        <MetricLink
           to="/admin/nodes"
           label="Nodes online"
-          value={`${stats.nodesOnline}`}
-          hint={stats.nodes > 0 ? `of ${stats.nodes} registered` : 'No nodes yet'}
+          value={String(stats.nodesOnline)}
+          suffix={stats.nodes > 0 ? `/${stats.nodes}` : undefined}
+          hint={stats.nodes > 0 ? 'Registered nodes' : 'No nodes yet'}
           icon={HardDrive}
-          valueSuffix={stats.nodes > 0 ? `/${stats.nodes}` : undefined}
         />
-        <KpiCard to="/admin/users" label="Users" value={String(stats.users)} hint="Panel accounts" icon={Users} />
-        <KpiCard to="/admin/nests" label="Nests" value={String(stats.nests)} hint="Egg groups" icon={Egg} />
-        <article className="adm-dash-kpi adm-dash-kpi--health">
-          <div className="adm-dash-kpi-head">
-            <LayoutDashboard className="adm-dash-kpi-icon" aria-hidden />
-            <span className="adm-dash-kpi-label">Fleet health</span>
+        <MetricLink to="/admin/users" label="Users" value={String(stats.users)} hint="Panel accounts" icon={Users} />
+        <MetricLink to="/admin/nests" label="Nests" value={String(stats.nests)} hint="Egg groups" icon={Egg} />
+        <article className="ds-stat-card">
+          <div className="flex items-center gap-2">
+            <DsIcon icon={LayoutDashboard} className="ds-icon--muted" />
+            <span className="ds-text-xs ds-text-muted font-medium">Fleet health</span>
           </div>
-          <p className={`adm-dash-kpi-value adm-dash-kpi-value--${healthTone}`}>{health}%</p>
-          <p className="adm-dash-kpi-hint">
+          <p className="mt-2 text-xl font-bold tabular-nums tracking-tight" style={{ color: healthTone === 'good' ? 'var(--success-fg)' : healthTone === 'warn' ? 'var(--warning-fg)' : 'var(--danger-fg)' }}>
+            {health}%
+          </p>
+          <p className="ds-text-xs ds-text-muted mt-0.5">
             {health >= 85 ? 'Operating normally' : health >= 60 ? 'Review warnings' : 'Needs attention'}
           </p>
-          <div className="adm-dash-health-bar" aria-hidden>
-            <div
-              className={`adm-dash-health-fill adm-dash-health-fill--${healthTone}`}
-              style={{ width: `${health}%` }}
-            />
+          <div className="ds-progress mt-2" aria-hidden>
+            <div className={`ds-progress-fill ds-progress-fill--${healthTone === 'good' ? 'good' : healthTone === 'warn' ? 'warn' : 'bad'}`} style={{ width: `${health}%` }} />
           </div>
         </article>
-        <article className="adm-dash-kpi adm-dash-kpi--alloc">
-          <div className="adm-dash-kpi-head">
-            <span className="adm-dash-kpi-label">Network ports</span>
-            <span className="adm-dash-kpi-mono">
+        <article className="ds-stat-card">
+          <div className="flex items-center justify-between gap-2">
+            <span className="ds-text-xs ds-text-muted font-medium">Network ports</span>
+            <span className="ds-text-xs ds-text-mono ds-text-muted">
               {stats.allocationsUsed}/{stats.allocationsTotal}
             </span>
           </div>
-          <p className="adm-dash-kpi-value adm-dash-kpi-value--sm">{allocPct}%</p>
-          <p className="adm-dash-kpi-hint">{allocFree} unassigned</p>
-          <div className="adm-dash-health-bar" aria-hidden>
-            <div className="adm-dash-health-fill adm-dash-health-fill--neutral" style={{ width: `${allocPct}%` }} />
+          <p className="mt-2 text-lg font-bold tabular-nums">{allocPct}%</p>
+          <p className="ds-text-xs ds-text-muted mt-0.5">{allocFree} unassigned</p>
+          <div className="ds-progress mt-2" aria-hidden>
+            <div className="ds-progress-fill ds-progress-fill--neutral" style={{ width: `${allocPct}%` }} />
           </div>
         </article>
       </section>
 
-      <nav className="adm-dash-shortcuts" aria-label="Quick links">
-        <p className="adm-dash-shortcuts-label">Quick links</p>
-        <ul className="adm-dash-shortcuts-grid">
+      <nav aria-label="Quick links">
+        <p className="ds-section-title">Quick links</p>
+        <ul className="ds-shortcut-grid">
           {SHORTCUTS.map(({ to, icon: Icon, label, desc }) => (
             <li key={to}>
-              <Link to={to} className="adm-dash-shortcut">
-                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Link to={to} className="ds-shortcut">
+                <DsIcon icon={Icon} className="ds-icon--muted mt-0.5" />
                 <span className="min-w-0">
-                  <span className="adm-dash-shortcut-label">{label}</span>
-                  <span className="adm-dash-shortcut-desc">{desc}</span>
+                  <span className="ds-shortcut-label">{label}</span>
+                  <span className="ds-shortcut-desc">{desc}</span>
                 </span>
               </Link>
             </li>
@@ -187,69 +184,77 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
         </ul>
       </nav>
 
-      <div className="adm-dash-body">
-        <section className="adm-dash-panel adm-dash-panel--nodes">
-          <header className="adm-dash-panel-head">
+      <div className="ds-layout-main-side">
+        <section className="ds-card">
+          <header className="ds-card-header">
             <div>
-              <h2 className="adm-dash-panel-title">Nodes</h2>
-              <p className="adm-dash-panel-desc">Wings capacity and reachability</p>
+              <h2 className="ds-card-title">
+                <DsIcon icon={HardDrive} className="ds-icon--muted" />
+                Nodes
+              </h2>
+              <p className="ds-text-xs ds-text-muted mt-0.5">Wings capacity and reachability</p>
             </div>
-            <div className="adm-dash-panel-actions">
-              <Link to="/admin/nodes/new" className="adm-dash-panel-link">
-                <Plus className="h-3 w-3" aria-hidden />
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/admin/nodes/new" className="ds-link-quiet">
+                <Plus className="ds-icon ds-icon--sm" aria-hidden />
                 Add node
               </Link>
-              <Link to="/admin/nodes" className="adm-dash-panel-link">
+              <Link to="/admin/nodes" className="ds-link-quiet">
                 All nodes
-                <ArrowUpRight className="h-3 w-3" aria-hidden />
+                <ArrowUpRight className="ds-icon ds-icon--sm" aria-hidden />
               </Link>
             </div>
           </header>
-
-          {nodeHealth.length === 0 ? (
-            <div className="adm-dash-empty">
-              <HardDrive className="h-8 w-8 opacity-40" aria-hidden />
-              <p>No nodes connected</p>
-              <Link to="/admin/nodes/new">
-                <Button size="sm">Register first node</Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="adm-dash-node-grid">
-              {nodeHealth.map((node) => (
-                <NodeCard key={node.id} node={node} />
-              ))}
-            </div>
-          )}
+          <div className="ds-card-body ds-card-body--compact">
+            {nodeHealth.length === 0 ? (
+              <EmptyState
+                icon={<HardDrive className="ds-icon ds-icon--md" />}
+                title="No nodes connected"
+                description="Register a Wings node to start provisioning servers and tracking capacity."
+                action={
+                  <Link to="/admin/nodes/new">
+                    <Button size="sm">Register first node</Button>
+                  </Link>
+                }
+              />
+            ) : (
+              <div className="ds-node-grid">
+                {nodeHealth.map((node) => (
+                  <NodeCard key={node.id} node={node} />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
-        <aside className="adm-dash-side">
-          <section className="adm-dash-panel adm-dash-panel--activity">
-            <header className="adm-dash-panel-head">
-              <div>
-                <h2 className="adm-dash-panel-title">Recent activity</h2>
-                <p className="adm-dash-panel-desc">Latest panel events</p>
-              </div>
-              <Link to="/admin/activity" className="adm-dash-panel-link">
-                Full log
-                <ArrowUpRight className="h-3 w-3" aria-hidden />
-              </Link>
-            </header>
+        <section className="ds-card">
+          <header className="ds-card-header">
+            <div>
+              <h2 className="ds-card-title">Recent activity</h2>
+              <p className="ds-text-xs ds-text-muted mt-0.5">Latest panel events</p>
+            </div>
+            <Link to="/admin/activity" className="ds-link-quiet">
+              Full log
+              <ArrowUpRight className="ds-icon ds-icon--sm" aria-hidden />
+            </Link>
+          </header>
+          <div className="ds-card-body ds-card-body--compact">
             {recentActivity.length === 0 ? (
-              <p className="adm-dash-panel-empty">No activity yet.</p>
+              <p className="ds-text-sm ds-text-muted py-4 text-center">No activity recorded yet.</p>
             ) : (
-              <ul className="adm-dash-activity">
+              <ul className="ds-activity-list">
                 {recentActivity.slice(0, 8).map((entry) => {
                   const meta = getActivityMeta(entry.event);
                   return (
-                    <li key={entry.id} className="adm-dash-activity-item">
-                      <span className="adm-dash-activity-dot" aria-hidden />
+                    <li key={entry.id} className="ds-activity-item">
+                      <span className="ds-activity-dot" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="adm-dash-activity-text">{entry.description}</p>
-                        <p className="adm-dash-activity-meta">
+                        <p className="ds-text-sm">{entry.description}</p>
+                        <p className="ds-text-xs ds-text-muted mt-0.5">
                           {meta.label}
                           {entry.actor?.username ? ` · ${entry.actor.username}` : ''}
-                          <span className="adm-dash-activity-time">{formatActivityTime(entry.timestamp)}</span>
+                          {' · '}
+                          {formatActivityTime(entry.timestamp)}
                         </p>
                       </div>
                     </li>
@@ -257,82 +262,91 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
                 })}
               </ul>
             )}
-          </section>
-        </aside>
+          </div>
+        </section>
       </div>
 
-      <section className="adm-dash-panel adm-dash-panel--servers">
-        <header className="adm-dash-panel-head">
+      <section className="ds-card">
+        <header className="ds-card-header">
           <div>
-            <h2 className="adm-dash-panel-title">Latest servers</h2>
-            <p className="adm-dash-panel-desc">Recently provisioned game servers</p>
+            <h2 className="ds-card-title">
+              <DsIcon icon={Server} className="ds-icon--muted" />
+              Latest servers
+            </h2>
+            <p className="ds-text-xs ds-text-muted mt-0.5">Recently provisioned game servers</p>
           </div>
-          <Link to="/admin/servers" className="adm-dash-panel-link">
+          <Link to="/admin/servers" className="ds-link-quiet">
             All servers
-            <ArrowUpRight className="h-3 w-3" aria-hidden />
+            <ArrowUpRight className="ds-icon ds-icon--sm" aria-hidden />
           </Link>
         </header>
-
-        {recentServers.length === 0 ? (
-          <div className="adm-dash-empty adm-dash-empty--inline">
-            <Server className="h-7 w-7 opacity-40" aria-hidden />
-            <p>No servers yet</p>
-            <Link to="/admin/servers/new">
-              <Button size="sm">Create server</Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="adm-dash-server-table-wrap">
-            <table className="adm-dash-server-table">
-              <thead>
-                <tr>
-                  <th scope="col">Server</th>
-                  <th scope="col">Owner</th>
-                  <th scope="col">Node</th>
-                  <th scope="col">Address</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentServers.map((server) => (
-                  <ServerTableRow key={server.id} server={server} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="ds-card-body ds-card-body--compact">
+          {recentServers.length === 0 ? (
+            <EmptyState
+              icon={<Server className="ds-icon ds-icon--md" />}
+              title="No servers yet"
+              description="Create your first game server to see it listed here with live status."
+              action={
+                <Link to="/admin/servers/new">
+                  <Button size="sm">Create server</Button>
+                </Link>
+              }
+            />
+          ) : (
+            <div className="ds-table-wrap">
+              <table className="ds-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Server</th>
+                    <th scope="col">Owner</th>
+                    <th scope="col">Node</th>
+                    <th scope="col">Address</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentServers.map((server) => (
+                    <ServerTableRow key={server.id} server={server} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </section>
-    </div>
+    </Page>
   );
 }
 
-function KpiCard({
+function MetricLink({
   to,
   label,
   value,
-  valueSuffix,
+  suffix,
   hint,
   icon: Icon,
 }: {
   to: string;
   label: string;
   value: string;
-  valueSuffix?: string;
+  suffix?: string;
   hint: string;
   icon: typeof Server;
 }) {
   return (
-    <Link to={to} className="adm-dash-kpi adm-dash-kpi--link">
-      <div className="adm-dash-kpi-head">
-        <Icon className="adm-dash-kpi-icon" aria-hidden />
-        <span className="adm-dash-kpi-label">{label}</span>
+    <Link to={to} className="ds-stat-card ds-stat-card--link">
+      <div className="flex items-center gap-2">
+        <span className="rounded-md border p-1" style={toneStyle('neutral')}>
+          <Icon className="ds-icon" aria-hidden />
+        </span>
+        <span className="ds-text-xs ds-text-muted font-medium">{label}</span>
       </div>
-      <p className="adm-dash-kpi-value">
+      <p className="mt-2 text-xl font-bold tabular-nums tracking-tight">
         {value}
-        {valueSuffix ? <span className="adm-dash-kpi-suffix">{valueSuffix}</span> : null}
+        {suffix ? <span className="text-base font-semibold text-[var(--muted)]">{suffix}</span> : null}
       </p>
-      <p className="adm-dash-kpi-hint">{hint}</p>
-      <ArrowUpRight className="adm-dash-kpi-arrow" aria-hidden />
+      <p className="ds-text-xs ds-text-muted mt-0.5">{hint}</p>
+      <ArrowUpRight className="ds-stat-card-arrow" aria-hidden />
     </Link>
   );
 }
@@ -343,34 +357,34 @@ function NodeCard({ node }: { node: DashboardNodeHealth }) {
   const online = node.online && !node.maintenanceMode;
 
   return (
-    <Link to={`/admin/nodes/${node.id}`} className={`adm-dash-node ${online ? 'is-up' : 'is-down'}`}>
-      <div className="adm-dash-node-head">
-        <span className={`adm-dash-node-dot ${online ? 'is-up' : 'is-down'}`} aria-hidden />
+    <Link to={`/admin/nodes/${node.id}`} className="ds-node-card">
+      <div className="flex items-start gap-2">
+        <span className={`ds-status-dot ${online ? 'ds-status-dot--up' : 'ds-status-dot--down'}`} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="adm-dash-node-name">{node.name}</p>
-          <p className="adm-dash-node-meta">{node.location}</p>
+          <p className="ds-text-sm font-semibold truncate">{node.name}</p>
+          <p className="ds-text-xs ds-text-muted truncate">{node.location}</p>
         </div>
-        {node.maintenanceMode ? <span className="adm-dash-tag">Maint</span> : null}
+        {node.maintenanceMode ? <span className="ds-tag">Maint</span> : null}
       </div>
-      <p className="adm-dash-node-fqdn">{node.fqdn}</p>
-      <div className="adm-dash-node-stats">
-        <span>
-          <Server className="inline h-3 w-3" aria-hidden /> {node.serverCount} servers
+      <p className="ds-text-xs ds-text-muted truncate">{node.fqdn}</p>
+      <div className="flex flex-wrap gap-3 ds-text-xs ds-text-muted">
+        <span className="inline-flex items-center gap-1">
+          <Server className="ds-icon ds-icon--sm" aria-hidden />
+          {node.serverCount} servers
         </span>
         <span>{node.allocationCount} ports</span>
       </div>
-      {node.capacity &&
-      (node.capacity.effectiveMemoryLimit > 0 || node.capacity.effectiveDiskLimit > 0) ? (
-        <div className="adm-dash-node-meters">
+      {node.capacity && (node.capacity.effectiveMemoryLimit > 0 || node.capacity.effectiveDiskLimit > 0) ? (
+        <div className="space-y-2">
           {node.capacity.effectiveMemoryLimit > 0 ? <UsageMeter label="RAM" pct={memPct} /> : null}
           {node.capacity.effectiveDiskLimit > 0 ? <UsageMeter label="Disk" pct={diskPct} /> : null}
         </div>
       ) : node.memory > 0 ? (
-        <p className="adm-dash-node-fallback">
+        <p className="ds-text-xs ds-text-muted">
           {formatResource(node.memory, 'MiB')} RAM · {formatResource(node.disk, 'MiB')} disk
         </p>
       ) : null}
-      <p className="adm-dash-node-status">
+      <p className="ds-text-xs ds-text-muted">
         {node.online ? (node.version ? `Wings ${node.version}` : 'Connected') : 'Unreachable'}
       </p>
     </Link>
@@ -379,17 +393,20 @@ function NodeCard({ node }: { node: DashboardNodeHealth }) {
 
 function UsageMeter({ label, pct }: { label: string; pct: number }) {
   const tone = usageTone(pct);
+  const fillClass =
+    tone === 'success'
+      ? 'ds-progress-fill--good'
+      : tone === 'warning'
+        ? 'ds-progress-fill--warn'
+        : 'ds-progress-fill--bad';
   return (
-    <div className="adm-dash-meter">
-      <div className="adm-dash-meter-head">
+    <div>
+      <div className="flex justify-between ds-text-xs ds-text-muted mb-1">
         <span>{label}</span>
-        <span>{pct}%</span>
+        <span className="ds-text-mono">{pct}%</span>
       </div>
-      <div className="adm-dash-meter-track">
-        <div
-          className={`adm-dash-meter-fill adm-dash-meter-fill--${tone}`}
-          style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }}
-        />
+      <div className="ds-progress">
+        <div className={`ds-progress-fill ${fillClass}`} style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }} />
       </div>
     </div>
   );
@@ -399,19 +416,19 @@ function ServerTableRow({ server }: { server: DashboardRecentServer }) {
   return (
     <tr>
       <td>
-        <Link to={`/admin/servers/${server.id}`} className="adm-dash-server-cell">
-          <span className="adm-dash-server-icon">
-            <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-3.5 w-3.5" />
+        <Link to={`/admin/servers/${server.id}`} className="flex items-center gap-2 min-w-0 ds-text-sm font-medium hover:underline">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg-elevated)]">
+            <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="ds-icon" />
           </span>
           <span className="min-w-0">
-            <span className="adm-dash-server-name">{server.name}</span>
-            <span className="adm-dash-server-egg">{server.egg.name}</span>
+            <span className="block truncate">{server.name}</span>
+            <span className="block truncate ds-text-xs ds-text-muted font-normal">{server.egg.name}</span>
           </span>
         </Link>
       </td>
-      <td className="adm-dash-server-owner">@{server.owner.username}</td>
-      <td className="adm-dash-server-node">{server.node.name}</td>
-      <td className="adm-dash-server-addr">
+      <td className="ds-text-sm ds-text-muted">@{server.owner.username}</td>
+      <td className="ds-text-sm">{server.node.name}</td>
+      <td className="ds-text-xs ds-text-mono ds-text-muted">
         {formatAllocationAddress(server.defaultAllocation, {
           fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
         })}

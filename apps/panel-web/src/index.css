@@ -1,6 +1,6 @@
 ﻿@import "tailwindcss";
+@import "./design-system.css";
 @import "./branding-backgrounds.css";
-@import "./ops-dashboard.css";
 
 /* ============================================================
    Theme tokens

@@ -1,5 +1,5 @@
-import { AdminLayout } from '../../components/Layout';
-import { Spinner } from '../../components/ui';
+import { AdminLayout, Page } from '../../components/Layout';
+import { DashboardSkeleton } from '../../components/ui';
 import { DashboardView } from './dashboard/DashboardView';
 import { useAdminDashboard } from './dashboard/useAdminDashboard';
 
@@ -9,10 +9,9 @@ export function AdminDashboard() {
   if (ctrl.loading) {
     return (
       <AdminLayout>
-        <div className="adm-dash-loading">
-          <Spinner className="h-8 w-8" />
-          <p>Loading fleet data…</p>
-        </div>
+        <Page>
+          <DashboardSkeleton />
+        </Page>
       </AdminLayout>
     );
   }

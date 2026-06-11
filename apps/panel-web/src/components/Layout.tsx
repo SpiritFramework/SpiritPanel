@@ -32,7 +32,7 @@ function CommandPaletteButton() {
     <button
       type="button"
       onClick={() => window.dispatchEvent(new Event('open-command-palette'))}
-      className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-1.5 text-left text-[var(--muted)] transition hover:border-[color-mix(in_srgb,var(--accent)_40%,var(--border))] hover:text-[var(--text)]"
+      className="ds-btn ds-btn--secondary ds-btn--sm flex w-full justify-start text-left text-[var(--muted)] hover:text-[var(--text)]"
     >
       <Search className="h-3.5 w-3.5 shrink-0" />
       <span className="flex-1 text-xs">Search…</span>
@@ -219,33 +219,38 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
   );
 }
 
+export function Page({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`ds-page ${className}`}>{children}</div>;
+}
+
 export function Card({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/40 px-4 py-3">
-        <h2 className="text-sm font-semibold">{title}</h2>
+    <div className="ds-card">
+      <div className="ds-card-header">
+        <h2 className="ds-card-title">{title}</h2>
         {action}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="ds-card-body">{children}</div>
     </div>
   );
 }
 
-type ButtonVariant = 'primary' | 'danger' | 'ghost' | 'subtle' | 'success';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'subtle' | 'success';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'accent-bg text-[var(--accent-contrast)] hover:opacity-90 shadow-[var(--shadow-sm)]',
-  danger: 'text-[var(--accent-contrast)] hover:opacity-90 shadow-[var(--shadow-sm)]',
-  success: 'text-[var(--accent-contrast)] hover:opacity-90 shadow-[var(--shadow-sm)]',
-  ghost: 'border border-[var(--border)] bg-transparent hover:bg-[var(--surface-hover)] text-[var(--text)]',
-  subtle: 'bg-[var(--surface-hover)] hover:bg-[var(--border)] text-[var(--text)]',
+  primary: 'ds-btn--primary',
+  secondary: 'ds-btn--secondary',
+  danger: 'ds-btn--danger',
+  success: 'ds-btn--success',
+  ghost: 'ds-btn--ghost',
+  subtle: 'ds-btn--subtle',
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
-  sm: 'px-2.5 py-1 text-xs gap-1',
-  md: 'px-3 py-1.5 text-[13px] gap-1.5',
-  lg: 'px-4 py-2 text-sm gap-2',
+  sm: 'ds-btn--sm',
+  md: 'ds-btn--md',
+  lg: 'ds-btn--lg',
 };
 
 export function Button({
@@ -267,20 +272,13 @@ export function Button({
   title?: string;
   className?: string;
 }) {
-  const bgStyle =
-    variant === 'danger'
-      ? { background: 'var(--danger)' }
-      : variant === 'success'
-        ? { background: 'var(--success)' }
-        : undefined;
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
       title={title}
-      style={bgStyle}
-      className={`inline-flex items-center justify-center rounded-lg font-medium transition disabled:opacity-50 disabled:pointer-events-none ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${className}`}
+      className={`ds-btn ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${className}`}
     >
       {children}
     </button>
@@ -302,25 +300,20 @@ export function IconButton({
   disabled?: boolean;
   className?: string;
 }) {
-  const styles =
-    variant === 'subtle'
-      ? 'bg-[var(--surface-hover)] hover:bg-[var(--border)]'
-      : 'border border-[var(--border)] hover:bg-[var(--surface-hover)]';
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted)] transition hover:text-[var(--text)] disabled:opacity-50 ${styles} ${className}`}
+      className={`ds-icon-btn ${variant === 'ghost' ? 'ds-icon-btn--bordered' : ''} disabled:opacity-50 ${className}`}
     >
       {children}
     </button>
   );
 }
 
-const FIELD_CLASS =
-  'w-full min-h-[2.375rem] rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-2 text-[13px] text-[var(--text)] outline-none transition focus:border-[color-mix(in_srgb,var(--accent)_55%,var(--border))] focus:ring-2 focus:ring-[var(--accent-muted)] disabled:cursor-not-allowed disabled:opacity-60';
+const FIELD_CLASS = 'ds-field';
 
 /** Shared input styling for custom layouts (e.g. startup variable grid). */
 export const fieldInputClass = FIELD_CLASS;
@@ -338,10 +331,10 @@ export function Input({
   const input = <input {...props} className={`${FIELD_CLASS} ${className}`} />;
   if (!label && !hint) return input;
   return (
-    <label className="block space-y-1.5">
-      {label && <span className="text-xs font-medium text-[var(--muted)]">{label}</span>}
+    <label className="block">
+      {label && <span className="ds-label">{label}</span>}
       {input}
-      {hint && <p className="text-[11px] text-[var(--muted)]">{hint}</p>}
+      {hint && <p className="ds-field-hint">{hint}</p>}
     </label>
   );
 }
@@ -355,10 +348,10 @@ export function Textarea({
   const textarea = <textarea {...props} className={`${TEXTAREA_CLASS} ${className}`} />;
   if (!label && !hint) return textarea;
   return (
-    <label className="block space-y-1.5">
-      {label && <span className="text-xs font-medium text-[var(--muted)]">{label}</span>}
+    <label className="block">
+      {label && <span className="ds-label">{label}</span>}
       {textarea}
-      {hint && <p className="text-[11px] text-[var(--muted)]">{hint}</p>}
+      {hint && <p className="ds-field-hint">{hint}</p>}
     </label>
   );
 }
@@ -371,12 +364,12 @@ export function Select({
   ...props
 }: { label: string; hint?: string; className?: string; children: ReactNode } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium text-[var(--muted)]">{label}</span>
+    <label className="block">
+      <span className="ds-label">{label}</span>
       <SelectControl className={className} {...props}>
         {children}
       </SelectControl>
-      {hint && <p className="text-[11px] text-[var(--muted)]">{hint}</p>}
+      {hint && <p className="ds-field-hint">{hint}</p>}
     </label>
   );
 }
@@ -395,24 +388,20 @@ export function FilterSelect({
 
 export function Table({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="ds-table-wrap">
+      <table className="ds-table">
         <thead>
-          <tr className="border-b border-[var(--border)] text-left text-[var(--muted)]">
+          <tr>
             {headers.map((h) => (
-              <th key={h} className="pb-3 pr-4 font-medium">
-                {h}
-              </th>
+              <th key={h}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-[var(--border)]/50 hover:bg-[var(--surface-hover)]/50">
+            <tr key={i}>
               {row.map((cell, j) => (
-                <td key={j} className="py-3 pr-4">
-                  {cell}
-                </td>
+                <td key={j}>{cell}</td>
               ))}
             </tr>
           ))}

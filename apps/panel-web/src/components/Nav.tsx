@@ -23,14 +23,14 @@ export function SideNavItem({
       end={end}
       className={({ isActive }) =>
         `nav-item group flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${
-          isActive ? 'nav-item-active' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
+          isActive ? 'nav-item-active active' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
         }`
       }
     >
       {({ isActive }) => (
         <>
           <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
+            className={`nav-item-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
               isActive
                 ? 'accent-bg text-white shadow-[0_4px_14px_-4px_var(--accent-glow)] ring-1 ring-white/15'
                 : 'bg-[var(--bg-elevated)] text-[var(--muted)] group-hover:text-[var(--text)] group-hover:bg-[var(--surface-hover)]'

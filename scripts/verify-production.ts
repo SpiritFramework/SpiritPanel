@@ -24,6 +24,20 @@ async function main() {
     process.exit(1);
   }
 
+  try {
+    fs.accessSync(envPath, fs.constants.R_OK);
+    const stat = fs.statSync(envPath);
+    if ((stat.mode & 0o077) !== 0) {
+      console.warn('  .env permissions: world/group readable — run: chmod 600 apps/panel-api/.env');
+    } else {
+      console.log('  .env permissions: OK (not world-readable)');
+    }
+  } catch {
+    console.error('  .env permissions: FAILED — spirit-panel-api user cannot read this file');
+    console.error('  Fix: sudo chown spiritpanel:spiritpanel apps/panel-api/.env && sudo chmod 600 apps/panel-api/.env');
+    process.exit(1);
+  }
+
   let cfg;
   try {
     const { loadConfig } = await import('../apps/panel-api/src/lib/env.js');

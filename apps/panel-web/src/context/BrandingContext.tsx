@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { api } from '../lib/api';
+import { isServiceUnavailable } from '../lib/api-errors';
 import { DEFAULT_PANEL_BRANDING, type PanelBranding } from '../lib/panel-settings';
 import { PANEL_AUTHOR } from '../lib/product-meta';
 import { BRANDING_DEFAULT_THEME_EVENT, BRANDING_THEME_RESOLVED_EVENT, normalizeAppearance } from '../lib/branding-appearance';
@@ -90,13 +92,14 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
   async function refreshBranding() {
     try {
-      const res = await fetch('/api/auth/branding');
-      if (!res.ok) return;
-      const data = mergeBranding((await res.json()) as Partial<PanelBranding>);
+      const data = mergeBranding((await api.branding()) as Partial<PanelBranding>);
       setBranding(data);
       applyBranding(data);
-    } catch {
+    } catch (err) {
       applyBranding(DEFAULT_PANEL_BRANDING);
+      if (!isServiceUnavailable(err)) {
+        /* non-fatal: keep defaults */
+      }
     }
   }
 

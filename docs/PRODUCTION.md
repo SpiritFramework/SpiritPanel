@@ -187,6 +187,21 @@ journalctl -u spirit-panel-api -f
 curl -s http://127.0.0.1:3000/health
 ```
 
+### `.env` permissions (common 502 cause)
+
+The API runs as `spiritpanel` and must read `apps/panel-api/.env` (systemd `EnvironmentFile` + Prisma).
+
+If logs show `EACCES: permission denied, open '.../.env'` or a crash loop with `REDIS_PASSWORD is required` immediately after deploy:
+
+```bash
+sudo chown spiritpanel:spiritpanel /home/spiritpanel/Spirit-Panel/apps/panel-api/.env
+sudo chmod 600 /home/spiritpanel/Spirit-Panel/apps/panel-api/.env
+sudo systemctl restart spirit-panel-api
+curl -s http://127.0.0.1:3000/health
+```
+
+Ensure `REDIS_PASSWORD` is set in `.env` and matches your Redis `requirepass` (or set `DISABLE_SCHEDULE_WORKER=true` if you do not use schedules yet).
+
 ---
 
 ## Nginx + TLS

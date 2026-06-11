@@ -1,9 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, type User } from '../lib/api';
+import { AUTH_SESSION_EXPIRED, isServiceUnavailable, resetSessionExpiredFlag } from '../lib/api-errors';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  serviceUnavailable: boolean;
+  retryConnection: () => Promise<void>;
   login: (identifier: string, password: string, turnstileToken?: string) => Promise<{ twoFactorRequired: boolean; challenge?: string }>;
   completeTwoFactor: (challenge: string, code: string) => Promise<void>;
   register: (data: {
@@ -23,13 +26,36 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
+
+  const bootstrapSession = useCallback(async () => {
+    setLoading(true);
+    setServiceUnavailable(false);
+    try {
+      const u = await api.me();
+      resetSessionExpiredFlag();
+      setUser(u);
+    } catch (err) {
+      if (isServiceUnavailable(err)) {
+        setServiceUnavailable(true);
+        setUser(null);
+      } else {
+        setUser(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.removeItem('spirit_token');
-    api.me()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    void bootstrapSession();
+  }, [bootstrapSession]);
+
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener(AUTH_SESSION_EXPIRED, onExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED, onExpired);
   }, []);
 
   async function login(identifier: string, password: string, turnstileToken?: string) {
@@ -38,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { twoFactorRequired: true, challenge: res.challenge };
     }
     if (res.user) {
+      resetSessionExpiredFlag();
       setUser(res.user);
     }
     return { twoFactorRequired: false };
@@ -45,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function completeTwoFactor(challenge: string, code: string) {
     const { user } = await api.loginTwoFactor(challenge, code);
+    resetSessionExpiredFlag();
     setUser(user);
   }
 
@@ -57,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     turnstileToken?: string;
   }) {
     const { user } = await api.register(data);
+    resetSessionExpiredFlag();
     setUser(user);
   }
 
@@ -75,7 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, completeTwoFactor, register, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        serviceUnavailable,
+        retryConnection: bootstrapSession,
+        login,
+        completeTwoFactor,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

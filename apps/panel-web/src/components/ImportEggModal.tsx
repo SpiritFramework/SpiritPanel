@@ -22,7 +22,7 @@ export function ImportEggModal({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.admin.nests().then(setNests).catch(console.error);
+    api.admin.nests().then(setNests).catch(() => setNests([]));
   }, []);
 
   useEffect(() => {

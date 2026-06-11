@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import {
   Ban,
   LayoutGrid,
@@ -17,7 +18,7 @@ import { api, type ServerSummary, type User } from '../../lib/api';
 import { formatAllocationAddress } from '../../lib/allocation';
 import { ServerCard } from '../../components/ServerCard';
 import { ServerListTable } from '../../components/ServerListRow';
-import { Button, ClientLayout, SelectControl } from '../../components/Layout';
+import { Button, ClientLayout, Page, SelectControl } from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import {
@@ -25,7 +26,7 @@ import {
   isServerEffectivelyRunning,
   isServerEffectivelyInstalling,
 } from '../../lib/server-runtime';
-import { EmptyState, Spinner } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, ListPageSkeleton } from '../../components/ui';
 
 type StatusFilter = 'all' | 'running' | 'suspended' | 'installing';
 type SortKey = 'name' | 'status' | 'node';
@@ -69,36 +70,23 @@ function sortLabel(key: SortKey): string {
 export function ServerListPage() {
   const { user } = useAuth();
   const { branding } = useBranding();
-  const [servers, setServers] = useState<ServerSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [view, setView] = useState<ViewMode>(readStoredView);
 
-  const loadServers = useCallback(async (opts?: { silent?: boolean }) => {
-    const silent = opts?.silent ?? false;
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    setError('');
-    try {
-      const data = await api.client.servers();
-      setServers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load servers');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const fetchServers = useCallback(() => api.client.servers(), []);
+  const { data: servers, loading, validating, error, refetch } = useAsyncData(
+    'client-servers',
+    fetchServers,
+  );
+  const list = servers ?? [];
+  const refreshing = validating && list.length > 0;
 
   useEffect(() => {
-    void loadServers();
-    const timer = window.setInterval(() => void loadServers({ silent: true }), 15_000);
+    const timer = window.setInterval(() => void refetch(), 15_000);
     return () => window.clearInterval(timer);
-  }, [loadServers]);
+  }, [refetch]);
 
   function setViewMode(mode: ViewMode) {
     setView(mode);
@@ -116,28 +104,28 @@ export function ServerListPage() {
 
   const stats = useMemo(
     () => ({
-      total: servers.length,
-      running: servers.filter(isServerEffectivelyRunning).length,
-      suspended: servers.filter((s) => s.suspended).length,
-      installing: servers.filter(isServerEffectivelyInstalling).length,
-      offline: servers.filter(
+      total: list.length,
+      running: list.filter(isServerEffectivelyRunning).length,
+      suspended: list.filter((s) => s.suspended).length,
+      installing: list.filter(isServerEffectivelyInstalling).length,
+      offline: list.filter(
         (s) =>
           !s.suspended &&
           !isServerEffectivelyRunning(s) &&
           !isServerEffectivelyInstalling(s),
       ).length,
     }),
-    [servers],
+    [list],
   );
 
   const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = servers.filter((s) => serverMatchesFilter(s, statusFilter));
+    let filtered = list.filter((s) => serverMatchesFilter(s, statusFilter));
 
     if (q) {
-      list = list.filter((s) => {
+      filtered = filtered.filter((s) => {
         const address = formatAllocationAddress(s.defaultAllocation, {
           fqdn: s.node.fqdn ?? s.defaultAllocation.ip,
         });
@@ -150,7 +138,7 @@ export function ServerListPage() {
       });
     }
 
-    return [...list].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       if (sortKey === 'name') return a.name.localeCompare(b.name);
       if (sortKey === 'node') return a.node.name.localeCompare(b.node.name);
       const rank = (s: ServerSummary) => {
@@ -161,9 +149,7 @@ export function ServerListPage() {
       };
       return rank(a) - rank(b) || a.name.localeCompare(b.name);
     });
-  }, [servers, search, statusFilter, sortKey]);
-
-  const heroGradient = `linear-gradient(135deg, ${branding.accentColor} 0%, ${branding.secondaryColor || branding.accentColor} 48%, color-mix(in srgb, ${branding.accentColor} 55%, #0c1222) 100%)`;
+  }, [list, search, statusFilter, sortKey]);
 
   const filterPills: { id: StatusFilter; label: string; count: number; icon: typeof Server }[] = [
     { id: 'all', label: 'All', count: stats.total, icon: Server },
@@ -180,12 +166,13 @@ export function ServerListPage() {
 
   return (
     <ClientLayout>
+      <Page>
       <div className="mb-4">
         <PanelAnnouncementBanner location="servers" />
       </div>
 
-      <section className="server-list-header mb-5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="h-1 w-full shrink-0" style={{ background: heroGradient }} />
+      <section className="ds-card mb-4 overflow-hidden">
+        <div className="ds-hero-stripe" />
         <div className="px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -224,12 +211,12 @@ export function ServerListPage() {
                 {stats.suspended > 0 && <HeaderStat label="Suspended" value={stats.suspended} tone="warn" />}
                 <button
                   type="button"
-                  onClick={() => void loadServers({ silent: true })}
+                  onClick={() => void refetch()}
                   disabled={refreshing}
                   title="Refresh servers"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--muted)] transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:text-[var(--text)] disabled:opacity-50"
+                  className="ds-icon-btn ds-icon-btn--bordered h-9 w-9"
                 >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`ds-icon ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             )}
@@ -253,7 +240,8 @@ export function ServerListPage() {
       </section>
 
       {!loading && stats.total > 0 && (
-        <section className="mb-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4">
+        <section className="ds-card mb-4">
+          <div className="ds-card-body ds-card-body--compact">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-1.5">
               {filterPills.map((pill) => {
@@ -264,23 +252,13 @@ export function ServerListPage() {
                     key={pill.id}
                     type="button"
                     onClick={() => setStatusFilter(pill.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
-                      isActive
-                        ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-muted)] accent-text'
-                        : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--accent)_25%,var(--border))] hover:text-[var(--text)]'
-                    }`}
+                    className={`ds-filter-pill ${isActive ? 'is-active' : ''}`}
                   >
                     <Icon
-                      className={`h-3.5 w-3.5 shrink-0 ${pill.id === 'installing' && isActive ? 'animate-spin' : ''}`}
+                      className={`ds-icon ${pill.id === 'installing' && isActive ? 'animate-spin' : ''}`}
                     />
                     {pill.label}
-                    <span
-                      className={`rounded-md px-1.5 py-px text-[10px] font-semibold tabular-nums ${
-                        isActive ? 'bg-[var(--surface)]/80' : 'bg-[var(--surface-hover)]'
-                      }`}
-                    >
-                      {pill.count}
-                    </span>
+                    <span className="ds-filter-pill-count">{pill.count}</span>
                   </button>
                 );
               })}
@@ -294,7 +272,7 @@ export function ServerListPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search servers…"
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 pl-8 pr-8 text-[13px] outline-none transition focus:border-[var(--accent)]/55 focus:ring-2 focus:ring-[var(--accent-muted)]"
+                  className="ds-field py-2 pl-8 pr-8"
                 />
                 {search && (
                   <button
@@ -320,62 +298,61 @@ export function ServerListPage() {
                 ))}
               </SelectControl>
 
-              <div className="flex shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-0.5">
+              <div className="ds-segmented shrink-0">
                 <ViewButton active={view === 'grid'} onClick={() => setViewMode('grid')} label="Grid view">
-                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <LayoutGrid className="ds-icon" />
                 </ViewButton>
                 <ViewButton active={view === 'list'} onClick={() => setViewMode('list')} label="List view">
-                  <List className="h-3.5 w-3.5" />
+                  <List className="ds-icon" />
                 </ViewButton>
               </div>
             </div>
           </div>
+          </div>
         </section>
       )}
 
-      {error && !loading && servers.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--danger-border)] bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger-fg)]">
-          <p>Could not refresh server list. Showing last known data.</p>
-          <Button type="button" variant="ghost" onClick={() => void loadServers({ silent: true })}>
+      {error && !loading && list.length > 0 && (
+        <AlertBanner tone="error" className="mb-4 flex-wrap justify-between">
+          <p>We couldn&apos;t refresh your servers. You&apos;re seeing the last saved list.</p>
+          <Button type="button" variant="secondary" onClick={() => void refetch()}>
             Retry
           </Button>
-        </div>
+        </AlertBanner>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-24">
-          <Spinner className="h-8 w-8" />
-        </div>
-      ) : servers.length === 0 ? (
+        <ListPageSkeleton />
+      ) : list.length === 0 ? (
         error ? (
           <EmptyState
-            icon={<Server className="h-5 w-5" />}
-            title="Couldn't load servers"
-            description={error}
+            icon={<DsIcon icon={Server} className="ds-icon--md" />}
+            title="Couldn't load your servers"
+            description="Check your connection and try again. If this keeps happening, contact support."
             action={
-              <Button type="button" onClick={() => void loadServers()}>
+              <Button type="button" onClick={() => void refetch()}>
                 Try again
               </Button>
             }
           />
         ) : (
           <EmptyState
-            icon={<Server className="h-5 w-5" />}
-            title="No servers yet"
-            description="You don't have any game servers on your account. Contact your host or an administrator to get started."
+            icon={<DsIcon icon={Server} className="ds-icon--md" />}
+            title="No servers on your account"
+            description="When your host provisions a server, it will appear here with status, address, and controls."
           />
         )
       ) : (
         <>
-          {servers.length > 0 && (
+          {list.length > 0 && (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-[var(--muted)]">
                 Showing{' '}
                 <span className="font-medium text-[var(--text)]">{filtered.length}</span>
-                {filtered.length !== servers.length && (
+                {filtered.length !== list.length && (
                   <>
                     {' '}
-                    of <span className="font-medium text-[var(--text)]">{servers.length}</span>
+                    of <span className="font-medium text-[var(--text)]">{list.length}</span>
                   </>
                 )}{' '}
                 server{filtered.length === 1 ? '' : 's'}
@@ -385,7 +362,7 @@ export function ServerListPage() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--accent)]/40 hover:accent-text"
+                  className="ds-btn ds-btn--ghost ds-btn--sm"
                 >
                   <X className="h-3 w-3" />
                   Clear filters
@@ -416,6 +393,7 @@ export function ServerListPage() {
           )}
         </>
       )}
+      </Page>
     </ClientLayout>
   );
 }
@@ -429,19 +407,19 @@ function HeaderStat({
   value: number;
   tone?: 'success' | 'warn' | 'info';
 }) {
-  const styles =
+  const toneClass =
     tone === 'success'
       ? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-fg)]'
       : tone === 'warn'
         ? 'border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]'
         : tone === 'info'
           ? 'border-[var(--info-border)] bg-[var(--info-bg)] text-[var(--info-fg)]'
-          : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)]';
+          : '';
 
   return (
-    <div className={`rounded-lg border px-2.5 py-1.5 text-center ${styles}`}>
-      <p className="text-[9px] font-semibold uppercase tracking-wide opacity-80">{label}</p>
-      <p className="text-base font-bold tabular-nums leading-tight">{value}</p>
+    <div className={`ds-mini-stat ${toneClass}`}>
+      {label}
+      <span className="ds-mini-stat-value ds-text-mono">{value}</span>
     </div>
   );
 }
@@ -463,11 +441,7 @@ function ViewButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}
-      className={`rounded-md px-2 py-1.5 transition ${
-        active
-          ? 'bg-[var(--accent-muted)] accent-text shadow-sm'
-          : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
-      }`}
+      className={`ds-segmented-btn ${active ? 'is-active' : ''}`}
     >
       {children}
     </button>

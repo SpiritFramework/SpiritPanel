@@ -72,8 +72,8 @@ export function AdminUserDetail() {
     setKeysLoading(true);
     try {
       setUserKeys(await api.admin.userApiKeys(userId));
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setUserKeys([]);
     } finally {
       setKeysLoading(false);
     }

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
+/** Legacy modal wrapper — renders ds-modal primitives. Prefer Modal from ui.tsx for new code. */
 export function ModalShell({
   children,
   onClose,
@@ -19,21 +20,18 @@ export function ModalShell({
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <button
-        type="button"
-        className="modal-overlay-enter absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-        aria-label="Close"
-      />
+    <div className="ds-modal-overlay" onClick={onClose} role="presentation">
       <div
-        className={`modal-panel-enter modal-panel-safe relative flex w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] sm:max-h-[92vh] sm:rounded-2xl ${
-          wide ? 'sm:max-w-xl' : 'sm:max-w-lg'
-        }`}
+        className={`ds-modal relative ${wide ? 'ds-modal--wide' : ''}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -42,17 +40,13 @@ export function ModalShell({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+          className="ds-icon-btn ds-icon-btn--bordered absolute right-3 top-3 z-10"
           aria-label="Close"
         >
-          <X className="h-4 w-4" />
+          <X className="ds-icon" />
         </button>
-        <div className="overflow-y-auto">{children}</div>
-        {footer && (
-          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--bg-elevated)]/40 px-4 py-3">
-            {footer}
-          </div>
-        )}
+        <div className="ds-modal-body">{children}</div>
+        {footer && <div className="ds-modal-footer">{footer}</div>}
       </div>
     </div>
   );

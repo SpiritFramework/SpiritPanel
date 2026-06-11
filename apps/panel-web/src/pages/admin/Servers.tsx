@@ -1,153 +1,152 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Plus, Search, Server } from 'lucide-react';
 import { api, type AdminNodeSummary, type AdminServerSummary } from '../../lib/api';
-import { AdminLayout, Button, Card, FilterSelect } from '../../components/Layout';
+import { useAsyncData } from '../../hooks/useAsyncData';
+import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/Layout';
 import { AdminServerTable } from '../../components/AdminServerRow';
-import { EmptyState, PageHeader, Spinner, StatCard } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton, StatCard } from '../../components/ui';
 import { isServerEffectivelyRunning, isServerEffectivelyInstalling } from '../../lib/server-runtime';
 
 type StatusFilter = 'all' | 'normal' | 'installing' | 'suspended';
 
 export function AdminServers() {
-  const [servers, setServers] = useState<AdminServerSummary[]>([]);
-  const [nodes, setNodes] = useState<AdminNodeSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [nodeFilter, setNodeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  async function load(silent = false) {
-    if (!silent) setLoading(true);
-    if (!silent) setLoadError('');
-    try {
-      const data = await api.admin.servers({
-        search: search.trim() || undefined,
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: nodes } = useAsyncData<AdminNodeSummary[]>('admin-nodes-list', () => api.admin.nodes());
+
+  const queryKey = `admin-servers|${debouncedSearch}|${nodeFilter}|${statusFilter}`;
+
+  const fetchServers = useCallback(
+    () =>
+      api.admin.servers({
+        search: debouncedSearch || undefined,
         nodeId: nodeFilter || undefined,
         suspended: statusFilter === 'suspended' ? 'true' : undefined,
         status: statusFilter === 'normal' || statusFilter === 'installing' ? statusFilter : undefined,
-      });
-      setServers(data);
-    } catch (err) {
-      if (!silent) {
-        setServers([]);
-        setLoadError(err instanceof Error ? err.message : 'Failed to load servers');
-      }
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }
+      }),
+    [debouncedSearch, nodeFilter, statusFilter],
+  );
+
+  const { data: servers, loading, error, refetch } = useAsyncData<AdminServerSummary[]>(
+    queryKey,
+    fetchServers,
+    [debouncedSearch, nodeFilter, statusFilter],
+  );
+
+  const list = servers ?? [];
+  const nodeList = nodes ?? [];
 
   useEffect(() => {
-    api.admin.nodes().then(setNodes).catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => void load(), 250);
-    return () => clearTimeout(t);
-  }, [search, nodeFilter, statusFilter]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => void load(true), 15_000);
+    const timer = window.setInterval(() => void refetch(), 15_000);
     return () => window.clearInterval(timer);
-  }, [search, nodeFilter, statusFilter]);
+  }, [refetch]);
 
-  const stats = useMemo(() => {
-    return {
-      total: servers.length,
-      running: servers.filter(isServerEffectivelyRunning).length,
-      suspended: servers.filter((s) => s.suspended).length,
-      installing: servers.filter(isServerEffectivelyInstalling).length,
-    };
-  }, [servers]);
+  const stats = useMemo(
+    () => ({
+      total: list.length,
+      running: list.filter(isServerEffectivelyRunning).length,
+      suspended: list.filter((s) => s.suspended).length,
+      installing: list.filter(isServerEffectivelyInstalling).length,
+    }),
+    [list],
+  );
 
   return (
     <AdminLayout>
-      <PageHeader
-        title="Servers"
-        description="Provision, manage, and monitor all game servers"
-        action={
-          <Link to="/admin/servers/new">
-            <Button>
-              <Plus className="h-3.5 w-3.5" />
-              Provision server
-            </Button>
-          </Link>
-        }
-      />
-
-      {loadError && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          {loadError}
-        </div>
-      )}
-
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Showing" value={stats.total} icon={<Server className="h-4 w-4" />} />
-        <StatCard label="Running" value={stats.running} icon={<Server className="h-4 w-4" />} tone="success" />
-        <StatCard
-          label="Suspended"
-          value={stats.suspended}
-          icon={<AlertTriangle className="h-4 w-4" />}
-          tone={stats.suspended > 0 ? 'warning' : 'default'}
+      <Page>
+        <PageHeader
+          title="Servers"
+          description="Provision, manage, and monitor all game servers"
+          icon={<DsIcon icon={Server} className="ds-icon--muted" />}
+          action={
+            <Link to="/admin/servers/new">
+              <Button>
+                <DsIcon icon={Plus} />
+                Provision server
+              </Button>
+            </Link>
+          }
         />
-        <StatCard
-          label="Installing"
-          value={stats.installing}
-          icon={<Server className="h-4 w-4" />}
-          tone={stats.installing > 0 ? 'default' : 'default'}
-        />
-      </div>
 
-      <Card title="All servers">
-        <div className="mb-4 flex flex-wrap gap-2">
-          <div className="relative min-w-0 w-full flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, owner, UUID…"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 pl-8 pr-3 text-[13px] shadow-sm outline-none transition hover:border-[var(--accent)]/35 focus:border-[var(--accent)]/55 focus:ring-2 focus:ring-[var(--accent-muted)]"
-            />
-          </div>
-          <FilterSelect value={nodeFilter} onChange={(e) => setNodeFilter(e.target.value)}>
-            <option value="">All nodes</option>
-            {nodes.map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          >
-            <option value="all">All statuses</option>
-            <option value="normal">Running</option>
-            <option value="installing">Installing</option>
-            <option value="suspended">Suspended</option>
-          </FilterSelect>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
-        ) : servers.length === 0 ? (
-          <EmptyState
-            title="No servers found"
-            description="Try adjusting your search or filters, or provision a new server."
-            action={
-              <Link to="/admin/servers/new">
-                <Button>Provision server</Button>
-              </Link>
-            }
-          />
-        ) : (
-          <AdminServerTable servers={servers} onServerDeleted={load} />
+        {error && (
+          <AlertBanner tone="error" className="mb-4">
+            We couldn&apos;t load the server list. Check your connection and try again.
+          </AlertBanner>
         )}
-      </Card>
+
+        <div className="ds-grid-stats mb-4">
+          <StatCard label="Showing" value={stats.total} icon={<DsIcon icon={Server} />} />
+          <StatCard label="Running" value={stats.running} icon={<DsIcon icon={Server} />} tone="success" />
+          <StatCard
+            label="Suspended"
+            value={stats.suspended}
+            icon={<DsIcon icon={AlertTriangle} />}
+            tone={stats.suspended > 0 ? 'warning' : 'neutral'}
+          />
+          <StatCard label="Installing" value={stats.installing} icon={<DsIcon icon={Server} />} tone="info" />
+        </div>
+
+        <Card title="All servers">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <div className="relative min-w-0 w-full flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, owner, UUID…"
+                className="ds-field py-2 pl-8 pr-3"
+              />
+            </div>
+            <FilterSelect value={nodeFilter} onChange={(e) => setNodeFilter(e.target.value)}>
+              <option value="">All nodes</option>
+              {nodeList.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.name}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            >
+              <option value="all">All statuses</option>
+              <option value="normal">Running</option>
+              <option value="installing">Installing</option>
+              <option value="suspended">Suspended</option>
+            </FilterSelect>
+          </div>
+
+          {loading ? (
+            <div className="space-y-2 py-1" aria-hidden>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : list.length === 0 ? (
+            <EmptyState
+              icon={<DsIcon icon={Server} className="ds-icon--md" />}
+              title="No servers match your filters"
+              description="Broaden your search or provision a new server to populate this list."
+              action={
+                <Link to="/admin/servers/new">
+                  <Button>Provision server</Button>
+                </Link>
+              }
+            />
+          ) : (
+            <AdminServerTable servers={list} onServerDeleted={() => void refetch()} />
+          )}
+        </Card>
+      </Page>
     </AdminLayout>
   );
 }
