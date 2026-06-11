@@ -170,6 +170,23 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
         </article>
       </section>
 
+      <nav className="adm-dash-shortcuts" aria-label="Quick links">
+        <p className="adm-dash-shortcuts-label">Quick links</p>
+        <ul className="adm-dash-shortcuts-grid">
+          {SHORTCUTS.map(({ to, icon: Icon, label, desc }) => (
+            <li key={to}>
+              <Link to={to} className="adm-dash-shortcut">
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="min-w-0">
+                  <span className="adm-dash-shortcut-label">{label}</span>
+                  <span className="adm-dash-shortcut-desc">{desc}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       <div className="adm-dash-body">
         <section className="adm-dash-panel adm-dash-panel--nodes">
           <header className="adm-dash-panel-head">
@@ -241,23 +258,6 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
               </ul>
             )}
           </section>
-
-          <nav className="adm-dash-shortcuts" aria-label="Admin shortcuts">
-            <p className="adm-dash-shortcuts-label">Quick links</p>
-            <ul className="adm-dash-shortcuts-grid">
-              {SHORTCUTS.map(({ to, icon: Icon, label, desc }) => (
-                <li key={to}>
-                  <Link to={to} className="adm-dash-shortcut">
-                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="adm-dash-shortcut-label">{label}</span>
-                      <span className="adm-dash-shortcut-desc">{desc}</span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </aside>
       </div>
 

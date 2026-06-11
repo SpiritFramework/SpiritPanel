@@ -607,6 +607,16 @@
 }
 
 /* Shortcuts */
+.adm-dash-shortcuts {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0.875rem 1rem 1rem;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 4%, var(--border)),
+    0 8px 24px -18px rgba(0, 0, 0, 0.4);
+}
+
 .adm-dash-shortcuts-label {
   margin: 0 0 0.625rem;
   font-size: 0.6875rem;
@@ -622,6 +632,19 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .adm-dash-shortcuts-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .adm-dash-shortcuts-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .adm-dash-shortcut {
