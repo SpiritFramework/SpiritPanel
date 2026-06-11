@@ -3,6 +3,7 @@ import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 import jwt from 'jsonwebtoken';
 import { assertTokenCritHeaderSupported } from './jwt-crit.js';
+import { JWT_HS256_VERIFY } from './jwt-options.js';
 import { getConfig } from './env.js';
 
 export function generateTotpSecret(): string {
@@ -46,15 +47,20 @@ export function hashRecoveryCode(code: string): string {
 const TWO_FA_PURPOSE = '2fa-challenge';
 
 export function signTwoFactorChallenge(userId: string): string {
-  return jwt.sign({ sub: userId, purpose: TWO_FA_PURPOSE }, getConfig().jwtSecret, {
-    expiresIn: '10m',
-  } as jwt.SignOptions);
+  return jwt.sign(
+    { sub: userId, purpose: TWO_FA_PURPOSE },
+    getConfig().jwtSecret,
+    { algorithm: 'HS256', expiresIn: '10m' } as jwt.SignOptions,
+  );
 }
 
 export function verifyTwoFactorChallenge(token: string): string | null {
   try {
     assertTokenCritHeaderSupported(token);
-    const payload = jwt.verify(token, getConfig().jwtSecret) as { sub: string; purpose?: string };
+    const payload = jwt.verify(token, getConfig().jwtSecret, JWT_HS256_VERIFY) as {
+      sub: string;
+      purpose?: string;
+    };
     if (payload.purpose !== TWO_FA_PURPOSE) return null;
     return payload.sub;
   } catch {

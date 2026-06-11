@@ -71,14 +71,18 @@ Session and 2FA challenge tokens are verified with **`jsonwebtoken`**. Before si
 | Type | Scope | Notes |
 |------|-------|-------|
 | **Account** | Owning user's permissions | Bcrypt-hashed at rest; `lastUsedAt` tracked |
-| **Application** | Admin automation (billing, provisioning) | Memo required; **90-day** expiry; **60 req/min** in production |
+| **Application** | Admin automation (billing, provisioning) | Memo required; **90-day** expiry; **60 req/min** in production; **scoped permissions** (`users.read`, `servers.write`, etc.); optional **IP allowlist**; usage audited in admin activity log |
 
-Treat Application keys like root passwords — rotate, revoke when unused, never commit to git or ship in client-side code.
+Legacy Application keys with `permissions: null` retain full access until rotated. New keys should be created with explicit scopes. Treat Application keys like root passwords — rotate, revoke when unused, never commit to git or ship in client-side code.
 
 ### Login hardening
 
 - Optional **Cloudflare Turnstile** on login and registration (**Admin → Settings**)
-- Rate limiting on auth routes
+- Rate limiting on auth routes (per IP + identifier)
+- Account lockout after repeated failed logins (15 minutes)
+- **Logout** requires authentication and increments `token_version` to invalidate the session JWT immediately
+- JWT verification pins **`HS256`** only
+- Optional **block weak passwords** policy (Admin → Settings → Security)
 - Production seed blocks weak default admin passwords
 
 ---
@@ -93,6 +97,8 @@ When `NODE_ENV=production`, the API **refuses to start** unless:
 | `APP_KEY` | 16+ characters; not a placeholder; **must differ** from `JWT_SECRET` |
 | `DATABASE_URL` | No `CHANGE_ME` placeholder credentials |
 | `API_URL` | HTTPS public URL (not `http://`, not localhost) |
+| `HOST` | Must not be `0.0.0.0` in production (bind loopback; proxy via Nginx) |
+| `REDIS_PASSWORD` | Required when the schedule worker is enabled (or set `REDIS_ALLOW_INSECURE=true` only for isolated local deployments) |
 
 Generate secrets with:
 

@@ -43,6 +43,20 @@ import { reconcilePanelFieldsForContainerState } from '../lib/container-state.js
 import { enrichServerRefsWithLiveState, resolveServerContainerState } from '../services/server-runtime-status.js';
 import { stripServerNodeSecrets } from '../lib/node-health.js';
 import { assertSafeFileName, assertSafeServerPath, UnsafeFilePathError } from '../lib/file-paths.js';
+import { redactedCommandProperties } from '../lib/activity-sanitize.js';
+import { EXPENSIVE_ROUTE_RATE_LIMIT, UPLOAD_RATE_LIMIT } from '../lib/rate-limits.js';
+import { sendClientError } from '../lib/safe-errors.js';
+import {
+  InvalidSubuserPermissionsError,
+  validateSubuserPermissions,
+} from '../lib/subuser-permissions.js';
+import {
+  acquireUploadSlot,
+  MAX_UPLOAD_FILE_BYTES,
+  releaseUploadSlot,
+  UploadConcurrencyError,
+} from '../lib/upload-concurrency.js';
+import { WingsError } from '../services/wings-client.js';
 
 export async function clientRoutes(app: FastifyInstance) {
   app.register(async (accountApp) => {
@@ -273,10 +287,7 @@ export async function clientRoutes(app: FastifyInstance) {
     try {
       await powerServer(server.uuid, action);
     } catch (err) {
-      request.log.error({ err }, 'Server power failed');
-      return reply.status(502).send({
-        error: err instanceof Error ? err.message : 'Failed to send power action to Wings',
-      });
+      return sendClientError(reply, 502, 'power', request.log, err, 'Server power failed');
     }
     await logServerActivity(request, {
       serverId: id,
@@ -305,10 +316,7 @@ export async function clientRoutes(app: FastifyInstance) {
       });
       return { success: true };
     } catch (err) {
-      request.log.error({ err }, 'Server reinstall failed');
-      return reply.status(502).send({
-        error: err instanceof Error ? err.message : 'Failed to reinstall on FeatherWings',
-      });
+      return sendClientError(reply, 502, 'install', request.log, err, 'Server reinstall failed');
     }
   });
 
@@ -494,12 +502,16 @@ export async function clientRoutes(app: FastifyInstance) {
       const content = await wingsForNode(server.node).getFileContents(server.uuid, file);
       return reply.type('text/plain; charset=utf-8').send(content);
     } catch (err) {
-      request.log.error({ err, file }, 'Failed to read file from FeatherWings');
-      const message = err instanceof Error ? err.message : 'Failed to read file';
-      if (message.includes('(404)')) return reply.status(404).send({ error: 'File not found' });
-      if (message.includes('(403)')) return reply.status(403).send({ error: 'Access denied' });
-      if (message.includes('(400)')) return reply.status(400).send({ error: 'Cannot read this file' });
-      return reply.status(502).send({ error: message });
+      if (err instanceof WingsError && err.status === 404) {
+        return reply.status(404).send({ error: 'File not found' });
+      }
+      if (err instanceof WingsError && err.status === 403) {
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+      if (err instanceof WingsError && err.status === 400) {
+        return reply.status(400).send({ error: 'Cannot read this file' });
+      }
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to read file from FeatherWings');
     }
   });
 
@@ -515,12 +527,16 @@ export async function clientRoutes(app: FastifyInstance) {
     try {
       await wingsForNode(server.node).writeFile(server.uuid, file, body.content);
     } catch (err) {
-      request.log.error({ err, file }, 'Failed to write file to FeatherWings');
-      const message = err instanceof Error ? err.message : 'Failed to write file';
-      if (message.includes('(404)')) return reply.status(404).send({ error: 'File not found' });
-      if (message.includes('(403)')) return reply.status(403).send({ error: 'Access denied' });
-      if (message.includes('(400)')) return reply.status(400).send({ error: 'Cannot write this file' });
-      return reply.status(502).send({ error: message });
+      if (err instanceof WingsError && err.status === 404) {
+        return reply.status(404).send({ error: 'File not found' });
+      }
+      if (err instanceof WingsError && err.status === 403) {
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+      if (err instanceof WingsError && err.status === 400) {
+        return reply.status(400).send({ error: 'Cannot write this file' });
+      }
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to write file to FeatherWings');
     }
     await logServerActivity(request, {
       serverId: id,
@@ -728,7 +744,7 @@ export async function clientRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post('/servers/:id/files/upload', async (request, reply) => {
+  app.post('/servers/:id/files/upload', { config: UPLOAD_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const access = await requireServerAccess(request, reply, id, 'file.create');
     if (!access) return;
@@ -738,21 +754,45 @@ export async function clientRoutes(app: FastifyInstance) {
     const rawDirectory = (request.query as { directory?: string }).directory ?? '/';
     const directory = safePathOrReply(reply, rawDirectory, 'directory');
     if (directory === null) return;
+
+    const userId = request.user!.id;
+    try {
+      acquireUploadSlot(userId);
+    } catch (err) {
+      if (err instanceof UploadConcurrencyError) {
+        return reply.status(429).send({ error: err.message });
+      }
+      throw err;
+    }
+
     let uploaded = 0;
     try {
       const parts = (request as unknown as { parts: () => AsyncIterable<MultipartPart> }).parts();
       const wings = wingsForNode(server.node);
       for await (const part of parts) {
         if (part.type !== 'file') continue;
-        const buffer = await part.toBuffer();
+        if (part.file?.truncated) {
+          return reply.status(413).send({ error: 'File too large' });
+        }
         const target = joinFilePath(directory, part.filename);
-        await wings.uploadFile(server.uuid, target, buffer);
+        await wings.uploadFileStream(
+          server.uuid,
+          target,
+          part.file,
+          MAX_UPLOAD_FILE_BYTES,
+        );
         uploaded += 1;
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      return reply.status(502).send({ error: message });
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      if (statusCode === 413) {
+        return reply.status(413).send({ error: 'File too large' });
+      }
+      return sendClientError(reply, 502, 'upload', request.log, err, 'File upload failed');
+    } finally {
+      releaseUploadSlot(userId);
     }
+
     if (uploaded === 0) return reply.status(400).send({ error: 'No files uploaded' });
     await logServerActivity(request, {
       serverId: id,
@@ -763,19 +803,23 @@ export async function clientRoutes(app: FastifyInstance) {
     return { success: true, uploaded };
   });
 
-  app.post('/servers/:id/command', async (request, reply) => {
+  app.post('/servers/:id/command', { config: EXPENSIVE_ROUTE_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { command } = z.object({ command: z.string() }).parse(request.body);
     const access = await requireServerAccess(request, reply, id, 'control.console');
     if (!access) return;
     const server = await getAccessibleServer(id, request.user!.id, true);
     if (!server) return reply.status(404).send({ error: 'Not found' });
-    await wingsForNode(server.node).sendCommand(server.uuid, command);
+    try {
+      await wingsForNode(server.node).sendCommand(server.uuid, command);
+    } catch (err) {
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Server command failed');
+    }
     await logServerActivity(request, {
       serverId: id,
       event: 'server.command',
-      description: `${request.user!.username} ran command: ${command}`,
-      properties: { command },
+      description: `${request.user!.username} ran a console command`,
+      properties: redactedCommandProperties(command),
     });
     return { success: true };
   });
@@ -825,16 +869,25 @@ export async function clientRoutes(app: FastifyInstance) {
       .parse(request.body);
     const server = await getServerForOwnerActions(id, request.user!.id);
     if (!server) return reply.status(404).send({ error: 'Not found' });
+    let permissions: string[];
+    try {
+      permissions = validateSubuserPermissions(body.permissions);
+    } catch (err) {
+      if (err instanceof InvalidSubuserPermissionsError) {
+        return reply.status(422).send({ error: err.message });
+      }
+      throw err;
+    }
     const user = await prisma.user.findUnique({ where: { email: body.email } });
     if (!user) return reply.status(404).send({ error: 'User not found' });
     const subuser = await prisma.subuser.create({
-      data: { serverId: id, userId: user.id, permissions: body.permissions },
+      data: { serverId: id, userId: user.id, permissions },
     });
     await logServerActivity(request, {
       serverId: id,
       event: 'server.subuser.added',
       description: `${request.user!.username} added subuser ${user.username}`,
-      properties: { email: body.email, permissions: body.permissions },
+      properties: { email: body.email, permissions },
     });
 
     if (await isMailEnabled()) {
@@ -859,18 +912,27 @@ export async function clientRoutes(app: FastifyInstance) {
     const body = z.object({ permissions: z.array(z.string()) }).parse(request.body);
     const server = await getServerForOwnerActions(id, request.user!.id);
     if (!server) return reply.status(404).send({ error: 'Not found' });
+    let permissions: string[];
+    try {
+      permissions = validateSubuserPermissions(body.permissions);
+    } catch (err) {
+      if (err instanceof InvalidSubuserPermissionsError) {
+        return reply.status(422).send({ error: err.message });
+      }
+      throw err;
+    }
     const existing = await prisma.subuser.findFirst({ where: { id: subuserId, serverId: id } });
     if (!existing) return reply.status(404).send({ error: 'Subuser not found' });
     const subuser = await prisma.subuser.update({
       where: { id: subuserId },
-      data: { permissions: body.permissions },
+      data: { permissions },
       include: { user: { select: { id: true, email: true, username: true, avatarUrl: true } } },
     });
     await logServerActivity(request, {
       serverId: id,
       event: 'server.subuser.updated',
       description: `${request.user!.username} updated permissions for ${subuser.user.username}`,
-      properties: { permissions: body.permissions },
+      properties: { permissions },
     });
     return subuser;
   });
@@ -1025,12 +1087,16 @@ export async function clientRoutes(app: FastifyInstance) {
 interface MultipartPart {
   type: 'file' | 'field';
   filename: string;
+  file: import('node:stream').Readable & { truncated?: boolean };
   toBuffer: () => Promise<Buffer>;
 }
 
 /** Join a Wings directory and a (possibly nested) filename into a normalized path. */
 function joinFilePath(directory: string, filename: string): string {
   const safeName = filename.replace(/^\/+/, '');
+  for (const segment of safeName.split('/').filter(Boolean)) {
+    assertSafeFileName(segment, 'filename');
+  }
   const base = directory.endsWith('/') ? directory : `${directory}/`;
   return assertSafeServerPath(`${base}${safeName}`.replace(/\/{2,}/g, '/'), 'file path');
 }

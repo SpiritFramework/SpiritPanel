@@ -84,7 +84,11 @@ export async function executeSchedule(
 
     try {
       if (task.action === 'power') {
-        await wings.power(schedule.server.uuid, task.payload);
+        const action = task.payload.trim() || 'restart';
+        if (!['start', 'stop', 'restart', 'kill'].includes(action)) {
+          throw new Error('Invalid scheduled power action');
+        }
+        await wings.power(schedule.server.uuid, action);
       } else if (task.action === 'command') {
         await wings.sendCommand(schedule.server.uuid, task.payload);
       } else if (task.action === 'backup') {

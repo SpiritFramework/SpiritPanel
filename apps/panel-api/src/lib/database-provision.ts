@@ -74,7 +74,7 @@ export async function provisionServerDatabase(
     port: host.port,
     user: host.username,
     password: host.password,
-    multipleStatements: true,
+    multipleStatements: false,
     connectTimeout: 10000,
   });
 
@@ -102,7 +102,7 @@ export async function deprovisionServerDatabase(
     port: host.port,
     user: host.username,
     password: host.password,
-    multipleStatements: true,
+    multipleStatements: false,
     connectTimeout: 10000,
   });
 

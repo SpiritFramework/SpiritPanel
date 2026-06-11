@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import { cronMatchesNow } from '../lib/cron-match.js';
 import { getConfig } from '../lib/env.js';
+import { buildRedisOptions } from '../lib/redis.js';
 import { prisma } from '../lib/prisma.js';
 import { executeSchedule } from '../services/schedule-runner.js';
 
@@ -11,11 +12,7 @@ let pollInterval: ReturnType<typeof setInterval> | null = null;
 const MIN_RUN_INTERVAL_MS = 55_000;
 
 function redisConnection() {
-  const config = getConfig();
-  return {
-    host: config.redisHost,
-    port: config.redisPort,
-  };
+  return buildRedisOptions({ maxRetriesPerRequest: null });
 }
 
 function getScheduleQueue(): Queue {

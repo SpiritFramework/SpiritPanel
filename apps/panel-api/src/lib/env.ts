@@ -20,6 +20,8 @@ export interface AppConfig {
   panelUrl: string;
   redisHost: string;
   redisPort: number;
+  redisPassword: string | undefined;
+  redisTls: boolean;
   disableScheduleWorker: boolean;
   disableStatsCollector: boolean;
   corsOrigins: string[];
@@ -43,8 +45,22 @@ export function loadConfig(): AppConfig {
   const apiUrl = process.env.API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
   const databaseUrl = requireEnv('DATABASE_URL');
 
+  const redisPassword = process.env.REDIS_PASSWORD?.trim() || undefined;
+  const redisTls = process.env.REDIS_TLS === 'true';
+  const redisAllowInsecure = process.env.REDIS_ALLOW_INSECURE === 'true';
+  const host = process.env.HOST ?? (isProduction ? '127.0.0.1' : '0.0.0.0');
+
   if (isProduction) {
-    assertProductionSecrets({ jwtSecret, appKey, apiUrl, databaseUrl });
+    assertProductionSecrets({
+      jwtSecret,
+      appKey,
+      apiUrl,
+      databaseUrl,
+      host,
+      redisPassword,
+      redisAllowInsecure,
+      disableScheduleWorker: process.env.DISABLE_SCHEDULE_WORKER === 'true',
+    });
   }
 
   const corsOrigins = (process.env.CORS_ORIGINS ?? panelUrl)
@@ -56,7 +72,7 @@ export function loadConfig(): AppConfig {
     nodeEnv,
     isProduction,
     port: Number(process.env.PORT ?? 3000),
-    host: process.env.HOST ?? (isProduction ? '127.0.0.1' : '0.0.0.0'),
+    host,
     databaseUrl,
     jwtSecret,
     appKey,
@@ -64,6 +80,8 @@ export function loadConfig(): AppConfig {
     panelUrl: panelUrl.replace(/\/$/, ''),
     redisHost: process.env.REDIS_HOST ?? '127.0.0.1',
     redisPort: Number(process.env.REDIS_PORT ?? 6379),
+    redisPassword,
+    redisTls,
     disableScheduleWorker: process.env.DISABLE_SCHEDULE_WORKER === 'true',
     disableStatsCollector: process.env.DISABLE_STATS_COLLECTOR === 'true',
     corsOrigins,

@@ -3,9 +3,15 @@ import { createReadStream } from 'node:fs';
 import { randomBytes, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { hashPassword, signToken, verifyPassword } from '../lib/auth.js';
+import { hashPassword, invalidateUserSessions, signToken, verifyPassword } from '../lib/auth.js';
+import {
+  assertLoginAllowed,
+  clearLoginFailures,
+  recordLoginFailure,
+} from '../lib/login-guard.js';
+import { AUTH_RATE_LIMIT, LOGIN_RATE_LIMIT } from '../lib/rate-limits.js';
+import { assertPasswordMeetsPolicy, getPasswordMinLength } from '../lib/password-policy.js';
 import { requireAuth } from '../middleware/auth.js';
-import { getPasswordMinLength } from '../lib/password-policy.js';
 import { clearSessionCookie, setSessionCookie } from '../lib/session-cookie.js';
 import { logAuthActivity } from '../lib/admin-activity.js';
 import {
@@ -65,13 +71,6 @@ function parsePublicKey(input: string): { ok: true; normalized: string } | { ok:
   return { ok: true, normalized: `${parts[0]} ${parts[1]}${parts[2] ? ` ${parts.slice(2).join(' ')}` : ''}` };
 }
 
-const AUTH_RATE_LIMIT = {
-  rateLimit: {
-    max: getConfig().isProduction ? 12 : 40,
-    timeWindow: '1 minute',
-  },
-};
-
 async function assertTurnstile(request: { ip: string }, token?: string) {
   if (!(await isTurnstileEnabled())) return;
   if (!token?.trim()) {
@@ -110,7 +109,7 @@ function issueAuthSession(
 }
 
 export async function authRoutes(app: FastifyInstance) {
-  app.post('/login', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
+  app.post('/login', { config: LOGIN_RATE_LIMIT }, async (request, reply) => {
     const body = z
       .object({
         identifier: z.string().min(1).optional(),
@@ -133,6 +132,13 @@ export async function authRoutes(app: FastifyInstance) {
     const identifier = (body.identifier ?? body.email ?? '').trim();
     const isEmail = identifier.includes('@');
 
+    try {
+      assertLoginAllowed(identifier, request.ip);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 429;
+      return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Too many attempts' });
+    }
+
     const user = await prisma.user.findFirst({
       where: isEmail
         ? { email: identifier.toLowerCase() }
@@ -140,13 +146,17 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     if (!user) {
+      recordLoginFailure(identifier, request.ip);
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
     const valid = await verifyPassword(body.password, user.passwordHash);
     if (!valid) {
+      recordLoginFailure(identifier, request.ip);
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
+
+    clearLoginFailures(identifier, request.ip);
 
     if (!user.enabled) {
       return reply.status(403).send({
@@ -252,6 +262,15 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(422).send({ error: 'Email or username already taken' });
     }
 
+    try {
+      await assertPasswordMeetsPolicy(body.password);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(statusCode).send({
+        error: err instanceof Error ? err.message : 'Invalid password',
+      });
+    }
+
     const user = await prisma.user.create({
       data: {
         email: body.email,
@@ -330,6 +349,15 @@ export async function authRoutes(app: FastifyInstance) {
       .object({ token: z.string().min(10), password: z.string().min(minPasswordLength) })
       .parse(request.body);
 
+    try {
+      await assertPasswordMeetsPolicy(body.password);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(statusCode).send({
+        error: err instanceof Error ? err.message : 'Invalid password',
+      });
+    }
+
     const reset = await prisma.passwordReset.findUnique({ where: { token: body.token } });
     if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
       return reply.status(400).send({ error: 'This reset link is invalid or has expired.' });
@@ -361,7 +389,8 @@ export async function authRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
-  app.post('/logout', async (_request, reply) => {
+  app.post('/logout', { preHandler: requireAuth }, async (request, reply) => {
+    await invalidateUserSessions(request.user!.id);
     clearSessionCookie(reply);
     return { success: true };
   });
@@ -399,6 +428,14 @@ export async function authRoutes(app: FastifyInstance) {
       }
       const valid = await verifyPassword(body.currentPassword, user.passwordHash);
       if (!valid) return reply.status(403).send({ error: 'Current password is incorrect' });
+      try {
+        await assertPasswordMeetsPolicy(body.newPassword);
+      } catch (err) {
+        const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+        return reply.status(statusCode).send({
+          error: err instanceof Error ? err.message : 'Invalid password',
+        });
+      }
     }
 
     if (body.email && body.email !== user.email) {

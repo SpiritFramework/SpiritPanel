@@ -33,6 +33,8 @@ import { requireAdmin } from './middleware/auth.js';
 import { startScheduleWorker, stopScheduleWorker } from './workers/schedule.js';
 import { startStatsCollector, stopStatsCollector } from './workers/stats-collector.js';
 import { pingRedis } from './lib/redis.js';
+import { GLOBAL_RATE_LIMIT } from './lib/rate-limits.js';
+import { MAX_UPLOAD_FILE_BYTES } from './lib/upload-concurrency.js';
 import { ensureMarketplaceCatalog, isMarketplaceSchemaMissing } from './lib/marketplace-db.js';
 import { API_SECURITY_HEADERS } from './lib/security-headers.js';
 
@@ -89,19 +91,13 @@ await app.register(cors, {
 
 
 
-await app.register(rateLimit, {
-
-  max: config.isProduction ? 300 : 200,
-
-  timeWindow: '1 minute',
-
-});
+await app.register(rateLimit, GLOBAL_RATE_LIMIT);
 
 
 
 await app.register(multipart, {
 
-  limits: { fileSize: 1024 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_FILE_BYTES, files: 10 },
 
 });
 
@@ -112,8 +108,6 @@ const healthPayload = () => ({
   status: 'ok',
 
   service: 'spirit-panel-api',
-
-  env: config.nodeEnv,
 
 });
 
@@ -147,10 +141,10 @@ app.get('/health/ready', async (_req, reply) => {
 
     return payload;
   } catch (err) {
+    app.log.error({ err }, 'Readiness check failed');
     return reply.status(503).send({
       status: 'not_ready',
       database: 'disconnected',
-      error: err instanceof Error ? err.message : 'unknown',
     });
   }
 });

@@ -77,6 +77,10 @@ export const announcementSchema = z.object({
 
 export const securitySchema = z.object({
   minPasswordLength: z.number().int().min(8).max(128),
+  /** When true, root admins may access any server without ownership (support mode). */
+  adminServerSupport: z.boolean().default(true),
+  /** Reject commonly used / placeholder passwords on registration and password changes. */
+  blockWeakPasswords: z.boolean().default(true),
 });
 
 export const registrationSchema = z.object({
@@ -218,6 +222,8 @@ export interface AnnouncementSettings {
 
 export interface SecuritySettings {
   minPasswordLength: number;
+  adminServerSupport: boolean;
+  blockWeakPasswords: boolean;
 }
 
 export interface MarketplaceSettings {
@@ -277,6 +283,8 @@ export const DEFAULT_ANNOUNCEMENT: AnnouncementSettings = {
 
 export const DEFAULT_SECURITY: SecuritySettings = {
   minPasswordLength: 8,
+  adminServerSupport: true,
+  blockWeakPasswords: true,
 };
 
 export const DEFAULT_MARKETPLACE: MarketplaceSettings = {
@@ -513,4 +521,14 @@ export async function upsertPanelSetting(key: string, value: unknown) {
 export async function getMinPasswordLength(): Promise<number> {
   const security = await getSecuritySettings();
   return security.minPasswordLength;
+}
+
+export async function isAdminServerSupportEnabled(): Promise<boolean> {
+  const security = await getSecuritySettings();
+  return security.adminServerSupport;
+}
+
+export async function isWeakPasswordBlockingEnabled(): Promise<boolean> {
+  const security = await getSecuritySettings();
+  return security.blockWeakPasswords;
 }

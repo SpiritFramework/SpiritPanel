@@ -35,6 +35,8 @@ export interface PanelAnnouncementSettings {
 
 export interface PanelSecuritySettings {
   minPasswordLength: number;
+  adminServerSupport?: boolean;
+  blockWeakPasswords?: boolean;
 }
 
 export interface PanelMarketplaceSettings {
@@ -120,4 +122,6 @@ export const DEFAULT_MAINTENANCE: PanelMaintenanceSettings = {
 
 export const DEFAULT_SECURITY: PanelSecuritySettings = {
   minPasswordLength: 8,
+  adminServerSupport: true,
+  blockWeakPasswords: true,
 };

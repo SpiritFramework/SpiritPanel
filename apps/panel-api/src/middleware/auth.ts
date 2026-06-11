@@ -63,5 +63,6 @@ declare module 'fastify' {
   interface FastifyRequest {
     user?: import('@prisma/client').User;
     node?: import('@prisma/client').Node;
+    applicationApiKey?: import('../lib/application-scopes.js').ApplicationApiKeyContext;
   }
 }

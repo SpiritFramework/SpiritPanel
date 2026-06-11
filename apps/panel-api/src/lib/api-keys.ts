@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { generateApiIdentifier, generateApiToken, hashApiToken } from './auth.js';
+import { normalizeApplicationPermissions } from './application-scopes.js';
 
 export const API_KEY_TYPE_ACCOUNT = 1;
 export const API_KEY_TYPE_APPLICATION = 2;
@@ -11,6 +12,8 @@ const apiKeySelect = {
   identifier: true,
   memo: true,
   keyType: true,
+  permissions: true,
+  allowedIps: true,
   lastUsedAt: true,
   expiresAt: true,
   createdAt: true,
@@ -26,7 +29,12 @@ export async function listApiKeysForUser(userId: string) {
 
 export async function createApiKeyForUser(
   userId: string,
-  data: { memo: string; keyType: number },
+  data: {
+    memo: string;
+    keyType: number;
+    permissions?: string[] | null;
+    allowedIps?: string[] | null;
+  },
 ) {
   if (data.keyType === API_KEY_TYPE_APPLICATION && !data.memo.trim()) {
     throw Object.assign(new Error('Application API keys require a memo describing their use'), {
@@ -41,6 +49,16 @@ export async function createApiKeyForUser(
       ? new Date(Date.now() + APPLICATION_KEY_TTL_MS)
       : null;
 
+  const permissions =
+    data.keyType === API_KEY_TYPE_APPLICATION
+      ? normalizeApplicationPermissions(data.permissions ?? undefined)
+      : null;
+
+  const allowedIps =
+    data.allowedIps && data.allowedIps.length > 0
+      ? data.allowedIps.map((ip) => ip.trim()).filter(Boolean)
+      : null;
+
   const key = await prisma.apiKey.create({
     data: {
       userId,
@@ -49,6 +67,8 @@ export async function createApiKeyForUser(
       memo: data.memo.trim(),
       keyType: data.keyType,
       expiresAt,
+      permissions: permissions ?? undefined,
+      allowedIps: allowedIps ?? undefined,
     },
     select: apiKeySelect,
   });

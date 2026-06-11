@@ -8,14 +8,29 @@ import { executeSchedule } from '../services/schedule-runner.js';
 import { wingsForNode } from '../services/wings-client.js';
 import { signWingsJwt } from '../lib/auth.js';
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
+import { sendClientError } from '../lib/safe-errors.js';
 
-const taskSchema = z.object({
-  action: z.enum(['power', 'command', 'backup']),
-  payload: z.string().default(''),
-  sequenceId: z.number().int().min(0),
-  timeOffset: z.number().int().min(0).default(0),
-  continueOnFailure: z.boolean().default(false),
-});
+const POWER_ACTIONS = ['start', 'stop', 'restart', 'kill'] as const;
+
+const taskSchema = z
+  .object({
+    action: z.enum(['power', 'command', 'backup']),
+    payload: z.string().default(''),
+    sequenceId: z.number().int().min(0),
+    timeOffset: z.number().int().min(0).default(0),
+    continueOnFailure: z.boolean().default(false),
+  })
+  .superRefine((task, ctx) => {
+    if (task.action === 'power' && task.payload.trim()) {
+      if (!POWER_ACTIONS.includes(task.payload.trim() as (typeof POWER_ACTIONS)[number])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Power task payload must be one of: ${POWER_ACTIONS.join(', ')}`,
+          path: ['payload'],
+        });
+      }
+    }
+  });
 
 export async function backupRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);

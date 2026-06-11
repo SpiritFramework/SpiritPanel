@@ -1,8 +1,15 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { FastifyRequest } from 'fastify';
 import { getConfig } from './env.js';
 import { assertTokenCritHeaderSupported } from './jwt-crit.js';
+import { JWT_HS256_VERIFY } from './jwt-options.js';
+import {
+  parseAllowedIps,
+  parseApplicationPermissions,
+  type ApplicationApiKeyContext,
+} from './application-scopes.js';
 import { prisma } from './prisma.js';
 import { getSessionToken } from './session-cookie.js';
 
@@ -36,13 +43,13 @@ export function signToken(user: SessionUser): string {
   return jwt.sign(
     { sub: user.id, email: user.email, role: user.role, tv: user.tokenVersion },
     getConfig().jwtSecret,
-    { expiresIn: sessionExpiresIn(user.role) } as jwt.SignOptions,
+    { algorithm: 'HS256', expiresIn: sessionExpiresIn(user.role) } as jwt.SignOptions,
   );
 }
 
 export function verifyToken(token: string): JwtPayload {
   assertTokenCritHeaderSupported(token);
-  return jwt.verify(token, getConfig().jwtSecret) as JwtPayload;
+  return jwt.verify(token, getConfig().jwtSecret, JWT_HS256_VERIFY) as JwtPayload;
 }
 
 export async function invalidateUserSessions(userId: string): Promise<void> {
@@ -57,7 +64,17 @@ export async function verifyApiKey(identifier: string, token: string) {
   return result?.user ?? null;
 }
 
-export async function verifyApiKeyDetailed(identifier: string, token: string) {
+export interface VerifiedApiKey {
+  user: NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
+  keyType: number;
+  keyId: string;
+  applicationKey?: ApplicationApiKeyContext;
+}
+
+export async function verifyApiKeyDetailed(
+  identifier: string,
+  token: string,
+): Promise<VerifiedApiKey | null> {
   const key = await prisma.apiKey.findUnique({ where: { identifier } });
   if (!key) return null;
   if (key.expiresAt && key.expiresAt < new Date()) return null;
@@ -69,7 +86,20 @@ export async function verifyApiKeyDetailed(identifier: string, token: string) {
   });
   const user = await prisma.user.findUnique({ where: { id: key.userId } });
   if (!user) return null;
-  return { user, keyType: key.keyType };
+
+  const applicationKey: ApplicationApiKeyContext = {
+    id: key.id,
+    identifier: key.identifier,
+    permissions: parseApplicationPermissions(key.permissions),
+    allowedIps: parseAllowedIps(key.allowedIps),
+  };
+
+  return {
+    user,
+    keyType: key.keyType,
+    keyId: key.id,
+    applicationKey,
+  };
 }
 
 async function verifySessionJwt(bearer: string) {
@@ -86,7 +116,12 @@ async function verifySessionJwt(bearer: string) {
 
 export async function getAuthFromRequest(
   request: FastifyRequest,
-): Promise<{ user: NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>; method: 'jwt' | 'api_key'; keyType?: number } | null> {
+): Promise<{
+  user: NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
+  method: 'jwt' | 'api_key';
+  keyType?: number;
+  applicationKey?: ApplicationApiKeyContext;
+} | null> {
   const header = request.headers.authorization;
   let bearer: string | null = null;
 
@@ -104,7 +139,12 @@ export async function getAuthFromRequest(
     const secret = bearer.slice(dotIndex + 1);
     const result = await verifyApiKeyDetailed(identifier, secret);
     if (!result) return null;
-    return { user: result.user, method: 'api_key', keyType: result.keyType };
+    return {
+      user: result.user,
+      method: 'api_key',
+      keyType: result.keyType,
+      applicationKey: result.applicationKey,
+    };
   }
 
   return verifySessionJwt(bearer);
@@ -122,7 +162,7 @@ export function signWingsJwt(
   secret?: string,
 ): string {
   const key = secret ?? getConfig().appKey.replace('base64:', '');
-  return jwt.sign(claims, key, { expiresIn } as jwt.SignOptions);
+  return jwt.sign(claims, key, { algorithm: 'HS256', expiresIn } as jwt.SignOptions);
 }
 
 export async function hashApiToken(token: string): Promise<string> {

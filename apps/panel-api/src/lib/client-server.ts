@@ -1,6 +1,7 @@
 import type { FastifyRequest } from 'fastify';
 import { prisma } from './prisma.js';
 import { logActivity } from '../services/activity.js';
+import { isAdminServerSupportEnabled } from './panel-settings.js';
 
 export function requestIp(request: FastifyRequest): string {
   return request.ip ?? 'unknown';
@@ -29,7 +30,8 @@ export async function getServerAccess(serverId: string, userId: string) {
   });
   if (!user) return null;
 
-  if (isPanelAdmin(user)) {
+  const supportEnabled = await isAdminServerSupportEnabled();
+  if (user.rootAdmin && supportEnabled) {
     const server = await prisma.server.findUnique({ where: { id: serverId } });
     if (!server) return null;
     return { server, isOwner: false, permissions: ['*'] as string[], isAdminSupport: true as const };

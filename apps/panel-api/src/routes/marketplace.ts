@@ -22,6 +22,8 @@ import {
   isMarketplaceCatalogAllowed,
   isMarketplaceGithubInstallsAllowed,
 } from '../lib/panel-settings.js';
+import { EXPENSIVE_ROUTE_RATE_LIMIT } from '../lib/rate-limits.js';
+import { sendClientError } from '../lib/safe-errors.js';
 import { getFeaturedFivemScripts, getFeaturedRepoMeta } from '../services/github-featured.js';
 import { resolveGithubRepo, searchGithubRepos } from '../services/github-repo.js';
 import {
@@ -39,10 +41,16 @@ import {
   updateGithubResource,
 } from '../services/marketplace-github-installer.js';
 
-function marketplaceError(reply: import('fastify').FastifyReply, err: unknown) {
+function marketplaceError(
+  reply: import('fastify').FastifyReply,
+  err: unknown,
+  log?: import('fastify').FastifyBaseLogger,
+) {
   const statusCode = (err as { statusCode?: number }).statusCode ?? 500;
-  const message = err instanceof Error ? err.message : 'Marketplace request failed';
-  return reply.status(statusCode).send({ error: message });
+  if (statusCode >= 400 && statusCode < 500 && err instanceof Error) {
+    return reply.status(statusCode).send({ error: err.message });
+  }
+  return sendClientError(reply, statusCode >= 500 ? statusCode : 500, 'marketplace', log, err);
 }
 
 export async function marketplaceRoutes(app: FastifyInstance) {
@@ -123,11 +131,11 @@ export async function marketplaceRoutes(app: FastifyInstance) {
       });
     } catch (err) {
       request.log.error({ err }, 'Marketplace catalog load failed');
-      return marketplaceError(reply, err);
+      return marketplaceError(reply, err, request.log);
     }
   });
 
-  app.post('/servers/:id/marketplace/install', async (request, reply) => {
+  app.post('/servers/:id/marketplace/install', { config: EXPENSIVE_ROUTE_RATE_LIMIT }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({ pluginId: z.string().min(1) }).parse(request.body);
 
@@ -143,9 +151,7 @@ export async function marketplaceRoutes(app: FastifyInstance) {
       });
       return { success: true, install };
     } catch (err) {
-      const statusCode = (err as { statusCode?: number }).statusCode ?? 502;
-      const message = err instanceof Error ? err.message : 'Install failed';
-      return reply.status(statusCode).send({ error: message });
+      return marketplaceError(reply, err, request.log);
     }
   });
 
@@ -165,9 +171,7 @@ export async function marketplaceRoutes(app: FastifyInstance) {
       });
       return { success: true };
     } catch (err) {
-      const statusCode = (err as { statusCode?: number }).statusCode ?? 502;
-      const message = err instanceof Error ? err.message : 'Uninstall failed';
-      return reply.status(statusCode).send({ error: message });
+      return marketplaceError(reply, err, request.log);
     }
   });
 
@@ -187,9 +191,7 @@ export async function marketplaceRoutes(app: FastifyInstance) {
       });
       return { success: true, install };
     } catch (err) {
-      const statusCode = (err as { statusCode?: number }).statusCode ?? 502;
-      const message = err instanceof Error ? err.message : 'Update failed';
-      return reply.status(statusCode).send({ error: message });
+      return marketplaceError(reply, err, request.log);
     }
   });
 
@@ -442,7 +444,7 @@ export async function adminMarketplaceRoutes(app: FastifyInstance) {
       });
     } catch (err) {
       request.log.error({ err }, 'Admin marketplace plugin list failed');
-      return marketplaceError(reply, err);
+      return marketplaceError(reply, err, request.log);
     }
   });
 

@@ -14,6 +14,8 @@ import {
   testDatabaseHostConnection,
 } from '../lib/database-provision.js';
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
+import { assertPublicDatabaseHost } from '../lib/network-guard.js';
+import { sendClientError } from '../lib/safe-errors.js';
 
 const REMOTE_HOST_PATTERN = /^[%a-zA-Z0-9._-]+$/;
 
@@ -289,6 +291,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     if (!node) return reply.status(404).send({ error: 'Not found' });
 
     try {
+      assertPublicDatabaseHost(body.host.trim());
       await testDatabaseHostConnection({
         host: body.host.trim(),
         port: body.port,
@@ -297,9 +300,12 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
       });
       return { ok: true };
     } catch (err) {
-      return reply.status(422).send({
-        error: err instanceof Error ? err.message : String(err),
-      });
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      if (statusCode === 422 && err instanceof Error) {
+        return reply.status(422).send({ error: err.message });
+      }
+      request.log.error({ err }, 'Database host connection test failed');
+      return reply.status(422).send({ error: 'Could not connect to the database host' });
     }
   });
 
@@ -334,6 +340,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     const username = body.username.trim();
 
     try {
+      assertPublicDatabaseHost(host);
       await testDatabaseHostConnection({
         host,
         port: body.port,
@@ -341,9 +348,12 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
         password: body.password,
       });
     } catch (err) {
-      return reply.status(422).send({
-        error: `Could not connect to database host: ${err instanceof Error ? err.message : String(err)}`,
-      });
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+      if (statusCode === 422 && err instanceof Error) {
+        return reply.status(422).send({ error: err.message });
+      }
+      request.log.error({ err, nodeId }, 'Database host connection test failed');
+      return reply.status(422).send({ error: 'Could not connect to the database host' });
     }
 
     try {
@@ -390,6 +400,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
 
     if (body.host || body.port || body.username || body.password) {
       try {
+        assertPublicDatabaseHost(nextHost);
         await testDatabaseHostConnection({
           host: nextHost,
           port: nextPort,
@@ -397,9 +408,12 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
           password: nextPassword,
         });
       } catch (err) {
-        return reply.status(422).send({
-          error: `Could not connect to database host: ${err instanceof Error ? err.message : String(err)}`,
-        });
+        const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+        if (statusCode === 422 && err instanceof Error) {
+          return reply.status(422).send({ error: err.message });
+        }
+        request.log.error({ err, nodeId, hostId }, 'Database host connection test failed');
+        return reply.status(422).send({ error: 'Could not connect to the database host' });
       }
     }
 

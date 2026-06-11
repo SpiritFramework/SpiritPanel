@@ -1,3 +1,4 @@
+import { Readable, Transform } from 'node:stream';
 import type { Node } from '@prisma/client';
 
 export interface FeatherWingsFileEntry {
@@ -334,15 +335,75 @@ export class WingsClient {
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`FeatherWings POST ${path} failed (${res.status}): ${text || res.statusText}`);
+        throw new WingsError(
+          `FeatherWings POST ${path} failed (${res.status}): ${text || res.statusText}`,
+          res.status,
+        );
       }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        throw new Error(`FeatherWings upload to ${path} timed out`);
+        throw new WingsError(`FeatherWings upload to ${path} timed out`, undefined, true);
       }
-      throw e;
+      throw e instanceof WingsError ? e : this.toWingsError(e, 'POST', path, timeoutMs);
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  /** Stream upload without buffering the entire file in panel memory. */
+  async uploadFileStream(
+    uuid: string,
+    file: string,
+    source: Readable,
+    maxBytes: number,
+    timeoutMs = 120_000,
+  ): Promise<void> {
+    const path = `/api/servers/${uuid}/files/write?file=${encodeURIComponent(file)}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let bytes = 0;
+
+    const limited = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        bytes += chunk.length;
+        if (bytes > maxBytes) {
+          cb(Object.assign(new Error('File too large'), { statusCode: 413 }));
+          return;
+        }
+        cb(null, chunk);
+      },
+    });
+
+    const body = source.pipe(limited);
+
+    try {
+      const res = await fetch(`${this.baseUrl()}${path}`, {
+        method: 'POST',
+        headers: {
+          Authorization: this.authHeader(),
+          'Content-Type': 'application/octet-stream',
+        },
+        body: Readable.toWeb(body) as ReadableStream,
+        signal: controller.signal,
+        // Required for streaming request bodies in Node.js fetch.
+        duplex: 'half',
+      } as RequestInit);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new WingsError(
+          `FeatherWings POST ${path} failed (${res.status}): ${text || res.statusText}`,
+          res.status,
+        );
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        throw new WingsError(`FeatherWings upload to ${path} timed out`, undefined, true);
+      }
+      throw e instanceof WingsError ? e : this.toWingsError(e, 'POST', path, timeoutMs);
+    } finally {
+      clearTimeout(timeout);
+      source.destroy();
+      limited.destroy();
     }
   }
 

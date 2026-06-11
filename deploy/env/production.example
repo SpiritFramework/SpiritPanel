@@ -19,9 +19,12 @@ NODE_ENV=production
 PORT=3000
 HOST=127.0.0.1
 
-# --- Redis ---
+# --- Redis (required when schedule worker is enabled) ---
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
+REDIS_PASSWORD="CHANGE_ME_GENERATE_WITH_OPENSSL"
+# REDIS_TLS=true
+# REDIS_ALLOW_INSECURE=true
 # DISABLE_SCHEDULE_WORKER=true
 
 # --- First deploy seed (required — installer sets these) ---

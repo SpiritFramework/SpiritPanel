@@ -12,7 +12,8 @@
     "db:push": "prisma db push",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "tsx --test src/**/*.test.ts"
+    "test": "tsx --test src/**/*.test.ts",
+    "audit:security": "pnpm audit --audit-level moderate"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",

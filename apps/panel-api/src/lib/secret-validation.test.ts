@@ -25,6 +25,10 @@ describe('secret validation', () => {
       appKey: 'app-' + 'y'.repeat(32),
       apiUrl: 'https://panel.example.com',
       databaseUrl: 'mysql://user:pass@127.0.0.1:3306/spirit_panel',
+      host: '127.0.0.1',
+      redisPassword: 'redis-' + 'z'.repeat(24),
+      redisAllowInsecure: false,
+      disableScheduleWorker: false,
     };
     assert.doesNotThrow(() => assertProductionSecrets(good));
 

@@ -14,6 +14,7 @@ import {
   deleteApiKeyForUser,
   listApiKeysForUser,
 } from '../lib/api-keys.js';
+import { applicationScopeZod } from '../lib/application-scopes.js';
 import { generateDaemonToken, isValidBindIp, parseAllocationPorts } from '@spirit/shared';
 import { parseEggJson } from '@spirit/shared';
 import { buildWingsConfig, serverInclude } from '../services/server-helpers.js';
@@ -2271,11 +2272,19 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/api-keys', async (request) => listApiKeysForUser(request.user!.id));
 
   app.post('/api-keys', async (request, reply) => {
-    const body = z.object({ memo: z.string().trim().min(1).max(255) }).parse(request.body ?? {});
+    const body = z
+      .object({
+        memo: z.string().trim().min(1).max(255),
+        permissions: z.array(applicationScopeZod).optional(),
+        allowedIps: z.array(z.string().min(3).max(45)).optional(),
+      })
+      .parse(request.body ?? {});
     try {
       const key = await createApiKeyForUser(request.user!.id, {
         memo: body.memo,
         keyType: API_KEY_TYPE_APPLICATION,
+        permissions: body.permissions,
+        allowedIps: body.allowedIps,
       });
 
       await logAdminActivity(request, {
@@ -2323,6 +2332,8 @@ export async function adminRoutes(app: FastifyInstance) {
       .object({
         memo: z.string().trim().max(255).default(''),
         keyType: z.enum(['account', 'application']).default('account'),
+        permissions: z.array(applicationScopeZod).optional(),
+        allowedIps: z.array(z.string().min(3).max(45)).optional(),
       })
       .superRefine((data, ctx) => {
         if (data.keyType === 'application' && !data.memo) {
@@ -2342,7 +2353,12 @@ export async function adminRoutes(app: FastifyInstance) {
     }
 
     try {
-      const key = await createApiKeyForUser(id, { memo: body.memo, keyType });
+      const key = await createApiKeyForUser(id, {
+        memo: body.memo,
+        keyType,
+        permissions: keyType === API_KEY_TYPE_APPLICATION ? body.permissions : undefined,
+        allowedIps: keyType === API_KEY_TYPE_APPLICATION ? body.allowedIps : undefined,
+      });
 
       await logAdminActivity(request, {
         event: 'admin.api_key.created',
