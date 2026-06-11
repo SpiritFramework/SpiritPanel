@@ -30,7 +30,7 @@ export function AuthLayout({
   const panelBgClass = usePanelBackgroundClass();
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)]">
+    <div className="flex min-h-[100dvh] min-h-screen bg-[var(--bg)]">
       <aside
         className="login-brand-panel relative hidden w-[44%] shrink-0 flex-col justify-between overflow-hidden p-10 lg:p-12 xl:w-[40%] md:flex"
         data-login-bg={branding.loginBackground || 'gradient'}
@@ -68,7 +68,7 @@ export function AuthLayout({
         <AuthorAttribution variant="sidebar" onDark className="relative mt-4 opacity-90" />
       </aside>
 
-      <main className={`${panelBgClass} flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6`}>
+      <main className={`${panelBgClass} safe-top safe-bottom flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10`}>
         <div className="w-full max-w-[440px]">
           <div className="mb-6 md:hidden">
             <BrandBlock

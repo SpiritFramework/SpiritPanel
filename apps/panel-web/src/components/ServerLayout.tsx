@@ -169,7 +169,7 @@ export function ServerShellInner() {
 
   return (
     <>
-    <div className={`flex overflow-hidden ${panelBgClass} ${adminSupport ? 'h-full min-h-0' : 'h-[100dvh]'}`}>
+    <div className={`flex h-[100dvh] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
       {/* Dedicated server sidebar — navigation only */}
       <aside className="server-sidebar glass-sidebar hidden h-full w-56 shrink-0 flex-col border-r border-[var(--glass-border)] md:flex">
         <div className="border-b border-[var(--border)] p-3">
@@ -244,8 +244,8 @@ export function ServerShellInner() {
       {/* Main content */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Mobile header + tabs */}
-        <header className="glass border-x-0 border-t-0 border-b border-[var(--glass-border)] md:hidden">
-          <div className="p-3 pb-2">
+        <header className="server-mobile-header glass safe-top border-x-0 border-t-0 border-b border-[var(--glass-border)] md:hidden">
+          <div className={`${isFullHeightRoute ? 'px-2.5 py-2' : 'p-3 pb-2'}`}>
             <div className="flex items-center gap-2.5">
               <div
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
@@ -259,12 +259,14 @@ export function ServerShellInner() {
               </div>
             </div>
           </div>
-          <nav className="nav-tabs-scroll flex gap-1 overflow-x-auto border-t border-[var(--border)] px-3 py-2">
-            {navItems.map(({ to, label, icon }) => (
-              <TabNavItem key={to} to={to} icon={icon} label={label} />
-            ))}
-          </nav>
-          {showPower && (
+          <div className="nav-tabs-scroll-hint">
+            <nav className="nav-tabs-scroll flex gap-1 overflow-x-auto border-t border-[var(--border)] px-3 py-2">
+              {navItems.map(({ to, label, icon }) => (
+                <TabNavItem key={to} to={to} icon={icon} label={label} />
+              ))}
+            </nav>
+          </div>
+          {showPower && !isFullHeightRoute && (
             <MobilePowerBar
               access={access}
               server={server}
@@ -284,11 +286,14 @@ export function ServerShellInner() {
           pingState={pingState}
           uptimeMs={uptimeMs}
           uptimeLive={serverOnline}
+          compact={isFullHeightRoute}
         />
 
         <main
           className={`min-h-0 flex-1 md:p-5 ${
-            isFullHeightRoute ? 'flex flex-col overflow-hidden p-4' : 'overflow-y-auto p-4'
+            isFullHeightRoute
+              ? 'flex flex-col overflow-hidden p-2 safe-bottom md:p-5 md:pb-5'
+              : 'overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-4 md:p-5 md:pb-5'
           }`}
         >
           <div
@@ -329,6 +334,7 @@ function ServerOverviewBar({
   pingState,
   uptimeMs,
   uptimeLive,
+  compact = false,
 }: {
   themeGradient: string;
   address: string;
@@ -338,31 +344,40 @@ function ServerOverviewBar({
   pingState: ReturnType<typeof useServerPing>['state'];
   uptimeMs: number | null;
   uptimeLive: boolean;
+  compact?: boolean;
 }) {
   const { server } = useServer();
   const adminSupport = useAdminSupport();
 
   return (
-    <div className="glass shrink-0 border-x-0 border-t-0 border-b border-[var(--glass-border)]">
+    <div
+      className={`server-overview-bar glass shrink-0 border-x-0 border-t-0 border-b border-[var(--glass-border)] ${
+        compact ? 'server-overview-bar--compact' : ''
+      }`}
+    >
       <div className="h-0.5 w-full" style={{ background: themeGradient }} />
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 md:px-5">
+
+      {compact && (
+        <div className="server-overview-compact md:hidden">
+          <CompactBackLink
+            to={adminSupport?.backTo ?? '/servers'}
+            label={adminSupport ? 'Admin' : 'Servers'}
+          />
+          <LiveServerStatus compact />
+          <OverviewAddressButton address={address} onCopy={onCopyAddress} className="min-w-0 flex-1" />
+        </div>
+      )}
+
+      <div className="server-overview-expanded flex flex-wrap items-center gap-x-2 gap-y-2 px-2 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 md:px-5">
         <CompactBackLink
           to={adminSupport?.backTo ?? '/servers'}
           label={adminSupport ? 'Admin server' : 'My servers'}
+          className={compact ? 'hidden md:inline-flex' : undefined}
         />
 
         <OverviewDivider className="hidden sm:block" />
 
-        <button
-          type="button"
-          onClick={onCopyAddress}
-          title="Copy server address"
-          className="group flex min-w-0 w-full basis-full items-center gap-2 rounded-lg border border-[var(--border)]/80 bg-[var(--bg-elevated)]/50 px-2.5 py-1.5 text-left transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:bg-[var(--bg-elevated)] sm:w-auto sm:max-w-xs md:max-w-sm"
-        >
-          <Network className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] group-hover:accent-text" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] font-medium">{address}</span>
-          <Copy className="h-3 w-3 shrink-0 text-[var(--muted)] opacity-60 transition group-hover:opacity-100 group-hover:accent-text" />
-        </button>
+        <OverviewAddressButton address={address} onCopy={onCopyAddress} />
 
         {copied && <span className="text-[10px] font-medium accent-text">Copied</span>}
 
@@ -372,22 +387,47 @@ function ServerOverviewBar({
 
         <OverviewDivider className="hidden md:block" />
 
-        <ServerMetricsNav
-          compact
-          ping={ping}
-          pingState={pingState}
-          uptimeMs={uptimeMs}
-          uptimeLive={uptimeLive}
-        />
+        <div className="hidden sm:contents">
+          <ServerMetricsNav
+            compact
+            ping={ping}
+            pingState={pingState}
+            uptimeMs={uptimeMs}
+            uptimeLive={uptimeLive}
+          />
+        </div>
 
-        <div className="flex w-full shrink-0 items-center gap-2 md:ml-auto md:w-auto">
-          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--bg-elevated)]/40 px-2.5 py-1 text-[11px] text-[var(--muted)]">
+        <div className="hidden min-w-0 shrink items-center gap-2 md:ml-auto md:flex">
+          <span className="inline-flex max-w-[8rem] min-w-0 items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--bg-elevated)]/40 px-2 py-1 text-[11px] text-[var(--muted)] lg:max-w-[10rem]">
             <Server className="h-3 w-3 shrink-0" />
             <span className="truncate font-medium text-[var(--text)]">{server.node.name}</span>
           </span>
         </div>
       </div>
     </div>
+  );
+}
+
+function OverviewAddressButton({
+  address,
+  onCopy,
+  className = '',
+}: {
+  address: string;
+  onCopy: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      title={`${address} — click to copy`}
+      className={`group flex min-w-0 max-w-[8rem] shrink items-center gap-1.5 overflow-hidden rounded-lg border border-[var(--border)]/80 bg-[var(--bg-elevated)]/50 px-2 py-1.5 text-left transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:bg-[var(--bg-elevated)] sm:max-w-[11rem] md:max-w-[12rem] ${className}`}
+    >
+      <Network className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] group-hover:accent-text" />
+      <span className="min-w-0 truncate font-mono text-[11px] font-medium">{address}</span>
+      <Copy className="h-3 w-3 shrink-0 text-[var(--muted)] opacity-60 transition group-hover:opacity-100 group-hover:accent-text" />
+    </button>
   );
 }
 
@@ -490,7 +530,7 @@ function MobilePowerBar({
 export function ServerLoadingShell() {
   const panelBgClass = usePanelBackgroundClass();
   return (
-    <div className={`flex min-h-screen items-center justify-center ${panelBgClass}`}>
+    <div className={`flex min-h-[100dvh] min-h-screen items-center justify-center ${panelBgClass}`}>
       <Spinner className="h-8 w-8" />
     </div>
   );

@@ -182,6 +182,7 @@ body {
   color: var(--text);
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -3746,7 +3747,125 @@ body {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
-/* Smooth horizontal scroll for wide tables on touch devices */
+.safe-bottom-none {
+  padding-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .md\:safe-bottom-none {
+    padding-bottom: 0;
+  }
+}
+
+/* Horizontal tab strips — fade hints scroll affordance on phones */
+.nav-tabs-scroll-hint {
+  position: relative;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 0.75rem,
+    #000 calc(100% - 0.75rem),
+    transparent
+  );
+}
+
+@media (min-width: 768px) {
+  .nav-tabs-scroll-hint {
+    mask-image: none;
+  }
+}
+
+/* Toast / modal / sticky bars clear home indicator */
+.toast-viewport {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  width: auto;
+}
+
+.modal-panel-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  max-height: min(92vh, calc(100dvh - env(safe-area-inset-top, 0) - 1rem));
+}
+
+.admin-save-bar {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* Coarse pointer — minimum tap targets without changing desktop layout */
+@media (pointer: coarse) {
+  .mobile-icon-btn {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  .console-toolbar-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .console-send-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .console-filter-chip {
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .auth-field-toggle {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Server overview — compact strip on console / file editor (mobile) */
+.server-overview-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
+}
+
+.server-overview-bar--compact .server-overview-expanded {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .server-overview-bar--compact .server-overview-compact {
+    display: none;
+  }
+
+  .server-overview-bar--compact .server-overview-expanded {
+    display: flex;
+  }
+}
+
+/* Console command bar — home indicator padding on phones */
+@media (max-width: 767px) {
+  .console-command-bar {
+    padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+  }
+
+  .console-terminal-footer {
+    display: none;
+  }
+
+  .console-terminal-header {
+    padding: 0.5rem 0.625rem;
+    gap: 0.375rem 0.5rem;
+  }
+
+  .admin-support-banner--compact .admin-support-banner-detail {
+    display: none;
+  }
+}
+
 .table-scroll-touch {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;

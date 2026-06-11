@@ -56,7 +56,7 @@ export function MobileShell({
             type="button"
             aria-label="Close menu"
             onClick={() => setNavOpen(false)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+            className="mobile-icon-btn inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -70,7 +70,7 @@ export function MobileShell({
             type="button"
             aria-label="Open menu"
             onClick={() => setNavOpen(true)}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] transition hover:bg-[var(--surface-hover)]"
+            className="mobile-icon-btn inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] transition hover:bg-[var(--surface-hover)]"
           >
             <Menu className="h-4 w-4" />
           </button>

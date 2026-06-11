@@ -69,6 +69,7 @@ export function AdminServerManageShell() {
     <AdminSupportProvider owner={detail.owner} serverName={detail.name} backTo={backTo}>
       <div className={`flex h-dvh flex-col overflow-hidden ${panelBgClass}`}>
         <AdminSupportBanner
+          compact
           owner={detail.owner}
           serverName={detail.name}
           eggName={detail.egg.name}

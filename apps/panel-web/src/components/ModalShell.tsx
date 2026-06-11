@@ -31,7 +31,7 @@ export function ModalShell({
         aria-label="Close"
       />
       <div
-        className={`modal-panel-enter relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] sm:rounded-2xl ${
+        className={`modal-panel-enter modal-panel-safe relative flex w-full flex-col overflow-hidden rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] sm:max-h-[92vh] sm:rounded-2xl ${
           wide ? 'sm:max-w-xl' : 'sm:max-w-lg'
         }`}
         onClick={(e) => e.stopPropagation()}

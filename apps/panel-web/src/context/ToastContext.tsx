@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-full max-w-sm flex-col gap-2">
+      <div className="toast-viewport pointer-events-none fixed z-[100] flex w-full max-w-sm flex-col gap-2">
         {toasts.map((t) => {
           const meta = TONE_META[t.tone];
           const Icon = meta.icon;

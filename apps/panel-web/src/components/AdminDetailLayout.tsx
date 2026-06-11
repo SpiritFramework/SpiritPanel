@@ -496,7 +496,7 @@ export function AdminSaveBar({
   if (!showBar) return null;
 
   return (
-    <div className="sticky bottom-0 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-sm">
+    <div className="admin-save-bar sticky bottom-0 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-sm">
       <div className="mr-auto min-w-0 text-[11px]">
         {error && <p className="text-red-400">{error}</p>}
         {!error && saved && <p className="text-green-400">Changes saved</p>}

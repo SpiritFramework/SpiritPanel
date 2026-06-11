@@ -85,7 +85,7 @@ export function TabNavItem({
       to={to}
       end={end}
       className={({ isActive }) =>
-        `nav-tab inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+        `nav-tab inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition sm:px-3 ${
           isActive
             ? 'nav-tab-active accent-bg text-white'
             : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
@@ -98,14 +98,22 @@ export function TabNavItem({
   );
 }
 
-export function CompactBackLink({ to, label }: { to: string; label: string }) {
+export function CompactBackLink({
+  to,
+  label,
+  className = '',
+}: {
+  to: string;
+  label: string;
+  className?: string;
+}) {
   return (
     <Link
       to={to}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--border)]/80 hover:bg-[var(--bg-elevated)]/60 hover:accent-text"
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--border)]/80 hover:bg-[var(--bg-elevated)]/60 hover:accent-text ${className}`}
     >
       <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-      <span>{label}</span>
+      <span className="max-w-[5.5rem] truncate sm:max-w-none">{label}</span>
     </Link>
   );
 }
