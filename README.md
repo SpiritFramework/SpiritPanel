@@ -202,18 +202,6 @@ Spirit-Panel is designed for self-hosting environments. You are responsible for 
 
 ---
 
-## 🖼️ Replace this later
-
-Just swap:
-
-```
-https://your-image-url.com/image.png
-```
-
-with your real panel screenshot (GitHub raw, CDN, or your domain).
-
----
-
 ## 📄 License
 
 Licensed under **GNU AGPL-3.0**.
