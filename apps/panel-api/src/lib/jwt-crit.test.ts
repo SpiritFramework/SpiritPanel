@@ -9,14 +9,14 @@ function signWithCrit(crit: string[], extraHeader: Record<string, unknown> = {})
     'test-secret',
     {
       algorithm: 'HS256',
-      header: { crit, ...extraHeader },
-    },
+      header: { alg: 'HS256', typ: 'JWT', crit, ...extraHeader },
+    } as jwt.SignOptions,
   );
 }
 
 describe('jwt crit header validation', () => {
   it('allows tokens without crit', () => {
-    const token = jwt.sign({ sub: 'user' }, 'test-secret', { algorithm: 'HS256' });
+    const token = jwt.sign({ sub: 'user' }, 'test-secret', { algorithm: 'HS256' } as jwt.SignOptions);
     assert.doesNotThrow(() => assertTokenCritHeaderSupported(token));
   });
 

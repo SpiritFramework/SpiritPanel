@@ -31,7 +31,7 @@ export function assertJwtCritHeaderSupported(header: jwt.JwtHeader | undefined):
   }
 
   const seen = new Set<string>();
-  const headerRecord = header as Record<string, unknown>;
+  const headerRecord = header as unknown as Record<string, unknown>;
 
   for (const ext of crit) {
     if (typeof ext !== 'string' || ext.length === 0) {
