@@ -3651,6 +3651,7 @@ body {
   }
 }
 
+.nav-item-active {
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 92%);
   color: var(--accent-hover);
   box-shadow:
