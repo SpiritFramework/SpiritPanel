@@ -198,7 +198,7 @@ The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are
 
 | Layer | Mitigation |
 |-------|------------|
-| **Content-Security-Policy** | `script-src 'self'` on static UI (Nginx + Vite dev). Inline boot script moved to `/theme-bootstrap.js`. |
+| **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled. Delivered via **Nginx/Vite headers** (not `<meta>`). |
 | **URL sinks** | Avatar, logo, egg icon, support, markdown, and console link URLs are validated client-side (`sanitizeImageSrc` / `sanitizeLinkHref`) and server-side (`safe-url.ts`) — only `http:`/`https:` or same-origin asset paths. |
 | **Branding uploads** | SVG blocked; MIME allowlist on upload. |
 | **Email template preview** | Sandboxed iframe (`sandbox=""`) with no script execution. |
