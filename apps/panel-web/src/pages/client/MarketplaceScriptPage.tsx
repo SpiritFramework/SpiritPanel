@@ -1,805 +1,421 @@
-import { useCallback, useEffect, useState } from 'react';
-
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-
+import { Link, useNavigate } from 'react-router-dom';
 import {
-
   ArrowLeft,
-
   Calendar,
-
   CheckCircle2,
-
   CircleDot,
-
+  Download,
   ExternalLink,
-
   FileText,
-
   FolderOpen,
-
   GitBranch,
-
   GitFork,
-
   Github,
-
   Globe,
-
   Package,
-
   Scale,
-
   Star,
-
   Tag,
-
 } from 'lucide-react';
-
-import { api, type GithubRepoResolved } from '../../lib/api';
 import {
-  getMarketplaceCache,
-  marketplaceCacheKey,
-  setMarketplaceCache,
-} from '../../lib/marketplace-cache';
-
-import {
-
   formatRelativeTime,
-
   formatStars,
-
   languageAccent,
-
   MARKETPLACE_CATEGORY_LABELS,
-
 } from '../../lib/marketplace-format';
-
 import { useMarketplacePaths } from '../../lib/marketplace-paths';
-
-import type { MarketplaceScriptLocationState } from '../../lib/marketplace-script-state';
-
+import { useMarketplaceScriptResolved } from '../../hooks/useMarketplaceScriptResolved';
 import { useServer } from '../../context/ServerContext';
-
-import { useToast } from '../../context/ToastContext';
-
 import { getServerAccess } from '../../lib/server-access';
-
 import { isFiveMServer } from '../../lib/server-eggs';
-
 import { Button } from '../../components/Layout';
-
 import { Spinner } from '../../components/ui';
-
 import { MarkdownReadme } from '../../components/MarkdownReadme';
-
 import { ServerErrorBanner, ServerPage } from '../../components/server/ServerPage';
 
-import { MarketplaceScriptInstallPanel } from './MarketplaceScriptInstallPanel';
-
-
-
 function formatDate(iso: string | undefined): string {
-
   if (!iso) return '—';
-
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-
 }
 
-
-
-function StatTile({
-
+function HeroStat({
   label,
-
   value,
-
   icon: Icon,
-
   accent,
-
 }: {
-
   label: string;
-
   value: string;
-
   icon: typeof Star;
-
   accent?: string;
-
 }) {
-
   return (
-
-    <div className="mp-script-stat-tile">
-
-      <span className="mp-script-stat-tile-icon" style={accent ? { color: accent } : undefined}>
-
-        <Icon className="h-4 w-4" />
-
+    <div className="mp-script-stat">
+      <span className="mp-script-stat-icon" style={accent ? { color: accent } : undefined}>
+        <Icon className="h-4 w-4" aria-hidden />
       </span>
-
-      <div className="min-w-0">
-
-        <p className="mp-script-stat-tile-value">{value}</p>
-
-        <p className="mp-script-stat-tile-label">{label}</p>
-
+      <div className="mp-script-stat-body">
+        <p className="mp-script-stat-value">{value}</p>
+        <p className="mp-script-stat-label">{label}</p>
       </div>
-
     </div>
-
   );
-
 }
 
+function DetailRow({
+  label,
+  value,
+  icon: Icon,
+  mono,
+  accent,
+  href,
+}: {
+  label: string;
+  value: string;
+  icon: typeof GitBranch;
+  mono?: boolean;
+  accent?: boolean;
+  href?: string;
+}) {
+  return (
+    <div className="mp-script-detail-row">
+      <div className="mp-script-detail-label">
+        <Icon className="h-4 w-4" aria-hidden />
+        {label}
+      </div>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="mp-script-detail-link">
+          <span className="mp-script-detail-value">{value}</span>
+          <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </a>
+      ) : (
+        <p
+          className={`mp-script-detail-value${mono ? ' mp-script-detail-value--mono' : ''}${accent ? ' mp-script-detail-value--accent' : ''}`}
+        >
+          {value}
+        </p>
+      )}
+    </div>
+  );
+}
 
+function ScriptHeroSkeleton({
+  displayName,
+  displayOwner,
+  displayRepo,
+  aboutText,
+}: {
+  displayName: string;
+  displayOwner: string;
+  displayRepo: string;
+  aboutText: string;
+}) {
+  return (
+    <header className="mp-script-hero mp-script-hero--loading">
+      <div className="mp-hero-glow" aria-hidden />
+      <div className="mp-script-hero-top">
+        <div className="mp-repo-avatar mp-repo-avatar--lg">
+          <Github className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="mp-script-hero-name">{displayName}</h1>
+          <p className="mp-script-hero-repo">
+            {displayOwner}
+            <span>/</span>
+            {displayRepo}
+          </p>
+          {aboutText ? <p className="mp-script-hero-lead">{aboutText}</p> : null}
+        </div>
+        <Spinner className="h-7 w-7 shrink-0 text-white/70" />
+      </div>
+    </header>
+  );
+}
 
 export function MarketplaceScriptPage() {
-
   const navigate = useNavigate();
-
-  const location = useLocation();
-
-  const toast = useToast();
-
   const { server } = useServer();
-
   const access = getServerAccess(server);
-
-  const { resolvedId, base, owner, repo } = useMarketplacePaths();
-
-  const preview = (location.state as MarketplaceScriptLocationState | null)?.preview;
-
-
-
-  const [resolved, setResolved] = useState<GithubRepoResolved | null>(null);
-
-  const [loading, setLoading] = useState(true);
-
-  const [error, setError] = useState('');
-
-
-
-  const load = useCallback(async () => {
-
-    if (!resolvedId || !owner || !repo) {
-
-      setError('Invalid script URL');
-
-      setLoading(false);
-
-      return;
-
-    }
-
-
-
-    setLoading(true);
-
-    setError('');
-
-
-
-    try {
-      const cacheKey = marketplaceCacheKey(resolvedId, 'resolve', owner, repo);
-      const cached = getMarketplaceCache<GithubRepoResolved>(cacheKey);
-      const repoData =
-        cached ?? (await api.client.marketplaceGithubResolve(resolvedId, `${owner}/${repo}`));
-
-      if (!cached) {
-        setMarketplaceCache(cacheKey, repoData, 10 * 60 * 1000);
-      }
-
-      setResolved(repoData);
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : 'Could not load script');
-
-      setResolved(null);
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  }, [resolvedId, owner, repo]);
-
-
-
-  useEffect(() => {
-
-    void load();
-
-  }, [load]);
-
-
-
-  async function handleInstalled() {
-
-    toast.success('Resource installed');
-
-    navigate(`${base}?tab=installed`);
-
-  }
-
-
+  const { base, scriptInstallPath } = useMarketplacePaths();
+  const {
+    resolved,
+    loading,
+    error,
+    preview,
+    displayName,
+    displayOwner,
+    displayRepo,
+  } = useMarketplaceScriptResolved();
 
   if (server.marketplaceEnabled === false) {
-
     return (
-
       <ServerPage>
-
         <div className="mp-empty-state">
-
           <Package className="h-10 w-10 text-[var(--muted)]" />
-
           <p className="mt-3 font-medium">Marketplace disabled</p>
-
         </div>
-
       </ServerPage>
-
     );
-
   }
-
-
 
   if (!isFiveMServer(server)) {
-
     return (
-
       <ServerPage>
-
         <div className="mp-empty-state">
-
           <p className="font-medium">FiveM only</p>
-
         </div>
-
       </ServerPage>
-
     );
-
   }
 
-
-
-  const displayName = resolved?.name ?? preview?.name ?? repo ?? 'Script';
-
-  const displayOwner = resolved?.owner ?? preview?.owner ?? owner ?? '';
-
-  const displayRepo = resolved?.repo ?? preview?.repo ?? repo ?? '';
-
   const aboutText =
-
-    resolved?.featuredBlurb ||
-
-    resolved?.description ||
-
-    preview?.blurb ||
-
-    preview?.description ||
-
-    '';
-
+    resolved?.featuredBlurb || resolved?.description || preview?.blurb || preview?.description || '';
   const category = resolved?.featuredCategory ?? preview?.category;
+  const topics: string[] = resolved?.topics?.length ? resolved.topics : (preview?.topics ?? []);
 
-  const topics = resolved?.topics?.length ? resolved.topics : preview?.topics ?? [];
+  const updatedLabel =
+    resolved?.pushedAt || resolved?.updatedAt
+      ? formatRelativeTime(resolved.pushedAt ?? resolved.updatedAt).replace('Updated ', '')
+      : '—';
 
-
+  const installPath =
+    resolved && access.canInstallMarketplace && !resolved.existingInstall
+      ? scriptInstallPath(resolved.owner, resolved.repo)
+      : null;
 
   return (
-
     <ServerPage>
-
       <div className="mp-shell mp-script-shell">
-
         <Link to={base} className="mp-script-back">
-
-          <ArrowLeft className="h-4 w-4" />
-
+          <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to marketplace
-
         </Link>
 
-
-
         {loading && !resolved ? (
-
-          <div className="mp-script-loading">
-
-            <header className="mp-script-hero mp-script-hero--loading">
-
-              <div className="mp-hero-glow" />
-
-              <div className="mp-repo-avatar mp-repo-avatar--lg">
-
-                <Github className="h-5 w-5" />
-
-              </div>
-
-              <div className="min-w-0 flex-1">
-
-                <h1 className="mp-script-hero-title">{displayName}</h1>
-
-                <p className="mp-script-hero-slug">
-
-                  {displayOwner}<span>/</span>{displayRepo}
-
-                </p>
-
-                {aboutText && <p className="mp-script-hero-desc">{aboutText}</p>}
-
-              </div>
-
-              <Spinner className="h-6 w-6 text-white/80" />
-
-            </header>
-
-          </div>
-
+          <ScriptHeroSkeleton
+            displayName={displayName}
+            displayOwner={displayOwner}
+            displayRepo={displayRepo}
+            aboutText={aboutText}
+          />
         ) : error ? (
-
           <ServerErrorBanner message={error} />
-
         ) : resolved ? (
-
           <>
-
             <header className="mp-script-hero">
-
-              <div className="mp-hero-glow" />
-
-              <div className="mp-script-hero-grid">
-
-                <div>
-
+              <div className="mp-hero-glow" aria-hidden />
+              <div className="mp-script-hero-top">
+                <div className="mp-script-hero-identity">
                   <div className="mp-script-hero-badges">
-
                     <span className="mp-topic-chip mp-topic-chip--fivem">FiveM</span>
-
-                    {category && (
-
+                    {category ? (
                       <span className="mp-cat-badge mp-cat-script">
-
                         {MARKETPLACE_CATEGORY_LABELS[category] ?? category}
-
                       </span>
-
-                    )}
-
-                    {resolved.language && (
-
+                    ) : null}
+                    {resolved.language ? (
                       <span className="mp-script-lang-pill">
-
                         <span
-
                           className="mp-repo-lang-dot"
-
                           style={{ background: languageAccent(resolved.language) }}
-
                         />
-
                         {resolved.language}
-
                       </span>
-
-                    )}
-
+                    ) : null}
                   </div>
 
-                  <div className="mp-script-hero-main">
-
+                  <div className="mp-script-hero-headline">
                     <div className="mp-repo-avatar mp-repo-avatar--lg">
-
                       <Github className="h-5 w-5" />
-
                     </div>
-
                     <div className="min-w-0 flex-1">
-
-                      <h1 className="mp-script-hero-title">{resolved.name}</h1>
-
-                      <p className="mp-script-hero-slug">
-
-                        {resolved.owner}<span>/</span>{resolved.repo}
-
+                      <h1 className="mp-script-hero-name">{resolved.name}</h1>
+                      <p className="mp-script-hero-repo">
+                        {resolved.owner}
+                        <span>/</span>
+                        {resolved.repo}
                       </p>
-
-                      {aboutText && <p className="mp-script-hero-desc">{aboutText}</p>}
-
+                      {aboutText ? <p className="mp-script-hero-lead">{aboutText}</p> : null}
                     </div>
-
                   </div>
 
-                  <div className="mp-script-hero-tags">
-
-                    {(topics.slice(0, 5) ?? []).map((topic) => (
-
-                      <span key={topic} className="mp-topic-chip">
-
-                        {topic}
-
-                      </span>
-
-                    ))}
-
-                  </div>
-
+                  {topics.length > 0 ? (
+                    <div className="mp-script-hero-topics">
+                      {topics.map((topic) => (
+                        <span key={topic} className="mp-topic-chip">
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="mp-script-hero-summary">
-
-                  <div className="mp-script-summary-card">
-
-                    <div className="mp-script-summary-heading">
-
-                      <p className="mp-script-summary-title">Resource snapshot</p>
-
-                      <p className="mp-script-summary-subtitle">Quick install details</p>
-
-                    </div>
-
-                    <dl className="mp-script-summary-list">
-
-                      <div className="mp-script-summary-item">
-
-                        <dt>Owner</dt>
-
-                        <dd>{resolved.owner}</dd>
-
-                      </div>
-
-                      <div className="mp-script-summary-item">
-
-                        <dt>Default branch</dt>
-
-                        <dd>{resolved.defaultBranch}</dd>
-
-                      </div>
-
-                      <div className="mp-script-summary-item">
-
-                        <dt>Latest release</dt>
-
-                        <dd>{resolved.latestReleaseTag ?? 'None'}</dd>
-
-                      </div>
-
-                      <div className="mp-script-summary-item">
-
-                        <dt>Install path</dt>
-
-                        <dd>{resolved.suggested?.installPath ?? 'Standard resources path'}</dd>
-
-                      </div>
-
-                    </dl>
-
-                  </div>
-
-                  <div className="mp-script-stat-grid mp-script-summary-stats">
-
-                    <StatTile label="Stars" value={formatStars(resolved.stars)} icon={Star} accent="#fbbf24" />
-
-                    <StatTile label="Forks" value={formatStars(resolved.forks ?? 0)} icon={GitFork} />
-
-                    <StatTile label="Issues" value={String(resolved.openIssues ?? 0)} icon={CircleDot} />
-
-                  </div>
-
+                <div className="mp-script-hero-actions">
+                  {installPath ? (
+                    <Link to={installPath} className="mp-script-install-btn">
+                      <Download className="h-4 w-4" aria-hidden />
+                      Install to server
+                    </Link>
+                  ) : null}
                   <a
-
                     href={resolved.githubUrl}
-
                     target="_blank"
-
                     rel="noreferrer"
-
-                    className="mp-script-github-btn mp-script-github-btn--hero"
-
+                    className="mp-script-github-btn"
                   >
-
-                    <Github className="h-4 w-4" />
-
+                    <Github className="h-4 w-4" aria-hidden />
                     View on GitHub
-
-                    <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-
+                    <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
                   </a>
-
                 </div>
-
               </div>
 
-
-
-              <div className="mp-script-stat-strip">
-
-                <StatTile label="License" value={resolved.license ?? '—'} icon={Scale} />
-
-                <StatTile
-
-                  label="Updated"
-
-                  value={
-
-                    resolved.pushedAt || resolved.updatedAt
-
-                      ? formatRelativeTime(resolved.pushedAt ?? resolved.updatedAt).replace('Updated ', '')
-
-                      : '—'
-
-                  }
-
-                  icon={Calendar}
-
-                />
-
+              <div className="mp-script-hero-stats" role="list">
+                <HeroStat label="Stars" value={formatStars(resolved.stars)} icon={Star} accent="#fbbf24" />
+                <HeroStat label="Forks" value={formatStars(resolved.forks ?? 0)} icon={GitFork} />
+                <HeroStat label="Open issues" value={String(resolved.openIssues ?? 0)} icon={CircleDot} />
+                <HeroStat label="License" value={resolved.license ?? '—'} icon={Scale} />
+                <HeroStat label="Last updated" value={updatedLabel} icon={Calendar} />
+                <HeroStat label="Default branch" value={resolved.defaultBranch} icon={GitBranch} />
               </div>
-
             </header>
 
-
-
-            {resolved.existingInstall && (
-
+            {resolved.existingInstall ? (
               <div className="mp-script-installed-banner">
-
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
                 <div className="min-w-0 flex-1">
-
-                  <p className="text-sm font-medium text-emerald-300">Already installed on this server</p>
-
-                  <p className="font-mono text-[11px] text-[var(--muted)]">
-
+                  <p className="mp-script-installed-title">Already installed on this server</p>
+                  <p className="mp-script-installed-path">
                     {resolved.existingInstall.installPath} · {resolved.existingInstall.installedRef}
-
                   </p>
-
                 </div>
-
                 <Button variant="subtle" size="sm" onClick={() => navigate(`${base}?tab=installed`)}>
-
                   View installed
-
                 </Button>
-
               </div>
+            ) : null}
 
-            )}
+            {!access.canInstallMarketplace && !resolved.existingInstall ? (
+              <p className="mp-script-install-unavailable">
+                You don&apos;t have permission to install marketplace resources on this server.
+              </p>
+            ) : null}
 
-
-
-            <div className="mp-script-body">
-
-              <div className="mp-script-body-main">
-
-                {resolved.readme ? (
-
-                  <section className="mp-script-panel mp-script-panel--readme">
-
-                    <div className="mp-script-panel-header">
-
-                      <h2 className="mp-script-panel-title">
-
-                        <FileText className="h-4 w-4" />
-
+            <div className="mp-script-main mp-script-main--full">
+              {resolved.readme ? (
+                <section className="mp-script-section mp-script-section--readme">
+                  <header className="mp-script-section-head">
+                    <div>
+                      <h2 className="mp-script-section-title">
+                          <FileText className="h-4 w-4" aria-hidden />
                         Documentation
-
                       </h2>
-
-                      <a
-
-                        href={resolved.githubUrl}
-
-                        target="_blank"
-
-                        rel="noreferrer"
-
-                        className="mp-script-panel-link"
-
-                      >
-
-                        View on GitHub
-
-                        <ExternalLink className="h-3 w-3" />
-
-                      </a>
-
+                      <p className="mp-script-section-desc">README from the repository</p>
                     </div>
-
-                    <div className="mp-readme">
-
-                      <MarkdownReadme source={resolved.readme} />
-
+                    <a
+                      href={resolved.githubUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mp-script-section-link"
+                    >
+                      Open on GitHub
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  </header>
+                  <div className="mp-script-readme">
+                    <MarkdownReadme source={resolved.readme} />
+                  </div>
+                </section>
+              ) : resolved.description ? (
+                <section className="mp-script-section">
+                  <header className="mp-script-section-head">
+                    <div>
+                      <h2 className="mp-script-section-title">About this resource</h2>
+                      <p className="mp-script-section-desc">Repository description</p>
                     </div>
+                  </header>
+                  <p className="mp-script-about">{resolved.description}</p>
+                </section>
+              ) : null}
 
-                  </section>
-
-                ) : resolved.description ? (
-
-                  <section className="mp-script-panel">
-
-                    <h2 className="mp-script-panel-title">About this resource</h2>
-
-                    <p className="mp-script-about-text">{resolved.description}</p>
-
-                  </section>
-
-                ) : null}
-
-
-
-                <div className="mp-script-info-grid">
-                  <section className="mp-script-panel">
-                    <h2 className="mp-script-panel-title">
-                      <FolderOpen className="h-4 w-4" />
+              <section className="mp-script-section">
+                <header className="mp-script-section-head">
+                  <div>
+                    <h2 className="mp-script-section-title">
+                        <FolderOpen className="h-4 w-4" aria-hidden />
                       Repository details
                     </h2>
-                    <ul className="mp-script-release-list">
-                      <li className="mp-script-release-item">
-                        <div className="mp-script-meta-label">
-                          <GitBranch className="h-3.5 w-3.5" aria-hidden />
-                          Default branch
-                        </div>
-                        <span className="mp-script-meta-value font-mono">{resolved.defaultBranch}</span>
-                      </li>
-                      <li className="mp-script-release-item">
-                        <div className="mp-script-meta-label">
-                          <Tag className="h-3.5 w-3.5" aria-hidden />
-                          Latest release
-                        </div>
-                        <span className="mp-script-meta-value font-mono">
-                          {resolved.latestReleaseTag ?? 'No published releases'}
-                        </span>
-                      </li>
-                      <li className="mp-script-release-item">
-                        <div className="mp-script-meta-label">
-                          <Calendar className="h-3.5 w-3.5" aria-hidden />
-                          Created
-                        </div>
-                        <span className="mp-script-meta-value">{formatDate(resolved.createdAt)}</span>
-                      </li>
-                      <li className="mp-script-release-item">
-                        <div className="mp-script-meta-label">
-                          <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-                          Install path
-                        </div>
-                        <span className="mp-script-meta-value font-mono text-[var(--accent)]">
-                          {resolved.suggested?.installPath ?? '—'}
-                        </span>
-                      </li>
-                      {resolved.homepage && (
-                        <li className="mp-script-release-item">
-                          <div className="mp-script-meta-label">
-                            <Globe className="h-3.5 w-3.5" aria-hidden />
-                            Homepage
-                          </div>
-                          <a
-                            href={resolved.homepage}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mp-script-meta-link"
-                          >
-                            {resolved.homepage}
-                            <ExternalLink className="h-3 w-3" aria-hidden />
-                          </a>
-                        </li>
-                      )}
-                    </ul>
-                  </section>
+                    <p className="mp-script-section-desc">Install paths, releases, and metadata</p>
+                  </div>
+                  {installPath ? (
+                    <Link to={installPath} className="mp-script-section-link">
+                      <Download className="h-3.5 w-3.5" aria-hidden />
+                      Install this script
+                    </Link>
+                  ) : null}
+                </header>
 
-                  {(resolved.releases ?? []).length > 0 && (
-
-                    <section className="mp-script-panel">
-
-                      <h2 className="mp-script-panel-title">
-
-                        <Tag className="h-4 w-4" />
-
-                        Releases
-
-                      </h2>
-
-                      <ul className="mp-script-release-list">
-
-                        {(resolved.releases ?? []).map((r) => (
-
-                          <li key={r.tag} className="mp-script-release-item">
-
-                            <div className="min-w-0">
-
-                              <p className="font-mono text-sm font-medium">{r.tag}</p>
-
-                              {r.name && r.name !== r.tag && (
-
-                                <p className="text-xs text-[var(--muted)]">{r.name}</p>
-
-                              )}
-
-                            </div>
-
-                            {r.prerelease && <span className="mp-topic-chip">Pre-release</span>}
-
-                          </li>
-
-                        ))}
-
-                      </ul>
-
-                    </section>
-
-                  )}
-
-
-
-                  {topics.length > 0 && (
-
-                    <section className="mp-script-panel">
-
-                      <h2 className="mp-script-panel-title">Topics</h2>
-
-                      <div className="mp-script-topics">
-
-                        {topics.map((t) => (
-
-                          <span key={t} className="mp-topic-chip">
-
-                            {t}
-
-                          </span>
-
-                        ))}
-
-                      </div>
-
-                    </section>
-
-                  )}
-
+                <div className="mp-script-detail-grid">
+                  <DetailRow label="Owner" value={resolved.owner} icon={Github} mono />
+                  <DetailRow label="Default branch" value={resolved.defaultBranch} icon={GitBranch} mono />
+                  <DetailRow
+                    label="Latest release"
+                    value={resolved.latestReleaseTag ?? 'No published releases'}
+                    icon={Tag}
+                    mono
+                  />
+                  <DetailRow
+                    label="Install path"
+                    value={resolved.suggested?.installPath ?? '—'}
+                    icon={FolderOpen}
+                    mono
+                    accent
+                  />
+                  <DetailRow label="Created" value={formatDate(resolved.createdAt)} icon={Calendar} />
+                  {resolved.homepage ? (
+                    <DetailRow
+                      label="Homepage"
+                      value={resolved.homepage}
+                      icon={Globe}
+                      href={resolved.homepage}
+                    />
+                  ) : null}
                 </div>
+              </section>
 
-              </div>
-
-
-
-              <aside className="mp-script-body-aside">
-
-                <MarketplaceScriptInstallPanel
-
-                  serverId={resolvedId}
-
-                  resolved={resolved}
-
-                  serverLayout={resolved.layout ?? null}
-
-                  canInstall={access.canInstallMarketplace}
-
-                  onInstalled={handleInstalled}
-
-                />
-
-              </aside>
-
+              {(resolved.releases ?? []).length > 0 ? (
+                <section className="mp-script-section">
+                  <header className="mp-script-section-head">
+                    <div>
+                      <h2 className="mp-script-section-title">
+                          <Tag className="h-4 w-4" aria-hidden />
+                        Releases
+                      </h2>
+                      <p className="mp-script-section-desc">
+                        {(resolved.releases ?? []).length} published version
+                        {(resolved.releases ?? []).length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  </header>
+                  <ul className="mp-script-releases">
+                    {(resolved.releases ?? []).map((release) => (
+                      <li key={release.tag} className="mp-script-release">
+                        <div className="min-w-0">
+                          <p className="mp-script-release-tag">{release.tag}</p>
+                          {release.name && release.name !== release.tag ? (
+                            <p className="mp-script-release-name">{release.name}</p>
+                          ) : null}
+                        </div>
+                        {release.prerelease ? <span className="mp-topic-chip">Pre-release</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </div>
-
           </>
-
         ) : null}
-
       </div>
-
     </ServerPage>
-
   );
-
 }
-

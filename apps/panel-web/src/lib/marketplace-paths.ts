@@ -30,10 +30,15 @@ export function useMarketplacePaths() {
     return `${base}/script/${encodeURIComponent(githubOwner)}/${encodeURIComponent(githubRepo)}`;
   }
 
+  function scriptInstallPath(githubOwner: string, githubRepo: string): string {
+    return `${scriptPath(githubOwner, githubRepo)}/install`;
+  }
+
   return {
     resolvedId,
     base,
     scriptPath,
+    scriptInstallPath,
     owner: decodedOwner,
     repo: decodedRepo,
     isAdminManage,
