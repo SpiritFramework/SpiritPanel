@@ -12,7 +12,7 @@ It provides a modern web interface for managing users, nodes, game servers, and 
 
 ## 🖼️ Preview
 
-![Spirit-Panel Preview](https://iili.io/CCK2Esp.md.png)
+![Spirit-Panel Preview](https://iili.io/CCK2Esp.png)
 
 ---
 
