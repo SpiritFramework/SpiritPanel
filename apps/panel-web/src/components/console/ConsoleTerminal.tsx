@@ -14,7 +14,6 @@ import type { ConsoleLine, ConsoleLineKind } from '../../lib/console-buffer';
 import { CONSOLE_VISIBLE_LINES } from '../../lib/console-buffer';
 import { renderConsoleText } from '../../lib/console-links';
 import type { ConsoleStatusSummary } from '../../lib/server-runtime';
-import { StatusPill, type Tone } from '../../components/ui';
 
 type LineFilter = 'all' | 'output' | 'system' | 'error';
 
@@ -212,11 +211,6 @@ export function ConsoleTerminal({
     <div className="console-terminal flex min-h-0 flex-1 flex-col">
       <header className="console-terminal-header">
         <div className="console-terminal-title">
-          <span className="console-window-dots" aria-hidden>
-            <span className="console-dot console-dot-red" />
-            <span className="console-dot console-dot-amber" />
-            <span className="console-dot console-dot-green" />
-          </span>
           <div className="console-terminal-heading min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <Terminal className="console-terminal-icon h-3.5 w-3.5 shrink-0" />
@@ -229,7 +223,7 @@ export function ConsoleTerminal({
         </div>
 
         <div className="console-terminal-meta">
-          <ConnectionIndicator status={status} connection={connectionStatus} />
+          <ConsoleStatusBadge status={status} connectionStatus={connectionStatus} />
           <span className="console-stat hidden sm:inline">
             {filteredLines.length}
             {filter !== 'all' ? ` / ${consoleLines.length}` : ''} lines
@@ -368,29 +362,27 @@ export function ConsoleTerminal({
   );
 }
 
-function ConnectionIndicator({
+function ConsoleStatusBadge({
   status,
-  connection,
+  connectionStatus,
 }: {
   status: ConsoleStatusSummary;
-  connection: 'connecting' | 'connected' | 'disconnected';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected';
 }) {
-  const tone: Tone =
-    status.tone === 'muted' ? 'neutral' : status.tone === 'info' ? 'info' : status.tone;
-
-  const dotTone =
-    connection === 'connected'
-      ? 'console-conn-dot-live'
-      : connection === 'connecting'
-        ? 'console-conn-dot-pending'
-        : 'console-conn-dot-off';
+  const connecting = connectionStatus === 'connecting';
+  const label = connecting ? 'Connecting…' : status.label;
+  const tone = connecting ? 'info' : status.tone === 'muted' ? 'neutral' : status.tone;
+  const pulse =
+    connecting || (!connecting && Boolean(status.pulse) && connectionStatus === 'connected');
 
   return (
-    <div className="console-connection">
-      <Circle className={`console-conn-dot h-2 w-2 fill-current ${dotTone}`} />
-      <StatusPill label={status.label} tone={tone} pulse={status.pulse} />
-      {status.hint && <span className="console-connection-hint hidden lg:inline">{status.hint}</span>}
-    </div>
+    <span
+      className={`console-status-badge console-status-badge-${tone}${pulse ? ' console-status-badge-pulse' : ''}`}
+      title={status.hint}
+    >
+      <Circle className={`console-status-dot console-status-dot-${tone}${pulse ? ' console-status-dot-pulse' : ''}`} />
+      {label}
+    </span>
   );
 }
 
