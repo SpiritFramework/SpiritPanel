@@ -26,11 +26,22 @@ const themePreset = z.enum([
 ]);
 const defaultThemeMode = z.enum(['system', 'light', 'dark']);
 const loginBackground = z.enum([
-  'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple',
+  'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
 ]);
 const panelBackground = z.enum([
-  'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer',
+  'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
 ]);
+const serverCardStyle = z.enum(['auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked']);
+const adminSidebarStyle = z.enum(['default', 'rail', 'minimal']);
+const clientSidebarStyle = z.enum(['default', 'floating', 'inset']);
+const serverSidebarStyle = z.enum(['default', 'compact', 'wide']);
+const surfaceRadius = z.enum(['default', 'soft', 'sharp']);
+const sidebarMaterial = z.enum(['glass', 'solid', 'frosted']);
+const contentDensity = z.enum(['comfortable', 'compact']);
+const motionPreference = z.enum(['system', 'full', 'reduced']);
+const serverListDefaultView = z.enum(['grid', 'list']);
+const adminTabsStyle = z.enum(['segmented', 'underline']);
+const loginAmbientLevel = z.enum(['off', 'standard', 'enhanced']);
 
 export const brandingSchema = z.object({
   panelName: z.string().min(1).max(64),
@@ -44,6 +55,19 @@ export const brandingSchema = z.object({
   defaultThemeMode: defaultThemeMode.optional(),
   loginBackground: loginBackground.optional(),
   panelBackground: panelBackground.optional(),
+  panelAmbient: z.boolean().optional(),
+  serverCardStyle: serverCardStyle.optional(),
+  adminSidebarStyle: adminSidebarStyle.optional(),
+  clientSidebarStyle: clientSidebarStyle.optional(),
+  serverSidebarStyle: serverSidebarStyle.optional(),
+  surfaceRadius: surfaceRadius.optional(),
+  sidebarMaterial: sidebarMaterial.optional(),
+  contentDensity: contentDensity.optional(),
+  motionPreference: motionPreference.optional(),
+  serverListDefaultView: serverListDefaultView.optional(),
+  adminTabsStyle: adminTabsStyle.optional(),
+  loginAmbientLevel: loginAmbientLevel.optional(),
+  showHeroStripe: z.boolean().optional(),
 });
 
 export const generalSchema = z.object({
@@ -191,9 +215,22 @@ export interface BrandingSettings {
     | 'lavender' | 'crimson' | 'arctic' | 'neon' | 'copper' | 'slate' | 'grape' | 'mint' | 'sand' | 'void' | 'cherry';
   defaultThemeMode?: 'system' | 'light' | 'dark';
   loginBackground?: 'gradient' | 'orbs' | 'mesh' | 'grid' | 'aurora' | 'minimal'
-    | 'waves' | 'stars' | 'beams' | 'ripple';
+    | 'waves' | 'stars' | 'beams' | 'ripple' | 'prism' | 'spotlight';
   panelBackground?: 'gradient' | 'subtle' | 'grid' | 'orbs' | 'none'
-    | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer';
+    | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer' | 'bokeh' | 'prism';
+  panelAmbient?: boolean;
+  serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked';
+  adminSidebarStyle?: 'default' | 'rail' | 'minimal';
+  clientSidebarStyle?: 'default' | 'floating' | 'inset';
+  serverSidebarStyle?: 'default' | 'compact' | 'wide';
+  surfaceRadius?: 'default' | 'soft' | 'sharp';
+  sidebarMaterial?: 'glass' | 'solid' | 'frosted';
+  contentDensity?: 'comfortable' | 'compact';
+  motionPreference?: 'system' | 'full' | 'reduced';
+  serverListDefaultView?: 'grid' | 'list';
+  adminTabsStyle?: 'segmented' | 'underline';
+  loginAmbientLevel?: 'off' | 'standard' | 'enhanced';
+  showHeroStripe?: boolean;
 }
 
 export interface GeneralSettings {
@@ -255,6 +292,19 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   defaultThemeMode: 'dark',
   loginBackground: 'gradient',
   panelBackground: 'gradient',
+  panelAmbient: true,
+  serverCardStyle: 'glass',
+  adminSidebarStyle: 'rail',
+  clientSidebarStyle: 'floating',
+  serverSidebarStyle: 'compact',
+  surfaceRadius: 'default',
+  sidebarMaterial: 'glass',
+  contentDensity: 'comfortable',
+  motionPreference: 'system',
+  serverListDefaultView: 'grid',
+  adminTabsStyle: 'segmented',
+  loginAmbientLevel: 'enhanced',
+  showHeroStripe: true,
 };
 
 export const DEFAULT_GENERAL: GeneralSettings = {

@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
+import { useBranding } from '../context/BrandingContext';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
+import { normalizeAppearance, sidebarMaterialClassName } from '../lib/branding-appearance';
+import { AmbientBackdrop } from './AmbientBackdrop';
 
 /** Admin/client app shell — drawer nav on phones, fixed sidebar from md up. */
 export function MobileShell({
@@ -34,6 +37,8 @@ export function MobileShell({
   }, [navOpen]);
 
   const panelBgClass = usePanelBackgroundClass();
+  const { branding } = useBranding();
+  const materialClass = sidebarMaterialClassName(normalizeAppearance(branding).sidebarMaterial);
 
   return (
     <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
@@ -47,7 +52,7 @@ export function MobileShell({
       )}
 
       <aside
-        className={`glass-sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none ${sidebarClassName} ${
+        className={`glass-sidebar app-sidebar ${materialClass} fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none ${sidebarClassName} ${
           navOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -65,7 +70,8 @@ export function MobileShell({
       </aside>
 
       <div className="mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col">
-        <header className="glass flex shrink-0 items-center gap-2.5 border-b border-[var(--glass-border)] px-3 py-2.5 safe-top md:hidden">
+        <AmbientBackdrop />
+        <header className="glass relative z-[1] flex shrink-0 items-center gap-2.5 border-b border-[var(--glass-border)] px-3 py-2.5 safe-top md:hidden">
           <button
             type="button"
             aria-label="Open menu"

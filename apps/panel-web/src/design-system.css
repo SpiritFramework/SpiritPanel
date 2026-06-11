@@ -630,13 +630,13 @@
   color: var(--accent-hover);
 }
 
-/* ── Panel ambient backgrounds — subdued so content stays primary ── */
+/* ── Panel ambient backgrounds — visible but behind content ── */
 .panel-bg-root::before {
-  opacity: 0.42;
+  opacity: 0.58;
 }
 
 .panel-bg-subtle::before {
-  opacity: 0.28;
+  opacity: 0.38;
 }
 
 .panel-bg-none::before {
@@ -644,7 +644,14 @@
 }
 
 .panel-bg-orbs::after {
-  opacity: 0.35;
+  opacity: 0.48;
+}
+
+.panel-bg-aurora::after,
+.panel-bg-waves::before,
+.panel-bg-mesh::after,
+.panel-bg-shimmer::after {
+  opacity: 0.72;
 }
 
 /* ── Icons (Lucide) — consistent sizing ── */

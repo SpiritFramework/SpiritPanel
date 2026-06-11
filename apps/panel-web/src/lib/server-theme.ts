@@ -1,54 +1,35 @@
-import { Box, Cpu, Gamepad2, Pickaxe, Swords, type LucideIcon } from 'lucide-react';
+import { Box, type LucideIcon } from 'lucide-react';
+import type { ServerCardStylePreference } from './branding-appearance';
+
+export type ServerCardStyle = 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked';
 
 export interface ServerTheme {
   gradient: string;
   glow: string;
+  accent: string;
   icon: LucideIcon;
   label: string;
 }
 
-const THEMES: Array<{ match: RegExp; theme: ServerTheme }> = [
-  {
-    match: /minecraft|paper|spigot|forge|fabric|vanilla/i,
-    theme: {
-      gradient: 'linear-gradient(135deg, #14532d 0%, #166534 40%, #052e16 100%)',
-      glow: 'rgba(34, 197, 94, 0.25)',
-      icon: Pickaxe,
-      label: 'Minecraft',
-    },
-  },
-  {
-    match: /rust/i,
-    theme: {
-      gradient: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 40%, #431407 100%)',
-      glow: 'rgba(249, 115, 22, 0.25)',
-      icon: Swords,
-      label: 'Rust',
-    },
-  },
-  {
-    match: /ark|survival|valheim|terraria/i,
-    theme: {
-      gradient: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 40%, #0f172a 100%)',
-      glow: 'rgba(59, 130, 246, 0.25)',
-      icon: Gamepad2,
-      label: 'Survival',
-    },
-  },
-];
-
-const DEFAULT_THEME: ServerTheme = {
-  gradient: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 60%, #0f172a) 0%, #0f1117 100%)',
+/** Panel-accent styling for all servers — no per-game color overrides. */
+const PANEL_THEME: ServerTheme = {
+  gradient: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, #0f172a) 0%, #0f1117 100%)',
   glow: 'var(--accent-glow)',
+  accent: 'var(--accent)',
   icon: Box,
-  label: 'Game Server',
+  label: 'Server',
 };
 
 export function getServerTheme(eggName: string): ServerTheme {
-  for (const { match, theme } of THEMES) {
-    if (match.test(eggName)) return theme;
-  }
-  return DEFAULT_THEME;
+  return {
+    ...PANEL_THEME,
+    label: eggName.trim() || PANEL_THEME.label,
+  };
+}
+
+export function resolveServerCardStyle(preference: ServerCardStylePreference): ServerCardStyle {
+  if (!preference || preference === 'auto') return 'glass';
+  return preference;
 }
 
 export function formatResource(value: number, unit: string): string {

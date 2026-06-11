@@ -23,6 +23,8 @@ import { useState } from 'react';
 import { ServerProvider, useServer } from '../context/ServerContext';
 import { formatAllocationAddress } from '../lib/allocation';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
+import { normalizeAppearance, serverSidebarClassName, sidebarMaterialClassName } from '../lib/branding-appearance';
+import { useBranding } from '../context/BrandingContext';
 import { getServerTheme } from '../lib/server-theme';
 import { ServerEggIcon } from './ServerEggIcon';
 import { getServerAccess } from '../lib/server-access';
@@ -33,6 +35,7 @@ import { useServerPing } from '../hooks/useServerPing';
 import { CompactBackLink, SideNavGroup, SideNavItem, TabNavItem } from './Nav';
 import { PowerConfirmModal, type DestructivePowerAction } from './PowerConfirmModal';
 import { ServerMetricsNav } from './ServerMetricsNav';
+import { AmbientBackdrop } from './AmbientBackdrop';
 import { Spinner } from './ui';
 import { ServerStatusBadge } from './ServerStatusBadge';
 import { ThemeToggle } from './ThemeToggle';
@@ -113,6 +116,8 @@ export function ServerShellInner() {
   const isConsoleRoute = /\/console\/?$/.test(location.pathname);
   const isFileEditRoute = /\/files\/edit\/?$/.test(location.pathname);
   const isFullHeightRoute = isConsoleRoute || isFileEditRoute;
+  const { branding } = useBranding();
+  const appearance = normalizeAppearance(branding);
   const theme = getServerTheme(server.egg.name);
   const panelBgClass = usePanelBackgroundClass();
   const [copied, setCopied] = useState(false);
@@ -171,7 +176,7 @@ export function ServerShellInner() {
     <>
     <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
       {/* Dedicated server sidebar — navigation only */}
-      <aside className="server-sidebar glass-sidebar hidden h-full w-56 shrink-0 flex-col border-r border-[var(--glass-border)] md:flex">
+      <aside className={`${serverSidebarClassName(appearance.serverSidebarStyle)} ${sidebarMaterialClassName(appearance.sidebarMaterial)} glass-sidebar hidden h-full w-56 shrink-0 flex-col border-r border-[var(--glass-border)] md:flex`}>
         <div className="border-b border-[var(--border)] p-3">
           <div className="mb-2.5 h-0.5 rounded-full" style={{ background: theme.gradient }} />
           <div className="flex items-center gap-2.5">
@@ -242,9 +247,10 @@ export function ServerShellInner() {
       </aside>
 
       {/* Main content */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="server-shell-main flex min-h-0 min-w-0 flex-1 flex-col">
+        <AmbientBackdrop variant="dense" />
         {/* Mobile header + tabs */}
-        <header className="server-mobile-header glass safe-top border-x-0 border-t-0 border-b border-[var(--glass-border)] md:hidden">
+        <header className="server-mobile-header relative z-[1] glass safe-top border-x-0 border-t-0 border-b border-[var(--glass-border)] md:hidden">
           <div className={`${isFullHeightRoute ? 'px-2.5 py-2' : 'p-3 pb-2'}`}>
             <div className="flex items-center gap-2.5">
               <div
@@ -290,7 +296,7 @@ export function ServerShellInner() {
         />
 
         <main
-          className={`min-h-0 flex-1 md:p-5 ${
+          className={`server-shell-content relative z-[1] min-h-0 flex-1 md:p-5 ${
             isFullHeightRoute
               ? 'flex flex-col overflow-hidden p-2 safe-bottom md:p-5 md:pb-5'
               : 'overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-4 md:p-5 md:pb-5'

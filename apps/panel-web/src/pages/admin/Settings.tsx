@@ -20,6 +20,7 @@ import {
 import { api } from '../../lib/api';
 import { useBranding } from '../../context/BrandingContext';
 import {
+  applyAppearanceDataset,
   DEFAULT_BRANDING_APPEARANCE,
   normalizeAppearance,
   type BrandingAppearance,
@@ -208,9 +209,7 @@ export function AdminSettings() {
     if (tab !== 'branding' || loading) return;
     const root = document.documentElement;
     const appearance = normalizeAppearance(branding);
-    root.dataset.themePreset = appearance.themePreset;
-    root.dataset.loginBg = appearance.loginBackground;
-    root.dataset.panelBg = appearance.panelBackground;
+    applyAppearanceDataset(root, appearance);
     root.style.setProperty('--accent', branding.accentColor);
     root.style.setProperty('--accent-secondary', branding.secondaryColor || branding.accentColor);
     applySurfacePreset(appearance.themePreset, root.dataset.theme === 'light' ? 'light' : 'dark');
@@ -474,6 +473,11 @@ export function AdminSettings() {
                           defaultThemeMode={branding.defaultThemeMode}
                           loginBackground={branding.loginBackground}
                           panelBackground={branding.panelBackground}
+                          panelAmbient={branding.panelAmbient}
+                          serverCardStyle={branding.serverCardStyle}
+                          adminSidebarStyle={branding.adminSidebarStyle}
+                          clientSidebarStyle={branding.clientSidebarStyle}
+                          serverSidebarStyle={branding.serverSidebarStyle}
                           accentColor={branding.accentColor}
                           secondaryColor={branding.secondaryColor}
                           onThemePresetChange={(themePreset) => {
@@ -493,6 +497,27 @@ export function AdminSettings() {
                           onDefaultThemeModeChange={(defaultThemeMode) => setBranding({ ...branding, defaultThemeMode })}
                           onLoginBackgroundChange={(loginBackground) => setBranding({ ...branding, loginBackground })}
                           onPanelBackgroundChange={(panelBackground) => setBranding({ ...branding, panelBackground })}
+                          onPanelAmbientChange={(panelAmbient) => setBranding({ ...branding, panelAmbient })}
+                          onServerCardStyleChange={(serverCardStyle) => setBranding({ ...branding, serverCardStyle })}
+                          onAdminSidebarStyleChange={(adminSidebarStyle) => setBranding({ ...branding, adminSidebarStyle })}
+                          onClientSidebarStyleChange={(clientSidebarStyle) => setBranding({ ...branding, clientSidebarStyle })}
+                          onServerSidebarStyleChange={(serverSidebarStyle) => setBranding({ ...branding, serverSidebarStyle })}
+                          surfaceRadius={branding.surfaceRadius}
+                          sidebarMaterial={branding.sidebarMaterial}
+                          contentDensity={branding.contentDensity}
+                          motionPreference={branding.motionPreference}
+                          serverListDefaultView={branding.serverListDefaultView}
+                          adminTabsStyle={branding.adminTabsStyle}
+                          loginAmbientLevel={branding.loginAmbientLevel}
+                          showHeroStripe={branding.showHeroStripe}
+                          onSurfaceRadiusChange={(surfaceRadius) => setBranding({ ...branding, surfaceRadius })}
+                          onSidebarMaterialChange={(sidebarMaterial) => setBranding({ ...branding, sidebarMaterial })}
+                          onContentDensityChange={(contentDensity) => setBranding({ ...branding, contentDensity })}
+                          onMotionPreferenceChange={(motionPreference) => setBranding({ ...branding, motionPreference })}
+                          onServerListDefaultViewChange={(serverListDefaultView) => setBranding({ ...branding, serverListDefaultView })}
+                          onAdminTabsStyleChange={(adminTabsStyle) => setBranding({ ...branding, adminTabsStyle })}
+                          onLoginAmbientLevelChange={(loginAmbientLevel) => setBranding({ ...branding, loginAmbientLevel })}
+                          onShowHeroStripeChange={(showHeroStripe) => setBranding({ ...branding, showHeroStripe })}
                         />
                       </AdminSettingsPanel>
 

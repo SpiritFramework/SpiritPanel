@@ -21,6 +21,7 @@ import { ServerListTable } from '../../components/ServerListRow';
 import { Button, ClientLayout, Page, SelectControl } from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
+import { normalizeAppearance } from '../../lib/branding-appearance';
 import {
   matchesServerStatusFilter,
   isServerEffectivelyRunning,
@@ -34,14 +35,14 @@ type ViewMode = 'grid' | 'list';
 
 const VIEW_STORAGE_KEY = 'spirit_servers_view';
 
-function readStoredView(): ViewMode {
+function readStoredView(fallback: ViewMode): ViewMode {
   try {
     const stored = localStorage.getItem(VIEW_STORAGE_KEY);
     if (stored === 'grid' || stored === 'list') return stored;
   } catch {
     /* ignore */
   }
-  return 'grid';
+  return fallback;
 }
 
 function serverMatchesFilter(server: ServerSummary, filter: StatusFilter) {
@@ -70,10 +71,11 @@ function sortLabel(key: SortKey): string {
 export function ServerListPage() {
   const { user } = useAuth();
   const { branding } = useBranding();
+  const defaultView = normalizeAppearance(branding).serverListDefaultView;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [view, setView] = useState<ViewMode>(readStoredView);
+  const [view, setView] = useState<ViewMode>(() => readStoredView(defaultView));
 
   const fetchServers = useCallback(() => api.client.servers(), []);
   const { data: servers, loading, validating, error, refetch } = useAsyncData(
@@ -172,7 +174,7 @@ export function ServerListPage() {
       </div>
 
       <section className="ds-card mb-4 overflow-hidden">
-        <div className="ds-hero-stripe" />
+        {normalizeAppearance(branding).showHeroStripe && <div className="ds-hero-stripe" />}
         <div className="px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">

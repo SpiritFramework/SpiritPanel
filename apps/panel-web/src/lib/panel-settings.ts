@@ -1,8 +1,19 @@
 import {
   DEFAULT_BRANDING_APPEARANCE,
+  type AdminSidebarStyle,
+  type AdminTabsStyle,
+  type ClientSidebarStyle,
+  type ContentDensity,
   type DefaultThemeMode,
+  type LoginAmbientLevel,
   type LoginBackground,
+  type MotionPreference,
   type PanelBackground,
+  type ServerCardLayoutStyle,
+  type ServerListDefaultView,
+  type ServerSidebarStyle,
+  type SidebarMaterial,
+  type SurfaceRadius,
   type ThemePreset,
 } from './branding-appearance';
 import {
@@ -63,6 +74,19 @@ export interface PanelBranding {
   defaultThemeMode: DefaultThemeMode;
   loginBackground: LoginBackground;
   panelBackground: PanelBackground;
+  panelAmbient: boolean;
+  serverCardStyle: ServerCardLayoutStyle;
+  adminSidebarStyle: AdminSidebarStyle;
+  clientSidebarStyle: ClientSidebarStyle;
+  serverSidebarStyle: ServerSidebarStyle;
+  surfaceRadius: SurfaceRadius;
+  sidebarMaterial: SidebarMaterial;
+  contentDensity: ContentDensity;
+  motionPreference: MotionPreference;
+  serverListDefaultView: ServerListDefaultView;
+  adminTabsStyle: AdminTabsStyle;
+  loginAmbientLevel: LoginAmbientLevel;
+  showHeroStripe: boolean;
   general: PanelGeneralSettings;
   maintenance: {
     enabled: boolean;

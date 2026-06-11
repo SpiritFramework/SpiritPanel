@@ -350,6 +350,158 @@
   animation: panel-shimmer-sweep 6s ease-in-out infinite;
 }
 
+/* ── Login: prism, spotlight ── */
+.login-brand-panel[data-login-bg="prism"] .login-bg-canvas,
+.login-brand-panel[data-login-bg="spotlight"] .login-bg-canvas {
+  background: #050810;
+  overflow: hidden;
+}
+
+.login-brand-panel[data-login-bg="prism"] .login-bg-canvas::before {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--accent) 42%, transparent) 50deg,
+    color-mix(in srgb, var(--accent-secondary, var(--accent)) 38%, transparent) 110deg,
+    transparent 160deg,
+    color-mix(in srgb, var(--accent) 28%, transparent) 220deg,
+    transparent 300deg
+  );
+  filter: blur(36px);
+  animation: login-prism-spin 22s linear infinite;
+}
+
+.login-brand-panel[data-login-bg="spotlight"] .login-bg-overlay::before {
+  content: '';
+  position: absolute;
+  inset: -60% -30%;
+  background: radial-gradient(
+    ellipse 35% 55% at 50% 50%,
+    color-mix(in srgb, white 16%, var(--accent)),
+    transparent 62%
+  );
+  animation: login-spotlight-sweep 9s ease-in-out infinite;
+}
+
+.login-brand-panel[data-login-bg="prism"] .login-dot-grid,
+.login-brand-panel[data-login-bg="spotlight"] .login-dot-grid {
+  display: none;
+}
+
+@keyframes login-prism-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes login-spotlight-sweep {
+  0%, 100% { transform: translate(-25%, -10%) rotate(-12deg); opacity: 0.55; }
+  50% { transform: translate(20%, 8%) rotate(8deg); opacity: 0.9; }
+}
+
+.login-preview--prism {
+  background: #050810;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--prism::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(from 0deg, transparent, var(--preview-gradient, #6366f1), transparent);
+  filter: blur(8px);
+  animation: login-prism-spin 16s linear infinite;
+}
+
+.login-preview--spotlight {
+  background: #050810;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--spotlight::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(ellipse 40% 50% at 50% 50%, color-mix(in srgb, white 25%, var(--preview-gradient, #6366f1)), transparent 60%);
+  animation: login-spotlight-sweep 7s ease-in-out infinite;
+}
+
+/* ── Panel: bokeh, prism ── */
+.panel-bg-bokeh::before {
+  background: transparent;
+}
+
+.panel-bg-bokeh::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 12% 25%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 28%),
+    radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 18%, transparent), transparent 32%),
+    radial-gradient(circle at 65% 78%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 30%),
+    radial-gradient(circle at 28% 72%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 26%);
+  filter: blur(28px);
+  animation: panel-bokeh-drift 24s ease-in-out infinite;
+}
+
+.panel-bg-prism::before {
+  background: transparent;
+  overflow: hidden;
+}
+
+.panel-bg-prism::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  background: linear-gradient(
+    125deg,
+    transparent 30%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 42%,
+    color-mix(in srgb, var(--accent-secondary, var(--accent)) 10%, transparent) 52%,
+    transparent 65%
+  );
+  filter: blur(32px);
+  animation: panel-prism-shift 18s ease-in-out infinite;
+}
+
+@keyframes panel-bokeh-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -1.5%); }
+}
+
+@keyframes panel-prism-shift {
+  0%, 100% { transform: translateX(-4%) skewY(-2deg); }
+  50% { transform: translateX(6%) skewY(2deg); }
+}
+
+.panel-preview--bokeh::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 25% 35%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 35%, transparent), transparent 45%),
+    radial-gradient(circle at 70% 60%, color-mix(in srgb, var(--preview-secondary-glow, #8b5cf6) 28%, transparent), transparent 50%);
+  filter: blur(6px);
+  animation: panel-bokeh-drift 14s ease-in-out infinite;
+}
+
+.panel-preview--prism::before {
+  content: '';
+  position: absolute;
+  inset: -15%;
+  background: linear-gradient(125deg, transparent, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 28%, transparent), transparent);
+  filter: blur(5px);
+  animation: panel-prism-shift 12s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .login-brand-panel[data-login-bg="waves"] .login-bg-canvas::before,
   .login-brand-panel[data-login-bg="stars"] .login-bg-overlay,
@@ -370,7 +522,15 @@
   .panel-preview--waves::before,
   .panel-preview--stars::before,
   .panel-preview--mesh::before,
-  .panel-preview--shimmer::before {
+  .panel-preview--shimmer::before,
+  .login-brand-panel[data-login-bg="prism"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="spotlight"] .login-bg-overlay::before,
+  .panel-bg-bokeh::after,
+  .panel-bg-prism::after,
+  .login-preview--prism::before,
+  .login-preview--spotlight::before,
+  .panel-preview--bokeh::before,
+  .panel-preview--prism::before {
     animation: none !important;
   }
 }

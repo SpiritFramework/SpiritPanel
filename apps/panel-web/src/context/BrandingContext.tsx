@@ -3,7 +3,12 @@ import { api } from '../lib/api';
 import { isServiceUnavailable } from '../lib/api-errors';
 import { DEFAULT_PANEL_BRANDING, type PanelBranding } from '../lib/panel-settings';
 import { PANEL_AUTHOR } from '../lib/product-meta';
-import { BRANDING_DEFAULT_THEME_EVENT, BRANDING_THEME_RESOLVED_EVENT, normalizeAppearance } from '../lib/branding-appearance';
+import {
+  applyAppearanceDataset,
+  BRANDING_DEFAULT_THEME_EVENT,
+  BRANDING_THEME_RESOLVED_EVENT,
+  normalizeAppearance,
+} from '../lib/branding-appearance';
 import { applySurfacePreset } from '../lib/branding-theme-palettes';
 
 interface BrandingContextValue {
@@ -54,9 +59,7 @@ function applyBranding(config: PanelBranding) {
   root.style.setProperty('--accent-secondary-glow', hexToRgba(secondary, 0.25));
 
   const appearance = normalizeAppearance(config);
-  root.dataset.themePreset = appearance.themePreset;
-  root.dataset.loginBg = appearance.loginBackground;
-  root.dataset.panelBg = appearance.panelBackground;
+  applyAppearanceDataset(root, appearance);
 
   const resolvedTheme = root.dataset.theme === 'light' ? 'light' : 'dark';
   applySurfacePreset(appearance.themePreset, resolvedTheme);

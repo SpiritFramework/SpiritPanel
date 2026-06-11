@@ -1,0 +1,854 @@
+/* ============================================================
+   Login branded sidebar — layered ambient animation
+   ============================================================ */
+
+.login-brand-panel .login-bg-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.login-ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.55;
+  animation: login-ambient-drift 18s ease-in-out infinite;
+}
+
+.login-ambient-orb--1 {
+  width: 52%;
+  height: 48%;
+  top: -12%;
+  right: -10%;
+  background: var(--accent);
+  animation-duration: 16s;
+}
+
+.login-ambient-orb--2 {
+  width: 44%;
+  height: 40%;
+  bottom: -8%;
+  left: -12%;
+  background: var(--accent-secondary, var(--accent));
+  animation-delay: -6s;
+  animation-duration: 20s;
+}
+
+.login-ambient-orb--3 {
+  width: 28%;
+  height: 28%;
+  top: 42%;
+  left: 38%;
+  background: color-mix(in srgb, white 18%, var(--accent));
+  animation-delay: -11s;
+  animation-duration: 14s;
+  opacity: 0.35;
+}
+
+.login-bg-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.login-shine-sweep {
+  position: absolute;
+  inset: -40% -60%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    color-mix(in srgb, white 14%, transparent) 50%,
+    transparent 58%
+  );
+  animation: login-shine-sweep 9s ease-in-out infinite;
+  opacity: 0.35;
+}
+
+.login-brand-panel[data-login-bg="gradient"] .login-bg-canvas {
+  animation: login-gradient-breathe 14s ease-in-out infinite alternate;
+}
+
+.login-brand-panel[data-login-bg="gradient"] .login-bg-canvas::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 42%),
+    radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 38%, transparent), transparent 45%);
+  filter: blur(40px);
+  animation: login-ambient-drift 22s ease-in-out infinite;
+}
+
+.login-brand-panel .login-feature-item {
+  animation: login-feature-rise 0.6s ease-out both;
+}
+
+.login-brand-panel .login-feature-item:nth-child(1) { animation-delay: 0.1s; }
+.login-brand-panel .login-feature-item:nth-child(2) { animation-delay: 0.2s; }
+.login-brand-panel .login-feature-item:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes login-ambient-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, -6%) scale(1.06); }
+  66% { transform: translate(-4%, 4%) scale(0.96); }
+}
+
+@keyframes login-shine-sweep {
+  0%, 100% { transform: translateX(-35%) rotate(-8deg); opacity: 0.2; }
+  50% { transform: translateX(35%) rotate(-8deg); opacity: 0.5; }
+}
+
+@keyframes login-gradient-breathe {
+  from { filter: brightness(0.92) saturate(1); }
+  to { filter: brightness(1.06) saturate(1.12); }
+}
+
+@keyframes login-feature-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   Panel content ambient (dashboard + server pages)
+   ============================================================ */
+
+.ambient-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient-backdrop-mesh {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 40%),
+    radial-gradient(circle at 55% 88%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 48%);
+  filter: blur(48px);
+  animation: ambient-mesh-drift 26s ease-in-out infinite;
+  opacity: 0.85;
+}
+
+.ambient-backdrop-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 100% 50%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 8%, transparent), transparent 52%);
+  animation: ambient-glow-pulse 12s ease-in-out infinite alternate;
+}
+
+.ambient-backdrop-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.ambient-backdrop--dense .ambient-backdrop-mesh {
+  opacity: 1;
+  filter: blur(36px);
+}
+
+.ambient-backdrop[data-panel-bg="none"] .ambient-backdrop-mesh,
+.ambient-backdrop[data-panel-bg="subtle"] .ambient-backdrop-mesh {
+  opacity: 0.55;
+}
+
+.ambient-backdrop[data-panel-bg="aurora"] .ambient-backdrop-mesh,
+.ambient-backdrop[data-panel-bg="waves"] .ambient-backdrop-mesh {
+  animation-duration: 18s;
+  opacity: 1;
+}
+
+.mobile-shell-main,
+.server-shell-main {
+  position: relative;
+  isolation: isolate;
+}
+
+.mobile-shell-main > main,
+.server-shell-main > .server-shell-content {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes ambient-mesh-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(2.5%, -1.5%) rotate(3deg); }
+}
+
+@keyframes ambient-glow-pulse {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+/* ============================================================
+   Sidebar structural variants (layout, not palette)
+   ============================================================ */
+
+/* Admin — accent rail */
+.admin-sidebar.sidebar-style-rail {
+  background:
+    linear-gradient(180deg, var(--glass-sidebar-from) 0%, var(--glass-sidebar-to) 100%),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 28%);
+}
+
+.admin-sidebar.sidebar-style-rail .nav-item.active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-muted) 40%, transparent));
+  box-shadow: inset 3px 0 0 var(--accent);
+  border-radius: 0 var(--ds-radius-lg) var(--ds-radius-lg) 0;
+}
+
+.admin-sidebar.sidebar-style-rail .nav-item.active .nav-item-icon {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  color: var(--accent-hover);
+  box-shadow: none;
+}
+
+/* Client — floating grouped nav */
+.client-sidebar.sidebar-style-floating nav > .space-y-3 > div {
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  padding: 0.375rem;
+  box-shadow: var(--ds-shadow-card);
+  backdrop-filter: blur(10px);
+}
+
+.client-sidebar.sidebar-style-floating .nav-item {
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid transparent;
+}
+
+.client-sidebar.sidebar-style-floating .nav-item.active {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent-muted));
+  box-shadow: var(--ds-shadow-card);
+}
+
+.client-sidebar.sidebar-style-floating .nav-item.active .nav-item-icon {
+  border-radius: var(--ds-radius-md);
+  background: var(--accent);
+  color: white;
+}
+
+/* Server shell — compact pill nav */
+.server-sidebar.sidebar-style-compact .nav-item {
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid transparent;
+}
+
+.server-sidebar.sidebar-style-compact .nav-item.active {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.server-sidebar.sidebar-style-compact .nav-item.active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-right: -2px;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.server-sidebar.sidebar-style-compact .nav-item-icon {
+  border-radius: var(--ds-radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.server-sidebar.sidebar-style-compact .nav-item.active .nav-item-icon {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+  color: var(--accent-hover);
+  box-shadow: none;
+}
+
+/* ============================================================
+   Server card structural variants
+   ============================================================ */
+
+.server-card--banner .server-card-banner {
+  min-height: 5.5rem;
+}
+
+.server-card--stripe {
+  border-top: 3px solid transparent;
+  border-image: linear-gradient(90deg, var(--card-accent, var(--accent)), color-mix(in srgb, var(--card-accent, var(--accent)) 40%, transparent)) 1;
+}
+
+.server-card--stripe .server-card-stripe-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
+}
+
+.server-card--glass {
+  background:
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--surface) 88%, transparent),
+      color-mix(in srgb, var(--bg-elevated) 75%, transparent));
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 22%, var(--border));
+}
+
+.server-card--glass .server-card-glass-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
+}
+
+.server-card--glass .server-card-icon-box {
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 35%, var(--border));
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, var(--bg-elevated));
+  box-shadow: 0 8px 24px -12px var(--card-glow, var(--accent-glow));
+}
+
+.server-card--edge {
+  border-left: 4px solid var(--card-accent, var(--accent));
+  border-radius: 0 var(--ds-radius-xl) var(--ds-radius-xl) 0;
+}
+
+.server-card--edge .server-card-edge-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
+}
+
+.server-card--neon {
+  background: color-mix(in srgb, var(--surface) 92%, #000);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 45%, var(--border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--card-accent, var(--accent)) 8%, transparent);
+  animation: server-card-neon-pulse 4s ease-in-out infinite;
+}
+
+.server-card--neon .server-card-neon-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--card-accent, var(--accent)) 35%, transparent), transparent 45%),
+    radial-gradient(circle at 90% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 25%, transparent), transparent 50%);
+}
+
+.server-card--neon .server-card-neon-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0;
+}
+
+@keyframes server-card-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 12%, transparent),
+      0 12px 32px -16px var(--card-glow, var(--accent-glow));
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 28%, transparent),
+      0 16px 40px -12px var(--card-glow, var(--accent-glow));
+  }
+}
+
+.server-list-row--edge td:first-child {
+  border-left: 3px solid var(--row-accent, var(--accent));
+}
+
+.server-list-row--stripe td:first-child {
+  box-shadow: inset 0 3px 0 var(--row-accent, var(--accent));
+}
+
+.server-list-icon--glass {
+  border: 1px solid color-mix(in srgb, var(--row-accent, var(--accent)) 35%, var(--border));
+  background: color-mix(in srgb, var(--row-accent, var(--accent)) 12%, var(--bg-elevated)) !important;
+}
+
+.server-list-icon--neon {
+  box-shadow: 0 0 16px -4px var(--row-glow, var(--accent-glow));
+}
+
+/* Settings preview miniatures for layout picks */
+.layout-preview-card {
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--surface, #151922);
+  min-height: 3.5rem;
+}
+
+.layout-preview-card--banner {
+  background: linear-gradient(180deg, var(--preview-accent, #6366f1) 0 38%, var(--surface, #151922) 38%);
+}
+
+.layout-preview-card--stripe {
+  border-top: 3px solid var(--preview-accent, #6366f1);
+}
+
+.layout-preview-card--glass {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--preview-accent, #6366f1) 35%, transparent);
+}
+
+.layout-preview-card--edge {
+  border-left: 4px solid var(--preview-accent, #6366f1);
+}
+
+.layout-preview-card--neon {
+  box-shadow: 0 0 12px -4px color-mix(in srgb, var(--preview-accent, #6366f1) 55%, transparent);
+}
+
+.layout-preview-card--minimal {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem;
+}
+
+.layout-preview-card--minimal::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--preview-accent, #6366f1) 25%, transparent);
+}
+
+.layout-preview-card--stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.layout-preview-card--stacked::before {
+  content: '';
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--preview-accent, #6366f1) 30%, transparent);
+}
+
+/* Login ambient intensity */
+.login-brand-panel[data-login-ambient="off"] .login-bg-ambient,
+.login-brand-panel[data-login-ambient="off"] .login-shine-sweep,
+.login-brand-panel[data-login-ambient="off"] .login-bg-grain {
+  display: none;
+}
+
+.login-brand-panel[data-login-ambient="standard"] .login-shine-sweep,
+.login-brand-panel[data-login-ambient="standard"] .login-ambient-orb--3 {
+  display: none;
+}
+
+/* Global polish tokens */
+[data-surface-radius="soft"] {
+  --ds-radius-sm: 0.5rem;
+  --ds-radius-md: 0.625rem;
+  --ds-radius-lg: 0.875rem;
+  --ds-radius-xl: 1.125rem;
+}
+
+[data-surface-radius="sharp"] {
+  --ds-radius-sm: 0.2rem;
+  --ds-radius-md: 0.3rem;
+  --ds-radius-lg: 0.375rem;
+  --ds-radius-xl: 0.5rem;
+}
+
+[data-content-density="compact"] .mobile-shell-main > main {
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  [data-content-density="compact"] .mobile-shell-main > main {
+    padding: 0.75rem;
+  }
+}
+
+[data-content-density="compact"] .ds-card-body {
+  padding: 0.75rem 1rem;
+}
+
+[data-content-density="compact"] .ds-table td,
+[data-content-density="compact"] .ds-table th {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+[data-hero-stripe="off"] .ds-hero-stripe,
+[data-hero-stripe="off"] .login-card-accent {
+  display: none;
+}
+
+.sidebar-material-solid.glass-sidebar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--surface);
+}
+
+.sidebar-material-frosted.glass-sidebar {
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.admin-sidebar.sidebar-style-minimal .nav-item-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--muted);
+}
+
+.admin-sidebar.sidebar-style-minimal .nav-item.active .nav-item-icon {
+  color: var(--accent-hover);
+}
+
+.client-sidebar.sidebar-style-inset nav > .space-y-3 > div {
+  border-radius: var(--ds-radius-lg);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--border) 60%, transparent);
+  padding: 0.375rem;
+}
+
+.server-sidebar.sidebar-style-wide {
+  width: 15rem !important;
+}
+
+.server-sidebar.sidebar-style-wide .nav-item {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.ds-admin-tabs.ds-admin-tabs--underline {
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+}
+
+.ds-admin-tabs.ds-admin-tabs--underline .ds-admin-tabs-inner {
+  border: none;
+  background: transparent;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.ds-admin-tabs.ds-admin-tabs--underline .ds-admin-tab {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 0.5rem;
+}
+
+.ds-admin-tabs.ds-admin-tabs--underline .ds-admin-tab.is-active {
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: var(--accent);
+}
+
+.server-card--minimal {
+  background: var(--surface);
+}
+
+.server-card--minimal:hover {
+  transform: translateY(-2px);
+}
+
+.server-card--stacked .server-card-stacked-head .server-card-icon-box {
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 35%, var(--border));
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, var(--bg-elevated));
+}
+
+[data-motion="reduced"] .login-ambient-orb,
+[data-motion="reduced"] .login-shine-sweep,
+[data-motion="reduced"] .ambient-backdrop-mesh,
+[data-motion="reduced"] .ambient-backdrop-glow,
+[data-motion="reduced"] .server-card--neon,
+[data-motion="reduced"] .panel-bg-aurora::after,
+[data-motion="reduced"] .panel-bg-waves::before,
+[data-motion="reduced"] .panel-bg-mesh::after,
+[data-motion="reduced"] .panel-bg-shimmer::after {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-ambient-orb,
+  .login-shine-sweep,
+  .login-brand-panel[data-login-bg="gradient"] .login-bg-canvas,
+  .login-brand-panel[data-login-bg="gradient"] .login-bg-canvas::after,
+  .ambient-backdrop-mesh,
+  .ambient-backdrop-glow,
+  .server-card--neon {
+    animation: none !important;
+  }
+
+  .login-brand-panel .login-feature-item {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Branding settings — layout picker mockups */
+.branding-mock-card {
+  width: 100%;
+  max-width: 7.5rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: var(--surface, #151922);
+  overflow: hidden;
+}
+
+.branding-mock-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.4rem;
+}
+
+.branding-mock-card__icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--preview-accent, #6366f1) 35%, transparent);
+}
+
+.branding-mock-card__lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.branding-mock-card__line {
+  display: block;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.branding-mock-card__line--sm { width: 35%; }
+.branding-mock-card__line--md { width: 55%; }
+.branding-mock-card__line--wide { width: 80%; }
+
+.branding-mock-card__body {
+  padding: 0.3rem 0.4rem 0.4rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.branding-mock-card--banner .branding-mock-card__head {
+  background: linear-gradient(135deg, var(--preview-accent, #6366f1), color-mix(in srgb, var(--preview-accent, #6366f1) 40%, #0f1117));
+  padding-bottom: 0.5rem;
+}
+
+.branding-mock-card--banner .branding-mock-card__line {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.branding-mock-card--stripe {
+  border-top: 3px solid var(--preview-accent, #6366f1);
+}
+
+.branding-mock-card--edge {
+  border-left: 4px solid var(--preview-accent, #6366f1);
+}
+
+.branding-mock-card--glass {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--preview-accent, #6366f1) 40%, transparent);
+}
+
+.branding-mock-card--neon {
+  box-shadow: 0 0 10px -3px color-mix(in srgb, var(--preview-accent, #6366f1) 55%, transparent);
+}
+
+.branding-mock-card--stacked .branding-mock-card__head {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.branding-mock-card--stacked .branding-mock-card__icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.branding-mock-card--stacked .branding-mock-card__lines {
+  align-items: center;
+}
+
+.branding-mock-card--minimal .branding-mock-card__body {
+  display: none;
+}
+
+.branding-sidebar-frame {
+  display: flex;
+  height: 4.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.branding-sidebar-frame__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 28%;
+  padding: 0.35rem 0.25rem;
+  border-right: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.branding-sidebar-frame__item {
+  height: 0.45rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.branding-sidebar-frame__item--active {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.branding-sidebar-frame__main {
+  flex: 1;
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.branding-sidebar-frame__bar {
+  height: 0.35rem;
+  width: 45%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.branding-sidebar-frame__block {
+  flex: 1;
+  border-radius: 4px;
+  border: 1px dashed color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+/* Admin sidebar mock variants */
+.branding-sidebar-frame--admin-rail .branding-sidebar-frame__item--active {
+  border-left: 2px solid var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+
+.branding-sidebar-frame--admin-minimal .branding-sidebar-frame__item {
+  height: 0.3rem;
+  width: 70%;
+}
+
+/* Client sidebar mock variants */
+.branding-sidebar-frame--client-floating .branding-sidebar-frame__nav {
+  gap: 0.4rem;
+  background: transparent;
+  border-right: none;
+  padding-right: 0.15rem;
+}
+
+.branding-sidebar-frame--client-floating .branding-sidebar-frame__item {
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--surface);
+}
+
+.branding-sidebar-frame--client-inset .branding-sidebar-frame__nav {
+  padding: 0.45rem 0.3rem;
+}
+
+.branding-sidebar-frame--client-inset .branding-sidebar-frame__item {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg) 60%, var(--surface));
+}
+
+/* Server sidebar mock variants */
+.branding-sidebar-frame--server-compact .branding-sidebar-frame__item {
+  border-radius: 999px;
+  height: 0.5rem;
+}
+
+.branding-sidebar-frame--server-compact .branding-sidebar-frame__item--active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.branding-sidebar-frame--server-wide .branding-sidebar-frame__nav {
+  width: 34%;
+}
+
+.branding-sidebar-frame--server-wide .branding-sidebar-frame__item {
+  height: 0.6rem;
+}
+
+.branding-polish-preview {
+  display: block;
+  width: 2rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.branding-polish-preview--radius-soft { border-radius: 8px; }
+.branding-polish-preview--radius-sharp { border-radius: 2px; }
+
+.branding-polish-preview--material-glass {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent);
+}
+
+.branding-polish-preview--material-frosted {
+  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.branding-polish-preview--material-solid {
+  background: var(--bg-elevated);
+}
+
+.branding-polish-preview--view-grid {
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 0.45rem 0.45rem;
+}
+
+.branding-polish-preview--view-list {
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--text) 12%, transparent) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+.branding-polish-preview--tabs-segmented {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.branding-polish-preview--tabs-underline {
+  border-bottom: 2px solid var(--accent);
+}

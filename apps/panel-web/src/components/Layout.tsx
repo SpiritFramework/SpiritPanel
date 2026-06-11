@@ -18,6 +18,11 @@ import { Search } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import {
+  adminSidebarClassName,
+  clientSidebarClassName,
+  normalizeAppearance,
+} from '../lib/branding-appearance';
 import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink } from './Nav';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
@@ -77,6 +82,7 @@ const clientLinks = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { logout } = useAuth();
   const { branding } = useBranding();
+  const appearance = normalizeAppearance(branding);
 
   const sidebar = (
     <>
@@ -124,7 +130,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <MobileShell
       sidebar={sidebar}
-      sidebarClassName="admin-sidebar"
+      sidebarClassName={adminSidebarClassName(appearance.adminSidebarStyle)}
       contentClassName="w-full min-w-0"
       headerTitle={
         <BrandMark
@@ -142,6 +148,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 export function ClientLayout({ children }: { children: ReactNode; wide?: boolean }) {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
+  const appearance = normalizeAppearance(branding);
   const isAdmin = user?.role === 'admin' || user?.rootAdmin;
 
   const sidebar = (
@@ -204,7 +211,7 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
   return (
     <MobileShell
       sidebar={sidebar}
-      sidebarClassName="client-sidebar"
+      sidebarClassName={clientSidebarClassName(appearance.clientSidebarStyle)}
       contentClassName="w-full min-w-0"
       headerTitle={
         <BrandMark

@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { PanelBranding } from '../lib/panel-settings';
 import { sanitizeImageSrc, sanitizeLinkHref } from '../lib/safe-url';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
+import { normalizeAppearance } from '../lib/branding-appearance';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
 import { AuthorAttribution } from './AuthorAttribution';
 
@@ -28,19 +29,28 @@ export function AuthLayout({
     [branding.accentColor, branding.secondaryColor],
   );
   const panelBgClass = usePanelBackgroundClass();
+  const appearance = normalizeAppearance(branding);
 
   return (
     <div className="flex min-h-[100dvh] min-h-screen bg-[var(--bg)]">
       <aside
         className="login-brand-panel relative hidden w-[44%] shrink-0 flex-col justify-between overflow-hidden p-10 lg:p-12 xl:w-[40%] md:flex"
-        data-login-bg={branding.loginBackground || 'gradient'}
+        data-login-bg={appearance.loginBackground}
+        data-login-ambient={appearance.loginAmbientLevel}
       >
         <div className="login-bg-canvas pointer-events-none absolute inset-0" aria-hidden />
+        <div className="login-bg-ambient" aria-hidden>
+          <span className="login-ambient-orb login-ambient-orb--1" />
+          <span className="login-ambient-orb login-ambient-orb--2" />
+          <span className="login-ambient-orb login-ambient-orb--3" />
+        </div>
         <div className="login-bg-overlay pointer-events-none absolute inset-0" aria-hidden />
+        <div className="login-bg-grain" aria-hidden />
+        <div className="login-shine-sweep" aria-hidden />
         <div className="login-dot-grid pointer-events-none absolute inset-0 opacity-50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/45 via-transparent to-black/10" />
 
-        <div className="relative">
+        <div className="relative z-[2]">
           <BrandBlock
             logoUrl={branding.logoUrl}
             panelName={branding.panelName}
@@ -50,11 +60,11 @@ export function AuthLayout({
           />
         </div>
 
-        <div className="relative space-y-6">
+        <div className="relative z-[2] space-y-6">
           <p className="max-w-sm text-sm leading-relaxed text-white/75">{branding.loginMessage}</p>
           <ul className="space-y-3">
             {FEATURES.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-3 text-sm text-white/85">
+              <li key={label} className="login-feature-item flex items-center gap-3 text-sm text-white/85">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
                   <Icon className="h-4 w-4" />
                 </span>
@@ -64,8 +74,10 @@ export function AuthLayout({
           </ul>
         </div>
 
-        <SupportFooter general={branding.general} companyLabel={companyLabel} onDark />
-        <AuthorAttribution variant="sidebar" onDark className="relative mt-4 opacity-90" />
+        <div className="relative z-[2]">
+          <SupportFooter general={branding.general} companyLabel={companyLabel} onDark />
+          <AuthorAttribution variant="sidebar" onDark className="mt-4 opacity-90" />
+        </div>
       </aside>
 
       <main className={`${panelBgClass} safe-top safe-bottom flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10`}>

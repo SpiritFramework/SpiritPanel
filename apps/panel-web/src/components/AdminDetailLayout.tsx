@@ -10,6 +10,8 @@ import {
 import { type ActivityEntry } from '../lib/activity';
 import { ActivityTimeline } from './ActivityTimeline';
 import { Button } from './Layout';
+import { useBranding } from '../context/BrandingContext';
+import { normalizeAppearance } from '../lib/branding-appearance';
 import { AlertBanner, PageLoading } from './ui';
 
 export type AdminDetailTab<T extends string = string> = {
@@ -115,9 +117,12 @@ export function AdminDetailHero({
   actions?: React.ReactNode;
   stats?: AdminHeroStat[];
 }) {
+  const { branding } = useBranding();
+  const showStripe = normalizeAppearance(branding).showHeroStripe;
+
   return (
     <div className="ds-admin-hero">
-      <div className="ds-hero-stripe" />
+      {showStripe && <div className="ds-hero-stripe" />}
       <div className="ds-admin-hero-body">
         {(Icon || iconContent) && (
           <div className="ds-admin-hero-icon">
@@ -177,8 +182,11 @@ export function AdminDetailTabs<T extends string>({
   active: T;
   onChange: (id: T) => void;
 }) {
+  const { branding } = useBranding();
+  const tabsStyle = normalizeAppearance(branding).adminTabsStyle;
+
   return (
-    <div className="ds-admin-tabs">
+    <div className={`ds-admin-tabs${tabsStyle === 'underline' ? ' ds-admin-tabs--underline' : ''}`}>
       <div className="ds-admin-tabs-inner">
         {tabs.map((t) => {
           const selected = active === t.id;
