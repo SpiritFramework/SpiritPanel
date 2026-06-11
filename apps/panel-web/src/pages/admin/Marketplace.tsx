@@ -6,6 +6,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Star,
   Store,
   Trash2,
 } from 'lucide-react';
@@ -21,7 +22,7 @@ import {
   AdminSaveBar,
   AdminSettingsPanel,
 } from '../../components/AdminDetailLayout';
-import { EmptyState, Spinner } from '../../components/ui';
+import { Badge, ConfirmDialog, DsIcon, EmptyState, Skeleton } from '../../components/ui';
 
 const EMPTY_FORM: MarketplacePluginInput = {
   slug: '',
@@ -63,6 +64,8 @@ export function AdminMarketplacePage() {
   const [status, setStatus] = useState('');
   const [marketplace, setMarketplace] = useState<PanelMarketplaceSettings>(DEFAULT_MARKETPLACE);
   const [togglingMarketplace, setTogglingMarketplace] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminMarketplacePlugin | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api.admin.marketplacePlugins();
@@ -169,13 +172,18 @@ export function AdminMarketplacePage() {
     }
   }
 
-  async function removePlugin(plugin: AdminMarketplacePlugin) {
-    if (!confirm(`Delete "${plugin.name}" from the catalog?`)) return;
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError('');
     try {
-      await api.admin.deleteMarketplacePlugin(plugin.id);
+      await api.admin.deleteMarketplacePlugin(deleteTarget.id);
       await refresh();
+      setDeleteTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -193,7 +201,6 @@ export function AdminMarketplacePage() {
           title="FiveM Marketplace"
           subtitle="Curate GitHub resources for one-click install on FiveM servers. Files are pulled from GitHub at install time — nothing is uploaded to your panel."
           icon={Package}
-          gradient="linear-gradient(135deg, #f59e0b 0%, #d97706 40%, #92400e 100%)"
           stats={[
             { label: 'User access', value: marketplace.enabled ? 'On' : 'Off' },
             { label: 'Catalog entries', value: String(plugins.length) },
@@ -202,7 +209,7 @@ export function AdminMarketplacePage() {
           ]}
           actions={
             <Button onClick={openCreate}>
-              <Plus className="h-3.5 w-3.5" />
+              <DsIcon icon={Plus} />
               Add plugin
             </Button>
           }
@@ -382,73 +389,89 @@ export function AdminMarketplacePage() {
               <AdminSaveBar hasChanges saving={saving} onReset={closeForm} />
             </form>
           ) : loading ? (
-            <div className="flex justify-center py-16">
-              <Spinner className="h-8 w-8" />
+            <div className="ds-marketplace-grid" aria-hidden>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-36 rounded-xl" />
+              ))}
             </div>
           ) : plugins.length === 0 ? (
-            <EmptyState title="No plugins yet" description="Add your first FiveM resource from GitHub." />
+            <EmptyState
+              icon={<DsIcon icon={Package} className="ds-icon--md" />}
+              title="No plugins yet"
+              description="Add your first FiveM resource from GitHub."
+              action={
+                <Button onClick={openCreate}>
+                  <DsIcon icon={Plus} />
+                  Add plugin
+                </Button>
+              }
+            />
           ) : (
-            <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-[var(--border)] bg-[var(--bg-elevated)]/80 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  <tr>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">GitHub</th>
-                    <th className="px-4 py-3">Installs</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {plugins.map((plugin) => (
-                    <tr key={plugin.id} className="bg-[var(--surface)] hover:bg-[var(--surface-hover)]">
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{plugin.name}</p>
-                        <p className="font-mono text-[10px] text-[var(--muted)]">{plugin.slug}</p>
-                      </td>
-                      <td className="px-4 py-3 capitalize text-[var(--muted)]">{plugin.category}</td>
-                      <td className="px-4 py-3">
-                        <a
-                          href={plugin.githubUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 accent-text hover:underline"
-                        >
-                          {plugin.githubOwner}/{plugin.githubRepo}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--muted)]">{plugin.installCount}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${
-                            plugin.enabled
-                              ? 'bg-green-500/10 text-green-400 ring-green-500/25'
-                              : 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/25'
-                          }`}
-                        >
-                          {plugin.enabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="subtle" size="sm" onClick={() => openEdit(plugin)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="danger" size="sm" onClick={() => void removePlugin(plugin)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="ds-marketplace-grid">
+              {plugins.map((plugin) => (
+                <article key={plugin.id} className="ds-marketplace-card">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-semibold">{plugin.name}</h3>
+                        {plugin.featured && (
+                          <Badge tone="info">
+                            <Star className="h-3 w-3" />
+                            Featured
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 font-mono text-[10px] text-[var(--muted)]">{plugin.slug}</p>
+                    </div>
+                    <Badge tone={plugin.enabled ? 'success' : 'neutral'}>
+                      {plugin.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </div>
+
+                  <p className="line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">{plugin.description}</p>
+
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted)]">
+                    <Badge tone="neutral" className="capitalize">{plugin.category}</Badge>
+                    <span className="tabular-nums">{plugin.installCount} installs</span>
+                  </div>
+
+                  <a
+                    href={plugin.githubUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {plugin.githubOwner}/{plugin.githubRepo}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+
+                  <div className="mt-auto flex gap-2 border-t border-[var(--border)] pt-3">
+                    <Button variant="secondary" size="sm" className="flex-1" onClick={() => openEdit(plugin)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => setDeleteTarget(plugin)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </AdminDetailBody>
       </AdminDetailPage>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete plugin"
+        description={`Remove "${deleteTarget?.name}" from the catalog?`}
+        detail="Servers that already installed this resource are not affected."
+        confirmLabel="Delete"
+        loading={deleting}
+      />
     </AdminLayout>
   );
 }

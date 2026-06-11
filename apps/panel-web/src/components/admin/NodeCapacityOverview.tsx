@@ -238,15 +238,15 @@ export function FleetCapacityOverview({
     totals.diskLimit > 0 ? Math.min(100, Math.round((totals.allocatedDisk / totals.diskLimit) * 100)) : 0;
 
   return (
-    <section className="node-fleet-capacity">
-      <div className="node-fleet-capacity-head">
+    <section className="ds-admin-fleet">
+      <div className="ds-admin-fleet-head">
         <div>
-          <p className="node-fleet-capacity-title">Fleet capacity</p>
-          <p className="node-fleet-capacity-desc">Combined allocation across all nodes</p>
+          <p className="ds-admin-fleet-title">Fleet capacity</p>
+          <p className="ds-admin-fleet-desc">Combined allocation across all nodes</p>
         </div>
-        <span className="node-fleet-capacity-count">{nodes.length} nodes · {totals.servers} servers</span>
+        <span className="ds-admin-fleet-meta">{nodes.length} nodes · {totals.servers} servers</span>
       </div>
-      <div className="node-fleet-capacity-bars">
+      <div className="ds-admin-fleet-bars">
         <FleetBar label="Memory" used={totals.allocatedMemory} limit={totals.memoryLimit} percent={memoryPercent} />
         <FleetBar label="Disk" used={totals.allocatedDisk} limit={totals.diskLimit} percent={diskPercent} />
       </div>
@@ -266,17 +266,22 @@ function FleetBar({
   percent: number;
 }) {
   const tone = usageTone(percent);
+  const fillClass =
+    tone === 'danger' ? 'ds-progress-fill--bad' : tone === 'warning' ? 'ds-progress-fill--warn' : 'ds-progress-fill--good';
   return (
-    <div className="node-fleet-bar">
-      <div className="node-fleet-bar-head">
+    <div>
+      <div className="ds-admin-fleet-bar-label">
         <span>{label}</span>
         <span className="tabular-nums">
           {limit > 0 ? `${formatCapacityLabel(used, limit)} · ${percent}%` : `${formatResource(used, 'MiB')} allocated`}
         </span>
       </div>
       {limit > 0 && (
-        <div className="node-fleet-bar-track">
-          <div className={`node-fleet-bar-fill node-fleet-bar-fill--${tone}`} style={{ width: `${Math.max(percent > 0 ? 4 : 0, percent)}%` }} />
+        <div className="ds-progress">
+          <div
+            className={`ds-progress-fill ${fillClass}`}
+            style={{ width: `${Math.max(percent > 0 ? 4 : 0, percent)}%` }}
+          />
         </div>
       )}
     </div>

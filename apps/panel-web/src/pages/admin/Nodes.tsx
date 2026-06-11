@@ -1,28 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HardDrive, Network, Plus, Search, Server, Signal, Wrench } from 'lucide-react';
 import { api, type AdminLocationSummary, type AdminNodeSummary } from '../../lib/api';
 import { formatResource } from '../../lib/server-theme';
-import { AdminLayout, Button, Card, FilterSelect } from '../../components/Layout';
+import { useAsyncData } from '../../hooks/useAsyncData';
+import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/Layout';
 import { AdminNodeTable } from '../../components/AdminNodeRow';
 import { FleetCapacityOverview } from '../../components/admin/NodeCapacityOverview';
-import { EmptyState, PageHeader, Spinner, StatCard } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton, StatCard } from '../../components/ui';
 
 type MaintenanceFilter = 'all' | 'active' | 'maintenance';
 
 export function AdminNodes() {
-  const [nodes, setNodes] = useState<AdminNodeSummary[]>([]);
-  const [locations, setLocations] = useState<AdminLocationSummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [maintenanceFilter, setMaintenanceFilter] = useState<MaintenanceFilter>('all');
 
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await api.admin.nodes({
-        search: search.trim() || undefined,
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: locations } = useAsyncData<AdminLocationSummary[]>('admin-locations', () =>
+    api.admin.locations(),
+  );
+
+  const queryKey = `admin-nodes|${debouncedSearch}|${locationFilter}|${maintenanceFilter}`;
+
+  const fetchNodes = useCallback(
+    () =>
+      api.admin.nodes({
+        search: debouncedSearch || undefined,
         locationId: locationFilter || undefined,
         maintenance:
           maintenanceFilter === 'all'
@@ -30,131 +39,138 @@ export function AdminNodes() {
             : maintenanceFilter === 'maintenance'
               ? 'true'
               : 'false',
-      });
-      setNodes(data);
-    } catch {
-      setNodes([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+      }),
+    [debouncedSearch, locationFilter, maintenanceFilter],
+  );
 
-  useEffect(() => {
-    api.admin.locations().then(setLocations);
-  }, []);
+  const { data: nodes, loading, error } = useAsyncData<AdminNodeSummary[]>(
+    queryKey,
+    fetchNodes,
+    [debouncedSearch, locationFilter, maintenanceFilter],
+  );
 
-  useEffect(() => {
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
-  }, [search, locationFilter, maintenanceFilter]);
+  const list = nodes ?? [];
+  const locationList = locations ?? [];
 
   const stats = useMemo(() => {
-    const servers = nodes.reduce((n, node) => n + node._count.servers, 0);
-    const online = nodes.filter((n) => n.online && !n.maintenanceMode).length;
-    const totalMemory = nodes.reduce((n, node) => n + (node.capacity?.allocatedMemory ?? 0), 0);
-    const totalDisk = nodes.reduce((n, node) => n + (node.capacity?.allocatedDisk ?? 0), 0);
+    const servers = list.reduce((n, node) => n + node._count.servers, 0);
+    const online = list.filter((n) => n.online && !n.maintenanceMode).length;
+    const totalMemory = list.reduce((n, node) => n + (node.capacity?.allocatedMemory ?? 0), 0);
+    const totalDisk = list.reduce((n, node) => n + (node.capacity?.allocatedDisk ?? 0), 0);
     return {
-      total: nodes.length,
+      total: list.length,
       online,
       servers,
-      maintenance: nodes.filter((n) => n.maintenanceMode).length,
+      maintenance: list.filter((n) => n.maintenanceMode).length,
       totalMemory,
       totalDisk,
     };
-  }, [nodes]);
+  }, [list]);
 
   return (
     <AdminLayout>
-      <PageHeader
-        title="Nodes"
-        description="Wings daemons, resource capacity, and port allocations"
-        action={
-          <Link to="/admin/nodes/new">
-            <Button>
-              <Plus className="h-3.5 w-3.5" />
-              Add node
-            </Button>
-          </Link>
-        }
-      />
+      <Page>
+        <PageHeader
+          title="Nodes"
+          description="Wings daemons, resource capacity, and port allocations"
+          icon={<DsIcon icon={HardDrive} className="ds-icon--muted" />}
+          action={
+            <Link to="/admin/nodes/new">
+              <Button>
+                <DsIcon icon={Plus} />
+                Add node
+              </Button>
+            </Link>
+          }
+        />
 
-      {!loading && nodes.length > 0 && <FleetCapacityOverview nodes={nodes} />}
+        {error && (
+          <AlertBanner tone="error" className="mb-4">
+            We couldn&apos;t load nodes. Check your connection and try again.
+          </AlertBanner>
+        )}
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Nodes" value={stats.total} icon={<HardDrive className="h-4 w-4" />} />
-        <StatCard
-          label="Online"
-          value={stats.online}
-          hint={stats.total - stats.online > 0 ? `${stats.total - stats.online} unreachable` : 'All reachable'}
-          icon={<Signal className="h-4 w-4" />}
-          tone={stats.online === stats.total && stats.total > 0 ? 'success' : stats.online < stats.total ? 'warning' : 'default'}
-        />
-        <StatCard label="Servers" value={stats.servers} icon={<Server className="h-4 w-4" />} />
-        <StatCard
-          label="RAM allocated"
-          value={formatResource(stats.totalMemory, 'MiB')}
-          icon={<Network className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Disk allocated"
-          value={formatResource(stats.totalDisk, 'MiB')}
-          icon={<HardDrive className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Maintenance"
-          value={stats.maintenance}
-          icon={<Wrench className="h-4 w-4" />}
-          tone={stats.maintenance > 0 ? 'warning' : 'default'}
-        />
-      </div>
+        {!loading && list.length > 0 && <FleetCapacityOverview nodes={list} />}
 
-      <Card title="All nodes">
-        <div className="mb-4 flex flex-wrap gap-2">
-          <div className="relative min-w-0 w-full flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, FQDN, UUID…"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 pl-8 pr-3 text-[13px] shadow-sm outline-none transition hover:border-[var(--accent)]/35 focus:border-[var(--accent)]/55 focus:ring-2 focus:ring-[var(--accent-muted)]"
-            />
-          </div>
-          <FilterSelect value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
-            <option value="">All locations</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.short}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect
-            value={maintenanceFilter}
-            onChange={(e) => setMaintenanceFilter(e.target.value as MaintenanceFilter)}
-          >
-            <option value="all">All nodes</option>
-            <option value="active">Active only</option>
-            <option value="maintenance">Maintenance</option>
-          </FilterSelect>
+        <div className="ds-grid-stats mb-4">
+          <StatCard label="Nodes" value={stats.total} icon={<DsIcon icon={HardDrive} />} />
+          <StatCard
+            label="Online"
+            value={stats.online}
+            hint={stats.total - stats.online > 0 ? `${stats.total - stats.online} unreachable` : 'All reachable'}
+            icon={<DsIcon icon={Signal} />}
+            tone={stats.online === stats.total && stats.total > 0 ? 'success' : stats.online < stats.total ? 'warning' : 'neutral'}
+          />
+          <StatCard label="Servers" value={stats.servers} icon={<DsIcon icon={Server} />} />
+          <StatCard
+            label="RAM allocated"
+            value={formatResource(stats.totalMemory, 'MiB')}
+            icon={<DsIcon icon={Network} />}
+          />
+          <StatCard
+            label="Disk allocated"
+            value={formatResource(stats.totalDisk, 'MiB')}
+            icon={<DsIcon icon={HardDrive} />}
+          />
+          <StatCard
+            label="Maintenance"
+            value={stats.maintenance}
+            icon={<DsIcon icon={Wrench} />}
+            tone={stats.maintenance > 0 ? 'warning' : 'neutral'}
+          />
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
+        <Card title="All nodes">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <div className="relative min-w-0 w-full flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, FQDN, UUID…"
+                className="ds-field py-2 pl-8 pr-3"
+              />
+            </div>
+            <FilterSelect value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+              <option value="">All locations</option>
+              {locationList.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.short}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              value={maintenanceFilter}
+              onChange={(e) => setMaintenanceFilter(e.target.value as MaintenanceFilter)}
+            >
+              <option value="all">All nodes</option>
+              <option value="active">Active only</option>
+              <option value="maintenance">Maintenance</option>
+            </FilterSelect>
           </div>
-        ) : nodes.length === 0 ? (
-          <EmptyState
-            title="No nodes found"
-            description="Try adjusting your search or add a new Wings node."
-            action={
-              <Link to="/admin/nodes/new">
-                <Button>Add node</Button>
-              </Link>
-            }
-          />
-        ) : (
-          <AdminNodeTable nodes={nodes} />
-        )}
-      </Card>
+
+          {loading ? (
+            <div className="space-y-2 py-1" aria-hidden>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : list.length === 0 ? (
+            <EmptyState
+              icon={<DsIcon icon={HardDrive} className="ds-icon--md" />}
+              title="No nodes found"
+              description="Try adjusting your search or add a new Wings node."
+              action={
+                <Link to="/admin/nodes/new">
+                  <Button>Add node</Button>
+                </Link>
+              }
+            />
+          ) : (
+            <AdminNodeTable nodes={list} />
+          )}
+        </Card>
+      </Page>
     </AdminLayout>
   );
 }

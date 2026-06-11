@@ -7,10 +7,10 @@ import {
   RotateCcw,
   Save,
 } from 'lucide-react';
-import { formatActivityTime, type ActivityEntry } from '../lib/activity';
+import { type ActivityEntry } from '../lib/activity';
 import { ActivityTimeline } from './ActivityTimeline';
 import { Button } from './Layout';
-import { Spinner } from './ui';
+import { AlertBanner, PageLoading } from './ui';
 
 export type AdminDetailTab<T extends string = string> = {
   id: T;
@@ -30,15 +30,8 @@ export type BreadcrumbItem = {
   to?: string;
 };
 
-const HERO_PATTERN =
-  'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)';
-
 export function AdminDetailLoading() {
-  return (
-    <div className="flex justify-center py-24">
-      <Spinner className="h-8 w-8" />
-    </div>
-  );
+  return <PageLoading />;
 }
 
 export function AdminDetailNotFound({
@@ -52,16 +45,11 @@ export function AdminDetailNotFound({
 }) {
   return (
     <>
-      <Link
-        to={backTo}
-        className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] transition hover:accent-text"
-      >
+      <Link to={backTo} className="ds-admin-breadcrumb mb-4 inline-flex items-center gap-1.5">
         <ArrowLeft className="h-3.5 w-3.5" />
         {backLabel}
       </Link>
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-8 text-center text-sm text-red-400">
-        {message}
-      </div>
+      <AlertBanner tone="error">{message}</AlertBanner>
     </>
   );
 }
@@ -74,11 +62,9 @@ export function AdminDetailPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[calc(100vh-2.5rem)] flex-col">
+    <div className="ds-admin-page">
       <AdminDetailBreadcrumb items={breadcrumb} />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm shadow-black/5">
-        {children}
-      </div>
+      <div className="ds-admin-shell">{children}</div>
     </div>
   );
 }
@@ -88,25 +74,19 @@ export function AdminDetailBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
   const rest = items.slice(1);
 
   return (
-    <nav className="mb-4 flex shrink-0 flex-wrap items-center gap-1.5 text-xs text-[var(--muted)]">
+    <nav className="ds-admin-breadcrumb">
       {first?.to ? (
-        <Link to={first.to} className="inline-flex items-center gap-1 font-medium transition hover:accent-text">
+        <Link to={first.to}>
           <ArrowLeft className="h-3.5 w-3.5" />
           {first.label}
         </Link>
       ) : (
-        <span className="inline-flex items-center gap-1 font-medium">{first?.label}</span>
+        <span>{first?.label}</span>
       )}
       {rest.map((item, i) => (
         <span key={`${item.label}-${i}`} className="inline-flex items-center gap-1.5">
           <ChevronRight className="h-3 w-3 opacity-50" />
-          {item.to ? (
-            <Link to={item.to} className="transition hover:accent-text">
-              {item.label}
-            </Link>
-          ) : (
-            <span className="font-medium text-[var(--text)]">{item.label}</span>
-          )}
+          {item.to ? <Link to={item.to}>{item.label}</Link> : <span className="ds-admin-breadcrumb-current">{item.label}</span>}
         </span>
       ))}
     </nav>
@@ -114,7 +94,7 @@ export function AdminDetailBreadcrumb({ items }: { items: BreadcrumbItem[] }) {
 }
 
 export function AdminDetailHero({
-  gradient,
+  gradient: _gradient,
   icon: Icon,
   iconContent,
   title,
@@ -124,7 +104,8 @@ export function AdminDetailHero({
   actions,
   stats,
 }: {
-  gradient: string;
+  /** @deprecated Ignored — hero uses accent stripe instead of gradients */
+  gradient?: string;
   icon?: LucideIcon;
   iconContent?: React.ReactNode;
   title: React.ReactNode;
@@ -135,36 +116,36 @@ export function AdminDetailHero({
   stats?: AdminHeroStat[];
 }) {
   return (
-    <div className="relative shrink-0 overflow-hidden">
-      <div className="absolute inset-0" style={{ background: gradient }} />
-      <div
-        className="absolute inset-0 opacity-60"
-        style={{ backgroundImage: HERO_PATTERN, backgroundSize: '22px 22px' }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)] via-black/10 to-transparent" />
-
-      <div className="relative flex flex-wrap items-start gap-4 p-5 sm:p-6">
+    <div className="ds-admin-hero">
+      <div className="ds-hero-stripe" />
+      <div className="ds-admin-hero-body">
         {(Icon || iconContent) && (
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-black/25 text-xl font-bold text-white ring-1 ring-white/15 shadow-lg sm:h-16 sm:w-16 sm:text-2xl">
-            {iconContent ?? (Icon && <Icon className="h-7 w-7 text-white/90 sm:h-8 sm:w-8" />)}
+          <div className="ds-admin-hero-icon">
+            {iconContent ?? (Icon && <Icon className="h-5 w-5" />)}
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-bold text-white sm:text-xl">{title}</h1>
+            <h1 className="ds-admin-hero-title">{title}</h1>
             {badges}
           </div>
-          {subtitle && <div className="mt-1 text-sm text-white/75">{subtitle}</div>}
-          {meta && <div className="mt-0.5 text-xs text-white/55">{meta}</div>}
+          {subtitle && <div className="ds-admin-hero-subtitle">{subtitle}</div>}
+          {meta && <div className="ds-admin-hero-meta">{meta}</div>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
 
       {stats && stats.length > 0 && (
         <div
-          className={`relative grid gap-px border-t border-white/10 bg-black/20 ${
-            stats.length >= 4 ? 'grid-cols-2 sm:grid-cols-4' : stats.length === 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'
-          }`}
+          className="ds-admin-hero-stats"
+          style={{
+            gridTemplateColumns:
+              stats.length >= 4
+                ? undefined
+                : stats.length === 3
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : 'repeat(2, minmax(0, 1fr))',
+          }}
         >
           {stats.map((stat) => (
             <AdminHeroStatCell key={stat.label} {...stat} />
@@ -177,12 +158,12 @@ export function AdminDetailHero({
 
 function AdminHeroStatCell({ icon: Icon, label, value, className = '' }: AdminHeroStat) {
   return (
-    <div className={`bg-[var(--surface)]/85 px-4 py-3.5 backdrop-blur-sm sm:px-5 ${className}`}>
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">
-        {Icon && <Icon className="h-3 w-3 shrink-0 opacity-80" />}
+    <div className={`ds-admin-hero-stat ${className}`}>
+      <div className="ds-admin-hero-stat-label">
+        {Icon && <Icon className="h-3 w-3 shrink-0" />}
         {label}
       </div>
-      <p className="mt-1 truncate text-sm font-semibold tabular-nums">{value}</p>
+      <p className="ds-admin-hero-stat-value">{value}</p>
     </div>
   );
 }
@@ -197,8 +178,8 @@ export function AdminDetailTabs<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-elevated)]/30 px-3 py-2.5 sm:px-6">
-      <div className="nav-tabs-scroll inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] p-1">
+    <div className="ds-admin-tabs">
+      <div className="ds-admin-tabs-inner">
         {tabs.map((t) => {
           const selected = active === t.id;
           return (
@@ -206,21 +187,11 @@ export function AdminDetailTabs<T extends string>({
               key={t.id}
               type="button"
               onClick={() => onChange(t.id)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                selected
-                  ? 'bg-[var(--surface)] accent-text shadow-sm'
-                  : 'text-[var(--muted)] hover:text-[var(--text)]'
-              }`}
+              className={`ds-admin-tab${selected ? ' is-active' : ''}`}
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                    selected ? 'bg-[var(--accent-muted)]' : 'bg-[var(--surface)]'
-                  }`}
-                >
-                  {t.count}
-                </span>
+                <span className="ds-admin-tab-count">{t.count}</span>
               )}
             </button>
           );
@@ -231,7 +202,7 @@ export function AdminDetailTabs<T extends string>({
 }
 
 export function AdminDetailBody({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>;
+  return <div className="ds-admin-body">{children}</div>;
 }
 
 export function AdminDetailManageLayout({
@@ -251,8 +222,8 @@ export function AdminDetailManageLayout({
 
 export function AdminSidebarCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4 shadow-sm shadow-black/5">
-      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{title}</h3>
+    <div className="ds-admin-sidebar-card">
+      <h3 className="ds-admin-sidebar-card-title">{title}</h3>
       {children}
     </div>
   );
@@ -268,12 +239,12 @@ export function AdminResourcePill({
   value: number;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-center">
-      <div className="flex items-center justify-center gap-0.5 text-[9px] uppercase tracking-wide text-[var(--muted)]">
+    <div className="ds-mini-stat">
+      <div className="flex items-center justify-center gap-0.5">
         <Icon className="h-2.5 w-2.5" />
         {label}
       </div>
-      <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
+      <span className="ds-mini-stat-value">{value}</span>
     </div>
   );
 }
@@ -292,18 +263,18 @@ export function AdminInfoRow({
   truncate?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-xs">
-      <dt className="flex items-center gap-1 text-[var(--muted)]">
+    <dl className="ds-admin-meta-row">
+      <dt>
         {Icon && <Icon className="h-3 w-3 shrink-0" />}
         {label}
       </dt>
       <dd
-        className={`truncate font-medium ${mono ? 'font-mono text-[10px]' : ''} ${truncateValue ? 'max-w-[140px]' : ''}`}
+        className={`${mono ? 'font-mono text-[10px]' : ''} ${truncateValue ? 'max-w-[140px] truncate' : ''}`}
         title={value}
       >
         {value}
       </dd>
-    </div>
+    </dl>
   );
 }
 
@@ -323,11 +294,11 @@ export function AdminMetaRow({
   copied?: boolean;
 }) {
   return (
-    <div>
-      <dt className="text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">{label}</dt>
-      <dd className="mt-1 flex items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--surface)] px-2 py-1.5">
+    <div className="ds-admin-meta-field">
+      <dt className="ds-admin-meta-field-label">{label}</dt>
+      <dd className="ds-admin-meta-field-value">
         <span
-          className={`min-w-0 flex-1 text-xs ${mono ? 'font-mono' : ''} ${truncateValue ? 'truncate' : 'break-all'}`}
+          className={`min-w-0 flex-1 ${mono ? 'font-mono' : ''} ${truncateValue ? 'truncate' : 'break-all'}`}
           title={value}
         >
           {value}
@@ -336,7 +307,7 @@ export function AdminMetaRow({
           <button
             type="button"
             onClick={copy}
-            className="shrink-0 rounded p-0.5 text-[var(--muted)] transition hover:accent-text"
+            className="shrink-0 rounded p-0.5 text-[var(--muted)] transition hover:text-[var(--text)]"
             aria-label={`Copy ${label}`}
           >
             <Copy className={`h-3 w-3 ${copied ? 'text-green-400' : ''}`} />
@@ -360,7 +331,7 @@ export function AdminCopyButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] py-2 text-[10px] transition hover:bg-[var(--surface-hover)]"
+      className="ds-btn ds-btn--secondary flex flex-1 items-center justify-center gap-1 py-2 text-[10px]"
     >
       <Copy className={`h-3 w-3 ${active ? 'text-green-400' : ''}`} />
       {label}
@@ -385,7 +356,7 @@ export function AdminQuickLink({
       onClick={onClick}
       className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition hover:bg-[var(--surface-hover)]"
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
+      <span className="ds-admin-panel-icon">
         <Icon className="h-3.5 w-3.5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -415,26 +386,18 @@ export function AdminSettingsPanel({
   const isDanger = tone === 'danger';
   return (
     <section
-      className={`rounded-xl border p-4 sm:p-5 ${
-        isDanger
-          ? 'border-red-500/25 bg-red-500/[0.03]'
-          : 'border-[var(--border)] bg-[var(--bg-elevated)]/30 shadow-sm shadow-black/[0.03]'
-      } ${className}`}
+      className={`ds-admin-panel mb-4 ${isDanger ? 'border-red-500/25 bg-red-500/[0.03]' : ''} ${className}`}
     >
-      <div className="mb-4 flex items-start gap-2.5">
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-            isDanger ? 'bg-red-500/15 text-red-400' : 'bg-[var(--accent-muted)] accent-text'
-          }`}
-        >
+      <div className="ds-admin-panel-head">
+        <span className={`ds-admin-panel-icon ${isDanger ? 'border-red-500/30 text-red-400' : ''}`}>
           <Icon className="h-4 w-4" />
         </span>
-        <div className="min-w-0 flex-1 border-l-2 border-[var(--accent)]/20 pl-3">
-          <h2 className={`text-sm font-semibold ${isDanger ? 'text-red-300' : ''}`}>{title}</h2>
-          {description && <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--muted)]">{description}</p>}
+        <div className="min-w-0 flex-1">
+          <h2 className={`ds-admin-panel-title ${isDanger ? 'text-red-300' : ''}`}>{title}</h2>
+          {description && <p className="ds-admin-panel-desc">{description}</p>}
         </div>
       </div>
-      {children}
+      <div className="ds-admin-panel-body">{children}</div>
     </section>
   );
 }
@@ -466,15 +429,16 @@ export function AdminSection({
 
 export function AdminFormStatus({ error, saved }: { error?: string; saved?: boolean }) {
   if (!error && !saved) return null;
+  if (error) {
+    return (
+      <AlertBanner tone="error" className="mb-4">
+        {error}
+      </AlertBanner>
+    );
+  }
   return (
-    <div
-      className={`rounded-lg border px-3 py-2.5 text-xs ${
-        error
-          ? 'border-red-500/30 bg-red-500/10 text-red-400'
-          : 'border-green-500/30 bg-green-500/10 text-green-400'
-      }`}
-    >
-      {error || 'Changes saved successfully.'}
+    <div className="ds-alert ds-alert--info mb-4 border-green-500/30 bg-green-500/10 text-green-400" role="status">
+      Changes saved successfully.
     </div>
   );
 }
@@ -496,7 +460,7 @@ export function AdminSaveBar({
   if (!showBar) return null;
 
   return (
-    <div className="admin-save-bar sticky bottom-0 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-lg shadow-black/10 backdrop-blur-sm">
+    <div className="ds-admin-save-bar">
       <div className="mr-auto min-w-0 text-[11px]">
         {error && <p className="text-red-400">{error}</p>}
         {!error && saved && <p className="text-green-400">Changes saved</p>}
@@ -533,16 +497,14 @@ export function AdminRelatedTable({
   const navigate = useNavigate();
 
   return (
-    <div className="table-scroll-touch overflow-x-auto rounded-xl border border-[var(--border)]">
-      <table className="w-full text-left text-xs" style={{ minWidth }}>
+    <div className="ds-table-wrap rounded-xl border border-[var(--border)]">
+      <table className="ds-table" style={{ minWidth }}>
         <thead>
-          <tr className="border-b border-[var(--border)] bg-[var(--bg-elevated)]/50 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          <tr>
             {columns.map((col) => (
-              <th key={col} className="px-4 py-2.5 font-semibold">
-                {col}
-              </th>
+              <th key={col}>{col}</th>
             ))}
-            <th className="w-10 px-2 py-2.5" aria-hidden />
+            <th className="w-10" aria-hidden />
           </tr>
         </thead>
         <tbody>
@@ -550,15 +512,13 @@ export function AdminRelatedTable({
             <tr
               key={row.key}
               onClick={() => navigate(row.href)}
-              className="group cursor-pointer border-b border-[var(--border)]/60 transition last:border-b-0 hover:bg-[var(--surface-hover)]"
+              className="group cursor-pointer"
             >
               {row.cells.map((cell, i) => (
-                <td key={i} className="px-4 py-3">
-                  {cell}
-                </td>
+                <td key={i}>{cell}</td>
               ))}
-              <td className="px-2 py-3">
-                <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:accent-text" />
+              <td>
+                <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
               </td>
             </tr>
           ))}

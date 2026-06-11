@@ -3,8 +3,7 @@ import { ChevronRight, HardDrive, Network, Server, Wrench } from 'lucide-react';
 import type { AdminNodeSummary } from '../lib/api';
 import { NodeCapacityBars } from './admin/AdminResourceUsage';
 import { AdminMobileCard, AdminResponsiveTable } from './admin/AdminMobileCard';
-
-const NODE_GRADIENT = 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 45%, #0f172a 100%)';
+import { Badge, DsIcon } from './ui';
 
 export function AdminNodeTable({ nodes }: { nodes: AdminNodeSummary[] }) {
   return (
@@ -13,24 +12,26 @@ export function AdminNodeTable({ nodes }: { nodes: AdminNodeSummary[] }) {
         <AdminNodeMobileCard key={node.id} node={node} />
       ))}
       desktop={
-        <table className="w-full min-w-[1040px] text-left text-xs">
-          <thead>
-            <tr className="border-b border-[var(--border)] bg-[var(--bg-elevated)]/50 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-              <th className="px-4 py-2.5 font-semibold">Node</th>
-              <th className="px-4 py-2.5 font-semibold">Location</th>
-              <th className="px-4 py-2.5 font-semibold">Connection</th>
-              <th className="px-4 py-2.5 font-semibold">Resource usage</th>
-              <th className="px-4 py-2.5 font-semibold">Workload</th>
-              <th className="px-4 py-2.5 font-semibold">Status</th>
-              <th className="w-10 px-2 py-2.5" aria-hidden />
-            </tr>
-          </thead>
-          <tbody>
-            {nodes.map((node) => (
-              <AdminNodeRow key={node.id} node={node} />
-            ))}
-          </tbody>
-        </table>
+        <div className="ds-table-wrap">
+          <table className="ds-table" style={{ minWidth: '1040px' }}>
+            <thead>
+              <tr>
+                <th>Node</th>
+                <th>Location</th>
+                <th>Connection</th>
+                <th>Resource usage</th>
+                <th>Workload</th>
+                <th>Status</th>
+                <th className="w-10" aria-hidden />
+              </tr>
+            </thead>
+            <tbody>
+              {nodes.map((node) => (
+                <AdminNodeRow key={node.id} node={node} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       }
     />
   );
@@ -44,11 +45,8 @@ function AdminNodeMobileCard({ node }: { node: AdminNodeSummary }) {
     <AdminMobileCard
       onClick={() => navigate(`/admin/nodes/${node.id}`)}
       leading={
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
-          style={{ background: NODE_GRADIENT }}
-        >
-          <HardDrive className="h-4 w-4 text-white/90" />
+        <div className="ds-admin-hero-icon h-10 w-10">
+          <HardDrive className="h-4 w-4" />
         </div>
       }
       title={node.name}
@@ -79,18 +77,15 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
   return (
     <tr
       onClick={() => navigate(`/admin/nodes/${node.id}`)}
-      className="group cursor-pointer border-b border-[var(--border)]/60 transition last:border-b-0 hover:bg-[var(--surface-hover)]"
+      className="group cursor-pointer"
     >
-      <td className="px-4 py-3">
+      <td>
         <div className="flex min-w-[180px] items-center gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
-            style={{ background: NODE_GRADIENT }}
-          >
-            <HardDrive className="h-4 w-4 text-white/90" />
+          <div className="ds-admin-hero-icon h-9 w-9">
+            <DsIcon icon={HardDrive} />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium group-hover:accent-text">{node.name}</p>
+            <p className="truncate text-sm font-medium group-hover:text-[var(--accent)]">{node.name}</p>
             <p className="truncate text-[11px] text-[var(--muted)]">
               {node.description || `Wings · ${uuidShort}`}
             </p>
@@ -98,14 +93,14 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
         </div>
       </td>
 
-      <td className="px-4 py-3">
+      <td>
         <div className="min-w-[100px]">
           <p className="truncate font-medium">{node.location.short}</p>
           <p className="truncate text-[11px] text-[var(--muted)]">{node.location.long}</p>
         </div>
       </td>
 
-      <td className="px-4 py-3">
+      <td>
         <div className="min-w-[140px]">
           <p className="truncate font-mono text-[11px]">
             {node.scheme}://{node.fqdn}
@@ -117,19 +112,19 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
         </div>
       </td>
 
-      <td className="px-4 py-3">
+      <td>
         {node.capacity ? (
           <div className="min-w-[150px] space-y-2">
             <NodeCapacityBars capacity={node.capacity} compact />
             {(node.capacity.effectiveMemoryLimit > 0 || node.capacity.effectiveDiskLimit > 0) && (
               <div className="flex flex-wrap gap-1.5 text-[10px] tabular-nums text-[var(--muted)]">
                 {node.capacity.effectiveMemoryLimit > 0 && (
-                  <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5">
+                  <span className="ds-mini-stat px-1.5 py-0.5 normal-case tracking-normal">
                     RAM {node.capacity.memoryUsedPercent}%
                   </span>
                 )}
                 {node.capacity.effectiveDiskLimit > 0 && (
-                  <span className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5">
+                  <span className="ds-mini-stat px-1.5 py-0.5 normal-case tracking-normal">
                     Disk {node.capacity.diskUsedPercent}%
                   </span>
                 )}
@@ -141,7 +136,7 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
         )}
       </td>
 
-      <td className="px-4 py-3">
+      <td>
         <div className="flex min-w-[100px] flex-col gap-1 text-[11px] text-[var(--muted)]">
           <span className="inline-flex items-center gap-1.5">
             <Server className="h-3 w-3 shrink-0" />
@@ -154,7 +149,7 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
         </div>
       </td>
 
-      <td className="px-4 py-3">
+      <td>
         <NodeStatus
           maintenance={node.maintenanceMode}
           online={node.online}
@@ -163,8 +158,8 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
         />
       </td>
 
-      <td className="px-2 py-3">
-        <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:accent-text" />
+      <td>
+        <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
       </td>
     </tr>
   );
@@ -183,30 +178,27 @@ function NodeStatus({
 }) {
   if (maintenance) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+      <Badge tone="warning">
         <Wrench className="h-3 w-3" />
         Maintenance
-      </span>
+      </Badge>
     );
   }
   if (online === false) {
     return (
-      <span
-        title={error ?? 'Wings unreachable'}
-        className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400"
-      >
-        <span className="h-1 w-1 rounded-full bg-red-400" />
-        Offline
+      <span title={error ?? 'Wings unreachable'}>
+        <Badge tone="danger" className="max-w-[120px] truncate">
+          Offline
+        </Badge>
       </span>
     );
   }
   return (
-    <span
-      title={wingsVersion ?? undefined}
-      className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-400"
-    >
-      <span className="h-1 w-1 rounded-full bg-green-400 status-pulse" />
-      {wingsVersion ? `Wings ${wingsVersion}` : 'Online'}
+    <span title={wingsVersion ?? undefined}>
+      <Badge tone="success">
+        <span className="h-1.5 w-1.5 rounded-full bg-current status-pulse" />
+        {wingsVersion ? `Wings ${wingsVersion}` : 'Online'}
+      </Badge>
     </span>
   );
 }
