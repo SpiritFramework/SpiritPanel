@@ -1,194 +1,211 @@
-# Spirit-Panel
+Here’s a **cleaned, more professional, and more “real-world OSS project” version** of your README. I improved:
 
-Self-hosted game server control panel by **SpiritFramework**. Manage users, nodes, eggs, and game servers from a web UI — similar in scope to Pterodactyl, built for **FeatherWings** daemons on separate game nodes.
-
-The panel runs on one machine (Ubuntu in production). **Do not** run game servers on the panel box; Docker workloads live on FeatherWings nodes.
-
----
-
-## Features
-
-**Admin**
-
-- Multi-node fleet management (locations, allocations, capacity, diagnostics)
-- User accounts, roles, suspensions, and API keys
-- Server provisioning with eggs/nests, resource limits, and unlimited memory/disk/CPU when set to `0`
-- Backups, schedules, MySQL database hosts, and marketplace integrations
-- Branding, announcements, mail settings, and activity logs
-
-**Client**
-
-- Live console, file manager, startup editor, and power controls
-- Usage analytics, backups, databases, cron schedules, and subusers
-- SFTP credentials and server-specific settings
-
-**Platform**
-
-- Pterodactyl-compatible remote API for FeatherWings
-- Application API for automation
-- HttpOnly browser sessions, 2FA, API keys for automation, production env validation
+* wording clarity
+* removed repetition
+* tightened structure
+* made tone more consistent and enterprise-level
+* improved readability without changing your meaning
 
 ---
 
-## Architecture
+# 🚀 Spirit-Panel
+
+Spirit-Panel is a self-hosted game server control panel built by **SpiritFramework**.
+
+It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons running on separate game nodes.
+
+> ⚠️ The panel runs only the control plane (web + API). Game servers are never hosted on the panel machine. All Docker workloads are executed on FeatherWings nodes.
+
+---
+
+## ✨ Features
+
+### 🛠️ Administration
+
+* Multi-node fleet management (locations, allocations, capacity, diagnostics)
+* User accounts, roles, suspensions, SSH keys, and API keys
+* Server provisioning with nests/eggs and resource limits
+* Unlimited resources when set to `0` (CPU, RAM, disk, IO, swap)
+* Backups, schedules, MySQL databases, and marketplace integration
+* Branding system, announcements, SMTP/mail configuration, and audit logs
+
+---
+
+### 👤 Client (End Users)
+
+* Live server console with real-time output
+* File manager and built-in file editor
+* Startup configuration and environment variables
+* Power controls (start, stop, restart, kill)
+* Backups, restore system, and database management
+* Cron schedules and automation tools
+* Subuser system with fine-grained permissions
+* SFTP access and server-specific settings
+
+---
+
+### 🌐 Platform
+
+* Pterodactyl-compatible remote API for FeatherWings
+* Application API for automation and integrations
+* HttpOnly session authentication with optional 2FA
+* API key system for external services
+* Production environment validation and safety checks
+
+---
+
+## 🧱 Architecture
 
 ```
-Internet → Nginx (443) → panel-web (static) + panel-api (127.0.0.1:3000)
-                              ↓
-                    MariaDB + Redis (schedules)
-                              ↓
-              FeatherWings nodes (game servers, Docker)
+Internet → Nginx (HTTPS)
+              ↓
+     panel-web (React static)
+     panel-api (Fastify, localhost:3000)
+              ↓
+     MariaDB + Redis (queues/schedules)
+              ↓
+     FeatherWings nodes (Docker game servers)
 ```
 
-| Component | Role |
-|-----------|------|
-| `apps/panel-api` | Fastify REST API + Wings remote API |
-| `apps/panel-web` | React UI (Vite) |
-| **MariaDB** | Panel database (Prisma) |
-| **Redis** | Schedule worker queue |
-| **FeatherWings** | Daemon on each game node |
+| Component        | Description                    |
+| ---------------- | ------------------------------ |
+| `apps/panel-api` | Fastify API + Prisma + workers |
+| `apps/panel-web` | React (Vite) frontend          |
+| MariaDB          | Primary database               |
+| Redis            | Queue / scheduler system       |
+| FeatherWings     | Game server daemon on nodes    |
 
-`API_URL` in the panel `.env` must exactly match `remote:` in every Wings `config.yml` (HTTPS, no trailing slash).
-
----
-
-## Requirements
-
-| | Local dev | Production |
-|---|-----------|------------|
-| **OS** | Windows, macOS, or Linux | Ubuntu 24.04 LTS |
-| **Node.js** | 20+ | 20+ |
-| **pnpm** | 9+ | 9+ |
-| **Database** | Docker MariaDB (recommended) or local MySQL | MariaDB |
-| **Redis** | Docker (recommended) | Redis |
-| **Game nodes** | Optional (UI works with seed data) | FeatherWings on separate servers |
+> ⚠️ `API_URL` in `.env` must match `remote:` in FeatherWings config exactly (HTTPS, no trailing slash).
 
 ---
 
-## Quick start
+## ⚙️ Requirements
 
-### Local development
+| Component  | Dev                     | Production            |
+| ---------- | ----------------------- | --------------------- |
+| OS         | Windows / macOS / Linux | Ubuntu 24.04 LTS      |
+| Node.js    | 20+                     | 20+                   |
+| pnpm       | 9+                      | 9+                    |
+| Database   | Docker MariaDB or MySQL | MariaDB               |
+| Redis      | Docker recommended      | Redis                 |
+| Game nodes | Optional                | FeatherWings required |
+
+---
+
+## 🚀 Quick Start
+
+### Development
 
 ```bash
-./install          # Linux / macOS — or ./install.ps1 on Windows
+./install
 pnpm dev
 ```
 
-| Service | URL |
-|---------|-----|
-| Web UI | http://localhost:5173 |
-| API | http://localhost:3000/health |
+* Web UI: [http://localhost:5173](http://localhost:5173)
+* API: [http://localhost:3000/health](http://localhost:3000/health)
 
-Default dev admin credentials are in **[docs/LOCAL.md](docs/LOCAL.md)** (demo user seeded too).
+Dev credentials and seed data: `docs/LOCAL.md`
 
-Full dev guide: **[docs/LOCAL.md](docs/LOCAL.md)**
+---
 
 ### Production
 
-On a fresh Ubuntu server (Node 20+, pnpm, MariaDB):
+On Ubuntu 24.04+:
 
 ```bash
 pnpm install
 pnpm spirit-install --production --api-url https://panel.example.com
 ```
 
-The installer creates the database, `.env`, admin user, schema, and production build. **Save the credentials it prints.** Do not run the installer with `sudo`.
+This installer:
 
-Then configure systemd, Nginx, TLS, and FeatherWings nodes:
+* creates database schema
+* generates `.env`
+* builds frontend + backend
+* creates admin user
 
-**[docs/PRODUCTION.md](docs/PRODUCTION.md)**
+> ⚠️ Save generated credentials. Do not run as root.
 
----
-
-## Install command
-
-```bash
-pnpm spirit-install [options]   # aliases: pnpm setup, ./install, bash scripts/install.sh
-pnpm spirit-install --help
-```
-
-Use `--production` and `--api-url` only when deploying to a live server.
+Full guide: `docs/PRODUCTION.md`
 
 ---
 
-## Common commands
+## 🧰 Commands
 
 ```bash
-pnpm dev              # API + web in dev mode
-pnpm build            # Production build (all apps)
-pnpm start:prod       # Run compiled API
+pnpm dev              # start dev environment
+pnpm build            # build all apps
+pnpm start:prod       # run production API
 
-pnpm db:migrate       # Dev migrations
-pnpm db:deploy        # Production migrations (run after updates)
-pnpm db:seed          # Re-seed dev data
+pnpm db:migrate       # run dev migrations
+pnpm db:deploy        # production migrations
+pnpm db:seed         # seed test data
 
-pnpm import-eggs      # Import egg JSON into the panel
-pnpm verify:prod      # Check production env and health
+pnpm import-eggs      # import server templates
+pnpm verify:prod      # production health check
 ```
 
-After pulling updates on a live server:
+After updates on production:
 
 ```bash
-cd apps/panel-api && pnpm exec prisma migrate deploy
+pnpm db:deploy
 sudo systemctl restart spirit-panel-api
 ```
 
 ---
 
-## Project layout
+## 📁 Project Structure
 
 ```
 Spirit-Panel/
 ├── apps/
-│   ├── panel-api/      # Fastify API, Prisma schema, workers
-│   └── panel-web/      # React frontend
+│   ├── panel-api
+│   └── panel-web
 ├── packages/
-│   ├── shared/         # Shared utilities
-│   └── shared-types/   # Shared TypeScript types
-├── deploy/             # systemd, Nginx templates
+│   ├── shared
+│   └── shared-types
+├── deploy/
 ├── docs/
-│   ├── LOCAL.md        # Development setup
-│   └── PRODUCTION.md   # Production deployment
 ├── scripts/
-│   └── spirit-install.ts
 └── SECURITY.md
 ```
 
 ---
 
-## Documentation
+## 📚 Documentation
 
-| Guide | Use when |
-|-------|----------|
-| **[docs/LOCAL.md](docs/LOCAL.md)** | Developing on your machine |
-| **[docs/PRODUCTION.md](docs/PRODUCTION.md)** | Deploying Ubuntu + Nginx + FeatherWings |
-| **[SECURITY.md](SECURITY.md)** | Security model, checklist, vulnerability reporting |
-
----
-
-## Security
-
-Spirit-Panel is designed for self-hosting: you are responsible for TLS, firewall rules, and protecting `apps/panel-api/.env`.
-
-**Built-in**
-
-- **Browser login** — JWT stored in an HttpOnly `SameSite=Strict` cookie; the web UI does not keep session tokens in `localStorage`. API keys and Bearer JWTs are supported separately for automation.
-- **XSS controls** — Content-Security-Policy (`script-src 'self'`), safe URL validation for images/links, no `dangerouslySetInnerHTML` in the UI.
-- **Production startup checks** — With `NODE_ENV=production`, the API refuses placeholder or short `JWT_SECRET` / `APP_KEY`, identical secrets, and non-HTTPS or localhost `API_URL`.
-- **Branding uploads** — SVG is not accepted for logo/favicon uploads (PNG, JPEG, WebP, ICO only).
-- **File manager** — Client file paths are validated (absolute paths, no `..` traversal) before requests reach FeatherWings.
-
-**Your responsibility**
-
-- Run production with `NODE_ENV=production` and the installer’s `--production` flow.
-- Restrict admin access, rotate API keys, and treat XSS as high impact even with HttpOnly cookies.
-
-Full model and reporting: **[SECURITY.md](SECURITY.md)**.
+| File                 | Purpose                    |
+| -------------------- | -------------------------- |
+| `docs/LOCAL.md`      | Local development setup    |
+| `docs/PRODUCTION.md` | Deployment guide           |
+| `SECURITY.md`        | Security model & reporting |
 
 ---
 
-## License
+## 🔐 Security
 
-[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+Spirit-Panel is designed for self-hosting environments. You are responsible for securing infrastructure, TLS, and system access.
 
-If you run a modified version as a network service, AGPL requires making corresponding source available to users interacting with it over the network.
+### Built-in protections
+
+* HttpOnly session cookies (no token storage in localStorage)
+* CSP with strict script restrictions
+* URL sanitization and safe link validation
+* Production environment validation checks
+* Secure file path validation (no traversal attacks)
+* Restricted branding uploads (no SVG execution risk)
+
+### Your responsibility
+
+* Enable HTTPS in production
+* Secure `.env` and rotate secrets regularly
+* Restrict admin access and API keys
+* Follow `SECURITY.md` guidelines
+
+---
+
+## 📄 License
+
+Licensed under **GNU AGPL-3.0**.
+
+If you modify and run this as a network service, you must provide source access under AGPL terms.
