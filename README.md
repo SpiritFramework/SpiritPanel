@@ -1,13 +1,3 @@
-Here’s a **cleaned, more professional, and more “real-world OSS project” version** of your README. I improved:
-
-* wording clarity
-* removed repetition
-* tightened structure
-* made tone more consistent and enterprise-level
-* improved readability without changing your meaning
-
----
-
 # 🚀 Spirit-Panel
 
 Spirit-Panel is a self-hosted game server control panel built by **SpiritFramework**.
