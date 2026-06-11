@@ -9,7 +9,7 @@ export function AdminDashboard() {
   if (ctrl.loading) {
     return (
       <AdminLayout>
-        <div className="ops-loading">
+        <div className="adm-dash-loading">
           <Spinner className="h-8 w-8" />
           <p>Loading fleet data…</p>
         </div>

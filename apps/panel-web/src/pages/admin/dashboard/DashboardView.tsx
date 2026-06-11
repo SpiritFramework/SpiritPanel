@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import {
-  Activity,
+  AlertTriangle,
   ArrowUpRight,
   Egg,
   HardDrive,
+  LayoutDashboard,
   MapPin,
   Megaphone,
   Plus,
@@ -12,9 +13,7 @@ import {
   Settings,
   Store,
   Users,
-  Zap,
 } from 'lucide-react';
-import { useMemo } from 'react';
 import { formatAllocationAddress } from '../../../lib/allocation';
 import { formatActivityTime, getActivityMeta } from '../../../lib/activity';
 import { usageTone } from '../../../lib/node-capacity';
@@ -33,14 +32,13 @@ import {
 } from './types';
 import type { AdminDashboardController } from './useAdminDashboard';
 
-const DOCK_LINKS = [
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/locations', icon: MapPin, label: 'Locations' },
-  { to: '/admin/nests', icon: Egg, label: 'Nests' },
-  { to: '/admin/marketplace', icon: Store, label: 'Marketplace' },
-  { to: '/admin/announce', icon: Megaphone, label: 'Announce' },
-  { to: '/admin/activity', icon: Activity, label: 'Activity' },
-  { to: '/admin/settings', icon: Settings, label: 'Settings' },
+const SHORTCUTS = [
+  { to: '/admin/users', icon: Users, label: 'Users', desc: 'Accounts & roles' },
+  { to: '/admin/locations', icon: MapPin, label: 'Locations', desc: 'Regions' },
+  { to: '/admin/nests', icon: Egg, label: 'Nests & eggs', desc: 'Game configs' },
+  { to: '/admin/marketplace', icon: Store, label: 'Marketplace', desc: 'FiveM catalog' },
+  { to: '/admin/announce', icon: Megaphone, label: 'Announce', desc: 'User messages' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings', desc: 'Panel options' },
 ] as const;
 
 export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
@@ -55,61 +53,53 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
     stats.allocationsTotal > 0 ? Math.round((stats.allocationsUsed / stats.allocationsTotal) * 100) : 0;
   const allocFree = stats.allocationsTotal - stats.allocationsUsed;
   const hasAlerts = nodesOffline > 0 || stats.suspended > 0 || stats.installing > 0;
-
-  const now = useMemo(() => {
-    const d = new Date();
-    return {
-      time: d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
-      date: d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }),
-    };
-  }, []);
-
-  const accent = branding.accentColor;
-  const accent2 = branding.secondaryColor || accent;
+  const healthTone = health >= 85 ? 'good' : health >= 60 ? 'warn' : 'bad';
 
   return (
-    <div className="ops" style={{ '--ops-a': accent, '--ops-b': accent2 } as React.CSSProperties}>
-      <div className="ops-ambient" aria-hidden />
-      <div className="ops-grid-bg" aria-hidden />
-
-      <header className="ops-top">
-        <div className="ops-top-copy">
-          <p className="ops-kicker">{greetingForHour()}</p>
-          <h1 className="ops-headline">
-            <span className="ops-headline-name">{name}</span>
-            <span className="ops-headline-sep">·</span>
-            <PanelName name={branding.panelName} variant="hero" className="ops-headline-panel" />
+    <div className="adm-dash">
+      <header className="adm-dash-header">
+        <div className="adm-dash-header-copy">
+          <p className="adm-dash-eyebrow">{greetingForHour()}</p>
+          <h1 className="adm-dash-title">
+            {name}
+            <span className="adm-dash-title-sep">·</span>
+            <PanelName name={branding.panelName} variant="compact" className="adm-dash-title-panel" />
           </h1>
-          <p className="ops-lede">
-            Fleet overview — {stats.servers} servers on {stats.nodesOnline} of {stats.nodes} live nodes
+          <p className="adm-dash-subtitle">
+            {stats.servers} servers · {stats.nodesOnline}/{stats.nodes} nodes online · {stats.users} users
           </p>
         </div>
-        <div className="ops-top-right">
-          <div className="ops-clock">
-            <span className="ops-clock-time">{now.time}</span>
-            <span className="ops-clock-date">{now.date}</span>
-          </div>
+        <div className="adm-dash-header-actions">
+          <Link to="/admin/servers/new" className="adm-dash-btn adm-dash-btn--primary">
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            New server
+          </Link>
           <button
             type="button"
-            className="ops-refresh"
+            className="adm-dash-btn adm-dash-btn--ghost"
             onClick={() => void refresh()}
             disabled={refreshing}
             aria-label="Refresh dashboard"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+            Refresh
           </button>
         </div>
       </header>
 
-      {error ? <div className="ops-flash ops-flash--err">{error}</div> : null}
+      {error ? (
+        <div className="adm-dash-banner adm-dash-banner--error" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       {hasAlerts && !error ? (
-        <div className="ops-flash ops-flash--warn">
-          <Zap className="h-4 w-4 shrink-0" />
-          <span className="ops-flash-text">
+        <div className="adm-dash-banner adm-dash-banner--warn" role="status">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <p className="adm-dash-banner-text">
             {nodesOffline > 0 && (
               <>
-                {nodesOffline} node{nodesOffline === 1 ? '' : 's'} down
+                {nodesOffline} node{nodesOffline === 1 ? '' : 's'} unreachable
                 {(stats.suspended > 0 || stats.installing > 0) && ' · '}
               </>
             )}
@@ -120,284 +110,313 @@ export function DashboardView({ ctrl }: { ctrl: AdminDashboardController }) {
               </>
             )}
             {stats.installing > 0 && <>{stats.installing} installing</>}
-          </span>
-          <Link to="/admin/nodes" className="ops-flash-link">
-            Investigate
+          </p>
+          <Link to="/admin/nodes" className="adm-dash-banner-link">
+            View nodes
           </Link>
         </div>
       ) : null}
 
-      <section className="ops-mosaic" aria-label="Overview">
-        <article className="ops-cell ops-cell--health">
-          <p className="ops-cell-label">Fleet health</p>
-          <div className="ops-dial" style={{ '--pct': health } as React.CSSProperties}>
-            <svg viewBox="0 0 120 120" className="ops-dial-svg">
-              <circle cx="60" cy="60" r="52" className="ops-dial-track" />
-              <circle cx="60" cy="60" r="52" className="ops-dial-fill" />
-            </svg>
-            <div className="ops-dial-center">
-              <span className="ops-dial-num">{health}</span>
-              <span className="ops-dial-unit">%</span>
-            </div>
+      <section className="adm-dash-kpis" aria-label="Key metrics">
+        <KpiCard
+          to="/admin/servers"
+          label="Servers"
+          value={String(stats.servers)}
+          hint={
+            stats.installing > 0 || stats.suspended > 0
+              ? `${stats.installing} installing · ${stats.suspended} suspended`
+              : 'Fleet total'
+          }
+          icon={Server}
+        />
+        <KpiCard
+          to="/admin/nodes"
+          label="Nodes online"
+          value={`${stats.nodesOnline}`}
+          hint={stats.nodes > 0 ? `of ${stats.nodes} registered` : 'No nodes yet'}
+          icon={HardDrive}
+          valueSuffix={stats.nodes > 0 ? `/${stats.nodes}` : undefined}
+        />
+        <KpiCard to="/admin/users" label="Users" value={String(stats.users)} hint="Panel accounts" icon={Users} />
+        <KpiCard to="/admin/nests" label="Nests" value={String(stats.nests)} hint="Egg groups" icon={Egg} />
+        <article className="adm-dash-kpi adm-dash-kpi--health">
+          <div className="adm-dash-kpi-head">
+            <LayoutDashboard className="adm-dash-kpi-icon" aria-hidden />
+            <span className="adm-dash-kpi-label">Fleet health</span>
           </div>
-          <p className="ops-cell-foot">
-            {health >= 85 ? 'All systems nominal' : health >= 60 ? 'Minor issues detected' : 'Action required'}
+          <p className={`adm-dash-kpi-value adm-dash-kpi-value--${healthTone}`}>{health}%</p>
+          <p className="adm-dash-kpi-hint">
+            {health >= 85 ? 'Operating normally' : health >= 60 ? 'Review warnings' : 'Needs attention'}
           </p>
+          <div className="adm-dash-health-bar" aria-hidden>
+            <div
+              className={`adm-dash-health-fill adm-dash-health-fill--${healthTone}`}
+              style={{ width: `${health}%` }}
+            />
+          </div>
         </article>
-
-        <Link to="/admin/servers" className="ops-cell ops-cell--mega ops-cell--link">
-          <p className="ops-cell-label">Servers</p>
-          <p className="ops-mega">{stats.servers}</p>
-          {stats.installing > 0 && (
-            <span className="ops-pill ops-pill--blue">{stats.installing} installing</span>
-          )}
-          {stats.suspended > 0 && (
-            <span className="ops-pill ops-pill--amber">{stats.suspended} suspended</span>
-          )}
-          <ArrowUpRight className="ops-cell-arrow" />
-        </Link>
-
-        <Link to="/admin/users" className="ops-cell ops-cell--stat ops-cell--link">
-          <Users className="ops-cell-icon" />
-          <p className="ops-cell-label">Users</p>
-          <p className="ops-stat">{stats.users}</p>
-        </Link>
-
-        <Link to="/admin/nodes" className="ops-cell ops-cell--stat ops-cell--link">
-          <HardDrive className="ops-cell-icon" />
-          <p className="ops-cell-label">Nodes live</p>
-          <p className="ops-stat">
-            {stats.nodesOnline}
-            <span className="ops-stat-dim">/{stats.nodes}</span>
-          </p>
-        </Link>
-
-        <Link to="/admin/nests" className="ops-cell ops-cell--stat ops-cell--link">
-          <Egg className="ops-cell-icon" />
-          <p className="ops-cell-label">Nests</p>
-          <p className="ops-stat">{stats.nests}</p>
-        </Link>
-
-        <article className="ops-cell ops-cell--wide">
-          <div className="ops-cell-wide-head">
-            <p className="ops-cell-label">Network ports</p>
-            <span className="ops-cell-mono">
-              {stats.allocationsUsed}/{stats.allocationsTotal} · {allocFree} free
+        <article className="adm-dash-kpi adm-dash-kpi--alloc">
+          <div className="adm-dash-kpi-head">
+            <span className="adm-dash-kpi-label">Network ports</span>
+            <span className="adm-dash-kpi-mono">
+              {stats.allocationsUsed}/{stats.allocationsTotal}
             </span>
           </div>
-          <div className="ops-bar">
-            <div className="ops-bar-fill" style={{ width: `${Math.max(allocPct > 0 ? 3 : 0, allocPct)}%` }} />
+          <p className="adm-dash-kpi-value adm-dash-kpi-value--sm">{allocPct}%</p>
+          <p className="adm-dash-kpi-hint">{allocFree} unassigned</p>
+          <div className="adm-dash-health-bar" aria-hidden>
+            <div className="adm-dash-health-fill adm-dash-health-fill--neutral" style={{ width: `${allocPct}%` }} />
           </div>
-          <p className="ops-cell-foot">{allocPct}% of allocations assigned fleet-wide</p>
         </article>
-
-        <div className="ops-cell ops-cell--launch">
-          <p className="ops-cell-label">Quick deploy</p>
-          <div className="ops-launch-btns">
-            <Link to="/admin/servers/new" className="ops-launch-btn ops-launch-btn--ghost">
-              <Plus className="h-4 w-4" />
-              Server
-            </Link>
-            <Link to="/admin/nodes/new" className="ops-launch-btn ops-launch-btn--solid">
-              <HardDrive className="h-4 w-4" />
-              Node
-            </Link>
-          </div>
-          <Link to="/admin/announce" className="ops-launch-secondary">
-            <Megaphone className="h-3.5 w-3.5" />
-            Post announcement
-          </Link>
-        </div>
       </section>
 
-      <section className="ops-nodes-section">
-        <div className="ops-section-head">
-          <div>
-            <h2 className="ops-section-title">Infrastructure</h2>
-            <p className="ops-section-desc">Wings daemons · capacity & reachability</p>
-          </div>
-          <Link to="/admin/nodes" className="ops-section-link">
-            All nodes
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+      <div className="adm-dash-body">
+        <section className="adm-dash-panel adm-dash-panel--nodes">
+          <header className="adm-dash-panel-head">
+            <div>
+              <h2 className="adm-dash-panel-title">Nodes</h2>
+              <p className="adm-dash-panel-desc">Wings capacity and reachability</p>
+            </div>
+            <div className="adm-dash-panel-actions">
+              <Link to="/admin/nodes/new" className="adm-dash-panel-link">
+                <Plus className="h-3 w-3" aria-hidden />
+                Add node
+              </Link>
+              <Link to="/admin/nodes" className="adm-dash-panel-link">
+                All nodes
+                <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </Link>
+            </div>
+          </header>
 
-        {nodeHealth.length === 0 ? (
-          <div className="ops-nodes-empty">
-            <HardDrive className="h-10 w-10 opacity-40" />
-            <p>No nodes connected yet</p>
-            <Link to="/admin/nodes/new">
-              <Button>Register first node</Button>
+          {nodeHealth.length === 0 ? (
+            <div className="adm-dash-empty">
+              <HardDrive className="h-8 w-8 opacity-40" aria-hidden />
+              <p>No nodes connected</p>
+              <Link to="/admin/nodes/new">
+                <Button size="sm">Register first node</Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="adm-dash-node-grid">
+              {nodeHealth.map((node) => (
+                <NodeCard key={node.id} node={node} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <aside className="adm-dash-side">
+          <section className="adm-dash-panel adm-dash-panel--activity">
+            <header className="adm-dash-panel-head">
+              <div>
+                <h2 className="adm-dash-panel-title">Recent activity</h2>
+                <p className="adm-dash-panel-desc">Latest panel events</p>
+              </div>
+              <Link to="/admin/activity" className="adm-dash-panel-link">
+                Full log
+                <ArrowUpRight className="h-3 w-3" aria-hidden />
+              </Link>
+            </header>
+            {recentActivity.length === 0 ? (
+              <p className="adm-dash-panel-empty">No activity yet.</p>
+            ) : (
+              <ul className="adm-dash-activity">
+                {recentActivity.slice(0, 8).map((entry) => {
+                  const meta = getActivityMeta(entry.event);
+                  return (
+                    <li key={entry.id} className="adm-dash-activity-item">
+                      <span className="adm-dash-activity-dot" aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <p className="adm-dash-activity-text">{entry.description}</p>
+                        <p className="adm-dash-activity-meta">
+                          {meta.label}
+                          {entry.actor?.username ? ` · ${entry.actor.username}` : ''}
+                          <span className="adm-dash-activity-time">{formatActivityTime(entry.timestamp)}</span>
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <nav className="adm-dash-shortcuts" aria-label="Admin shortcuts">
+            <p className="adm-dash-shortcuts-label">Quick links</p>
+            <ul className="adm-dash-shortcuts-grid">
+              {SHORTCUTS.map(({ to, icon: Icon, label, desc }) => (
+                <li key={to}>
+                  <Link to={to} className="adm-dash-shortcut">
+                    <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="adm-dash-shortcut-label">{label}</span>
+                      <span className="adm-dash-shortcut-desc">{desc}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
+      </div>
+
+      <section className="adm-dash-panel adm-dash-panel--servers">
+        <header className="adm-dash-panel-head">
+          <div>
+            <h2 className="adm-dash-panel-title">Latest servers</h2>
+            <p className="adm-dash-panel-desc">Recently provisioned game servers</p>
+          </div>
+          <Link to="/admin/servers" className="adm-dash-panel-link">
+            All servers
+            <ArrowUpRight className="h-3 w-3" aria-hidden />
+          </Link>
+        </header>
+
+        {recentServers.length === 0 ? (
+          <div className="adm-dash-empty adm-dash-empty--inline">
+            <Server className="h-7 w-7 opacity-40" aria-hidden />
+            <p>No servers yet</p>
+            <Link to="/admin/servers/new">
+              <Button size="sm">Create server</Button>
             </Link>
           </div>
         ) : (
-          <div className="ops-nodes-scroller">
-            {nodeHealth.map((node) => (
-              <NodeSlide key={node.id} node={node} />
-            ))}
+          <div className="adm-dash-server-table-wrap">
+            <table className="adm-dash-server-table">
+              <thead>
+                <tr>
+                  <th scope="col">Server</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Node</th>
+                  <th scope="col">Address</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentServers.map((server) => (
+                  <ServerTableRow key={server.id} server={server} />
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
-
-      <div className="ops-duo">
-        <section className="ops-panel">
-          <div className="ops-section-head">
-            <div>
-              <h2 className="ops-section-title">Event stream</h2>
-              <p className="ops-section-desc">Real-time panel activity</p>
-            </div>
-            <Link to="/admin/activity" className="ops-section-link">
-              Full log
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          {recentActivity.length === 0 ? (
-            <p className="ops-panel-empty">Nothing logged yet.</p>
-          ) : (
-            <ol className="ops-stream">
-              {recentActivity.slice(0, 10).map((entry, i) => {
-                const meta = getActivityMeta(entry.event);
-                return (
-                  <li key={entry.id} className="ops-stream-item">
-                    <div className="ops-stream-rail">
-                      <span className="ops-stream-dot" />
-                      {i < Math.min(recentActivity.length, 10) - 1 && <span className="ops-stream-line" />}
-                    </div>
-                    <div className="ops-stream-body">
-                      <p className="ops-stream-text">{entry.description}</p>
-                      <p className="ops-stream-meta">
-                        {meta.label}
-                        {entry.actor?.username ? ` · ${entry.actor.username}` : ''}
-                        <span className="ops-stream-time">{formatActivityTime(entry.timestamp)}</span>
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </section>
-
-        <section className="ops-panel">
-          <div className="ops-section-head">
-            <div>
-              <h2 className="ops-section-title">Latest servers</h2>
-              <p className="ops-section-desc">Recently provisioned</p>
-            </div>
-            <Link to="/admin/servers" className="ops-section-link">
-              Browse all
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          {recentServers.length === 0 ? (
-            <p className="ops-panel-empty">No servers yet.</p>
-          ) : (
-            <ul className="ops-server-table">
-              {recentServers.map((server) => (
-                <ServerRow key={server.id} server={server} />
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <nav className="ops-dock" aria-label="Quick navigation">
-        {DOCK_LINKS.map(({ to, icon: Icon, label }) => (
-          <Link key={to} to={to} className="ops-dock-item" title={label}>
-            <Icon className="h-[18px] w-[18px]" />
-            <span className="ops-dock-label">{label}</span>
-          </Link>
-        ))}
-      </nav>
     </div>
   );
 }
 
-function NodeSlide({ node }: { node: DashboardNodeHealth }) {
+function KpiCard({
+  to,
+  label,
+  value,
+  valueSuffix,
+  hint,
+  icon: Icon,
+}: {
+  to: string;
+  label: string;
+  value: string;
+  valueSuffix?: string;
+  hint: string;
+  icon: typeof Server;
+}) {
+  return (
+    <Link to={to} className="adm-dash-kpi adm-dash-kpi--link">
+      <div className="adm-dash-kpi-head">
+        <Icon className="adm-dash-kpi-icon" aria-hidden />
+        <span className="adm-dash-kpi-label">{label}</span>
+      </div>
+      <p className="adm-dash-kpi-value">
+        {value}
+        {valueSuffix ? <span className="adm-dash-kpi-suffix">{valueSuffix}</span> : null}
+      </p>
+      <p className="adm-dash-kpi-hint">{hint}</p>
+      <ArrowUpRight className="adm-dash-kpi-arrow" aria-hidden />
+    </Link>
+  );
+}
+
+function NodeCard({ node }: { node: DashboardNodeHealth }) {
   const memPct = node.capacity?.memoryUsedPercent ?? 0;
   const diskPct = node.capacity?.diskUsedPercent ?? 0;
   const online = node.online && !node.maintenanceMode;
 
   return (
-    <Link
-      to={`/admin/nodes/${node.id}`}
-      className={`ops-node-slide ${online ? 'is-up' : 'is-down'}`}
-    >
-      <div className="ops-node-slide-top">
-        <span className={`ops-node-beacon ${online ? 'is-up' : 'is-down'}`} />
+    <Link to={`/admin/nodes/${node.id}`} className={`adm-dash-node ${online ? 'is-up' : 'is-down'}`}>
+      <div className="adm-dash-node-head">
+        <span className={`adm-dash-node-dot ${online ? 'is-up' : 'is-down'}`} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="ops-node-name">{node.name}</p>
-          <p className="ops-node-loc">{node.location}</p>
+          <p className="adm-dash-node-name">{node.name}</p>
+          <p className="adm-dash-node-meta">{node.location}</p>
         </div>
-        {node.maintenanceMode && <span className="ops-pill ops-pill--amber">Maint</span>}
+        {node.maintenanceMode ? <span className="adm-dash-tag">Maint</span> : null}
       </div>
-      <p className="ops-node-fqdn">{node.fqdn}</p>
-      <div className="ops-node-counts">
+      <p className="adm-dash-node-fqdn">{node.fqdn}</p>
+      <div className="adm-dash-node-stats">
         <span>
-          <Server className="inline h-3 w-3" /> {node.serverCount}
+          <Server className="inline h-3 w-3" aria-hidden /> {node.serverCount} servers
         </span>
         <span>{node.allocationCount} ports</span>
       </div>
       {node.capacity &&
       (node.capacity.effectiveMemoryLimit > 0 || node.capacity.effectiveDiskLimit > 0) ? (
-        <div className="ops-node-meters">
-          {node.capacity.effectiveMemoryLimit > 0 && (
-            <MiniMeter label="RAM" pct={memPct} />
-          )}
-          {node.capacity.effectiveDiskLimit > 0 && (
-            <MiniMeter label="Disk" pct={diskPct} />
-          )}
+        <div className="adm-dash-node-meters">
+          {node.capacity.effectiveMemoryLimit > 0 ? <UsageMeter label="RAM" pct={memPct} /> : null}
+          {node.capacity.effectiveDiskLimit > 0 ? <UsageMeter label="Disk" pct={diskPct} /> : null}
         </div>
       ) : node.memory > 0 ? (
-        <p className="ops-node-fallback">
-          {formatResource(node.memory, 'MiB')} · {formatResource(node.disk, 'MiB')}
+        <p className="adm-dash-node-fallback">
+          {formatResource(node.memory, 'MiB')} RAM · {formatResource(node.disk, 'MiB')} disk
         </p>
       ) : null}
-      <p className="ops-node-status">
+      <p className="adm-dash-node-status">
         {node.online ? (node.version ? `Wings ${node.version}` : 'Connected') : 'Unreachable'}
       </p>
     </Link>
   );
 }
 
-function MiniMeter({ label, pct }: { label: string; pct: number }) {
+function UsageMeter({ label, pct }: { label: string; pct: number }) {
   const tone = usageTone(pct);
   return (
-    <div className="ops-mini">
-      <div className="ops-mini-head">
+    <div className="adm-dash-meter">
+      <div className="adm-dash-meter-head">
         <span>{label}</span>
         <span>{pct}%</span>
       </div>
-      <div className="ops-mini-track">
-        <div className={`ops-mini-fill ops-mini-fill--${tone}`} style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }} />
+      <div className="adm-dash-meter-track">
+        <div
+          className={`adm-dash-meter-fill adm-dash-meter-fill--${tone}`}
+          style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }}
+        />
       </div>
     </div>
   );
 }
 
-function ServerRow({ server }: { server: DashboardRecentServer }) {
+function ServerTableRow({ server }: { server: DashboardRecentServer }) {
   return (
-    <li>
-      <Link to={`/admin/servers/${server.id}`} className="ops-server-row group">
-        <span
-          className="ops-server-thumb"
-          style={{
-            background: `linear-gradient(145deg, var(--ops-a), var(--ops-b))`,
-          }}
-        >
-          <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
-        </span>
-        <span className="ops-server-info">
-          <span className="ops-server-name">{server.name}</span>
-          <span className="ops-server-sub">
-            {server.egg.name} · {server.node.name} · @{server.owner.username}
+    <tr>
+      <td>
+        <Link to={`/admin/servers/${server.id}`} className="adm-dash-server-cell">
+          <span className="adm-dash-server-icon">
+            <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-3.5 w-3.5" />
           </span>
-          <span className="ops-server-addr">
-            {formatAllocationAddress(server.defaultAllocation, {
-              fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
-            })}
+          <span className="min-w-0">
+            <span className="adm-dash-server-name">{server.name}</span>
+            <span className="adm-dash-server-egg">{server.egg.name}</span>
           </span>
-        </span>
+        </Link>
+      </td>
+      <td className="adm-dash-server-owner">@{server.owner.username}</td>
+      <td className="adm-dash-server-node">{server.node.name}</td>
+      <td className="adm-dash-server-addr">
+        {formatAllocationAddress(server.defaultAllocation, {
+          fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
+        })}
+      </td>
+      <td>
         <AdminServerStatusBadge
           status={server.status}
           suspended={server.suspended}
@@ -405,7 +424,7 @@ function ServerRow({ server }: { server: DashboardRecentServer }) {
           containerState={server.containerState}
           compact
         />
-      </Link>
-    </li>
+      </td>
+    </tr>
   );
 }
