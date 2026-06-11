@@ -50,7 +50,7 @@ export function ServerConsolePage() {
 
   return (
     <ServerPage fullHeight className="gap-3">
-      <PanelAnnouncementBanner location="console" />
+      <PanelAnnouncementBanner location="console" compact />
       <ConsoleTerminal
         serverName={server.name}
         subtitle={subtitle}

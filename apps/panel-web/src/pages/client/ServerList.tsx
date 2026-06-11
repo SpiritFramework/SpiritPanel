@@ -180,7 +180,7 @@ export function ServerListPage() {
 
   return (
     <ClientLayout>
-      <div className="mb-5">
+      <div className="mb-4">
         <PanelAnnouncementBanner location="servers" />
       </div>
 

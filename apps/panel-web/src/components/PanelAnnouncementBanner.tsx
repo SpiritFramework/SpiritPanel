@@ -7,10 +7,10 @@ const DISMISS_KEY = 'spirit_announcement_dismissed';
 
 export type PanelAnnouncementLocation = 'servers' | 'console';
 
-const TONE_ICONS = {
-  info: Info,
-  warning: AlertTriangle,
-  success: CheckCircle2,
+const TONE_META = {
+  info: { icon: Info, label: 'Notice' },
+  warning: { icon: AlertTriangle, label: 'Important' },
+  success: { icon: CheckCircle2, label: 'Update' },
 } as const;
 
 function isVisibleForLocation(announcement: PanelAnnouncementSettings, location: PanelAnnouncementLocation) {
@@ -47,9 +47,11 @@ export function usePanelAnnouncement(location: PanelAnnouncementLocation) {
 export function PanelAnnouncementBanner({
   location,
   preview,
+  compact,
 }: {
   location: PanelAnnouncementLocation;
   preview?: PanelAnnouncementSettings;
+  compact?: boolean;
 }) {
   const hook = usePanelAnnouncement(location);
   const announcement = preview ?? hook.announcement;
@@ -58,21 +60,29 @@ export function PanelAnnouncementBanner({
 
   if (!visible) return null;
 
-  const Icon = TONE_ICONS[announcement.tone] ?? Megaphone;
+  const tone = announcement.tone in TONE_META ? announcement.tone : 'info';
+  const meta = TONE_META[tone];
+  const Icon = meta.icon;
+  const headline = announcement.title.trim() || 'Announcement';
 
   return (
-    <div
-      className={`panel-announcement panel-announcement--${announcement.tone}`}
+    <article
+      className={`panel-announcement panel-announcement--${tone}${compact ? ' panel-announcement--compact' : ''}`}
       role="status"
       aria-live="polite"
     >
+      <div className="panel-announcement__accent" aria-hidden />
       <div className="panel-announcement__icon" aria-hidden>
         <Icon className="h-4 w-4" />
       </div>
       <div className="panel-announcement__body min-w-0 flex-1">
-        {announcement.title.trim() ? (
-          <p className="panel-announcement__title">{announcement.title}</p>
-        ) : null}
+        <div className="panel-announcement__head">
+          <span className="panel-announcement__badge">
+            <Megaphone className="h-3 w-3" aria-hidden />
+            {meta.label}
+          </span>
+        </div>
+        <h2 className="panel-announcement__title">{headline}</h2>
         <p className="panel-announcement__message whitespace-pre-wrap">{announcement.message}</p>
       </div>
       {dismiss && announcement.dismissible ? (
@@ -85,6 +95,6 @@ export function PanelAnnouncementBanner({
           <X className="h-4 w-4" />
         </button>
       ) : null}
-    </div>
+    </article>
   );
 }
