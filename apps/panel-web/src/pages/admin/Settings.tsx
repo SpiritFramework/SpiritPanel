@@ -49,6 +49,7 @@ import { BrandingAssetField, ColorField } from '../../components/BrandingFields'
 import { BrandingColorPanel } from '../../components/BrandingColorPanel';
 import { BrandingAppearanceFields } from '../../components/BrandingAppearanceFields';
 import { BrandingPreview } from '../../components/BrandingPreview';
+import { AuthorAttribution } from '../../components/AuthorAttribution';
 import { PanelName } from '../../components/PanelName';
 import { Checkbox } from '../../components/Checkbox';
 import { EmailTemplatesPanel } from '../../components/admin/EmailTemplatesPanel';
@@ -791,6 +792,12 @@ export function AdminSettings() {
                       <p className="flex items-center gap-1"><Shield className="h-3 w-3" /> Turnstile {turnstile.enabled ? 'on' : 'off'}</p>
                     </div>
                   </AdminSidebarCard>
+
+                  <div className="mt-4">
+                    <AdminSidebarCard title="About">
+                      <AuthorAttribution variant="settings" />
+                    </AdminSidebarCard>
+                  </div>
                 </div>
               </div>
 

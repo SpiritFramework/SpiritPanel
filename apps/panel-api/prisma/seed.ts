@@ -7,7 +7,7 @@ import { isWeakAdminPassword } from '../src/lib/secret-validation.js';
 import { generateUuidShort } from '../src/services/server-configuration.js';
 import { seedDemoStats } from '../src/services/server-stats.js';
 import { seedMarketplacePlugins } from '../src/services/marketplace-seed.js';
-import { PANEL_PRODUCT, PANEL_TAGLINE, DEFAULT_FOOTER_TEXT } from '../src/lib/product-meta.js';
+import { PANEL_PRODUCT, PANEL_TAGLINE } from '../src/lib/product-meta.js';
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') });
 
@@ -84,7 +84,7 @@ async function seedPanelSettings() {
   await prisma.panelSetting.upsert({
     where: { key: 'general' },
     update: {},
-    create: { key: 'general', value: { companyName: '', supportEmail: '', supportUrl: '', footerText: DEFAULT_FOOTER_TEXT } },
+    create: { key: 'general', value: { companyName: '', supportEmail: '', supportUrl: '', footerText: '' } },
   });
 
   await prisma.panelSetting.upsert({

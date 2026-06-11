@@ -2,10 +2,10 @@ import { useMemo, type ReactNode } from 'react';
 import { Headphones, Mail, Server, Shield, Terminal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PanelBranding } from '../lib/panel-settings';
-import { DEFAULT_FOOTER_TEXT, PANEL_AUTHOR } from '../lib/product-meta';
 import { sanitizeImageSrc, sanitizeLinkHref } from '../lib/safe-url';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
+import { AuthorAttribution } from './AuthorAttribution';
 
 const FEATURES = [
   { icon: Server, label: 'Deploy & manage game servers' },
@@ -20,7 +20,7 @@ export function AuthLayout({
   branding: PanelBranding;
   children: ReactNode;
 }) {
-  const companyLabel = branding.general.companyName || PANEL_AUTHOR;
+  const companyLabel = branding.general.companyName.trim() || branding.panelName;
 
   const brandGradient = useMemo(
     () =>
@@ -65,6 +65,7 @@ export function AuthLayout({
         </div>
 
         <SupportFooter general={branding.general} companyLabel={companyLabel} onDark />
+        <AuthorAttribution variant="sidebar" onDark className="relative mt-4 opacity-90" />
       </aside>
 
       <main className={`${panelBgClass} flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6`}>
@@ -80,7 +81,9 @@ export function AuthLayout({
 
           {children}
 
-          <div className="mt-6 md:hidden">
+          <AuthorAttribution variant="auth" className="mt-5" />
+
+          <div className="mt-4 md:hidden">
             <SupportFooter general={branding.general} companyLabel={companyLabel} />
           </div>
         </div>
@@ -205,10 +208,9 @@ function SupportFooter({
 
   if (!hasContent) {
     return (
-      <div className={`space-y-1 text-xs ${onDark ? 'text-white/45' : 'text-[var(--muted)]'}`}>
-        <p>© {new Date().getFullYear()} {companyLabel}</p>
-        <p className="text-[10px] opacity-80">{DEFAULT_FOOTER_TEXT}</p>
-      </div>
+      <p className={`text-xs ${onDark ? 'text-white/45' : 'text-[var(--muted)]'}`}>
+        © {new Date().getFullYear()} {companyLabel}
+      </p>
     );
   }
 

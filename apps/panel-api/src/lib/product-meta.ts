@@ -1,9 +1,16 @@
 /** Product name — the panel software. */
 export const PANEL_PRODUCT = 'Spirit-Panel';
 
-/** Author / framework — shown in defaults and attribution. */
+/** Author / framework. */
 export const PANEL_AUTHOR = 'SpiritFramework';
 
-export const PANEL_TAGLINE = `By ${PANEL_AUTHOR}`;
+/** Author community link (Discord invite). */
+export const PANEL_AUTHOR_DISCORD = 'https://discord.gg/tyR6FF8u2a';
 
-export const DEFAULT_FOOTER_TEXT = `${PANEL_PRODUCT} by ${PANEL_AUTHOR}`;
+/** Default host-facing sidebar tagline (editable in Admin → Settings). */
+export const PANEL_TAGLINE = 'Game server panel';
+
+/** Software attribution copy — not the host company name. */
+export const AUTHOR_CREDIT = `Built by ${PANEL_AUTHOR}`;
+
+export const PANEL_VERSION = '0.1.0';

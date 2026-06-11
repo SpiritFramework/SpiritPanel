@@ -6,7 +6,6 @@ import {
   type ThemePreset,
 } from './branding-appearance';
 import {
-  DEFAULT_FOOTER_TEXT,
   PANEL_PRODUCT,
   PANEL_TAGLINE,
 } from './product-meta';
@@ -98,7 +97,7 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
     companyName: '',
     supportEmail: '',
     supportUrl: '',
-    footerText: DEFAULT_FOOTER_TEXT,
+    footerText: '',
   },
   maintenance: {
     enabled: false,

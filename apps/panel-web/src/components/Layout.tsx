@@ -22,7 +22,7 @@ import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink } from './Nav';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
-import { PanelAuthorCredit } from './PanelAuthorCredit';
+import { AuthorAttribution } from './AuthorAttribution';
 
 export { SelectControl } from './SelectControl';
 
@@ -105,7 +105,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </div>
         <SidebarFooterLink to="/profile" icon={User} label="Your profile" />
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
-        <PanelAuthorCredit className="mb-2 mt-1" />
         <button
           type="button"
           onClick={logout}
@@ -117,6 +116,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </span>
           <span className="truncate text-[13px] font-medium">Logout</span>
         </button>
+        <AuthorAttribution className="mt-3 border-t border-[var(--border)] pt-2" />
       </div>
     </>
   );
@@ -185,7 +185,6 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
             </span>
           </Link>
         )}
-        <PanelAuthorCredit className="mb-2 mt-1" />
         <button
           type="button"
           onClick={logout}
@@ -197,6 +196,7 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
           </span>
           <span className="text-[13px] font-medium">Logout</span>
         </button>
+        <AuthorAttribution className="mt-3 border-t border-[var(--border)] pt-2" />
       </div>
     </>
   );

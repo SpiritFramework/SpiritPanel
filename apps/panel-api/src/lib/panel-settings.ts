@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { prisma } from './prisma.js';
 import {
-  DEFAULT_FOOTER_TEXT,
   PANEL_PRODUCT,
   PANEL_TAGLINE,
 } from './product-meta.js';
@@ -256,7 +255,7 @@ export const DEFAULT_GENERAL: GeneralSettings = {
   companyName: '',
   supportEmail: '',
   supportUrl: '',
-  footerText: DEFAULT_FOOTER_TEXT,
+  footerText: '',
 };
 
 export const DEFAULT_MAINTENANCE: MaintenanceSettings = {
