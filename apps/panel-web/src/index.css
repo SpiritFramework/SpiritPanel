@@ -443,6 +443,9 @@ body {
   position: relative;
   isolation: isolate;
   background: var(--bg);
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .panel-bg-root::before {
@@ -453,9 +456,46 @@ body {
   z-index: 0;
 }
 
-.panel-bg-root > * {
+.panel-bg-root > *:not(aside.app-sidebar):not(aside.server-sidebar) {
   position: relative;
   z-index: 1;
+}
+
+/* Keep mobile drawer sidebars fixed — .panel-bg-root > * must not override Tailwind fixed */
+.panel-bg-root > aside.app-sidebar,
+.panel-bg-root > aside.server-sidebar {
+  position: fixed;
+  z-index: 50;
+}
+
+@media (min-width: 768px) {
+  .panel-bg-root > aside.app-sidebar,
+  .panel-bg-root > aside.server-sidebar {
+    position: static;
+    z-index: auto;
+  }
+}
+
+.panel-bg-root > .mobile-shell-main {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .panel-bg-root > aside.app-sidebar {
+    /* Drawer off-screen must not reserve flex width */
+    position: fixed !important;
+  }
+
+  html,
+  body,
+  #root {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
 }
 
 .panel-bg-gradient::before {

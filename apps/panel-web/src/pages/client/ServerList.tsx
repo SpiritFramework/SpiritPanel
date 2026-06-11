@@ -217,7 +217,7 @@ export function ServerListPage() {
             </div>
 
             {!loading && stats.total > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                 <HeaderStat label="Online" value={stats.running} tone="success" />
                 <HeaderStat label="Total" value={stats.total} />
                 {stats.installing > 0 && <HeaderStat label="Installing" value={stats.installing} tone="info" />}

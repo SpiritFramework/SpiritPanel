@@ -36,7 +36,7 @@ export function MobileShell({
   const panelBgClass = usePanelBackgroundClass();
 
   return (
-    <div className={`flex h-[100dvh] overflow-hidden ${panelBgClass}`}>
+    <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
       {navOpen && (
         <button
           type="button"
@@ -47,7 +47,7 @@ export function MobileShell({
       )}
 
       <aside
-        className={`glass-sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:shrink-0 md:translate-x-0 ${sidebarClassName} ${
+        className={`glass-sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none ${sidebarClassName} ${
           navOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -64,7 +64,7 @@ export function MobileShell({
         {sidebar}
       </aside>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col">
         <header className="glass flex shrink-0 items-center gap-2.5 border-b border-[var(--glass-border)] px-3 py-2.5 safe-top md:hidden">
           <button
             type="button"
@@ -74,11 +74,11 @@ export function MobileShell({
           >
             <Menu className="h-4 w-4" />
           </button>
-          {headerTitle && <div className="min-w-0 flex-1">{headerTitle}</div>}
+          {headerTitle && <div className="min-w-0 flex-1 overflow-hidden">{headerTitle}</div>}
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-5">
-          <div className={contentClassName}>{children}</div>
+        <main className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-5">
+          <div className={`${contentClassName} max-w-full`}>{children}</div>
         </main>
       </div>
     </div>

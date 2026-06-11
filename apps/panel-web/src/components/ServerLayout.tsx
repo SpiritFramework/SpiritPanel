@@ -169,7 +169,7 @@ export function ServerShellInner() {
 
   return (
     <>
-    <div className={`flex h-[100dvh] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
+    <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
       {/* Dedicated server sidebar — navigation only */}
       <aside className="server-sidebar glass-sidebar hidden h-full w-56 shrink-0 flex-col border-r border-[var(--glass-border)] md:flex">
         <div className="border-b border-[var(--border)] p-3">
