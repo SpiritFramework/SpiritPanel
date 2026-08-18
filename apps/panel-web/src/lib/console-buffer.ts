@@ -1,3 +1,5 @@
+import { keepAnsiColors, stripAnsi } from './ansi';
+
 export type ConsoleLineKind = 'stdout' | 'install' | 'system' | 'error';
 
 export interface ConsoleLine {
@@ -47,16 +49,20 @@ export function appendConsoleLine(
   text: string,
   kind: ConsoleLineKind = 'stdout',
 ): ConsoleLine[] {
-  const chunk = text.replace(/\r\n/g, '\n').split('\n').filter((line, i, arr) => line.length > 0 || i < arr.length - 1);
+  const chunk = text
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line, i, arr) => line.length > 0 || i < arr.length - 1);
   const lines = getConsoleLines(serverId);
   for (const part of chunk) {
-    const text = stripAnsi(part);
-    if (!text.trim()) continue;
+    // Keep color (SGR) codes for rendering; strip cursor/clear/OSC noise.
+    const cleaned = keepAnsiColors(part);
+    if (!stripAnsi(cleaned).trim()) continue;
     const last = lines[lines.length - 1];
-    if (last && last.text === text && last.kind === kind) continue;
+    if (last && last.text === cleaned && last.kind === kind) continue;
     lines.push({
       id: `${Date.now()}-${++lineSeq}`,
-      text,
+      text: cleaned,
       kind,
       at: Date.now(),
     });
@@ -77,20 +83,8 @@ export function clearConsoleLines(serverId: string): void {
   sessionStorage.removeItem(storageKey(serverId));
 }
 
-export function stripAnsi(input: string): string {
-  return input
-    // OSC (window title, hyperlinks, etc.): ESC ] … BEL or ESC ] … ESC \
-    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
-    // CSI (colors, cursor): ESC [ … final byte
-    .replace(/\x1b\[[0-9?]*[ -/]*[@-~]/g, '')
-    // C1 CSI (U+009B)
-    .replace(/\x9b[0-9?]*[ -/]*[@-~]/g, '')
-    // Other two-byte ESC sequences
-    .replace(/\x1b[@-Z\\-_]/g, '')
-    // Stray BEL from partial OSC
-    .replace(/\x07/g, '');
-}
+export { stripAnsi };
 
 export function consoleLinesToText(lines: ConsoleLine[]): string {
-  return lines.map((l) => l.text).join('\n');
+  return lines.map((l) => stripAnsi(l.text)).join('\n');
 }

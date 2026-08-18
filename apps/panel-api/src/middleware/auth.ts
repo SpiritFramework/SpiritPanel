@@ -3,6 +3,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { API_KEY_TYPE_ACCOUNT } from '../lib/api-keys.js';
 import { getAuthFromRequest } from '../lib/auth.js';
+import { isFullPanelAdmin, isStaffOrPanelAdmin } from '../lib/roles.js';
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   const auth = await getAuthFromRequest(request);
@@ -26,12 +27,27 @@ export async function requireSession(request: FastifyRequest, reply: FastifyRepl
   request.user = auth.user;
 }
 
-export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+/** Admin UI access (full admin or staff). */
+export async function requireStaffAccess(request: FastifyRequest, reply: FastifyReply) {
   await requireSession(request, reply);
   if (reply.sent) return;
-  if (request.user!.role !== 'admin' && !request.user!.rootAdmin) {
+  if (!isStaffOrPanelAdmin(request.user!)) {
     return reply.status(403).send({ error: 'Forbidden' });
   }
+}
+
+/** Full administrator only. */
+export async function requireFullAdmin(request: FastifyRequest, reply: FastifyReply) {
+  await requireSession(request, reply);
+  if (reply.sent) return;
+  if (!isFullPanelAdmin(request.user!)) {
+    return reply.status(403).send({ error: 'Forbidden' });
+  }
+}
+
+/** @deprecated Prefer requireStaffAccess / requireFullAdmin. Allows staff + admin. */
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+  return requireStaffAccess(request, reply);
 }
 
 export async function requireDaemon(request: FastifyRequest, reply: FastifyReply) {

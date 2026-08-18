@@ -11,12 +11,14 @@ import {
   Shield,
   Trash2,
   User,
+  UserCog,
   Users,
 } from 'lucide-react';
 import { api, type AdminUserDetail, type ApiKeySummary, type UpdateAdminUserInput } from '../../lib/api';
 import { ApiKeysPanel } from '../../components/ApiKeysPanel';
 import { formatActivityTime, type ActivityEntry } from '../../lib/activity';
 import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 import {
   AdminActivityTimeline,
   AdminCopyButton,
@@ -51,6 +53,7 @@ export function AdminUserDetail() {
   const { userId = '' } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const fullAdmin = isFullPanelAdmin(currentUser);
   const isSelf = userId === currentUser?.id;
 
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
@@ -90,7 +93,7 @@ export function AdminUserDetail() {
         username: u.username,
         firstName: u.firstName,
         lastName: u.lastName,
-        role: u.role as 'admin' | 'user',
+        role: u.role as 'admin' | 'staff' | 'user',
         suspended: u.suspended,
       });
       setNewPassword('');
@@ -130,7 +133,7 @@ export function AdminUserDetail() {
       username: detail.username,
       firstName: detail.firstName,
       lastName: detail.lastName,
-      role: detail.role as 'admin' | 'user',
+      role: detail.role as 'admin' | 'staff' | 'user',
       suspended: detail.suspended,
     });
     setNewPassword('');
@@ -213,7 +216,7 @@ export function AdminUserDetail() {
     { id: 'activity', label: 'Activity', count: detail.recentActivity.length },
   ];
 
-  const targetIsAdmin = detail.role === 'admin' || detail.rootAdmin;
+  const targetIsAdmin = detail.role === 'admin' || detail.rootAdmin || detail.role === 'staff';
 
   return (
     <AdminLayout>
@@ -337,6 +340,7 @@ export function AdminUserDetail() {
                 }
               >
                 <AdminSettingsPanel title="Personal details" description="Name, username, and email used across the panel" icon={User}>
+                  {fullAdmin ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       label="First name"
@@ -364,8 +368,17 @@ export function AdminUserDetail() {
                       required
                     />
                   </div>
+                  ) : (
+                    <dl className="grid gap-3 sm:grid-cols-2">
+                      <AdminMetaRow label="First name" value={detail.firstName || '—'} />
+                      <AdminMetaRow label="Last name" value={detail.lastName || '—'} />
+                      <AdminMetaRow label="Username" value={`@${detail.username}`} />
+                      <AdminMetaRow label="Email" value={detail.email} />
+                    </dl>
+                  )}
                 </AdminSettingsPanel>
 
+                {fullAdmin && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminSettingsPanel title="Password" description="Leave blank to keep the current password" icon={Lock}>
                     <Input
@@ -389,6 +402,14 @@ export function AdminUserDetail() {
                         disabled={isSelf}
                       />
                       <RoleOption
+                        active={(form.role ?? 'user') === 'staff'}
+                        icon={UserCog}
+                        title="Staff"
+                        description="Light admin: tickets, suspend, read-only infra"
+                        onClick={() => setForm({ ...form, role: 'staff' })}
+                        disabled={isSelf}
+                      />
+                      <RoleOption
                         active={(form.role ?? 'user') === 'admin'}
                         icon={Shield}
                         title="Admin"
@@ -402,7 +423,15 @@ export function AdminUserDetail() {
                     )}
                   </AdminSettingsPanel>
                 </div>
+                )}
 
+                {!fullAdmin && (
+                  <AdminSettingsPanel title="Permissions" description="Role assigned to this account" icon={Shield}>
+                    <RoleBadge role={detail.role} rootAdmin={detail.rootAdmin} />
+                  </AdminSettingsPanel>
+                )}
+
+                {fullAdmin && (
                 <AdminSettingsPanel
                   title="Account status"
                   description="Control whether this user can sign in"
@@ -425,8 +454,15 @@ export function AdminUserDetail() {
                     </p>
                   )}
                 </AdminSettingsPanel>
+                )}
 
-                {!isSelf && (
+                {!fullAdmin && (
+                  <AdminSettingsPanel title="Account status" description="Whether this user can sign in" icon={Ban}>
+                    <AccountStatus suspended={detail.suspended} />
+                  </AdminSettingsPanel>
+                )}
+
+                {fullAdmin && !isSelf && (
                   <AdminSettingsPanel title="Danger zone" description="Permanently remove this account — this cannot be undone" icon={Trash2} tone="danger">
                     {!confirmDelete ? (
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -469,7 +505,9 @@ export function AdminUserDetail() {
                 )}
               </AdminDetailManageLayout>
 
-              <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              {fullAdmin && (
+                <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              )}
             </form>
           )}
 
@@ -528,9 +566,11 @@ export function AdminUserDetail() {
             <ApiKeysPanel
               title={`API keys for @${detail.username}`}
               description={
-                targetIsAdmin
-                  ? 'Manage account and application API keys for this admin user.'
-                  : 'Manage account API keys for this user.'
+                !fullAdmin
+                  ? 'API keys for this user (view only).'
+                  : targetIsAdmin
+                    ? 'Manage account and application API keys for this admin user.'
+                    : 'Manage account API keys for this user.'
               }
               apiBase={targetIsAdmin ? '/api/client or /api/application' : '/api/client'}
               keys={userKeys}
@@ -540,8 +580,11 @@ export function AdminUserDetail() {
                 await loadKeys();
                 await load();
               }}
-              allowApplicationKeys={targetIsAdmin}
+              allowApplicationKeys={fullAdmin && targetIsAdmin}
               onCreate={async ({ memo, keyType }) => {
+                if (!fullAdmin) {
+                  throw new Error('Only full admins can create API keys');
+                }
                 setCreatingKey(true);
                 try {
                   return await api.admin.createUserApiKey(userId, { memo, keyType });
@@ -550,6 +593,9 @@ export function AdminUserDetail() {
                 }
               }}
               onDelete={async (keyId) => {
+                if (!fullAdmin) {
+                  throw new Error('Only full admins can revoke API keys');
+                }
                 await api.admin.deleteUserApiKey(userId, keyId);
               }}
             />

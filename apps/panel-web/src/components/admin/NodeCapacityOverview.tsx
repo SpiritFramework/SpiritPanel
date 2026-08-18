@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Gauge, HardDrive, MemoryStick, Network, Server } from 'lucide-react';
 import type { NodeCapacityStats } from '../../lib/api';
 import { formatCapacityLabel, formatFreeLabel, usageTone } from '../../lib/node-capacity';
-import { formatResource } from '../../lib/server-theme';
+import { formatResourceAmount } from '../../lib/server-theme';
 
 const TONE_RING: Record<'success' | 'warning' | 'danger', string> = {
   success: '#22c55e',
@@ -40,7 +40,7 @@ export function NodeCapacityOverview({
         ) : (
           <CapacityRingFallback
             label="Memory"
-            value={formatResource(capacity.allocatedMemory, 'MiB')}
+            value={formatResourceAmount(capacity.allocatedMemory, 'MiB')}
             hint="No limit set"
             icon={MemoryStick}
           />
@@ -56,7 +56,7 @@ export function NodeCapacityOverview({
         ) : (
           <CapacityRingFallback
             label="Disk"
-            value={formatResource(capacity.allocatedDisk, 'MiB')}
+            value={formatResourceAmount(capacity.allocatedDisk, 'MiB')}
             hint="No limit set"
             icon={HardDrive}
           />
@@ -77,7 +77,7 @@ export function NodeCapacityOverview({
           value={
             capacity.effectiveMemoryLimit > 0
               ? formatFreeLabel(capacity.memoryFree)
-              : formatResource(capacity.allocatedMemory, 'MiB')
+              : formatResourceAmount(capacity.allocatedMemory, 'MiB')
           }
         />
         <CapacityStat
@@ -86,7 +86,7 @@ export function NodeCapacityOverview({
           value={
             capacity.effectiveDiskLimit > 0
               ? formatFreeLabel(capacity.diskFree)
-              : formatResource(capacity.allocatedDisk, 'MiB')
+              : formatResourceAmount(capacity.allocatedDisk, 'MiB')
           }
         />
       </div>
@@ -273,7 +273,7 @@ function FleetBar({
       <div className="ds-admin-fleet-bar-label">
         <span>{label}</span>
         <span className="tabular-nums">
-          {limit > 0 ? `${formatCapacityLabel(used, limit)} · ${percent}%` : `${formatResource(used, 'MiB')} allocated`}
+          {limit > 0 ? `${formatCapacityLabel(used, limit)} · ${percent}%` : `${formatResourceAmount(used, 'MiB')} allocated`}
         </span>
       </div>
       {limit > 0 && (

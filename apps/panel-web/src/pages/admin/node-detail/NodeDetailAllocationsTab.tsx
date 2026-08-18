@@ -3,10 +3,23 @@ import { Link } from 'react-router-dom';
 import { Gauge, Network, Trash2 } from 'lucide-react';
 import { formatAllocationAddress } from '../../../lib/allocation';
 import type { AdminNodeDetail } from '../../../lib/api';
-import { AdminFormStatus, AdminSettingsPanel } from '../../../components/AdminDetailLayout';
+import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
+import { AdminFormStatus } from '../../../components/AdminDetailLayout';
 import { Button, Input } from '../../../components/Layout';
 import { EmptyState } from '../../../components/ui';
 import type { NodeDetailController } from './useNodeDetail';
+
+function allocChipClass(alloc: AdminNodeDetail['allocations'][number]) {
+  if (alloc.isPrimary) return 'ds-nd-alloc-chip ds-nd-alloc-chip--primary';
+  if (alloc.assigned) return 'ds-nd-alloc-chip ds-nd-alloc-chip--assigned';
+  return 'ds-nd-alloc-chip ds-nd-alloc-chip--free';
+}
+
+function allocStatusLabel(alloc: AdminNodeDetail['allocations'][number]) {
+  if (alloc.isPrimary) return 'Primary';
+  if (alloc.assigned) return 'Assigned';
+  return 'Available';
+}
 
 function AllocationTableRow({
   alloc,
@@ -31,32 +44,24 @@ function AllocationTableRow({
   }, [alloc.alias]);
 
   const aliasChanged = (alloc.alias ?? '') !== alias.trim();
-  const statusLabel = alloc.isPrimary ? 'Primary' : alloc.assigned ? 'Assigned' : 'Available';
-  const statusClass = alloc.isPrimary
-    ? 'node-edit-alloc-chip--primary'
-    : alloc.assigned
-      ? 'node-edit-alloc-chip--assigned'
-      : 'node-edit-alloc-chip--free';
 
   return (
-    <tr className="node-edit-alloc-row">
-      <td className="px-3 py-2.5">
+    <tr>
+      <td>
         {!alloc.assigned ? (
           <input
             type="checkbox"
             checked={selected}
             disabled={saving}
             onChange={(e) => onToggleSelect(alloc.id, e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-[var(--border)] bg-[var(--bg-elevated)] accent-[var(--accent)]"
+            className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--accent)]"
             aria-label={`Select ${alloc.ip}:${alloc.port}`}
           />
         ) : null}
       </td>
-      <td className="px-3 py-2.5 font-mono text-xs">{formatAllocationAddress(alloc, { fqdn })}</td>
-      <td className="px-3 py-2.5 font-mono text-xs text-[var(--muted)]">
-        {alloc.ip}:{alloc.port}
-      </td>
-      <td className="px-3 py-2.5">
+      <td className="font-mono">{formatAllocationAddress(alloc, { fqdn })}</td>
+      <td className="font-mono ds-text-muted">{alloc.ip}:{alloc.port}</td>
+      <td>
         <Input
           value={alias}
           placeholder="—"
@@ -71,24 +76,24 @@ function AllocationTableRow({
           className="h-7 py-1 text-[11px]"
         />
       </td>
-      <td className="px-3 py-2.5">
-        <span className={`node-edit-alloc-chip ${statusClass}`}>{statusLabel}</span>
+      <td>
+        <span className={allocChipClass(alloc)}>{allocStatusLabel(alloc)}</span>
       </td>
-      <td className="px-3 py-2.5">
+      <td>
         {alloc.server ? (
-          <Link to={`/admin/servers/${alloc.server.id}`} className="text-xs hover:accent-text">
+          <Link to={`/admin/servers/${alloc.server.id}`} className="text-xs hover:text-[var(--accent-hover)]">
             {alloc.server.name}
           </Link>
         ) : (
-          <span className="text-[var(--muted)]">—</span>
+          <span className="ds-text-muted">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-right">
-        {!alloc.assigned && (
-          <Button variant="ghost" disabled={saving} onClick={() => onDelete(alloc.id)}>
+      <td className="text-right">
+        {!alloc.assigned ? (
+          <Button variant="ghost" size="sm" disabled={saving} onClick={() => onDelete(alloc.id)}>
             <Trash2 className="h-3.5 w-3.5 text-red-400" />
           </Button>
-        )}
+        ) : null}
       </td>
     </tr>
   );
@@ -117,35 +122,27 @@ function AllocationMobileCard({
   }, [alloc.alias]);
 
   const aliasChanged = (alloc.alias ?? '') !== alias.trim();
-  const statusLabel = alloc.isPrimary ? 'Primary' : alloc.assigned ? 'Assigned' : 'Available';
-  const statusClass = alloc.isPrimary
-    ? 'node-edit-alloc-chip--primary'
-    : alloc.assigned
-      ? 'node-edit-alloc-chip--assigned'
-      : 'node-edit-alloc-chip--free';
 
   return (
-    <div className="node-edit-alloc-mobile">
-      <div className="node-edit-alloc-mobile-head">
+    <div className="ds-nd-alloc-mobile">
+      <div className="flex items-center gap-2">
         {!alloc.assigned ? (
           <input
             type="checkbox"
             checked={selected}
             disabled={saving}
             onChange={(e) => onToggleSelect(alloc.id, e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--accent)]"
+            className="h-3.5 w-3.5 rounded accent-[var(--accent)]"
           />
         ) : (
           <span className="w-3.5" />
         )}
-        <span className="font-mono text-sm font-medium">{alloc.port}</span>
-        <span className={`node-edit-alloc-chip ${statusClass}`}>{statusLabel}</span>
+        <span className="font-mono text-sm font-semibold">{alloc.port}</span>
+        <span className={allocChipClass(alloc)}>{allocStatusLabel(alloc)}</span>
       </div>
-      <p className="mt-1 font-mono text-[11px] text-[var(--muted)]">
-        {formatAllocationAddress(alloc, { fqdn })}
-      </p>
+      <p className="mt-1 font-mono text-[11px] ds-text-muted">{formatAllocationAddress(alloc, { fqdn })}</p>
       {alloc.server ? (
-        <Link to={`/admin/servers/${alloc.server.id}`} className="mt-1 block text-xs hover:accent-text">
+        <Link to={`/admin/servers/${alloc.server.id}`} className="mt-1 block text-xs hover:text-[var(--accent-hover)]">
           {alloc.server.name}
         </Link>
       ) : null}
@@ -157,11 +154,11 @@ function AllocationMobileCard({
           onBlur={() => aliasChanged && onSaveAlias(alloc.id, alias)}
           className="h-7 flex-1 py-1 text-[11px]"
         />
-        {!alloc.assigned && (
-          <Button variant="ghost" disabled={saving} onClick={() => onDelete(alloc.id)}>
+        {!alloc.assigned ? (
+          <Button variant="ghost" size="sm" disabled={saving} onClick={() => onDelete(alloc.id)}>
             <Trash2 className="h-3.5 w-3.5 text-red-400" />
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -191,13 +188,9 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
   if (!detail) return null;
 
   return (
-    <div className="node-edit-allocations space-y-5">
-      <AdminSettingsPanel
-        title="Create allocations"
-        description="Bind IP addresses and port ranges for game servers"
-        icon={Gauge}
-      >
-        <div className="node-edit-alloc-create">
+    <div className="ds-nd-body">
+      <NodeDetailPanel title="Create allocations" description="Bind IP addresses and port ranges" icon={Gauge}>
+        <div className="ds-nd-alloc-create">
           <Input
             label="Bind IP"
             value={allocForm.ip}
@@ -224,11 +217,11 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
             </Button>
           </div>
         </div>
-        {allocNotice && <p className="node-edit-notice node-edit-notice--success">{allocNotice}</p>}
+        {allocNotice ? <p className="ds-nd-notice ds-nd-notice--success">{allocNotice}</p> : null}
         <AdminFormStatus error={error} />
-      </AdminSettingsPanel>
+      </NodeDetailPanel>
 
-      <AdminSettingsPanel
+      <NodeDetailPanel
         title={`Port assignments (${detail.allocations.length})`}
         description="Grouped by bind IP — assigned ports cannot be deleted until unassigned"
         icon={Network}
@@ -237,8 +230,8 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
           <EmptyState title="No allocations" description="Create a port range to assign servers." />
         ) : (
           <div className="space-y-4">
-            <div className="node-edit-alloc-toolbar">
-              <p className="text-[11px] text-[var(--muted)]">
+            <div className="ds-nd-alloc-toolbar">
+              <p className="ds-text-xs ds-text-muted">
                 {selectedFreeCount > 0
                   ? `${selectedFreeCount} unassigned port(s) selected`
                   : 'Select free ports to bulk delete'}
@@ -247,6 +240,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
                 <Button
                   type="button"
                   variant="ghost"
+                  size="sm"
                   disabled={saving || selectedFreeCount === 0}
                   onClick={() => void deleteSelectedAllocations()}
                 >
@@ -255,6 +249,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
                 <Button
                   type="button"
                   variant="ghost"
+                  size="sm"
                   disabled={saving || selectedAllocIds.length === 0}
                   onClick={() => setSelectedAllocIds([])}
                 >
@@ -269,20 +264,20 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
               const allFreeSelected = freeIds.length > 0 && selectedInGroup === freeIds.length;
 
               return (
-                <div key={group.ip} className="node-edit-alloc-group">
-                  <div className="node-edit-alloc-group-head">
+                <div key={group.ip} className="ds-nd-alloc-group">
+                  <div className="ds-nd-alloc-group-head">
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="checkbox"
                         checked={allFreeSelected}
                         disabled={saving || freeIds.length === 0}
                         onChange={(e) => toggleIpSelection(group.ip, e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-[var(--border)] accent-[var(--accent)]"
+                        className="h-3.5 w-3.5 rounded accent-[var(--accent)]"
                         aria-label={`Select all free allocations on ${group.ip}`}
                       />
                       <div>
                         <p className="font-mono text-sm font-semibold">{group.ip}</p>
-                        <p className="text-[11px] text-[var(--muted)]">
+                        <p className="ds-text-xs ds-text-muted">
                           {group.total} total · {group.free} free · {group.assigned} assigned
                         </p>
                       </div>
@@ -290,6 +285,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
                     <Button
                       type="button"
                       variant="ghost"
+                      size="sm"
                       disabled={saving || group.free === 0}
                       onClick={() => void deleteFreeOnIp(group.ip, group.free, group.assigned)}
                     >
@@ -298,32 +294,32 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
                     </Button>
                   </div>
 
-                  <div className="node-edit-alloc-port-grid md:hidden">
+                  <div className="ds-nd-port-pills md:hidden">
                     {group.allocations.map((alloc) => {
-                      const statusClass = alloc.isPrimary
-                        ? 'node-edit-port-pill--primary'
+                      const pillClass = alloc.isPrimary
+                        ? 'ds-nd-port-pill ds-nd-port-pill--primary'
                         : alloc.assigned
-                          ? 'node-edit-port-pill--assigned'
-                          : 'node-edit-port-pill--free';
+                          ? 'ds-nd-port-pill ds-nd-port-pill--assigned'
+                          : 'ds-nd-port-pill ds-nd-port-pill--free';
                       return (
-                        <span key={alloc.id} className={`node-edit-port-pill ${statusClass}`} title={alloc.server?.name}>
+                        <span key={alloc.id} className={pillClass} title={alloc.server?.name}>
                           {alloc.port}
                         </span>
                       );
                     })}
                   </div>
 
-                  <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full text-left text-xs">
+                  <div className="ds-nd-alloc-table-wrap hidden md:block">
+                    <table className="ds-nd-alloc-table">
                       <thead>
-                        <tr className="border-b border-[var(--border)] text-[var(--muted)]">
-                          <th className="px-3 py-2 font-medium" />
-                          <th className="px-3 py-2 font-medium">Hostname</th>
-                          <th className="px-3 py-2 font-medium">Bind</th>
-                          <th className="px-3 py-2 font-medium">Alias</th>
-                          <th className="px-3 py-2 font-medium">Status</th>
-                          <th className="px-3 py-2 font-medium">Server</th>
-                          <th className="px-3 py-2 font-medium" />
+                        <tr>
+                          <th />
+                          <th>Hostname</th>
+                          <th>Bind</th>
+                          <th>Alias</th>
+                          <th>Status</th>
+                          <th>Server</th>
+                          <th />
                         </tr>
                       </thead>
                       <tbody>
@@ -343,7 +339,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
                     </table>
                   </div>
 
-                  <div className="space-y-2 p-3 md:hidden">
+                  <div className="md:hidden">
                     {group.allocations.map((alloc) => (
                       <AllocationMobileCard
                         key={alloc.id}
@@ -362,7 +358,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
             })}
           </div>
         )}
-      </AdminSettingsPanel>
+      </NodeDetailPanel>
     </div>
   );
 }

@@ -22,7 +22,6 @@ function isPrivateOrReservedIpv6(normalized: string): boolean {
   return false;
 }
 
-/** Block hosts that could be used for internal network probing from the panel. */
 export function assertPublicDatabaseHost(host: string): void {
   const trimmed = host.trim().toLowerCase();
   if (!trimmed) {
@@ -58,5 +57,21 @@ export function assertPublicDatabaseHost(host: string): void {
     throw Object.assign(new Error('Local network database hostnames are not allowed'), {
       statusCode: 422,
     });
+  }
+}
+
+/** Block private/reserved hosts for outbound panel connections (SMTP, etc.). */
+export function assertPublicOutboundHost(host: string, label = 'Host'): void {
+  try {
+    assertPublicDatabaseHost(host);
+  } catch (err) {
+    if (err instanceof Error && typeof (err as { statusCode?: number }).statusCode === 'number') {
+      const statusCode = (err as unknown as { statusCode: number }).statusCode;
+      const message = err.message
+        .replace('Database host', label)
+        .replace('database host', label.toLowerCase());
+      throw Object.assign(new Error(message), { statusCode });
+    }
+    throw err;
   }
 }

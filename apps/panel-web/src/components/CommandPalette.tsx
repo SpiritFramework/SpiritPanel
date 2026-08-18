@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isStaffOrPanelAdmin, isFullPanelAdmin } from '../lib/roles';
 import { api, type ServerSummary } from '../lib/api';
 import { getServerTheme } from '../lib/server-theme';
 
@@ -35,7 +36,8 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.rootAdmin;
+  const isStaffAdmin = isStaffOrPanelAdmin(user);
+  const isFullAdmin = isFullPanelAdmin(user);
 
   // Global hotkey (only when authenticated).
   useEffect(() => {
@@ -74,7 +76,7 @@ export function CommandPalette() {
       { id: 'servers', label: 'My servers', icon: Server, to: '/servers', group: 'Navigate' },
       { id: 'profile', label: 'Profile', icon: User, to: '/profile', group: 'Navigate' },
     ];
-    if (isAdmin) {
+    if (isStaffAdmin) {
       list.push(
         { id: 'admin', label: 'Admin dashboard', icon: LayoutDashboard, to: '/admin', group: 'Admin' },
         { id: 'admin-users', label: 'Users', icon: Users, to: '/admin/users', group: 'Admin' },
@@ -83,8 +85,10 @@ export function CommandPalette() {
         { id: 'admin-locations', label: 'Locations', icon: MapPin, to: '/admin/locations', group: 'Admin' },
         { id: 'admin-nests', label: 'Nests & Eggs', icon: Egg, to: '/admin/nests', group: 'Admin' },
         { id: 'admin-activity', label: 'Activity', icon: Activity, to: '/admin/activity', group: 'Admin' },
-        { id: 'admin-settings', label: 'Settings', icon: Settings, to: '/admin/settings', group: 'Admin' },
       );
+      if (isFullAdmin) {
+        list.push({ id: 'admin-settings', label: 'Settings', icon: Settings, to: '/admin/settings', group: 'Admin' });
+      }
     }
     for (const s of servers) {
       list.push({
@@ -98,7 +102,7 @@ export function CommandPalette() {
       });
     }
     return list;
-  }, [isAdmin, servers]);
+  }, [isStaffAdmin, isFullAdmin, servers]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

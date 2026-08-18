@@ -32,8 +32,20 @@ export function resolveServerCardStyle(preference: ServerCardStylePreference): S
   return preference;
 }
 
-export function formatResource(value: number, unit: string): string {
-  if (value <= 0) return 'Unlimited';
+/** Format a resource limit — 0 means unlimited. */
+export function formatResource(
+  value: number,
+  unit: string,
+  options: { unlimitedLabel?: string } = {},
+): string {
+  const unlimitedLabel = options.unlimitedLabel ?? 'Unlimited';
+  if (value <= 0) return unlimitedLabel;
+  return formatResourceAmount(value, unit);
+}
+
+/** Format allocated/used/free amounts — 0 is shown as zero, not unlimited. */
+export function formatResourceAmount(value: number, unit: string): string {
+  if (value <= 0) return `0 ${unit}`;
   if (value >= 1024 && unit === 'MiB') return `${(value / 1024).toFixed(value % 1024 === 0 ? 0 : 1)} GiB`;
   return `${value} ${unit}`;
 }

@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   HardDrive,
+  LifeBuoy,
   MapPin,
   Megaphone,
   Server,
@@ -13,10 +14,12 @@ import {
   Store,
   User,
   Users,
+  Globe,
 } from 'lucide-react';
 import { Search } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import { useAuth } from '../context/AuthContext';
+import { isFullPanelAdmin, isStaffOrPanelAdmin } from '../lib/roles';
 import { useBranding } from '../context/BrandingContext';
 import {
   adminSidebarClassName,
@@ -52,6 +55,7 @@ const adminGroups = [
     links: [
       { to: '/admin', label: 'Dashboard', description: 'Health & capacity', icon: LayoutDashboard, exact: true },
       { to: '/admin/activity', label: 'Activity', description: 'Audit trail', icon: Activity },
+      { to: '/admin/tickets', label: 'Support', description: 'User tickets', icon: LifeBuoy },
       { to: '/admin/announce', label: 'Announce', description: 'User messages', icon: Megaphone },
     ],
   },
@@ -60,6 +64,7 @@ const adminGroups = [
     links: [
       { to: '/admin/users', label: 'Users', description: 'Accounts & roles', icon: Users },
       { to: '/admin/servers', label: 'Servers', description: 'All game servers', icon: Server },
+      { to: '/admin/domains', label: 'Subdomains', description: 'Cloudflare DNS', icon: Globe },
       { to: '/admin/nodes', label: 'Nodes', description: 'Wings & capacity', icon: HardDrive },
       { to: '/admin/locations', label: 'Locations', description: 'Regions', icon: MapPin },
     ],
@@ -68,7 +73,7 @@ const adminGroups = [
     label: 'Configuration',
     links: [
       { to: '/admin/nests', label: 'Nests & Eggs', description: 'Game configs', icon: Egg },
-      { to: '/admin/marketplace', label: 'Marketplace', description: 'FiveM catalog', icon: Store },
+      { to: '/admin/marketplace', label: 'Marketplace', description: 'FiveM GitHub & Minecraft Modrinth', icon: Store },
       { to: '/admin/settings', label: 'Settings', description: 'Panel options', icon: Settings },
     ],
   },
@@ -76,13 +81,24 @@ const adminGroups = [
 
 const clientLinks = [
   { to: '/servers', label: 'My servers', icon: Server },
-  { to: '/profile', label: 'Profile', icon: User },
 ];
 
-export function AdminLayout({ children }: { children: ReactNode }) {
-  const { logout } = useAuth();
+export function AdminLayout({ children, fillHeight }: { children: ReactNode; fillHeight?: boolean }) {
+  const { user, logout } = useAuth();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
+  const fullAdmin = isFullPanelAdmin(user);
+
+  const visibleAdminGroups = adminGroups
+    .map((group) => {
+      if (group.label !== 'Configuration') return group;
+      if (fullAdmin) return group;
+      return {
+        ...group,
+        links: group.links.filter((link) => link.to === '/admin/nests'),
+      };
+    })
+    .filter((group) => group.links.length > 0);
 
   const sidebar = (
     <>
@@ -95,7 +111,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex-1 space-y-3 overflow-y-auto p-2">
-        {adminGroups.map((group) => (
+        {visibleAdminGroups.map((group) => (
           <SideNavGroup key={group.label} label={group.label}>
             {group.links.map(({ to, label, description, icon, exact }) => (
               <SideNavItem key={to} to={to} end={exact} icon={icon} label={label} description={description} />
@@ -132,6 +148,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       sidebar={sidebar}
       sidebarClassName={adminSidebarClassName(appearance.adminSidebarStyle)}
       contentClassName="w-full min-w-0"
+      fillHeight={fillHeight}
       headerTitle={
         <BrandMark
           name={branding.panelName}
@@ -145,11 +162,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   );
 }
 
-export function ClientLayout({ children }: { children: ReactNode; wide?: boolean }) {
+export function ClientLayout({ children, fillHeight }: { children: ReactNode; wide?: boolean; fillHeight?: boolean }) {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
-  const isAdmin = user?.role === 'admin' || user?.rootAdmin;
+  const isAdmin = isStaffOrPanelAdmin(user);
 
   const sidebar = (
     <>
@@ -164,8 +181,12 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
       <nav className="flex-1 space-y-3 overflow-y-auto p-2">
         <SideNavGroup label="Account">
           {clientLinks.map(({ to, label, icon }) => (
-            <SideNavItem key={to} to={to} end={to === '/profile'} icon={icon} label={label} />
+            <SideNavItem key={to} to={to} end={to === '/servers'} icon={icon} label={label} />
           ))}
+          {branding.ticketsEnabled !== false ? (
+            <SideNavItem to="/tickets" icon={LifeBuoy} label="Support" />
+          ) : null}
+          <SideNavItem to="/profile" end icon={User} label="Profile" />
         </SideNavGroup>
 
         {isAdmin && (
@@ -213,6 +234,7 @@ export function ClientLayout({ children }: { children: ReactNode; wide?: boolean
       sidebar={sidebar}
       sidebarClassName={clientSidebarClassName(appearance.clientSidebarStyle)}
       contentClassName="w-full min-w-0"
+      fillHeight={fillHeight}
       headerTitle={
         <BrandMark
           name={branding.panelName}

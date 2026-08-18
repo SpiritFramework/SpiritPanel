@@ -1,6 +1,6 @@
-import { WINGS_CLIENT_PERMISSIONS } from './client-server.js';
+import { SUBUSER_GRANTABLE_PERMISSIONS } from './client-server.js';
 
-const ALLOWED = new Set<string>(WINGS_CLIENT_PERMISSIONS);
+const ALLOWED = new Set<string>(SUBUSER_GRANTABLE_PERMISSIONS);
 
 export class InvalidSubuserPermissionsError extends Error {
   constructor(message: string) {

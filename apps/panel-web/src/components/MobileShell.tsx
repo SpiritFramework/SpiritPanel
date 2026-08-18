@@ -6,22 +6,27 @@ import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
 import { normalizeAppearance, sidebarMaterialClassName } from '../lib/branding-appearance';
 import { AmbientBackdrop } from './AmbientBackdrop';
 
+const TICKET_CHAT_ROUTE = /^\/(?:admin\/)?tickets\/[^/]+$/;
+
 /** Admin/client app shell — drawer nav on phones, fixed sidebar from md up. */
 export function MobileShell({
   sidebar,
   headerTitle,
   sidebarClassName = '',
   contentClassName = 'w-full min-w-0',
+  fillHeight = false,
   children,
 }: {
   sidebar: ReactNode;
   headerTitle?: ReactNode;
   sidebarClassName?: string;
   contentClassName?: string;
+  fillHeight?: boolean;
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
+  const isTicketChat = TICKET_CHAT_ROUTE.test(location.pathname);
 
   useEffect(() => {
     setNavOpen(false);
@@ -41,7 +46,7 @@ export function MobileShell({
   const materialClass = sidebarMaterialClassName(normalizeAppearance(branding).sidebarMaterial);
 
   return (
-    <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
+    <div className={`flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden ${panelBgClass}`}>
       {navOpen && (
         <button
           type="button"
@@ -69,8 +74,8 @@ export function MobileShell({
         {sidebar}
       </aside>
 
-      <div className="mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col">
-        <AmbientBackdrop />
+      <div className={`mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden${isTicketChat ? ' mobile-shell-main--ticket' : ''}`}>
+        {!isTicketChat ? <AmbientBackdrop /> : null}
         <header className="glass relative z-[1] flex shrink-0 items-center gap-2.5 border-b border-[var(--glass-border)] px-3 py-2.5 safe-top md:hidden">
           <button
             type="button"
@@ -83,8 +88,14 @@ export function MobileShell({
           {headerTitle && <div className="min-w-0 flex-1 overflow-hidden">{headerTitle}</div>}
         </header>
 
-        <main className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-5">
-          <div className={`${contentClassName} max-w-full`}>{children}</div>
+        <main
+          className={
+            isTicketChat || fillHeight
+              ? `ticket-chat-host ${contentClassName}`
+              : `min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-5 ${contentClassName}`
+          }
+        >
+          {children}
         </main>
       </div>
     </div>

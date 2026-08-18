@@ -1,4 +1,5 @@
 import { Readable, Transform } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import type { Node } from '@prisma/client';
 
 export interface FeatherWingsFileEntry {
@@ -208,15 +209,25 @@ export class WingsClient {
   /** Poll FeatherWings until the server reports offline/stopped, or the deadline passes. */
   async waitForOffline(uuid: string, deadlineMs = 90_000): Promise<boolean> {
     const deadline = Date.now() + deadlineMs;
+    let lastError: unknown;
     while (Date.now() < deadline) {
       try {
         const resources = await this.getResources(uuid);
         const state = (resources.state ?? '').toLowerCase();
         if (!state || state === 'offline' || state === 'stopped') return true;
-      } catch {
-        return true;
+        lastError = undefined;
+      } catch (err) {
+        lastError = err;
+        // 404 = server unknown to Wings → treat as offline. Connection/5xx ≠ offline.
+        if (err instanceof WingsError && err.status === 404) return true;
+        if (err instanceof Error && /\(404\)/.test(err.message)) return true;
       }
       await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    if (lastError) {
+      throw lastError instanceof Error
+        ? lastError
+        : new WingsError('Timed out waiting for FeatherWings to report offline');
     }
     return false;
   }
@@ -350,14 +361,34 @@ export class WingsClient {
     }
   }
 
-  /** Stream upload without buffering the entire file in panel memory. */
+  /** Stream upload when byte length is known (FeatherWings requires Content-Length). */
   async uploadFileStream(
     uuid: string,
     file: string,
     source: Readable,
     maxBytes: number,
+    byteLength?: number,
     timeoutMs = 120_000,
   ): Promise<void> {
+    if (byteLength === undefined) {
+      const chunks: Buffer[] = [];
+      let bytes = 0;
+      for await (const chunk of source) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        bytes += buf.length;
+        if (bytes > maxBytes) {
+          throw Object.assign(new Error('File too large'), { statusCode: 413 });
+        }
+        chunks.push(buf);
+      }
+      await this.uploadFile(uuid, file, Buffer.concat(chunks), timeoutMs);
+      return;
+    }
+
+    if (byteLength > maxBytes) {
+      throw Object.assign(new Error('File too large'), { statusCode: 413 });
+    }
+
     const path = `/api/servers/${uuid}/files/write?file=${encodeURIComponent(file)}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -382,10 +413,10 @@ export class WingsClient {
         headers: {
           Authorization: this.authHeader(),
           'Content-Type': 'application/octet-stream',
+          'Content-Length': String(byteLength),
         },
         body: Readable.toWeb(body) as ReadableStream,
         signal: controller.signal,
-        // Required for streaming request bodies in Node.js fetch.
         duplex: 'half',
       } as RequestInit);
       if (!res.ok) {
@@ -444,7 +475,13 @@ export class WingsClient {
   /** Build a signed, browser-usable URL to download a backup straight from the daemon. */
   backupDownloadUrl(uuid: string, backupUuid: string, signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string): string {
     const token = signToken(
-      { server_uuid: uuid, backup_uuid: backupUuid, unique_id: backupUuid },
+      {
+        server_uuid: uuid,
+        backup_uuid: backupUuid,
+        // One-time key — must be unique per download or Wings rejects repeats for ~60m.
+        unique_id: randomUUID(),
+        scope: 'backup-download',
+      },
       '5m',
       this.node.daemonTokenSecret,
     );

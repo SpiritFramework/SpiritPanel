@@ -92,6 +92,11 @@ export const WINGS_CLIENT_PERMISSIONS = [
   'marketplace.install',
 ] as const;
 
+/** Permissions owners may grant to subusers (excludes admin.*). */
+export const SUBUSER_GRANTABLE_PERMISSIONS = WINGS_CLIENT_PERMISSIONS.filter(
+  (p) => !p.startsWith('admin.'),
+);
+
 export const POWER_ACTION_PERMISSION: Record<string, string> = {
   start: 'control.start',
   stop: 'control.stop',
@@ -143,7 +148,8 @@ export function buildServerAccessFlags(
 
 export function wingsPermissionsForUser(isOwner: boolean, permissions: string[], all: string[]) {
   if (isOwner) return all;
-  return all.filter((p) => hasClientPermission(permissions, p));
+  // Never grant admin.* scopes to subusers even if an owner mistakenly assigned them.
+  return all.filter((p) => !p.startsWith('admin.') && hasClientPermission(permissions, p));
 }
 
 export async function logServerActivity(

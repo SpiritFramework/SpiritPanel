@@ -23,7 +23,7 @@ export const DEFAULT_NODE_FORM: NodeFormState = {
   name: '',
   description: '',
   fqdn: '',
-  scheme: 'http',
+  scheme: 'https',
   behindProxy: false,
   maintenanceMode: false,
   memory: '0',

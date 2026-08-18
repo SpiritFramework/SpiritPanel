@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { assertUnderLimit, ResourceQuotaError } from '../lib/server-quotas.js';
+import { assertBackupFitsDiskBudget } from '../lib/server-disk-budget.js';
 import { fetchLiveContainerState } from './server-runtime-status.js';
 import { wingsForNode } from './wings-client.js';
 
@@ -11,13 +12,21 @@ async function serverIsOnline(server: { uuid: string; node: Parameters<typeof wi
 }
 
 async function runBackupTask(
-  server: { id: string; uuid: string; backupLimit: number; node: Parameters<typeof wingsForNode>[0] },
+  server: {
+    id: string;
+    uuid: string;
+    disk: number;
+    backupLimit: number;
+    node: Parameters<typeof wingsForNode>[0];
+  },
   payload: string,
 ): Promise<void> {
   const name = payload.trim() || `Scheduled ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
 
   let backup;
   try {
+    await assertBackupFitsDiskBudget(server, prisma);
+
     backup = await prisma.$transaction(async (tx) => {
       const row = await tx.server.findUnique({
         where: { id: server.id },

@@ -12,10 +12,17 @@ export function parentPath(dir: string): string {
 }
 
 export function pathSegments(dir: string): Array<{ label: string; path: string }> {
-  if (dir === '/') return [{ label: 'root', path: '/' }];
+  if (dir === '/' || dir === '') return [];
   const parts = dir.split('/').filter(Boolean);
   return parts.map((part, i) => ({
     label: part,
     path: `/${parts.slice(0, i + 1).join('/')}`,
   }));
+}
+
+/** True when `child` is `parent` or nested under `parent`. */
+export function isPathInside(parent: string, child: string): boolean {
+  const normalizedParent = parent === '/' ? '/' : parent.replace(/\/$/, '');
+  if (child === normalizedParent) return true;
+  return child.startsWith(`${normalizedParent}/`);
 }

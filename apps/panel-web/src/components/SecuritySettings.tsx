@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   Check,
   Copy,
@@ -18,7 +18,7 @@ import { AccountSection, AccountStatusBadge } from './account/AccountShell';
 import { Button, Input, Textarea } from './Layout';
 import { Spinner } from './ui';
 
-export function SecuritySettings() {
+export function SecuritySettings({ passwordPanel }: { passwordPanel?: ReactNode }) {
   const [twoFa, setTwoFa] = useState<TwoFactorStatus | null>(null);
   const [githubConfigured, setGithubConfigured] = useState(false);
   const [sshCount, setSshCount] = useState(0);
@@ -46,48 +46,66 @@ export function SecuritySettings() {
     loadOverview();
   }, [loadOverview]);
 
+  const items = [
+    {
+      id: 'password',
+      label: 'Password',
+      value: 'Set',
+      ok: true,
+      icon: KeyRound,
+    },
+    {
+      id: '2fa',
+      label: 'Two-factor',
+      value: overviewLoading ? '…' : twoFa?.enabled ? 'Enabled' : 'Off',
+      ok: Boolean(twoFa?.enabled),
+      icon: ShieldCheck,
+    },
+    {
+      id: 'github',
+      label: 'GitHub',
+      value: overviewLoading ? '…' : githubConfigured ? 'Linked' : 'Not linked',
+      ok: githubConfigured,
+      icon: Github,
+    },
+    {
+      id: 'ssh',
+      label: 'SSH keys',
+      value: overviewLoading ? '…' : sshCount === 0 ? 'None' : `${sshCount}`,
+      ok: sshCount > 0,
+      icon: Terminal,
+    },
+  ] as const;
+
   return (
-    <div className="space-y-4">
-      <div className="account-security-grid">
-        <div className={`account-security-tile ${twoFa?.enabled ? 'account-security-tile--ok' : ''}`}>
-          <span className="account-security-tile-icon">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <span className="account-security-tile-label">Two-factor</span>
-          <span className="account-security-tile-value">
-            {overviewLoading ? '…' : twoFa?.enabled ? 'Enabled' : 'Off'}
-          </span>
-        </div>
-        <div className="account-security-tile account-security-tile--ok">
-          <span className="account-security-tile-icon">
-            <KeyRound className="h-4 w-4" />
-          </span>
-          <span className="account-security-tile-label">Password</span>
-          <span className="account-security-tile-value">Set</span>
-        </div>
-        <div className={`account-security-tile ${githubConfigured ? 'account-security-tile--ok' : ''}`}>
-          <span className="account-security-tile-icon">
-            <Github className="h-4 w-4" />
-          </span>
-          <span className="account-security-tile-label">GitHub token</span>
-          <span className="account-security-tile-value">
-            {overviewLoading ? '…' : githubConfigured ? 'Linked' : 'Not linked'}
-          </span>
-        </div>
-        <div className={`account-security-tile ${sshCount > 0 ? 'account-security-tile--ok' : ''}`}>
-          <span className="account-security-tile-icon">
-            <Terminal className="h-4 w-4" />
-          </span>
-          <span className="account-security-tile-label">SSH keys</span>
-          <span className="account-security-tile-value">
-            {overviewLoading ? '…' : sshCount === 0 ? 'None' : `${sshCount} key${sshCount === 1 ? '' : 's'}`}
-          </span>
-        </div>
+    <div className="account-security">
+      <div className="account-security-grid" aria-label="Security status">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.id}
+              className={`account-security-tile ${item.ok ? 'account-security-tile--ok' : ''}`}
+            >
+              <span className="account-security-tile-icon" aria-hidden>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <span className="account-security-tile-label">{item.label}</span>
+              <span className="account-security-tile-value">{item.value}</span>
+            </div>
+          );
+        })}
       </div>
 
-      <TwoFactorPanel onChanged={loadOverview} />
-      <GithubPatPanel onChanged={loadOverview} />
-      <SshKeysPanel onChanged={loadOverview} />
+      <div className="account-security-columns">
+        {passwordPanel}
+        <TwoFactorPanel onChanged={loadOverview} />
+      </div>
+
+      <div className="account-security-integrations">
+        <GithubPatPanel onChanged={loadOverview} />
+        <SshKeysPanel onChanged={loadOverview} />
+      </div>
     </div>
   );
 }

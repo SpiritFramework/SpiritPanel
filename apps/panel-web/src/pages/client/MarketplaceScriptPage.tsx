@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Calendar,
   CheckCircle2,
   CircleDot,
@@ -17,6 +16,7 @@ import {
   Star,
   Tag,
 } from 'lucide-react';
+import { sanitizeLinkHref } from '../../lib/safe-url';
 import {
   formatRelativeTime,
   formatStars,
@@ -32,6 +32,11 @@ import { Button } from '../../components/Layout';
 import { Spinner } from '../../components/ui';
 import { MarkdownReadme } from '../../components/MarkdownReadme';
 import { ServerErrorBanner, ServerPage } from '../../components/server/ServerPage';
+import {
+  MarketplaceBackLink,
+  MarketplaceEmptyState,
+  MarketplacePage,
+} from '../../components/marketplace/MarketplaceChrome';
 
 function formatDate(iso: string | undefined): string {
   if (!iso) return '—';
@@ -50,13 +55,13 @@ function HeroStat({
   accent?: string;
 }) {
   return (
-    <div className="mp-script-stat">
-      <span className="mp-script-stat-icon" style={accent ? { color: accent } : undefined}>
+    <div className="fm-script-stat" role="listitem">
+      <span className="fm-script-stat-icon" style={accent ? { color: accent } : undefined}>
         <Icon className="h-4 w-4" aria-hidden />
       </span>
-      <div className="mp-script-stat-body">
-        <p className="mp-script-stat-value">{value}</p>
-        <p className="mp-script-stat-label">{label}</p>
+      <div>
+        <p className="fm-script-stat-value">{value}</p>
+        <p className="fm-script-stat-label">{label}</p>
       </div>
     </div>
   );
@@ -77,20 +82,21 @@ function DetailRow({
   accent?: boolean;
   href?: string;
 }) {
+  const safeHref = href ? sanitizeLinkHref(href) : null;
   return (
-    <div className="mp-script-detail-row">
-      <div className="mp-script-detail-label">
-        <Icon className="h-4 w-4" aria-hidden />
+    <div className="fm-detail-row">
+      <div className="fm-detail-label">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
         {label}
       </div>
-      {href ? (
-        <a href={href} target="_blank" rel="noreferrer" className="mp-script-detail-link">
-          <span className="mp-script-detail-value">{value}</span>
+      {safeHref ? (
+        <a href={safeHref} target="_blank" rel="noopener noreferrer" className="fm-detail-link">
+          <span className={`fm-detail-value${mono ? ' fm-detail-value--mono' : ''}`}>{value}</span>
           <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </a>
       ) : (
         <p
-          className={`mp-script-detail-value${mono ? ' mp-script-detail-value--mono' : ''}${accent ? ' mp-script-detail-value--accent' : ''}`}
+          className={`fm-detail-value${mono ? ' fm-detail-value--mono' : ''}${accent ? ' fm-detail-value--accent' : ''}`}
         >
           {value}
         </p>
@@ -99,61 +105,18 @@ function DetailRow({
   );
 }
 
-function ScriptHeroSkeleton({
-  displayName,
-  displayOwner,
-  displayRepo,
-  aboutText,
-}: {
-  displayName: string;
-  displayOwner: string;
-  displayRepo: string;
-  aboutText: string;
-}) {
-  return (
-    <header className="mp-script-hero mp-script-hero--loading">
-      <div className="mp-hero-glow" aria-hidden />
-      <div className="mp-script-hero-top">
-        <div className="mp-repo-avatar mp-repo-avatar--lg">
-          <Github className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="mp-script-hero-name">{displayName}</h1>
-          <p className="mp-script-hero-repo">
-            {displayOwner}
-            <span>/</span>
-            {displayRepo}
-          </p>
-          {aboutText ? <p className="mp-script-hero-lead">{aboutText}</p> : null}
-        </div>
-        <Spinner className="h-7 w-7 shrink-0 text-white/70" />
-      </div>
-    </header>
-  );
-}
-
 export function MarketplaceScriptPage() {
   const navigate = useNavigate();
   const { server } = useServer();
   const access = getServerAccess(server);
   const { base, scriptInstallPath } = useMarketplacePaths();
-  const {
-    resolved,
-    loading,
-    error,
-    preview,
-    displayName,
-    displayOwner,
-    displayRepo,
-  } = useMarketplaceScriptResolved();
+  const { resolved, loading, error, preview, displayName, displayOwner, displayRepo, reload } =
+    useMarketplaceScriptResolved();
 
   if (server.marketplaceEnabled === false) {
     return (
       <ServerPage>
-        <div className="mp-empty-state">
-          <Package className="h-10 w-10 text-[var(--muted)]" />
-          <p className="mt-3 font-medium">Marketplace disabled</p>
-        </div>
+        <MarketplaceEmptyState icon={Package} title="Marketplace disabled" />
       </ServerPage>
     );
   }
@@ -161,9 +124,7 @@ export function MarketplaceScriptPage() {
   if (!isFiveMServer(server)) {
     return (
       <ServerPage>
-        <div className="mp-empty-state">
-          <p className="font-medium">FiveM only</p>
-        </div>
+        <MarketplaceEmptyState icon={Package} title="FiveM only" description="This page is for FiveM servers." />
       </ServerPage>
     );
   }
@@ -183,109 +144,133 @@ export function MarketplaceScriptPage() {
       ? scriptInstallPath(resolved.owner, resolved.repo)
       : null;
 
+  const externalGithubUrl = resolved ? sanitizeLinkHref(resolved.githubUrl) : null;
+
   return (
     <ServerPage>
-      <div className="mp-shell mp-script-shell">
-        <Link to={base} className="mp-script-back">
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back to marketplace
-        </Link>
+      <MarketplacePage>
+        <MarketplaceBackLink to={base}>Back to marketplace</MarketplaceBackLink>
 
         {loading && !resolved ? (
-          <ScriptHeroSkeleton
-            displayName={displayName}
-            displayOwner={displayOwner}
-            displayRepo={displayRepo}
-            aboutText={aboutText}
-          />
+          <header className="fm-script-hero">
+            <div className="fm-script-hero-glow" aria-hidden />
+            <div className="fm-script-hero-inner">
+              <div className="fm-script-hero-top">
+                <div className="fm-script-headline">
+                  <div className="fm-repo-avatar fm-repo-avatar--lg">
+                    <Github className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="fm-script-title">{displayName}</h1>
+                    <p className="fm-script-repo">
+                      {displayOwner}
+                      <span>/</span>
+                      {displayRepo}
+                    </p>
+                    {aboutText ? <p className="fm-script-lead">{aboutText}</p> : null}
+                  </div>
+                </div>
+                <Spinner className="h-7 w-7 shrink-0" />
+              </div>
+            </div>
+          </header>
         ) : error ? (
-          <ServerErrorBanner message={error} />
+          <div className="space-y-3">
+            <ServerErrorBanner message={error} />
+            <Button type="button" size="sm" variant="secondary" onClick={() => reload()}>
+              Retry
+            </Button>
+          </div>
         ) : resolved ? (
           <>
-            <header className="mp-script-hero">
-              <div className="mp-hero-glow" aria-hidden />
-              <div className="mp-script-hero-top">
-                <div className="mp-script-hero-identity">
-                  <div className="mp-script-hero-badges">
-                    <span className="mp-topic-chip mp-topic-chip--fivem">FiveM</span>
-                    {category ? (
-                      <span className="mp-cat-badge mp-cat-script">
-                        {MARKETPLACE_CATEGORY_LABELS[category] ?? category}
-                      </span>
-                    ) : null}
-                    {resolved.language ? (
-                      <span className="mp-script-lang-pill">
-                        <span
-                          className="mp-repo-lang-dot"
-                          style={{ background: languageAccent(resolved.language) }}
-                        />
-                        {resolved.language}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="mp-script-hero-headline">
-                    <div className="mp-repo-avatar mp-repo-avatar--lg">
-                      <Github className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h1 className="mp-script-hero-name">{resolved.name}</h1>
-                      <p className="mp-script-hero-repo">
-                        {resolved.owner}
-                        <span>/</span>
-                        {resolved.repo}
-                      </p>
-                      {aboutText ? <p className="mp-script-hero-lead">{aboutText}</p> : null}
-                    </div>
-                  </div>
-
-                  {topics.length > 0 ? (
-                    <div className="mp-script-hero-topics">
-                      {topics.map((topic) => (
-                        <span key={topic} className="mp-topic-chip">
-                          {topic}
+            <header className="fm-script-hero">
+              <div className="fm-script-hero-glow" aria-hidden />
+              <div className="fm-script-hero-inner">
+                <div className="fm-script-hero-top">
+                  <div className="min-w-0 flex-1">
+                    <div className="fm-script-badges">
+                      <span className="fm-chip fm-chip--fivem">FiveM</span>
+                      {category ? (
+                        <span className="fm-chip fm-chip--cat fm-chip--cat-script">
+                          {MARKETPLACE_CATEGORY_LABELS[category] ?? category}
                         </span>
-                      ))}
+                      ) : null}
+                      {resolved.language ? (
+                        <span className="fm-chip">
+                          <span
+                            className="fm-repo-lang-dot mr-1 inline-block align-middle"
+                            style={{ background: languageAccent(resolved.language) }}
+                          />
+                          {resolved.language}
+                        </span>
+                      ) : null}
                     </div>
-                  ) : null}
+
+                    <div className="fm-script-headline">
+                      <div className="fm-repo-avatar fm-repo-avatar--lg">
+                        <Github className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h1 className="fm-script-title">{resolved.name}</h1>
+                        <p className="fm-script-repo">
+                          {resolved.owner}
+                          <span>/</span>
+                          {resolved.repo}
+                        </p>
+                        {aboutText ? <p className="fm-script-lead">{aboutText}</p> : null}
+                      </div>
+                    </div>
+
+                    {topics.length > 0 ? (
+                      <div className="fm-script-topics">
+                        {topics.map((topic) => (
+                          <span key={topic} className="fm-chip">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="fm-script-actions">
+                    {installPath ? (
+                      <Link to={installPath} className="fm-btn-primary">
+                        <Download className="h-4 w-4" aria-hidden />
+                        Install to server
+                      </Link>
+                    ) : null}
+                    {externalGithubUrl ? (
+                      <a
+                        href={externalGithubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="fm-btn-ghost"
+                      >
+                        <Github className="h-4 w-4" aria-hidden />
+                        GitHub
+                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
 
-                <div className="mp-script-hero-actions">
-                  {installPath ? (
-                    <Link to={installPath} className="mp-script-install-btn">
-                      <Download className="h-4 w-4" aria-hidden />
-                      Install to server
-                    </Link>
-                  ) : null}
-                  <a
-                    href={resolved.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mp-script-github-btn"
-                  >
-                    <Github className="h-4 w-4" aria-hidden />
-                    View on GitHub
-                    <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
-                  </a>
+                <div className="fm-script-stats" role="list">
+                  <HeroStat label="Stars" value={formatStars(resolved.stars)} icon={Star} accent="#fbbf24" />
+                  <HeroStat label="Forks" value={formatStars(resolved.forks ?? 0)} icon={GitFork} />
+                  <HeroStat label="Issues" value={String(resolved.openIssues ?? 0)} icon={CircleDot} />
+                  <HeroStat label="License" value={resolved.license ?? '—'} icon={Scale} />
+                  <HeroStat label="Updated" value={updatedLabel} icon={Calendar} />
+                  <HeroStat label="Branch" value={resolved.defaultBranch} icon={GitBranch} />
                 </div>
-              </div>
-
-              <div className="mp-script-hero-stats" role="list">
-                <HeroStat label="Stars" value={formatStars(resolved.stars)} icon={Star} accent="#fbbf24" />
-                <HeroStat label="Forks" value={formatStars(resolved.forks ?? 0)} icon={GitFork} />
-                <HeroStat label="Open issues" value={String(resolved.openIssues ?? 0)} icon={CircleDot} />
-                <HeroStat label="License" value={resolved.license ?? '—'} icon={Scale} />
-                <HeroStat label="Last updated" value={updatedLabel} icon={Calendar} />
-                <HeroStat label="Default branch" value={resolved.defaultBranch} icon={GitBranch} />
               </div>
             </header>
 
             {resolved.existingInstall ? (
-              <div className="mp-script-installed-banner">
+              <div className="fm-script-banner">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
                 <div className="min-w-0 flex-1">
-                  <p className="mp-script-installed-title">Already installed on this server</p>
-                  <p className="mp-script-installed-path">
+                  <p className="fm-script-banner-title">Already installed on this server</p>
+                  <p className="fm-script-banner-path">
                     {resolved.existingInstall.installPath} · {resolved.existingInstall.installedRef}
                   </p>
                 </div>
@@ -296,126 +281,142 @@ export function MarketplaceScriptPage() {
             ) : null}
 
             {!access.canInstallMarketplace && !resolved.existingInstall ? (
-              <p className="mp-script-install-unavailable">
+              <p className="fm-script-permission">
                 You don&apos;t have permission to install marketplace resources on this server.
               </p>
             ) : null}
 
-            <div className="mp-script-main mp-script-main--full">
+            <div className="fm-script-content">
               {resolved.readme ? (
-                <section className="mp-script-section mp-script-section--readme">
-                  <header className="mp-script-section-head">
+                <section className="fm-panel">
+                  <header className="fm-panel-head">
                     <div>
-                      <h2 className="mp-script-section-title">
-                          <FileText className="h-4 w-4" aria-hidden />
+                      <h2 className="fm-panel-title">
+                        <FileText className="h-4 w-4" aria-hidden />
                         Documentation
                       </h2>
-                      <p className="mp-script-section-desc">README from the repository</p>
+                      <p className="fm-panel-desc">README from the repository</p>
                     </div>
-                    <a
-                      href={resolved.githubUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mp-script-section-link"
-                    >
-                      Open on GitHub
-                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                    </a>
+                    {externalGithubUrl ? (
+                      <a
+                        href={externalGithubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="fm-panel-link"
+                      >
+                        Open on GitHub
+                        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      </a>
+                    ) : null}
                   </header>
-                  <div className="mp-script-readme">
-                    <MarkdownReadme source={resolved.readme} />
+                  <div className="fm-panel-body fm-panel-body--readme">
+                    <div className="fm-readme">
+                      <MarkdownReadme
+                        source={resolved.readme}
+                        github={{
+                          owner: resolved.owner,
+                          repo: resolved.repo,
+                          branch: resolved.defaultBranch,
+                        }}
+                      />
+                    </div>
                   </div>
                 </section>
               ) : resolved.description ? (
-                <section className="mp-script-section">
-                  <header className="mp-script-section-head">
+                <section className="fm-panel">
+                  <header className="fm-panel-head">
                     <div>
-                      <h2 className="mp-script-section-title">About this resource</h2>
-                      <p className="mp-script-section-desc">Repository description</p>
+                      <h2 className="fm-panel-title">About this resource</h2>
+                      <p className="fm-panel-desc">Repository description</p>
                     </div>
                   </header>
-                  <p className="mp-script-about">{resolved.description}</p>
+                  <div className="fm-panel-body">
+                    <p className="text-sm leading-relaxed text-[var(--muted)]">{resolved.description}</p>
+                  </div>
                 </section>
               ) : null}
 
-              <section className="mp-script-section">
-                <header className="mp-script-section-head">
+              <section className="fm-panel">
+                <header className="fm-panel-head">
                   <div>
-                    <h2 className="mp-script-section-title">
-                        <FolderOpen className="h-4 w-4" aria-hidden />
+                    <h2 className="fm-panel-title">
+                      <FolderOpen className="h-4 w-4" aria-hidden />
                       Repository details
                     </h2>
-                    <p className="mp-script-section-desc">Install paths, releases, and metadata</p>
+                    <p className="fm-panel-desc">Install paths, releases, and metadata</p>
                   </div>
                   {installPath ? (
-                    <Link to={installPath} className="mp-script-section-link">
+                    <Link to={installPath} className="fm-panel-link">
                       <Download className="h-3.5 w-3.5" aria-hidden />
                       Install this script
                     </Link>
                   ) : null}
                 </header>
-
-                <div className="mp-script-detail-grid">
-                  <DetailRow label="Owner" value={resolved.owner} icon={Github} mono />
-                  <DetailRow label="Default branch" value={resolved.defaultBranch} icon={GitBranch} mono />
-                  <DetailRow
-                    label="Latest release"
-                    value={resolved.latestReleaseTag ?? 'No published releases'}
-                    icon={Tag}
-                    mono
-                  />
-                  <DetailRow
-                    label="Install path"
-                    value={resolved.suggested?.installPath ?? '—'}
-                    icon={FolderOpen}
-                    mono
-                    accent
-                  />
-                  <DetailRow label="Created" value={formatDate(resolved.createdAt)} icon={Calendar} />
-                  {resolved.homepage ? (
+                <div className="fm-panel-body">
+                  <div className="fm-detail-grid">
+                    <DetailRow label="Owner" value={resolved.owner} icon={Github} mono />
+                    <DetailRow label="Default branch" value={resolved.defaultBranch} icon={GitBranch} mono />
                     <DetailRow
-                      label="Homepage"
-                      value={resolved.homepage}
-                      icon={Globe}
-                      href={resolved.homepage}
+                      label="Latest release"
+                      value={resolved.latestReleaseTag ?? 'No published releases'}
+                      icon={Tag}
+                      mono
                     />
-                  ) : null}
+                    <DetailRow
+                      label="Install path"
+                      value={resolved.suggested?.installPath ?? '—'}
+                      icon={FolderOpen}
+                      mono
+                      accent
+                    />
+                    <DetailRow label="Created" value={formatDate(resolved.createdAt)} icon={Calendar} />
+                    {resolved.homepage ? (
+                      <DetailRow
+                        label="Homepage"
+                        value={resolved.homepage}
+                        icon={Globe}
+                        href={resolved.homepage}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </section>
 
               {(resolved.releases ?? []).length > 0 ? (
-                <section className="mp-script-section">
-                  <header className="mp-script-section-head">
+                <section className="fm-panel">
+                  <header className="fm-panel-head">
                     <div>
-                      <h2 className="mp-script-section-title">
-                          <Tag className="h-4 w-4" aria-hidden />
+                      <h2 className="fm-panel-title">
+                        <Tag className="h-4 w-4" aria-hidden />
                         Releases
                       </h2>
-                      <p className="mp-script-section-desc">
+                      <p className="fm-panel-desc">
                         {(resolved.releases ?? []).length} published version
                         {(resolved.releases ?? []).length === 1 ? '' : 's'}
                       </p>
                     </div>
                   </header>
-                  <ul className="mp-script-releases">
-                    {(resolved.releases ?? []).map((release) => (
-                      <li key={release.tag} className="mp-script-release">
-                        <div className="min-w-0">
-                          <p className="mp-script-release-tag">{release.tag}</p>
-                          {release.name && release.name !== release.tag ? (
-                            <p className="mp-script-release-name">{release.name}</p>
-                          ) : null}
-                        </div>
-                        {release.prerelease ? <span className="mp-topic-chip">Pre-release</span> : null}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="fm-panel-body">
+                    <ul className="fm-releases">
+                      {(resolved.releases ?? []).map((release) => (
+                        <li key={release.tag} className="fm-release">
+                          <div className="min-w-0">
+                            <p className="fm-release-tag">{release.tag}</p>
+                            {release.name && release.name !== release.tag ? (
+                              <p className="fm-release-name">{release.name}</p>
+                            ) : null}
+                          </div>
+                          {release.prerelease ? <span className="fm-chip">Pre-release</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </section>
               ) : null}
             </div>
           </>
         ) : null}
-      </div>
+      </MarketplacePage>
     </ServerPage>
   );
 }

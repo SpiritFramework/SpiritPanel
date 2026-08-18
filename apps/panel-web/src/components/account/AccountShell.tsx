@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LayoutDashboard } from 'lucide-react';
 import { Button } from '../Layout';
@@ -28,74 +29,79 @@ export function AccountShell<T extends string>({
   onTabChange,
   children,
 }: {
-  avatar: React.ReactNode;
+  eyebrow?: string;
+  avatar: ReactNode;
   title: string;
-  subtitle?: React.ReactNode;
-  badges?: React.ReactNode;
+  subtitle?: ReactNode;
+  badges?: ReactNode;
   stats?: AccountStat[];
   adminLink?: boolean;
   tabs: AccountTab<T>[];
   activeTab: T;
   onTabChange: (id: T) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div className="account-shell flex min-h-[calc(100vh-2.5rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm shadow-black/5">
-      <header className="account-header shrink-0">
-        <div className="account-header-accent" aria-hidden />
-        <div className="account-header-body">
-          <div className="account-avatar-wrap">{avatar}</div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="account-title">{title}</h1>
-              {badges}
+    <div className="account-shell">
+      <header className="account-strip">
+        <div className="account-strip-inner">
+          <div className="account-strip-identity">
+            <div className="account-avatar-wrap">{avatar}</div>
+            <div className="account-strip-copy min-w-0">
+              <div className="account-strip-title-row">
+                <h1 className="account-title">{title}</h1>
+                {badges ? <div className="account-strip-badges">{badges}</div> : null}
+              </div>
+              {subtitle ? <div className="account-subtitle">{subtitle}</div> : null}
+              {stats && stats.length > 0 ? (
+                <ul className="account-strip-meta">
+                  {stats.map((stat) => (
+                    <li key={stat.label}>
+                      <stat.icon className="h-3.5 w-3.5 shrink-0 opacity-65" aria-hidden />
+                      <span>
+                        <strong>{stat.value}</strong> {stat.label.toLowerCase()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-            {subtitle && <div className="account-subtitle">{subtitle}</div>}
           </div>
-          {adminLink && (
-            <Link to="/admin" className="shrink-0">
+
+          {adminLink ? (
+            <Link to="/admin" className="account-strip-admin shrink-0">
               <Button variant="subtle" className="account-admin-btn">
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Admin
+                Open admin
               </Button>
             </Link>
-          )}
+          ) : null}
         </div>
-        {stats && stats.length > 0 && (
-          <div className="account-stat-row">
-            {stats.map((stat) => (
-              <div key={stat.label} className="account-stat-chip">
-                <stat.icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                <span className="account-stat-label">{stat.label}</span>
-                <span className="account-stat-value">{stat.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
+
+        <nav className="account-tabs" aria-label="Account sections">
+          {tabs.map((tab) => {
+            const selected = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onTabChange(tab.id)}
+                className={`account-tab ${selected ? 'account-tab--active' : ''}`}
+                aria-current={selected ? 'page' : undefined}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{tab.label}</span>
+                {tab.count !== undefined && tab.count > 0 ? (
+                  <span className="account-tab-count">{tab.count}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </nav>
       </header>
 
-      <nav className="account-tabs shrink-0" aria-label="Account sections">
-        {tabs.map((tab) => {
-          const selected = activeTab === tab.id;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              className={`account-tab ${selected ? 'account-tab--active' : ''}`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="account-tab-count">{tab.count}</span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="account-body min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="account-body">{children}</div>
     </div>
   );
 }
@@ -107,18 +113,20 @@ export function AccountSection({
   badge,
   children,
   tone = 'default',
+  actions,
 }: {
   title: string;
   description?: string;
   icon: LucideIcon;
-  badge?: React.ReactNode;
-  children: React.ReactNode;
+  badge?: ReactNode;
+  children: ReactNode;
   tone?: 'default' | 'success' | 'warning';
+  actions?: ReactNode;
 }) {
   return (
     <section className={`account-section account-section--${tone}`}>
       <div className="account-section-head">
-        <span className="account-section-icon">
+        <span className="account-section-icon" aria-hidden>
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
@@ -126,8 +134,9 @@ export function AccountSection({
             <h2 className="account-section-title">{title}</h2>
             {badge}
           </div>
-          {description && <p className="account-section-desc">{description}</p>}
+          {description ? <p className="account-section-desc">{description}</p> : null}
         </div>
+        {actions ? <div className="account-section-actions shrink-0">{actions}</div> : null}
       </div>
       <div className="account-section-body">{children}</div>
     </section>

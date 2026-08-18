@@ -30,6 +30,8 @@ export interface ServerStatsResponse {
   range: string;
   live: StatPoint | null;
   series: StatPoint[];
+  /** Completed backup archive bytes — counted toward disk allocation with live file usage. */
+  diskBackupBytes?: number;
 }
 
 const RANGE_MS: Record<string, number> = {
@@ -44,6 +46,14 @@ export async function pruneStatSnapshots(serverId: string) {
   const cutoff = new Date(Date.now() - SNAPSHOT_RETENTION_MS);
   await prisma.serverStatSnapshot.deleteMany({
     where: { serverId, recordedAt: { lt: cutoff } },
+  });
+}
+
+/** Batch prune expired snapshots for all servers (stats collector hourly job). */
+export async function pruneAllStatSnapshots() {
+  const cutoff = new Date(Date.now() - SNAPSHOT_RETENTION_MS);
+  await prisma.serverStatSnapshot.deleteMany({
+    where: { recordedAt: { lt: cutoff } },
   });
 }
 
@@ -156,20 +166,33 @@ export async function getServerStats(
   const rangeKey = range in RANGE_MS ? range : '24h';
   const since = new Date(Date.now() - RANGE_MS[rangeKey]);
 
-  const [rows, liveRaw] = await Promise.all([
+  const [rows, liveRaw, backupAgg] = await Promise.all([
     prisma.serverStatSnapshot.findMany({
       where: { serverId: server.id, recordedAt: { gte: since } },
       orderBy: { recordedAt: 'asc' },
     }),
     fetchLiveStats(server),
+    prisma.backup.aggregate({
+      where: { serverId: server.id, bytes: { gt: 0 } },
+      _sum: { bytes: true },
+    }),
   ]);
 
-  const series = rows.map(serializePoint);
-  const live = liveRaw ? liveToPoint(liveRaw) : null;
+  const diskBackupBytes = Number(backupAgg._sum.bytes ?? 0n);
+  const series = rows.map((row) => {
+    const point = serializePoint(row);
+    return { ...point, diskBytes: point.diskBytes + diskBackupBytes };
+  });
+  const live = liveRaw
+    ? (() => {
+        const point = liveToPoint(liveRaw);
+        return { ...point, diskBytes: point.diskBytes + diskBackupBytes };
+      })()
+    : null;
 
   if (liveRaw) {
+    // Persist raw Wings file usage only — backup bytes are applied at read time.
     await recordStatSnapshot(server.id, liveRaw).catch(() => {});
-    await pruneStatSnapshots(server.id).catch(() => {});
   }
 
   return {
@@ -177,6 +200,7 @@ export async function getServerStats(
     range: rangeKey,
     live,
     series,
+    diskBackupBytes,
   };
 }
 
@@ -203,7 +227,6 @@ export async function recordStatSnapshotFromPayload(
     },
     state,
   });
-  await pruneStatSnapshots(serverId).catch(() => {});
 }
 
 export async function seedDemoStats(serverId: string, memoryLimitMiB: number, diskLimitMiB: number) {

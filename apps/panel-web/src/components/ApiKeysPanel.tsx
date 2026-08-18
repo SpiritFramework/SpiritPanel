@@ -5,7 +5,6 @@ import {
   Copy,
   Key,
   Plus,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { ModalShell } from './ModalShell';
@@ -61,16 +60,18 @@ export function ApiKeysPanel({
   loading: boolean;
   creating: boolean;
   onRefresh: () => void;
-  onCreate: (data: { memo: string; keyType?: 'account' | 'application' }) => Promise<CreatedApiKey>;
-  onDelete: (id: string) => Promise<void>;
+  onCreate?: (data: { memo: string; keyType?: 'account' | 'application' }) => Promise<CreatedApiKey>;
+  onDelete?: (id: string) => Promise<void>;
   allowApplicationKeys?: boolean;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const canManage = Boolean(onCreate && onDelete);
 
   async function handleDelete(id: string) {
+    if (!onDelete) return;
     setDeletingId(id);
     setError('');
     try {
@@ -85,120 +86,104 @@ export function ApiKeysPanel({
 
   return (
     <>
-      <AccountSection title={title} description={description} icon={Key}>
-        <div className="account-grid account-grid--split">
-          <aside className="account-aside">
-            <div className="account-card">
-              <p className="account-card-label">Authentication</p>
-              <div className="account-code-block">
-                <div>
-                  <span className="token-key">Authorization</span>:{' '}
-                  <span className="token-str">Bearer {'{identifier}.{token}'}</span>
-                </div>
-                <div className="mt-2">
-                  <span className="token-key">Base URL</span>:{' '}
-                  <span className="token-str">{apiBase}</span>
-                </div>
-              </div>
+      <AccountSection
+        title={title}
+        description={description}
+        icon={Key}
+        actions={
+          canManage ? (
+            <Button type="button" onClick={() => setShowCreate(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              Create key
+            </Button>
+          ) : undefined
+        }
+      >
+        <div className="account-keys-layout">
+          <div className="account-auth-strip" aria-label="Authentication format">
+            <div>
+              <span className="account-auth-label">Authorization</span>
+              <code>Bearer {'{identifier}.{token}'}</code>
             </div>
-            <div className="account-card">
-              <p className="account-card-label">Tips</p>
-              <ul className="space-y-2 text-xs leading-relaxed text-[var(--muted)]">
-                <li className="flex gap-2">
-                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-text" />
-                  Copy the full key immediately — the secret is only shown once.
-                </li>
-                <li className="flex gap-2">
-                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-text" />
-                  Use a descriptive memo so you know which script or service owns each key.
-                </li>
-                <li className="flex gap-2">
-                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-text" />
-                  Revoke keys you no longer use from this page.
-                </li>
-              </ul>
+            <div>
+              <span className="account-auth-label">Base URL</span>
+              <code>{apiBase}</code>
             </div>
-          </aside>
+          </div>
 
-          <div className="min-w-0">
-            <div className="account-keys-toolbar">
-              <p className="text-xs text-[var(--muted)]">
-                {loading ? 'Loading keys…' : `${keys.length} active key${keys.length === 1 ? '' : 's'}`}
-              </p>
-              <Button type="button" onClick={() => setShowCreate(true)}>
-                <Plus className="h-3.5 w-3.5" />
-                Create key
-              </Button>
+          {error ? (
+            <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
+              {error}
             </div>
+          ) : null}
 
-            {error && (
-              <div className="mb-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
-                {error}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Spinner className="h-6 w-6" />
+            </div>
+          ) : keys.length === 0 ? (
+            <div className="account-keys-empty">
+              <span className="account-keys-empty-icon">
+                <Key className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-medium">No API keys yet</p>
+                <p className="mt-0.5 max-w-sm text-xs text-[var(--muted)]">
+                  {canManage
+                    ? 'Create a key to authenticate scripts against this API. The secret is only shown once.'
+                    : 'This user has no API keys.'}
+                </p>
               </div>
-            )}
-
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Spinner className="h-6 w-6" />
-              </div>
-            ) : keys.length === 0 ? (
-              <div className="account-keys-empty">
-                <span className="account-keys-empty-icon">
-                  <Key className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium">No API keys yet</p>
-                  <p className="mt-0.5 max-w-xs text-xs text-[var(--muted)]">
-                    Create a key to authenticate scripts and automation against the panel API.
-                  </p>
-                </div>
+              {canManage ? (
                 <Button type="button" variant="subtle" onClick={() => setShowCreate(true)}>
                   <Plus className="h-3.5 w-3.5" />
                   Create your first key
                 </Button>
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {keys.map((key) => (
-                  <article key={key.id} className="account-key-card">
-                    <div className="account-key-card-head">
-                      <div className="min-w-0">
-                        <p className="account-key-memo truncate">{key.memo || 'Untitled key'}</p>
-                        <p className="account-key-id truncate">{key.identifier}</p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={deletingId === key.id}
-                        onClick={() => handleDelete(key.id)}
-                        className="shrink-0 rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)] disabled:opacity-50"
-                        aria-label="Revoke key"
-                      >
-                        {deletingId === key.id ? (
-                          <Spinner className="h-4 w-4" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
+              ) : null}
+            </div>
+          ) : (
+            <ul className="account-key-list">
+              {keys.map((key) => (
+                <li key={key.id} className="account-key-row">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="account-key-memo truncate">{key.memo || 'Untitled key'}</p>
+                      <span className="account-key-type">{keyTypeLabel(key.keyType)}</span>
                     </div>
-                    <div className="account-key-meta">
-                      <span className="account-key-meta-item">{keyTypeLabel(key.keyType)}</span>
-                      <span className="account-key-meta-item">
-                        <Clock className="h-3 w-3" />
-                        {formatRelative(key.lastUsedAt)}
-                      </span>
-                      <span className="account-key-meta-item hidden sm:inline-flex">
-                        Created {formatKeyTime(key.createdAt)}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
+                    <p className="account-key-id truncate">{key.identifier}</p>
+                  </div>
+                  <div className="account-key-meta">
+                    <span className="account-key-meta-item">
+                      <Clock className="h-3 w-3" />
+                      {formatRelative(key.lastUsedAt)}
+                    </span>
+                    <span className="account-key-meta-item hidden md:inline-flex">
+                      Created {formatKeyTime(key.createdAt)}
+                    </span>
+                  </div>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      disabled={deletingId === key.id}
+                      onClick={() => handleDelete(key.id)}
+                      className="account-key-revoke"
+                      aria-label="Revoke key"
+                    >
+                      {deletingId === key.id ? (
+                        <Spinner className="h-4 w-4" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </AccountSection>
 
-      {showCreate && (
+      {showCreate && canManage && onCreate ? (
         <CreateApiKeyModal
           creating={creating}
           allowApplicationKeys={allowApplicationKeys}
@@ -214,7 +199,7 @@ export function ApiKeysPanel({
           }}
           createdKey={createdKey}
         />
-      )}
+      ) : null}
     </>
   );
 }
@@ -279,7 +264,10 @@ function CreateApiKeyModal({
       <div className="p-5">
         {createdKey ? (
           <div className="space-y-4">
-            <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-3 text-xs" style={{ color: 'var(--warning-fg)' }}>
+            <div
+              className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-3 text-xs"
+              style={{ color: 'var(--warning-fg)' }}
+            >
               Store this key securely. You won&apos;t be able to view the secret again.
             </div>
             <div>
@@ -310,18 +298,14 @@ function CreateApiKeyModal({
               maxLength={255}
             />
 
-            {allowApplicationKeys && (
+            {allowApplicationKeys ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-[var(--text)]">Key type</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
                     onClick={() => setKeyType('account')}
-                    className={`rounded-xl border px-3 py-3 text-left text-xs transition ${
-                      keyType === 'account'
-                        ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-muted)]'
-                        : 'border-[var(--border)] hover:border-[color-mix(in_srgb,var(--accent)_30%,var(--border))]'
-                    }`}
+                    className={`account-choice ${keyType === 'account' ? 'account-choice--active' : ''}`}
                   >
                     <p className="font-semibold">Account</p>
                     <p className="mt-0.5 text-[var(--muted)]">Access /api/client endpoints</p>
@@ -329,24 +313,20 @@ function CreateApiKeyModal({
                   <button
                     type="button"
                     onClick={() => setKeyType('application')}
-                    className={`rounded-xl border px-3 py-3 text-left text-xs transition ${
-                      keyType === 'application'
-                        ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-muted)]'
-                        : 'border-[var(--border)] hover:border-[color-mix(in_srgb,var(--accent)_30%,var(--border))]'
-                    }`}
+                    className={`account-choice ${keyType === 'application' ? 'account-choice--active' : ''}`}
                   >
                     <p className="font-semibold">Application</p>
                     <p className="mt-0.5 text-[var(--muted)]">Access /api/application endpoints</p>
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {error && (
+            {error ? (
               <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={onClose}>

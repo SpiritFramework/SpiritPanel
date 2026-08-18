@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Egg, Layers, Plus, Search, Upload } from 'lucide-react';
 import { api, type AdminEggSummary, type AdminNestSummary } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 import { AdminLayout, Button, Card, FilterSelect } from '../../components/Layout';
 import { AdminNestTable } from '../../components/AdminNestRow';
 import { AdminEggTable } from '../../components/AdminEggRow';
@@ -11,6 +13,8 @@ import { EmptyState, PageHeader, Spinner, StatCard } from '../../components/ui';
 type View = 'nests' | 'eggs';
 
 export function AdminNests() {
+  const { user } = useAuth();
+  const fullAdmin = isFullPanelAdmin(user);
   const [view, setView] = useState<View>('nests');
   const [nests, setNests] = useState<AdminNestSummary[]>([]);
   const [eggs, setEggs] = useState<AdminEggSummary[]>([]);
@@ -59,6 +63,7 @@ export function AdminNests() {
         title="Nests & Eggs"
         description="Service templates grouped by category — import eggs to provision servers"
         action={
+          fullAdmin ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setShowImport(true)}>
               <Upload className="h-3.5 w-3.5" />
@@ -69,6 +74,7 @@ export function AdminNests() {
               Create nest
             </Button>
           </div>
+          ) : undefined
         }
       />
 
@@ -122,7 +128,7 @@ export function AdminNests() {
         )}
       </Card>
 
-      {showCreate && (
+      {fullAdmin && showCreate && (
         <CreateNestModal
           onClose={() => setShowCreate(false)}
           onCreated={() => {
@@ -132,7 +138,7 @@ export function AdminNests() {
         />
       )}
 
-      {showImport && (
+      {fullAdmin && showImport && (
         <ImportEggModal
           onClose={() => setShowImport(false)}
           onImported={() => {

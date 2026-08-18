@@ -9,6 +9,7 @@ import {
   RotateCw,
   Square,
   Terminal,
+  Timer,
   Trash2,
   Zap,
 } from 'lucide-react';
@@ -26,11 +27,12 @@ import {
   SCHEDULE_ACTIONS,
   type ScheduleActionKind,
 } from '../../lib/schedule-helpers';
-import { CreateScheduleModal } from '../../components/CreateScheduleModal';
+import { CreateScheduleModal, type ScheduleFormSeed } from '../../components/CreateScheduleModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { Button } from '../../components/Layout';
 import {
   ServerErrorBanner,
+  ServerListCard,
   ServerLoadingBlock,
   ServerNotice,
   ServerPage,
@@ -49,6 +51,24 @@ const ACTION_ICONS: Record<ScheduleActionKind, LucideIcon> = {
   backup: Archive,
 };
 
+const QUICK_TEMPLATES: Array<{ label: string; hint: string; seed: ScheduleFormSeed }> = [
+  {
+    label: 'Nightly restart',
+    hint: 'Daily 4 AM UTC',
+    seed: { name: 'Nightly restart', cronPreset: 'daily-4', action: 'restart' },
+  },
+  {
+    label: 'Weekly backup',
+    hint: 'Sunday 3 AM UTC',
+    seed: { name: 'Weekly backup', cronPreset: 'weekly', action: 'backup', backupName: 'Weekly backup' },
+  },
+  {
+    label: 'Every 6 hours',
+    hint: 'Routine restart',
+    seed: { name: '6-hour restart', cronPreset: '6h', action: 'restart' },
+  },
+];
+
 export function ServerSchedulesPage() {
   const id = useServerRouteId();
   const { server } = useServer();
@@ -59,6 +79,7 @@ export function ServerSchedulesPage() {
   const [error, setError] = useState('');
   const [runningId, setRunningId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [createSeed, setCreateSeed] = useState<ScheduleFormSeed | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<ServerScheduleSummary | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -82,6 +103,17 @@ export function ServerSchedulesPage() {
 
   const activeCount = useMemo(() => schedules.filter((s) => s.isActive).length, [schedules]);
   const pausedCount = schedules.length - activeCount;
+  const activePercent = schedules.length > 0 ? Math.round((activeCount / schedules.length) * 100) : 0;
+
+  function openCreate(seed?: ScheduleFormSeed) {
+    setCreateSeed(seed);
+    setShowCreate(true);
+  }
+
+  function closeCreate() {
+    setShowCreate(false);
+    setCreateSeed(undefined);
+  }
 
   async function handleCreate(data: {
     name: string;
@@ -139,10 +171,10 @@ export function ServerSchedulesPage() {
     <ServerPage>
       <ServerPageHeader
         title="Schedules"
-        description="Automate restarts, backups, and console commands on a cron timer (UTC)"
+        description={`Automate restarts, backups, and commands — all times UTC`}
         actions={
           access.canManageSchedules ? (
-            <Button type="button" size="sm" disabled={loading} onClick={() => setShowCreate(true)}>
+            <Button type="button" size="sm" disabled={loading} onClick={() => openCreate()}>
               <Plus className="h-3.5 w-3.5" />
               New schedule
             </Button>
@@ -153,43 +185,53 @@ export function ServerSchedulesPage() {
       <ServerErrorBanner message={error} />
 
       {!loading && (
-        <section className="schedule-hero">
-          <div className="schedule-hero-icon">
-            <CalendarClock className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="schedule-hero-title">Server automation</p>
-            <p className="schedule-hero-text">
-              Schedules run on the panel in UTC. Use them for routine restarts, off-peak backups, or timed
-              console commands.
-            </p>
-          </div>
-        </section>
-      )}
+        <>
+          <ServerNotice tone="info">
+            Schedules run on the panel in <strong className="font-medium text-[var(--text)]">UTC</strong>. Use them for
+            off-peak restarts, automated backups, or console commands — active schedules fire on their cron timer, or
+            use <strong className="font-medium text-[var(--text)]">Run now</strong> to test immediately.
+          </ServerNotice>
 
-      {!loading && schedules.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatCard
-            label="Total schedules"
-            value={String(schedules.length)}
-            hint={`${activeCount} active · ${pausedCount} paused`}
-            icon={<CalendarClock className="h-3.5 w-3.5" />}
-          />
-          <StatCard
-            label="Active"
-            value={String(activeCount)}
-            hint="Running on their cron timer"
-            icon={<Play className="h-3.5 w-3.5" />}
-            tone="success"
-          />
-          <StatCard
-            label="Paused"
-            value={String(pausedCount)}
-            hint="Disabled until re-enabled"
-            icon={<Pause className="h-3.5 w-3.5" />}
-            tone={pausedCount > 0 ? 'warning' : 'default'}
-          />
-        </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Total schedules"
+              value={String(schedules.length)}
+              hint={`${activeCount} active · ${pausedCount} paused`}
+              icon={<CalendarClock className="h-3.5 w-3.5" />}
+            />
+            <StatCard
+              label="Active"
+              value={String(activeCount)}
+              hint="Running on their cron timer"
+              icon={<Play className="h-3.5 w-3.5" />}
+              tone="success"
+            />
+            <StatCard
+              label="Paused"
+              value={String(pausedCount)}
+              hint="Disabled until re-enabled"
+              icon={<Pause className="h-3.5 w-3.5" />}
+              tone={pausedCount > 0 ? 'warning' : 'default'}
+            />
+          </div>
+
+          {schedules.length > 0 && (
+            <section className="resource-quota" aria-label="Active schedules">
+              <div className="resource-quota-head">
+                <div className="resource-quota-title">
+                  <Timer className="h-3.5 w-3.5 accent-text" />
+                  <span>Active schedules</span>
+                </div>
+                <span className="resource-quota-count">
+                  {activeCount} / {schedules.length} enabled
+                </span>
+              </div>
+              <div className="resource-quota-bar" aria-hidden>
+                <span className="resource-quota-bar-fill" style={{ width: `${activePercent}%` }} />
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {!access.canManageSchedules && !loading && schedules.length === 0 && (
@@ -198,50 +240,79 @@ export function ServerSchedulesPage() {
 
       <ServerPanel
         icon={CalendarClock}
-        iconTone="violet"
+        iconTone="accent"
         title="Your schedules"
         description={
-          loading ? 'Loading…' : `${schedules.length} schedule${schedules.length === 1 ? '' : 's'}`
+          loading ? 'Loading…' : `${schedules.length} automated task${schedules.length === 1 ? '' : 's'}`
+        }
+        actions={
+          access.canManageSchedules && schedules.length > 0 ? (
+            <Button type="button" size="sm" variant="ghost" onClick={() => openCreate()}>
+              <Plus className="h-3.5 w-3.5" />
+              Add schedule
+            </Button>
+          ) : undefined
         }
         noPadding
       >
         {loading ? (
           <ServerLoadingBlock />
         ) : schedules.length === 0 ? (
-          <div className="p-6">
+          <div className="space-y-4 p-6">
             <EmptyState
               icon={<CalendarClock className="h-5 w-5" />}
               title="No schedules yet"
-              description="Automated tasks help with restarts, backups, and routine commands without manual intervention."
+              description="Set up recurring restarts, backups, or console commands so routine maintenance runs without you."
               action={
                 access.canManageSchedules ? (
-                  <Button type="button" size="sm" onClick={() => setShowCreate(true)}>
+                  <Button type="button" size="sm" onClick={() => openCreate()}>
                     <Plus className="h-3.5 w-3.5" />
                     Create first schedule
                   </Button>
                 ) : undefined
               }
             />
+            {access.canManageSchedules && (
+              <div className="mx-auto max-w-xl">
+                <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                  Quick start
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {QUICK_TEMPLATES.map((template) => (
+                    <button
+                      key={template.label}
+                      type="button"
+                      onClick={() => openCreate(template.seed)}
+                      className="schedule-template-card"
+                    >
+                      <span className="schedule-template-card__label">{template.label}</span>
+                      <span className="schedule-template-card__hint">{template.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <ul className="resource-list">
+          <div className="space-y-0 divide-y divide-[color-mix(in_srgb,var(--border)_50%,transparent)] p-3 sm:p-4">
             {schedules.map((schedule) => (
-              <ScheduleRow
-                key={schedule.id}
-                schedule={schedule}
-                canManage={access.canManageSchedules}
-                running={runningId === schedule.id}
-                onToggle={() => toggleActive(schedule)}
-                onRun={() => runNow(schedule.id)}
-                onDelete={() => setDeleteTarget(schedule)}
-              />
+              <div key={schedule.id} className="py-3 first:pt-0 last:pb-0">
+                <ScheduleCard
+                  schedule={schedule}
+                  canManage={access.canManageSchedules}
+                  running={runningId === schedule.id}
+                  onToggle={() => toggleActive(schedule)}
+                  onRun={() => runNow(schedule.id)}
+                  onDelete={() => setDeleteTarget(schedule)}
+                />
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </ServerPanel>
 
       {showCreate && (
-        <CreateScheduleModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+        <CreateScheduleModal initialForm={createSeed} onClose={closeCreate} onCreate={handleCreate} />
       )}
 
       <ConfirmModal
@@ -259,7 +330,7 @@ export function ServerSchedulesPage() {
   );
 }
 
-function ScheduleRow({
+function ScheduleCard({
   schedule,
   canManage,
   running,
@@ -277,81 +348,81 @@ function ScheduleRow({
   const actionKind = inferFormAction(schedule.tasks);
   const ActionIcon = ACTION_ICONS[actionKind] ?? RotateCw;
   const actionLabel = SCHEDULE_ACTIONS.find((a) => a.id === actionKind)?.label ?? 'Task';
+  const actionMeta = SCHEDULE_ACTIONS.find((a) => a.id === actionKind);
 
   return (
-    <li className="resource-list-item">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span
-          className={`resource-list-icon ${
-            schedule.isActive ? 'resource-list-icon--success' : 'resource-list-icon--muted'
-          }`}
-        >
-          <ActionIcon className="h-4 w-4" />
-        </span>
-
+    <ServerListCard highlight={schedule.isActive}>
+      <div className="schedule-card-layout">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold">{schedule.name}</h3>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <StatusPill
               label={schedule.isActive ? 'Active' : 'Paused'}
               tone={schedule.isActive ? 'success' : 'neutral'}
               compact
             />
-            {schedule.onlyWhenOnline && (
-              <span className="schedule-tag schedule-tag--cyan">Online only</span>
-            )}
+            {schedule.onlyWhenOnline && <StatusPill label="Online only" tone="info" compact />}
+            <StatusPill label={actionLabel} tone="default" compact />
           </div>
 
-          <div className="schedule-meta-grid">
-            <div className="schedule-meta-block">
-              <p className="schedule-meta-label">Frequency</p>
-              <p className="schedule-meta-value">{describeCron(schedule.cron)}</p>
-              <p className="schedule-meta-mono">{schedule.cron}</p>
-            </div>
-            <div className="schedule-meta-block">
-              <p className="schedule-meta-label">Action</p>
-              <p className="schedule-meta-value">{actionLabel}</p>
-              {schedule.tasks.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {schedule.tasks.map((task, index) => (
-                    <span key={`${task.action}-${index}`} className="schedule-task-chip">
-                      {formatScheduleTask(task)}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <h3 className="text-sm font-semibold tracking-tight">{schedule.name}</h3>
 
           {schedule.lastRunAt && (
-            <p className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
               <Clock className="h-3 w-3" />
               Last run {formatActivityTime(schedule.lastRunAt)}
             </p>
           )}
         </div>
+
+        {canManage && (
+          <div className="resource-row-actions schedule-card-actions">
+            <ServerToolbarButton
+              icon={Play}
+              label={running ? 'Running…' : 'Run now'}
+              onClick={onRun}
+              disabled={running}
+              active
+            />
+            <ServerToolbarButton
+              icon={schedule.isActive ? Pause : Play}
+              label={schedule.isActive ? 'Pause' : 'Enable'}
+              onClick={onToggle}
+            />
+            <button type="button" onClick={onDelete} className="resource-delete-btn">
+              <Trash2 className="h-3 w-3" />
+              Delete
+            </button>
+          </div>
+        )}
       </div>
 
-      {canManage && (
-        <div className="resource-row-actions flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
-          <ServerToolbarButton
-            icon={Play}
-            label={running ? 'Running…' : 'Run now'}
-            onClick={onRun}
-            disabled={running}
-          />
-          <ServerToolbarButton
-            icon={schedule.isActive ? Pause : Play}
-            label={schedule.isActive ? 'Pause' : 'Enable'}
-            onClick={onToggle}
-            active={!schedule.isActive}
-          />
-          <button type="button" onClick={onDelete} className="resource-delete-btn">
-            <Trash2 className="h-3 w-3" />
-            Delete
-          </button>
+      <div className="schedule-card__body mt-3">
+        <div className="schedule-card__block">
+          <div className="schedule-card__block-head">
+            <CalendarClock className="h-3.5 w-3.5 accent-text" />
+            <span>Frequency</span>
+          </div>
+          <p className="schedule-card__block-value">{describeCron(schedule.cron)}</p>
+          <code className="schedule-card__block-mono">{schedule.cron}</code>
         </div>
-      )}
-    </li>
+
+        <div className="schedule-card__block">
+          <div className="schedule-card__block-head">
+            <ActionIcon className="h-3.5 w-3.5 accent-text" />
+            <span>Action</span>
+          </div>
+          <p className="schedule-card__block-value">{actionMeta?.description ?? actionLabel}</p>
+          {schedule.tasks.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {schedule.tasks.map((task, index) => (
+                <span key={`${task.action}-${index}`} className="schedule-task-chip">
+                  {formatScheduleTask(task)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </ServerListCard>
   );
 }

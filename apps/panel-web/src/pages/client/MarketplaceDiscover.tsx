@@ -33,6 +33,7 @@ import { previewFromSearchResult } from '../../lib/marketplace-script-state';
 import { RepoCard } from '../../components/marketplace/RepoCard';
 import { Button } from '../../components/Layout';
 import { Spinner } from '../../components/ui';
+import { MarketplaceAlert, MarketplaceSectionHead } from '../../components/marketplace/MarketplaceChrome';
 
 const FEATURED_PER_PAGE = 12;
 const FEATURED_CACHE_TTL = 5 * 60 * 1000;
@@ -58,15 +59,11 @@ function layoutLabel(layout: FivemServerLayout | null | undefined): string {
   return 'Detected server layout';
 }
 
-export function MarketplaceDiscover({
-  serverId,
-  serverLayout,
-}: {
-  serverId: string;
-  serverLayout: FivemServerLayout | null;
-}) {
+export function MarketplaceDiscover({ serverId }: { serverId: string }) {
   const navigate = useNavigate();
   const { scriptPath } = useMarketplacePaths();
+
+  const [serverLayout, setServerLayout] = useState<FivemServerLayout | null>(null);
 
   const [featured, setFeatured] = useState<GithubFeaturedScript[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
@@ -120,6 +117,21 @@ export function MarketplaceDiscover({
   useEffect(() => {
     void loadFeatured();
   }, [loadFeatured]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.client
+      .marketplaceLayout(serverId)
+      .then((data) => {
+        if (!cancelled) setServerLayout(data.layout);
+      })
+      .catch(() => {
+        if (!cancelled) setServerLayout(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serverId]);
 
   const loadCommunity = useCallback(
     async (page = 1, term = '') => {
@@ -274,23 +286,23 @@ export function MarketplaceDiscover({
   );
 
   return (
-    <div className="mp-discover space-y-5">
+    <div className="fm-discover">
       {serverLayout && serverLayout.confidence !== 'low' && (
-        <div className="mp-layout-banner">
+        <div className="fm-layout-banner">
           <MapPin className="h-4 w-4 shrink-0 text-emerald-400" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-[var(--text)]">Auto-detected: {layoutLabel(serverLayout)}</p>
             <p className="truncate font-mono text-[10px] text-[var(--muted)]">
-              {serverLayout.resourcesBase} · {serverLayout.cfgFile}
+              {(serverLayout.resourcesPath ?? serverLayout.resourcesBase)} · {serverLayout.cfgFile}
             </p>
           </div>
         </div>
       )}
 
-      <section className="mp-discover-toolbar">
-        <div className="mp-search-bar">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+      <section className="fm-search-panel">
+        <div className="fm-search-row">
+          <div className="fm-search-input-wrap">
+            <Search className="fm-search-icon" aria-hidden />
             <input
               type="search"
               value={searchInput}
@@ -300,7 +312,7 @@ export function MarketplaceDiscover({
               }}
               onKeyDown={(e) => e.key === 'Enter' && void runSearch(1)}
               placeholder="Search FiveM scripts on GitHub…"
-              className="mp-search-input"
+              className="fm-search-input"
             />
           </div>
           <Button type="button" disabled={searching} onClick={() => void runSearch(1)}>
@@ -314,10 +326,12 @@ export function MarketplaceDiscover({
           )}
         </div>
 
-        <div className="mp-discover-toolbar-footer">
-          <div className="mp-github-url">
-            <Github className="mp-github-url-icon" aria-hidden />
-            <span className="mp-github-url-label">Install from URL</span>
+        <div className="fm-url-block">
+          <div className="fm-url-row">
+            <span className="fm-url-label">
+              <Github className="h-3.5 w-3.5" aria-hidden />
+              Install from URL
+            </span>
             <input
               value={pasteUrl}
               onChange={(e) => {
@@ -325,13 +339,12 @@ export function MarketplaceDiscover({
                 setPasteError('');
               }}
               placeholder="github.com/owner/repo"
-              className="mp-github-url-input"
+              className="fm-url-input"
               onKeyDown={(e) => e.key === 'Enter' && pasteUrl.trim() && goToRepo(pasteUrl)}
             />
             <Button
               type="button"
               variant="subtle"
-              className="mp-github-url-btn"
               disabled={!pasteUrl.trim()}
               onClick={() => goToRepo(pasteUrl)}
             >
@@ -340,9 +353,9 @@ export function MarketplaceDiscover({
           </div>
         </div>
 
-        <div className="mp-discover-categories">
-          <span className="mp-discover-categories-label">Browse</span>
-          <div className="mp-category-chips">
+        <div className="fm-categories">
+          <span className="fm-categories-label">Browse</span>
+          <div className="flex flex-wrap gap-1.5">
             {BROWSE_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const active = activeCategoryId === cat.id;
@@ -351,7 +364,7 @@ export function MarketplaceDiscover({
                   key={cat.id}
                   type="button"
                   onClick={() => browseCategory(cat)}
-                  className={`mp-category-chip ${active ? 'mp-category-chip--active' : ''}`}
+                  className={`fm-cat-chip${active ? ' fm-cat-chip--active' : ''}`}
                 >
                   <Icon className="h-3 w-3 shrink-0" aria-hidden />
                   {cat.label}
@@ -363,29 +376,29 @@ export function MarketplaceDiscover({
       </section>
 
       {pasteError && (
-        <p className="mp-discover-alert mp-discover-alert--error">
+        <MarketplaceAlert>
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {pasteError}
-        </p>
+        </MarketplaceAlert>
       )}
 
       {searchError && (
-        <p className="mp-discover-alert mp-discover-alert--error">
+        <MarketplaceAlert>
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {searchError}
-        </p>
+        </MarketplaceAlert>
       )}
 
       {searchMode ? (
-        <section className="mp-discover-section">
-          <SectionHeader icon={Search} title="Search results" count={searchResults.length} />
+        <section className="fm-section">
+          <MarketplaceSectionHead icon={Search} title="Search results" count={searchResults.length} />
           {searching ? (
             <div className="flex justify-center py-12">
               <Spinner className="h-8 w-8" />
             </div>
           ) : (
             <>
-              <div className="mp-repo-grid">
+              <div className="fm-grid">
                 {searchResults.length === 0 ? (
                   <p className="col-span-full text-sm text-[var(--muted)]">No results on this page.</p>
                 ) : (
@@ -400,25 +413,27 @@ export function MarketplaceDiscover({
                   ))
                 )}
               </div>
-              <Pagination
-                page={searchPage}
-                totalPages={searchTotalPages}
-                onChange={(p) => void runSearch(p)}
-              />
+              <Pagination page={searchPage} totalPages={searchTotalPages} onChange={(p) => void runSearch(p)} />
             </>
           )}
         </section>
       ) : (
         <>
-          <section className="mp-discover-section">
-            <SectionHeader icon={TrendingUp} title="Featured FiveM scripts" count={featured.length} accent />
+          <section className="fm-section">
+            <MarketplaceSectionHead
+              icon={TrendingUp}
+              title="Featured FiveM scripts"
+              description="Curated popular resources from the community"
+              count={featured.length}
+              accent
+            />
             {featuredLoading ? (
               <div className="flex justify-center py-12">
                 <Spinner className="h-8 w-8" />
               </div>
             ) : (
               <>
-                <div className="mp-repo-grid">
+                <div className="fm-grid">
                   {featuredSlice.length === 0 ? (
                     <p className="col-span-full text-sm text-[var(--muted)]">No scripts on this page.</p>
                   ) : (
@@ -440,17 +455,24 @@ export function MarketplaceDiscover({
             )}
           </section>
 
-          <section className="mp-discover-section">
-            <SectionHeader icon={Github} title="More community scripts" count={community.length} />
+          <section className="fm-section">
+            <MarketplaceSectionHead
+              icon={Github}
+              title="More community scripts"
+              description="Recently updated repositories on GitHub"
+              count={community.length}
+            />
             {communityLoading ? (
               <div className="flex justify-center py-12">
                 <Spinner className="h-8 w-8" />
               </div>
             ) : community.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">No scripts found — try a category above or paste a GitHub URL.</p>
+              <p className="text-sm text-[var(--muted)]">
+                No scripts found — try a category above or paste a GitHub URL.
+              </p>
             ) : (
               <>
-                <div className="mp-repo-grid">
+                <div className="fm-grid">
                   {communityCards.map((card) => (
                     <RepoCard
                       key={card.key}
@@ -478,32 +500,6 @@ export function MarketplaceDiscover({
   );
 }
 
-function SectionHeader({
-  icon: Icon,
-  title,
-  count,
-  accent,
-}: {
-  icon: typeof TrendingUp;
-  title: string;
-  count?: number;
-  accent?: boolean;
-}) {
-  return (
-    <div className="mp-section-header">
-      <span className={`mp-section-header-icon ${accent ? 'mp-section-header-icon--accent' : ''}`}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="mp-section-header-title">{title}</h3>
-      </div>
-      {count !== undefined && count > 0 && (
-        <span className="mp-section-header-count">{count}</span>
-      )}
-    </div>
-  );
-}
-
 function Pagination({
   page,
   totalPages,
@@ -520,15 +516,15 @@ function Pagination({
   const pages = Array.from({ length: Math.min(safeTotal, 7) }, (_, i) => i + 1);
 
   return (
-    <nav className="mp-pagination" aria-label="Pagination">
-      <button type="button" className="mp-page-btn" disabled={safePage <= 1} onClick={() => onChange(safePage - 1)}>
+    <nav className="fm-pagination" aria-label="Pagination">
+      <button type="button" className="fm-page-btn" disabled={safePage <= 1} onClick={() => onChange(safePage - 1)}>
         <ChevronLeft className="h-4 w-4" />
       </button>
       {pages.map((p) => (
         <button
           key={p}
           type="button"
-          className={`mp-page-btn ${p === safePage ? 'mp-page-btn--active' : ''}`}
+          className={`fm-page-btn${p === safePage ? ' fm-page-btn--active' : ''}`}
           onClick={() => onChange(p)}
         >
           {p}
@@ -537,7 +533,7 @@ function Pagination({
       {safeTotal > 7 && <span className="px-1 text-xs text-[var(--muted)]">…</span>}
       <button
         type="button"
-        className="mp-page-btn"
+        className="fm-page-btn"
         disabled={safePage >= safeTotal}
         onClick={() => onChange(safePage + 1)}
       >

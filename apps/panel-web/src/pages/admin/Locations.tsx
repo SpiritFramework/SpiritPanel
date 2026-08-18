@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Globe, MapPin, Network, Plus, Search } from 'lucide-react';
 import { api, type AdminLocationSummary } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 import { AdminLayout, Button, Card } from '../../components/Layout';
 import { AdminLocationTable } from '../../components/AdminLocationRow';
 import { CreateLocationModal } from '../../components/CreateLocationModal';
 import { EmptyState, PageHeader, Spinner, StatCard } from '../../components/ui';
 
 export function AdminLocations() {
+  const { user } = useAuth();
+  const fullAdmin = isFullPanelAdmin(user);
   const [locations, setLocations] = useState<AdminLocationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -45,10 +49,12 @@ export function AdminLocations() {
         title="Locations"
         description="Geographic regions that group your Wings nodes"
         action={
+          fullAdmin ? (
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="h-3.5 w-3.5" />
             Add location
           </Button>
+          ) : undefined
         }
       />
 
@@ -81,7 +87,7 @@ export function AdminLocations() {
         )}
       </Card>
 
-      {showCreate && (
+      {fullAdmin && showCreate && (
         <CreateLocationModal
           onClose={() => setShowCreate(false)}
           onCreated={() => {

@@ -18,6 +18,7 @@ import {
   Terminal,
   Users,
   Store,
+  Package,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ServerProvider, useServer } from '../context/ServerContext';
@@ -32,6 +33,7 @@ import { isServerInstalling, isServerRunning, normalizeRuntimeState } from '../l
 import type { ServerAccessFlags } from '../lib/api';
 import { ServerLiveProvider, useServerLiveOptional } from '../context/ServerLiveContext';
 import { useServerPing } from '../hooks/useServerPing';
+import { useServerPlayerCount } from '../hooks/useServerPlayerCount';
 import { CompactBackLink, SideNavGroup, SideNavItem, TabNavItem } from './Nav';
 import { PowerConfirmModal, type DestructivePowerAction } from './PowerConfirmModal';
 import { ServerMetricsNav } from './ServerMetricsNav';
@@ -40,7 +42,7 @@ import { Spinner } from './ui';
 import { ServerStatusBadge } from './ServerStatusBadge';
 import { ThemeToggle } from './ThemeToggle';
 import { useAdminSupport } from '../context/AdminSupportContext';
-import { isFiveMServer } from '../lib/server-eggs';
+import { isFiveMServer, isMinecraftServer } from '../lib/server-eggs';
 import type { ServerDetail } from '../lib/api';
 
 const serverNavGroups: Array<{
@@ -77,6 +79,14 @@ const serverNavGroups: Array<{
         icon: Store,
         accessKey: 'canReadFiles',
         when: (s) => isFiveMServer(s) && s.marketplaceEnabled !== false,
+      },
+      {
+        to: 'plugins',
+        label: 'Plugins',
+        description: 'Minecraft plugins & mods',
+        icon: Package,
+        accessKey: 'canReadFiles',
+        when: (s) => isMinecraftServer(s) && s.minecraftPluginsEnabled !== false,
       },
     ],
   },
@@ -129,6 +139,7 @@ export function ServerShellInner() {
   const serverOnline = !server.suspended && isServerRunning(runtimeState);
   const { ping, state: pingState } = useServerPing(server.id, serverOnline);
   const uptimeMs = live?.uptimeMs ?? null;
+  const playerCount = useServerPlayerCount(server, runtimeState);
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
@@ -155,16 +166,15 @@ export function ServerShellInner() {
   }
 
   async function executePower(action: 'start' | 'restart' | 'stop' | 'kill') {
+    // Close confirm immediately — Kill must not sit on "Sending…" while Wings soft-stop is wedged.
+    setPowerConfirm(null);
     setPowering(action);
     try {
       await power(action);
-      setPowerConfirm(null);
+      setPowerNotice('');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Power action failed';
-      if (message.toLowerCase().includes('installing')) {
-        setPowerNotice(message);
-        setPowerConfirm(null);
-      }
+      setPowerNotice(message);
     } finally {
       setPowering(null);
     }
@@ -292,6 +302,11 @@ export function ServerShellInner() {
           pingState={pingState}
           uptimeMs={uptimeMs}
           uptimeLive={serverOnline}
+          playerOnline={playerCount.online}
+          playerMax={playerCount.max}
+          playerLoading={playerCount.loading}
+          playerLive={playerCount.running}
+          playerUnavailable={playerCount.unavailable}
           compact={isFullHeightRoute}
         />
 
@@ -340,6 +355,11 @@ function ServerOverviewBar({
   pingState,
   uptimeMs,
   uptimeLive,
+  playerOnline,
+  playerMax,
+  playerLoading,
+  playerLive,
+  playerUnavailable,
   compact = false,
 }: {
   themeGradient: string;
@@ -350,6 +370,11 @@ function ServerOverviewBar({
   pingState: ReturnType<typeof useServerPing>['state'];
   uptimeMs: number | null;
   uptimeLive: boolean;
+  playerOnline: number | null;
+  playerMax: number | null;
+  playerLoading: boolean;
+  playerLive: boolean;
+  playerUnavailable?: boolean;
   compact?: boolean;
 }) {
   const { server } = useServer();
@@ -364,13 +389,29 @@ function ServerOverviewBar({
       <div className="h-0.5 w-full" style={{ background: themeGradient }} />
 
       {compact && (
-        <div className="server-overview-compact md:hidden">
-          <CompactBackLink
-            to={adminSupport?.backTo ?? '/servers'}
-            label={adminSupport ? 'Admin' : 'Servers'}
-          />
-          <LiveServerStatus compact />
-          <OverviewAddressButton address={address} onCopy={onCopyAddress} className="min-w-0 flex-1" />
+        <div className="server-overview-compact-wrap">
+          <div className="server-overview-compact">
+            <CompactBackLink
+              to={adminSupport?.backTo ?? '/servers'}
+              label={adminSupport ? 'Admin' : 'Servers'}
+            />
+            <LiveServerStatus compact />
+            <OverviewAddressButton address={address} onCopy={onCopyAddress} className="min-w-0 flex-1" />
+          </div>
+          <div className="server-overview-metrics server-overview-metrics--compact">
+            <ServerMetricsNav
+              compact
+              ping={ping}
+              pingState={pingState}
+              uptimeMs={uptimeMs}
+              uptimeLive={uptimeLive}
+              playerOnline={playerOnline}
+              playerMax={playerMax}
+              playerLoading={playerLoading}
+              playerLive={playerLive}
+              playerUnavailable={playerUnavailable}
+            />
+          </div>
         </div>
       )}
 
@@ -393,13 +434,18 @@ function ServerOverviewBar({
 
         <OverviewDivider className="hidden md:block" />
 
-        <div className="hidden sm:contents">
+        <div className="server-overview-metrics w-full basis-full md:w-auto md:basis-auto">
           <ServerMetricsNav
             compact
             ping={ping}
             pingState={pingState}
             uptimeMs={uptimeMs}
             uptimeLive={uptimeLive}
+            playerOnline={playerOnline}
+            playerMax={playerMax}
+            playerLoading={playerLoading}
+            playerLive={playerLive}
+            playerUnavailable={playerUnavailable}
           />
         </div>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import {
   Ban,
@@ -77,7 +77,8 @@ export function ServerListPage() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [view, setView] = useState<ViewMode>(() => readStoredView(defaultView));
 
-  const fetchServers = useCallback(() => api.client.servers(), []);
+  const wantLiveRef = useRef(false);
+  const fetchServers = useCallback(() => api.client.servers(wantLiveRef.current), []);
   const { data: servers, loading, validating, error, refetch } = useAsyncData(
     'client-servers',
     fetchServers,
@@ -85,10 +86,27 @@ export function ServerListPage() {
   const list = servers ?? [];
   const refreshing = validating && list.length > 0;
 
-  useEffect(() => {
-    const timer = window.setInterval(() => void refetch(), 15_000);
-    return () => window.clearInterval(timer);
+  const pollServers = useCallback(() => {
+    wantLiveRef.current = false;
+    return refetch();
   }, [refetch]);
+
+  const refreshServersLive = useCallback(async () => {
+    wantLiveRef.current = true;
+    try {
+      await refetch();
+    } finally {
+      wantLiveRef.current = false;
+    }
+  }, [refetch]);
+
+  const pollRef = useRef(pollServers);
+  pollRef.current = pollServers;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void pollRef.current(), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   function setViewMode(mode: ViewMode) {
     setView(mode);
@@ -213,7 +231,7 @@ export function ServerListPage() {
                 {stats.suspended > 0 && <HeaderStat label="Suspended" value={stats.suspended} tone="warn" />}
                 <button
                   type="button"
-                  onClick={() => void refetch()}
+                  onClick={() => void refreshServersLive()}
                   disabled={refreshing}
                   title="Refresh servers"
                   className="ds-icon-btn ds-icon-btn--bordered h-9 w-9"
@@ -274,7 +292,7 @@ export function ServerListPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search servers…"
-                  className="ds-field py-2 pl-8 pr-8"
+                  className="ds-field ds-field--icon-left ds-field--icon-right"
                 />
                 {search && (
                   <button
@@ -317,7 +335,7 @@ export function ServerListPage() {
       {error && !loading && list.length > 0 && (
         <AlertBanner tone="error" className="mb-4 flex-wrap justify-between">
           <p>We couldn&apos;t refresh your servers. You&apos;re seeing the last saved list.</p>
-          <Button type="button" variant="secondary" onClick={() => void refetch()}>
+          <Button type="button" variant="secondary" onClick={() => void refreshServersLive()}>
             Retry
           </Button>
         </AlertBanner>
@@ -332,7 +350,7 @@ export function ServerListPage() {
             title="Couldn't load your servers"
             description="Check your connection and try again. If this keeps happening, contact support."
             action={
-              <Button type="button" onClick={() => void refetch()}>
+              <Button type="button" onClick={() => void refreshServersLive()}>
                 Try again
               </Button>
             }

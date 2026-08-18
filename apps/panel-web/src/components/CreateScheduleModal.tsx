@@ -42,11 +42,32 @@ const DEFAULT_FORM = {
   onlyWhenOnline: false,
 };
 
+export type ScheduleFormSeed = Partial<typeof DEFAULT_FORM> & {
+  cronPreset?: string;
+};
+
+function formFromSeed(seed?: ScheduleFormSeed) {
+  if (!seed) return DEFAULT_FORM;
+  const cron =
+    seed.cron ??
+    CRON_PRESETS.find((p) => p.id === seed.cronPreset)?.cron ??
+    DEFAULT_FORM.cron;
+  const cronPreset = seed.cronPreset ?? cronPresetForValue(cron);
+  return {
+    ...DEFAULT_FORM,
+    ...seed,
+    cron,
+    cronPreset,
+  };
+}
+
 export function CreateScheduleModal({
   onClose,
   onCreate,
+  initialForm,
 }: {
   onClose: () => void;
+  initialForm?: ScheduleFormSeed;
   onCreate: (data: {
     name: string;
     cron: string;
@@ -54,7 +75,7 @@ export function CreateScheduleModal({
     tasks: Array<{ action: string; payload: string; sequenceId: number }>;
   }) => Promise<void>;
 }) {
-  const [form, setForm] = useState(DEFAULT_FORM);
+  const [form, setForm] = useState(() => formFromSeed(initialForm));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -103,7 +124,7 @@ export function CreateScheduleModal({
   return (
     <ModalShell wide onClose={onClose} header={
       <div className="resource-modal-header">
-        <span className="resource-modal-icon resource-modal-icon--violet">
+        <span className="resource-modal-icon resource-modal-icon--accent">
           <CalendarClock className="h-4 w-4" />
         </span>
         <div>

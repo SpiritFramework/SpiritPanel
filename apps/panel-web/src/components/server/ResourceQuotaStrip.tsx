@@ -11,16 +11,20 @@ export function ResourceQuotaStrip({
   limit,
   canCreate,
   icon,
+  unit,
 }: {
   label: string;
   used: number;
   limit: number;
   canCreate: boolean;
   icon?: ReactNode;
+  /** Optional unit suffix shown after the count (e.g. MiB). */
+  unit?: string;
 }) {
   const atLimit = used >= limit;
   const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : used > 0 ? 100 : 0;
   const disabled = limit === 0;
+  const unitSuffix = unit ? ` ${unit}` : '';
 
   return (
     <section
@@ -34,6 +38,7 @@ export function ResourceQuotaStrip({
         </div>
         <span className="resource-quota-count">
           {used} / {limit}
+          {unitSuffix}
         </span>
       </div>
 

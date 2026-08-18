@@ -38,7 +38,18 @@ export function ServerAnalyticsPage() {
 
   const livePoint = wsLive ?? stats?.live ?? null;
   livePointRef.current = livePoint;
-  const current = livePoint ?? stats?.series[stats?.series.length - 1] ?? null;
+  const backupBytes = stats?.diskBackupBytes ?? 0;
+  // WS live stats are file usage only — add backup archives so disk matches allocation rules.
+  const currentRaw = livePoint ?? stats?.series[stats?.series.length - 1] ?? null;
+  const current = currentRaw
+    ? {
+        ...currentRaw,
+        diskBytes:
+          wsLive && backupBytes > 0
+            ? currentRaw.diskBytes + backupBytes
+            : currentRaw.diskBytes,
+      }
+    : null;
   const limits = stats?.limits ?? { memory: server.memory, disk: server.disk, cpu: server.cpu };
   const memoryLimitBytes = limits.memory > 0 ? limits.memory * 1024 * 1024 : 0;
   const diskLimitBytes = limits.disk > 0 ? limits.disk * 1024 * 1024 : 0;
@@ -92,8 +103,13 @@ export function ServerAnalyticsPage() {
 
   const series = useMemo(() => {
     const maxPoints = range === '7d' ? 96 : range === '24h' ? 72 : 60;
-    return buildAnalyticsSeries(stats?.series ?? [], livePoint, range, maxPoints);
-  }, [stats?.series, livePoint, range]);
+    // When live comes from WS, fold backup bytes into the live tip so the chart matches the meter.
+    const liveForChart =
+      wsLive && backupBytes > 0
+        ? { ...wsLive, diskBytes: wsLive.diskBytes + backupBytes }
+        : livePoint;
+    return buildAnalyticsSeries(stats?.series ?? [], liveForChart, range, maxPoints);
+  }, [stats?.series, livePoint, wsLive, backupBytes, range]);
 
   const hasHistory = (stats?.series.length ?? 0) > 0;
   const liveOnlyCharts = !hasHistory && series.length > 0;
@@ -171,7 +187,11 @@ export function ServerAnalyticsPage() {
               value={current?.diskBytes ?? 0}
               limit={diskLimitBytes}
               unit={formatBytes(current?.diskBytes ?? 0)}
-              limitLabel={diskLimitBytes > 0 ? `${formatResource(limits.disk, 'MiB')} limit` : 'Unlimited'}
+              limitLabel={
+                diskLimitBytes > 0
+                  ? `${formatResource(limits.disk, 'MiB')} limit · files + backups`
+                  : 'Unlimited'
+              }
               color="#fbbf24"
             />
             <StatCard
@@ -197,7 +217,11 @@ export function ServerAnalyticsPage() {
               />
               <UsageChart
                 title="Disk usage"
-                unit={diskLimitBytes > 0 ? `Limit ${formatResource(limits.disk, 'MiB')}` : 'Unlimited'}
+                unit={
+                  diskLimitBytes > 0
+                    ? `Limit ${formatResource(limits.disk, 'MiB')} (files + backups)`
+                    : 'Unlimited'
+                }
                 color="#fbbf24"
                 range={range}
                 data={diskData}

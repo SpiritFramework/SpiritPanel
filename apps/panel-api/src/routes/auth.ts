@@ -9,7 +9,8 @@ import {
   clearLoginFailures,
   recordLoginFailure,
 } from '../lib/login-guard.js';
-import { AUTH_RATE_LIMIT, LOGIN_RATE_LIMIT } from '../lib/rate-limits.js';
+import { AUTH_RATE_LIMIT, LOGIN_RATE_LIMIT, PASSWORD_RESET_LIMIT } from '../lib/rate-limits.js';
+import { requestIp } from '../lib/client-server.js';
 import { assertPasswordMeetsPolicy, getPasswordMinLength } from '../lib/password-policy.js';
 import { requireAuth } from '../middleware/auth.js';
 import { clearSessionCookie, setSessionCookie } from '../lib/session-cookie.js';
@@ -166,7 +167,8 @@ export async function authRoutes(app: FastifyInstance) {
 
     const maintenance = await getMaintenanceSettings();
     if (maintenance.enabled && !user.rootAdmin) {
-      if (user.role !== 'admin') {
+      const elevated = user.role === 'admin' || user.role === 'staff';
+      if (!elevated) {
         return reply.status(503).send({ error: maintenance.message });
       }
       if (!maintenance.allowAdminLogin) {
@@ -198,6 +200,14 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: 'Your verification session expired. Please sign in again.' });
     }
 
+    const ip = requestIp(request);
+    try {
+      assertLoginAllowed(`2fa:${userId}`, ip);
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number }).statusCode ?? 429;
+      return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Too many attempts' });
+    }
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.enabled || !user.totpEnabled || !user.totpSecret) {
       return reply.status(401).send({ error: 'Invalid credentials' });
@@ -211,9 +221,11 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     if (!verified) {
+      recordLoginFailure(`2fa:${userId}`, ip);
       return reply.status(401).send({ error: 'Invalid authentication code' });
     }
 
+    clearLoginFailures(`2fa:${userId}`, ip);
     await logAuthActivity(request, {
       event: 'auth.login',
       actorId: user.id,
@@ -299,7 +311,7 @@ export async function authRoutes(app: FastifyInstance) {
     return issueAuthSession(reply, user);
   });
 
-  app.post('/forgot-password', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
+  app.post('/forgot-password', { config: PASSWORD_RESET_LIMIT }, async (request, reply) => {
     const body = z
       .object({ email: z.string().email(), turnstileToken: z.string().optional() })
       .parse(request.body);

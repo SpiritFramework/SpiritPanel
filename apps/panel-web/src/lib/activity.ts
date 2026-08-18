@@ -81,12 +81,16 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'server.file.delete': { label: 'Files deleted', icon: Trash2, color: 'text-red-400 bg-red-500/15' },
   'server.file.mkdir': { label: 'Folder created', icon: FolderPlus, color: 'text-cyan-400 bg-cyan-500/15' },
   'server.file.rename': { label: 'File renamed', icon: FilePen, color: 'text-amber-400 bg-amber-500/15' },
+  'server.file.move': { label: 'File moved', icon: FilePen, color: 'text-amber-400 bg-amber-500/15' },
   'server.file.copy': { label: 'File copied', icon: FilePen, color: 'text-blue-400 bg-blue-500/15' },
   'server.file.compress': { label: 'Archive created', icon: Archive, color: 'text-purple-400 bg-purple-500/15' },
   'server.file.decompress': { label: 'Archive extracted', icon: Archive, color: 'text-purple-400 bg-purple-500/15' },
   'server.file.download': { label: 'File downloaded', icon: Download, color: 'text-sky-400 bg-sky-500/15' },
   'server.file.upload': { label: 'File uploaded', icon: Upload, color: 'text-sky-400 bg-sky-500/15' },
   'server.settings.updated': { label: 'Settings changed', icon: Settings, color: 'text-indigo-400 bg-indigo-500/15' },
+  'server.activity.cleared': { label: 'Activity cleared', icon: Trash2, color: 'text-orange-400 bg-orange-500/15' },
+  'admin.activity.cleared': { label: 'Activity cleared', icon: Trash2, color: 'text-orange-400 bg-orange-500/15' },
+  'admin.server.activity.cleared': { label: 'Server activity cleared', icon: Trash2, color: 'text-orange-400 bg-orange-500/15' },
   'server.variables.updated': { label: 'Startup updated', icon: Variable, color: 'text-cyan-400 bg-cyan-500/15' },
   'server.startup.updated': { label: 'Startup command updated', icon: Terminal, color: 'text-cyan-400 bg-cyan-500/15' },
   'server.subuser.added': { label: 'Subuser added', icon: UserPlus, color: 'text-green-400 bg-green-500/15' },
@@ -106,6 +110,9 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'server.marketplace.github.install': { label: 'GitHub script installed', icon: Package, color: 'text-emerald-400 bg-emerald-500/15' },
   'server.marketplace.github.uninstall': { label: 'GitHub script removed', icon: Package, color: 'text-orange-400 bg-orange-500/15' },
   'server.marketplace.github.update': { label: 'GitHub script updated', icon: Package, color: 'text-blue-400 bg-blue-500/15' },
+  'server.plugins.modrinth.install': { label: 'Plugin installed', icon: Package, color: 'text-emerald-400 bg-emerald-500/15' },
+  'server.plugins.modrinth.uninstall': { label: 'Plugin removed', icon: Package, color: 'text-orange-400 bg-orange-500/15' },
+  'server.plugins.modrinth.update': { label: 'Plugin updated', icon: Package, color: 'text-blue-400 bg-blue-500/15' },
 };
 
 const DEFAULT_META = { label: 'Activity', icon: Settings, color: 'text-[var(--muted)] bg-[var(--surface-hover)]' };
@@ -173,7 +180,7 @@ export const ACTIVITY_FILTER_OPTIONS: ActivityFilterMeta[] = [
   { id: 'backups', label: 'Backups & databases', shortLabel: 'Data', icon: Database, chipClass: 'activity-filter-chip--backups' },
   { id: 'automation', label: 'Schedules', shortLabel: 'Schedules', icon: CalendarClock, chipClass: 'activity-filter-chip--automation' },
   { id: 'network', label: 'Network ports', shortLabel: 'Network', icon: Network, chipClass: 'activity-filter-chip--network' },
-  { id: 'marketplace', label: 'Marketplace scripts', shortLabel: 'Scripts', icon: Package, chipClass: 'activity-filter-chip--marketplace' },
+  { id: 'marketplace', label: 'Marketplace & plugins', shortLabel: 'Store', icon: Package, chipClass: 'activity-filter-chip--marketplace' },
 ];
 
 const FILTER_PREFIXES: Record<Exclude<ActivityFilterCategory, 'all'>, string[]> = {
@@ -184,7 +191,7 @@ const FILTER_PREFIXES: Record<Exclude<ActivityFilterCategory, 'all'>, string[]> 
   backups: ['server.database.', 'server.backup.'],
   automation: ['server.schedule.'],
   network: ['server.allocation.'],
-  marketplace: ['server.marketplace.'],
+  marketplace: ['server.marketplace.', 'server.plugins.'],
 };
 
 export function getActivityFilterMeta(category: ActivityFilterCategory): ActivityFilterMeta {

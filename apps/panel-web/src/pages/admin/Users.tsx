@@ -2,17 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Shield, User, Users } from 'lucide-react';
 import { api, type AdminUserSummary } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/Layout';
 import { CreateUserModal } from '../../components/CreateUserModal';
 import { AdminUserTable } from '../../components/AdminUserRow';
 import { DsIcon, EmptyState, PageHeader, Skeleton, StatCard } from '../../components/ui';
 
-type RoleFilter = 'all' | 'admin' | 'user';
+type RoleFilter = 'all' | 'admin' | 'staff' | 'user';
 type StatusFilter = 'all' | 'active' | 'suspended';
 
 export function AdminUsers() {
   const { user: currentUser } = useAuth();
+  const fullAdmin = isFullPanelAdmin(currentUser);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
@@ -49,6 +51,7 @@ export function AdminUsers() {
     () => ({
       total: list.length,
       admins: list.filter((u) => u.role === 'admin').length,
+      staff: list.filter((u) => u.role === 'staff').length,
       active: list.filter((u) => !u.suspended).length,
       suspended: list.filter((u) => u.suspended).length,
     }),
@@ -63,10 +66,12 @@ export function AdminUsers() {
           description="Manage panel accounts, roles, and access"
           icon={<DsIcon icon={Users} className="ds-icon--muted" />}
           action={
-            <Button onClick={() => setShowCreate(true)}>
-              <DsIcon icon={Plus} />
-              Create user
-            </Button>
+            fullAdmin ? (
+              <Button onClick={() => setShowCreate(true)}>
+                <DsIcon icon={Plus} />
+                Create user
+              </Button>
+            ) : undefined
           }
         />
 
@@ -89,13 +94,14 @@ export function AdminUsers() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, email, username, UUID…"
-                className="ds-field py-2 pl-8 pr-3"
+                placeholder="Search name, email, username, UUID, or user ID…"
+                className="ds-field ds-field--icon-left"
               />
             </div>
             <FilterSelect value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}>
               <option value="all">All roles</option>
               <option value="admin">Admins</option>
+              <option value="staff">Staff</option>
               <option value="user">Users</option>
             </FilterSelect>
             <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
@@ -117,10 +123,12 @@ export function AdminUsers() {
               title="No users match your filters"
               description="Try a broader search, or create a new account to get started."
               action={
-                <Button variant="secondary" onClick={() => setShowCreate(true)}>
-                  <DsIcon icon={Plus} />
-                  Create user
-                </Button>
+                fullAdmin ? (
+                  <Button variant="secondary" onClick={() => setShowCreate(true)}>
+                    <DsIcon icon={Plus} />
+                    Create user
+                  </Button>
+                ) : undefined
               }
             />
           ) : (
@@ -128,7 +136,7 @@ export function AdminUsers() {
           )}
         </Card>
 
-        {showCreate && (
+        {fullAdmin && showCreate && (
           <CreateUserModal
             onClose={() => setShowCreate(false)}
             onCreated={() => {

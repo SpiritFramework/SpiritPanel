@@ -47,6 +47,7 @@ import {
   requestWingsStats,
   resolveEffectiveRuntimeState,
 } from '../lib/ws-stats';
+import { resolveConsoleCommandTransport } from '../lib/console-command';
 import { useServer } from './ServerContext';
 
 export type NodeConnectionStatus = 'connecting' | 'connected' | 'disconnected';
@@ -345,7 +346,18 @@ export function ServerLiveProvider({
 
   useEffect(() => {
     const persisted = normalizeRuntimeState(server.containerState ?? 'offline');
-    if (persisted !== 'offline') {
+    const current = runtimeRef.current;
+    const transitional = persisted === 'stopping' || persisted === 'starting';
+    const liveSettled =
+      current === 'offline' ||
+      current === 'stopped' ||
+      current === 'running' ||
+      current === 'crashed';
+
+    // Never let a stale DB "stopping/starting" clobber live WS truth (e.g. already offline).
+    if (transitional && liveSettled) return;
+
+    if (persisted !== 'offline' || !current) {
       runtimeRef.current = persisted;
       setRuntimeState(persisted);
     }
@@ -399,9 +411,15 @@ export function ServerLiveProvider({
   const sendCommand = useCallback(
     (command: string) => {
       const trimmed = command.trim();
-      if (!trimmed || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-      wsRef.current.send(JSON.stringify({ event: 'send command', args: [trimmed] }));
-      liveApi.command(id!, trimmed).catch(() => {});
+      if (!trimmed || !id) return;
+
+      const transport = resolveConsoleCommandTransport(wsRef.current?.readyState);
+      if (transport === 'websocket') {
+        wsRef.current!.send(JSON.stringify({ event: 'send command', args: [trimmed] }));
+        return;
+      }
+
+      void liveApi.command(id, trimmed).catch(() => {});
     },
     [id, liveApi],
   );

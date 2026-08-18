@@ -36,11 +36,11 @@ const PERMISSION_GROUPS: Array<{ title: string; items: Array<{ key: string; labe
     items: [
       { key: 'file.read', label: 'Read files', desc: 'View and download files' },
       { key: 'file.create', label: 'Create files', desc: 'Upload and create files' },
-      { key: 'file.update', label: 'Edit files', desc: 'Modify existing files' },
+      { key: 'file.update', label: 'Edit files', desc: 'Rename, move, and modify existing files' },
       { key: 'file.delete', label: 'Delete files', desc: 'Remove files and folders' },
       { key: 'file.archive', label: 'Archives', desc: 'Create and extract archives' },
       { key: 'file.sftp', label: 'SFTP', desc: 'Connect via SFTP' },
-      { key: 'marketplace.install', label: 'Marketplace', desc: 'Install FiveM resources from catalog' },
+      { key: 'marketplace.install', label: 'Marketplace / Plugins', desc: 'Install FiveM resources or Minecraft plugins from the store' },
     ],
   },
   {

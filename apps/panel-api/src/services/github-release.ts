@@ -3,6 +3,7 @@ import {
   resolveGithubToken,
   type GithubAuthContext,
 } from '../lib/github-auth.js';
+import { githubHttpError } from '../lib/github-errors.js';
 
 const GITHUB_API = 'https://api.github.com';
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -35,6 +36,33 @@ function codeloadArchiveUrl(owner: string, repo: string, ref: string): string {
   return `https://codeload.github.com/${owner}/${repo}/zip/refs/tags/${encodeURIComponent(ref)}`;
 }
 
+const ALLOWED_GITHUB_DOWNLOAD_HOSTS = new Set([
+  'codeload.github.com',
+  'github.com',
+  'www.github.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com',
+]);
+
+export function isAllowedGithubDownloadHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (ALLOWED_GITHUB_DOWNLOAD_HOSTS.has(host)) return true;
+  return host.endsWith('.githubusercontent.com');
+}
+
+/** Reject non-GitHub download URLs (SSRF mitigation). */
+export function sanitizeGithubDownloadUrl(url: string, fallback: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return fallback;
+    if (parsed.username || parsed.password) return fallback;
+    if (!isAllowedGithubDownloadHost(parsed.hostname)) return fallback;
+    return url;
+  } catch {
+    return fallback;
+  }
+}
+
 function isGithubApiUrl(url: string): boolean {
   return url.includes('api.github.com');
 }
@@ -44,7 +72,7 @@ async function githubFetch<T>(path: string, ctx?: GithubAuthContext): Promise<T>
   const res = await fetch(`${GITHUB_API}${path}`, { headers: buildGithubHeaders(token) });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(`GitHub API ${res.status}: ${text || res.statusText}`);
+    throw githubHttpError(res.status, text);
   }
   return res.json() as Promise<T>;
 }
@@ -74,7 +102,7 @@ export async function resolveGithubRelease(
     tag = release.tag_name;
     const asset = pickAsset(release, assetName);
     if (asset) {
-      downloadUrl = asset.browser_download_url;
+      downloadUrl = sanitizeGithubDownloadUrl(asset.browser_download_url, codeloadArchiveUrl(owner, repo, tag));
     } else {
       downloadUrl = codeloadArchiveUrl(owner, repo, tag);
     }
@@ -87,7 +115,7 @@ export async function resolveGithubRelease(
       tag = release.tag_name;
       const asset = pickAsset(release, assetName);
       downloadUrl = asset
-        ? asset.browser_download_url
+        ? sanitizeGithubDownloadUrl(asset.browser_download_url, codeloadArchiveUrl(owner, repo, tag))
         : codeloadArchiveUrl(owner, repo, tag);
     } else {
       tag = ref;
@@ -132,13 +160,23 @@ async function downloadHeaders(url: string, ctx?: GithubAuthContext): Promise<Re
 }
 
 export async function downloadGithubArchive(url: string, ctx?: GithubAuthContext): Promise<Buffer> {
-  const res = await fetch(url, {
-    headers: await downloadHeaders(url, ctx),
+  const safeUrl = sanitizeGithubDownloadUrl(url, '');
+  if (!safeUrl) {
+    throw new Error('Download URL is not allowed');
+  }
+
+  const res = await fetch(safeUrl, {
+    headers: await downloadHeaders(safeUrl, ctx),
     redirect: 'follow',
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Download failed (${res.status}): ${text || res.statusText}`);
+    throw new Error(`Download failed (${res.status})`);
+  }
+
+  const finalUrl = res.url || safeUrl;
+  const validatedFinal = sanitizeGithubDownloadUrl(finalUrl, '');
+  if (!validatedFinal) {
+    throw new Error('Download redirect target is not allowed');
   }
 
   const length = Number(res.headers.get('content-length') ?? 0);

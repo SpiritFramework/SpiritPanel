@@ -30,6 +30,8 @@ import {
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
 import { ImportEggModal } from '../../components/ImportEggModal';
 import { EmptyState } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 
 const NEST_GRADIENT = 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 45%, #2e1065 100%)';
 
@@ -38,6 +40,8 @@ type Tab = 'manage' | 'eggs';
 export function AdminNestDetail() {
   const { nestId = '' } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const fullAdmin = isFullPanelAdmin(user);
 
   const [detail, setDetail] = useState<AdminNestDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,10 +159,12 @@ export function AdminNestDetail() {
           subtitle={detail.description || 'No description'}
           meta={detail.author}
           actions={
+            fullAdmin ? (
             <Button type="button" variant="ghost" onClick={() => setShowImport(true)}>
               <Upload className="h-3.5 w-3.5" />
               Import egg
             </Button>
+            ) : undefined
           }
           stats={[
             { icon: Egg, label: 'Eggs', value: String(detail.eggCount) },
@@ -198,6 +204,8 @@ export function AdminNestDetail() {
                   </>
                 }
               >
+                {fullAdmin ? (
+                <>
                 <AdminSettingsPanel title="Nest details" description="Name, description, and author contact" icon={Layers}>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input label="Name" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -236,9 +244,21 @@ export function AdminNestDetail() {
                     </div>
                   )}
                 </AdminSettingsPanel>
+                </>
+                ) : (
+                  <AdminSettingsPanel title="Nest details" description="Read-only view" icon={Layers}>
+                    <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+                      <div><dt className="text-[11px] text-[var(--muted)]">Name</dt><dd className="font-medium">{detail.name}</dd></div>
+                      <div><dt className="text-[11px] text-[var(--muted)]">Author</dt><dd>{detail.author}</dd></div>
+                      <div className="sm:col-span-2"><dt className="text-[11px] text-[var(--muted)]">Description</dt><dd>{detail.description || '—'}</dd></div>
+                    </dl>
+                  </AdminSettingsPanel>
+                )}
               </AdminDetailManageLayout>
 
-              <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              {fullAdmin && (
+                <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              )}
             </form>
           )}
 
@@ -248,10 +268,12 @@ export function AdminNestDetail() {
                 <div className="space-y-3">
                   <EmptyState title="No eggs" description="Import a PTDL_v2 JSON egg into this nest." />
                   <div className="flex justify-center">
+                    {fullAdmin && (
                     <Button type="button" onClick={() => setShowImport(true)}>
                       <Upload className="h-3.5 w-3.5" />
                       Import egg
                     </Button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -288,7 +310,7 @@ export function AdminNestDetail() {
         </AdminDetailBody>
       </AdminDetailPage>
 
-      {showImport && (
+      {fullAdmin && showImport && (
         <ImportEggModal
           defaultNestId={nestId}
           onClose={() => setShowImport(false)}

@@ -4,7 +4,7 @@ import { buildGithubHeaders, resolveGithubToken, type GithubAuthContext } from '
 const GITHUB_API = 'https://api.github.com';
 const FEATURED_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const FEATURED_PLACEHOLDER_TTL_MS = 45 * 1000;
-const FEATURED_FETCH_CONCURRENCY = 6;
+const FEATURED_FETCH_CONCURRENCY = 3;
 
 interface FeaturedRepo {
   owner: string;
@@ -15,15 +15,15 @@ interface FeaturedRepo {
 
 /** Curated high-quality FiveM resources — shown on Discover so the marketplace never feels empty. */
 export const FEATURED_FIVEM_REPOS: FeaturedRepo[] = [
-  { owner: 'CommunityOx', repo: 'ox_lib', category: 'library', blurb: 'UI, callbacks & shared utilities' },
-  { owner: 'CommunityOx', repo: 'oxmysql', category: 'library', blurb: 'MySQL driver for modern frameworks' },
+  { owner: 'overextended', repo: 'ox_lib', category: 'library', blurb: 'UI, callbacks & shared utilities' },
+  { owner: 'overextended', repo: 'oxmysql', category: 'library', blurb: 'MySQL driver for modern frameworks' },
   { owner: 'AvarianKnight', repo: 'pma-voice', category: 'voice', blurb: 'Proximity voice & radio' },
   { owner: 'qbcore-framework', repo: 'qb-core', category: 'framework', blurb: 'QBCore framework' },
   { owner: 'esx-framework', repo: 'esx_core', category: 'framework', blurb: 'ESX Legacy core' },
-  { owner: 'CommunityOx', repo: 'ox_inventory', category: 'script', blurb: 'Slot-based inventory system' },
-  { owner: 'CommunityOx', repo: 'ox_target', category: 'script', blurb: 'Third-eye targeting' },
-  { owner: 'CommunityOx', repo: 'ox_doorlock', category: 'script', blurb: 'Door locks & access' },
-  { owner: 'CommunityOx', repo: 'ox_fuel', category: 'script', blurb: 'Fuel stations script' },
+  { owner: 'overextended', repo: 'ox_inventory', category: 'script', blurb: 'Slot-based inventory system' },
+  { owner: 'overextended', repo: 'ox_target', category: 'script', blurb: 'Third-eye targeting' },
+  { owner: 'overextended', repo: 'ox_doorlock', category: 'script', blurb: 'Door locks & access' },
+  { owner: 'overextended', repo: 'ox_fuel', category: 'script', blurb: 'Fuel stations script' },
   { owner: 'CommunityOx', repo: 'ox_banking', category: 'script', blurb: 'Banking UI & accounts' },
   { owner: 'Project-Sloth', repo: 'ps-dispatch', category: 'script', blurb: 'Police dispatch UI' },
   { owner: 'Project-Sloth', repo: 'ps-mdt', category: 'script', blurb: 'Police MDT tablet' },
@@ -199,9 +199,14 @@ export function getFeaturedRepoMeta(
   owner: string,
   repo: string,
 ): { category: string; blurb: string } | null {
-  const entry = FEATURED_FIVEM_REPOS.find(
-    (e) => e.owner.toLowerCase() === owner.toLowerCase() && e.repo.toLowerCase() === repo.toLowerCase(),
-  );
+  const ownerLc = owner.toLowerCase();
+  const repoLc = repo.toLowerCase();
+  const entry =
+    FEATURED_FIVEM_REPOS.find((e) => e.owner.toLowerCase() === ownerLc && e.repo.toLowerCase() === repoLc) ??
+    // Old CommunityOx bookmarks still map to Overextended featured blurbs.
+    (ownerLc === 'communityox'
+      ? FEATURED_FIVEM_REPOS.find((e) => e.owner.toLowerCase() === 'overextended' && e.repo.toLowerCase() === repoLc)
+      : undefined);
   if (!entry) return null;
   return { category: entry.category, blurb: entry.blurb ?? '' };
 }

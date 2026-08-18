@@ -1,15 +1,28 @@
 import { resolveGithubRelease } from './github-release.js';
 import { getFeaturedFivemScripts } from './github-featured.js';
-import { MARKETPLACE_RESOURCES_FOLDER } from './fivem-server-layout.js';
 import {
   buildGithubHeaders,
   resolveGithubToken,
   type GithubAuthContext,
 } from '../lib/github-auth.js';
+import { assertSafeGithubName } from '../lib/marketplace-safety.js';
+import { githubHttpError, httpStatusFromUnknown } from '../lib/github-errors.js';
 
 const GITHUB_API = 'https://api.github.com';
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
 const RESOLVE_CACHE_TTL_MS = 10 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 400;
+
+/** Archived CommunityOx forks → active Overextended upstream. */
+const REPO_ALIASES: Record<string, { owner: string; repo: string }> = {
+  'communityox/ox_lib': { owner: 'overextended', repo: 'ox_lib' },
+  'communityox/oxmysql': { owner: 'overextended', repo: 'oxmysql' },
+  'communityox/ox_inventory': { owner: 'overextended', repo: 'ox_inventory' },
+  'communityox/ox_target': { owner: 'overextended', repo: 'ox_target' },
+  'communityox/ox_doorlock': { owner: 'overextended', repo: 'ox_doorlock' },
+  'communityox/ox_fuel': { owner: 'overextended', repo: 'ox_fuel' },
+  'communityox/ox_banking': { owner: 'overextended', repo: 'ox_banking' },
+};
 
 interface CacheEntry<T> {
   expiresAt: number;
@@ -21,14 +34,24 @@ interface CacheEntry<T> {
 const searchCache = new Map<string, CacheEntry<GithubSearchResult[]>>();
 const resolveCache = new Map<string, CacheEntry<GithubRepoResolved>>();
 
+function purgeMap<T>(map: Map<string, CacheEntry<T>>) {
+  const now = Date.now();
+  for (const [key, entry] of map) {
+    if (entry.expiresAt <= now) map.delete(key);
+  }
+  while (map.size >= MAX_CACHE_ENTRIES) {
+    const oldest = map.keys().next().value;
+    if (oldest == null) break;
+    map.delete(oldest);
+  }
+}
+
 async function githubFetch<T>(path: string, ctx?: GithubAuthContext): Promise<T> {
   const token = await resolveGithubToken(ctx);
   const res = await fetch(`${GITHUB_API}${path}`, { headers: buildGithubHeaders(token) });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    const err = new Error(`GitHub API ${res.status}: ${text || res.statusText}`) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+    throw githubHttpError(res.status, text);
   }
   return res.json() as Promise<T>;
 }
@@ -38,35 +61,53 @@ export interface ParsedGithubRepo {
   repo: string;
 }
 
+function applyRepoAlias(owner: string, repo: string): ParsedGithubRepo {
+  const alias = REPO_ALIASES[`${owner.toLowerCase()}/${repo.toLowerCase()}`];
+  return alias ?? { owner, repo };
+}
+
 /** Parse owner/repo, full URLs, or github.com links. */
 export function parseGithubRepoInput(input: string): ParsedGithubRepo {
   const trimmed = input.trim();
-  if (!trimmed) throw new Error('Enter a GitHub repository URL or owner/repo');
+  if (!trimmed) throw Object.assign(new Error('Enter a GitHub repository URL or owner/repo'), { statusCode: 400 });
+
+  let owner: string;
+  let repo: string;
 
   try {
     if (trimmed.includes('github.com')) {
       const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+      const host = url.hostname.toLowerCase();
+      if (host !== 'github.com' && host !== 'www.github.com') {
+        throw Object.assign(new Error('Invalid GitHub URL'), { statusCode: 400 });
+      }
       const parts = url.pathname.split('/').filter(Boolean);
-      if (parts.length < 2) throw new Error('Invalid GitHub URL');
-      return { owner: parts[0]!, repo: parts[1]!.replace(/\.git$/, '') };
+      if (parts.length < 2) throw Object.assign(new Error('Invalid GitHub URL'), { statusCode: 400 });
+      owner = parts[0]!;
+      repo = parts[1]!.replace(/\.git$/, '');
+    } else {
+      const slash = trimmed.replace(/^@/, '').split('/');
+      if (slash.length !== 2 || !slash[0] || !slash[1]) {
+        throw Object.assign(new Error('Use owner/repo or a full GitHub URL'), { statusCode: 400 });
+      }
+      owner = slash[0];
+      repo = slash[1].replace(/\.git$/, '');
     }
   } catch (err) {
     if (err instanceof TypeError) {
-      // fall through to owner/repo
-    } else {
-      throw err;
+      throw Object.assign(new Error('Use owner/repo or a full GitHub URL'), { statusCode: 400 });
     }
+    throw err;
   }
 
-  const slash = trimmed.replace(/^@/, '').split('/');
-  if (slash.length !== 2 || !slash[0] || !slash[1]) {
-    throw new Error('Use owner/repo or a full GitHub URL');
-  }
-  return { owner: slash[0], repo: slash[1].replace(/\.git$/, '') };
+  const safeOwner = assertSafeGithubName(owner, 'GitHub owner');
+  const safeRepo = assertSafeGithubName(repo, 'GitHub repository');
+  return applyRepoAlias(safeOwner, safeRepo);
 }
 
-export function suggestInstallPath(repo: string): string {
-  return `/resources/${MARKETPLACE_RESOURCES_FOLDER}/${repo}`;
+export function suggestInstallPath(repo: string, resourcesPath = '/resources'): string {
+  const base = resourcesPath.replace(/\/$/, '') || '/resources';
+  return `${base}/${repo}`;
 }
 
 export function suggestCfgResource(installPath: string, repo: string): string {
@@ -160,8 +201,8 @@ async function fetchRepoReadme(owner: string, repo: string, ctx?: GithubAuthCont
 
 export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext): Promise<GithubRepoResolved> {
   const { owner, repo } = parseGithubRepoInput(input);
-  const scope = ctx?.userId ?? 'panel';
-  const cacheKey = `${scope}:${owner.toLowerCase()}/${repo.toLowerCase()}`;
+  // Public repos share one cache — avoids per-user GitHub stampedes.
+  const cacheKey = `public:${owner.toLowerCase()}/${repo.toLowerCase()}`;
   const cached = resolveCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value;
@@ -170,7 +211,7 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
   async function loadRepo(repoOwner: string, repoName: string) {
     const data = await githubFetch<GithubRepoResponse>(`/repos/${repoOwner}/${repoName}`, ctx);
     if (data.private) {
-      throw new Error('Only public GitHub repositories are supported');
+      throw Object.assign(new Error('Only public GitHub repositories are supported'), { statusCode: 400 });
     }
 
     const [releasesResult, readme, latestReleaseResult] = await Promise.all([
@@ -220,13 +261,15 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
 
   try {
     const resolved = await loadRepo(owner, repo);
+    purgeMap(resolveCache);
     resolveCache.set(cacheKey, { value: resolved, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
     return resolved;
   } catch (err) {
-    const status = (err as { status?: number }).status;
+    const status = httpStatusFromUnknown(err, 0);
     if (status === 404) {
       try {
         const resolved = await loadRepo(owner.toLowerCase(), repo);
+        purgeMap(resolveCache);
         resolveCache.set(cacheKey, { value: resolved, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
         return resolved;
       } catch {
@@ -478,10 +521,10 @@ export async function searchGithubRepos(
           if (accumulated.length >= needed) break;
         }
       } catch (err) {
-        const status = (err as { status?: number }).status;
-        if (status === 403) {
+        const status = httpStatusFromUnknown(err, 0);
+        if (status === 429 || status === 403) {
           lastSearchError =
-            'GitHub API rate limit reached — add your own token under Profile → Security, or ask the host to set GITHUB_TOKEN on the panel.';
+            'GitHub rate limit reached — add a token under Profile → Security, or ask the host to set GITHUB_TOKEN.';
         } else if (status === 422) {
           lastSearchError = 'GitHub rejected the search query — try a shorter or simpler term.';
         } else {
@@ -495,7 +538,9 @@ export async function searchGithubRepos(
   }
 
   if (accumulated.length === 0 && lastSearchError) {
-    throw new Error(lastSearchError);
+    throw Object.assign(new Error(lastSearchError), {
+      statusCode: /rate limit/i.test(lastSearchError) ? 429 : 400,
+    });
   }
 
   const skip = (safePage - 1) * perPage;

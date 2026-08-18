@@ -24,12 +24,18 @@ import {
   Square,
   Terminal,
   Store,
+  Package,
   Trash2,
   User,
   Users,
   Zap,
 } from 'lucide-react';
-import { api, type AdminServerDetail, type UpdateAdminServerInput } from '../../lib/api';
+import {
+  api,
+  type AdminServerDetail,
+  type AdminUserSummary,
+  type UpdateAdminServerInput,
+} from '../../lib/api';
 import { UserAvatar } from '../../components/UserAvatar';
 import { formatAllocationAddress } from '../../lib/allocation';
 import { formatActivityTime } from '../../lib/activity';
@@ -53,18 +59,22 @@ import {
   AdminSettingsPanel,
   AdminSidebarCard,
 } from '../../components/AdminDetailLayout';
-import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
+import { AdminLayout, Button, Input, Select, Textarea } from '../../components/Layout';
 import { Checkbox } from '../../components/Checkbox';
 import { EmptyState } from '../../components/ui';
 import { AdminServerStatusBadge } from '../../components/admin/AdminServerStatus';
 import { AdminServerNetwork } from '../../components/admin/AdminServerNetwork';
 import { formatRuntimeStateLabel } from '../../lib/server-runtime';
+import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 
 type Tab = 'manage' | 'network' | 'activity';
 
 export function AdminServerDetail() {
   const { serverId = '' } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  const fullAdmin = isFullPanelAdmin(currentUser);
 
   const [detail, setDetail] = useState<AdminServerDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +88,9 @@ export function AdminServerDetail() {
   const [confirmReinstall, setConfirmReinstall] = useState(false);
   const [wipeFiles, setWipeFiles] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [users, setUsers] = useState<AdminUserSummary[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState('');
 
   async function load(options?: { silent?: boolean }) {
     const silent = options?.silent ?? false;
@@ -88,6 +101,7 @@ export function AdminServerDetail() {
       setDetail(s);
       if (!silent) {
         setForm({
+          ownerId: s.owner.id,
           name: s.name,
           description: s.description ?? '',
           memory: s.memory,
@@ -117,9 +131,31 @@ export function AdminServerDetail() {
     return () => window.clearInterval(timer);
   }, [serverId]);
 
+  useEffect(() => {
+    let active = true;
+    api.admin
+      .users()
+      .then((rows) => {
+        if (active) setUsers(rows);
+      })
+      .catch(() => {
+        if (active) setUsersError('Could not load users. Refresh before transferring ownership.');
+      })
+      .finally(() => {
+        if (active) setUsersLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const hasChanges = useMemo(() => {
     if (!detail) return false;
+    if (!fullAdmin) {
+      return (form.suspended ?? false) !== detail.suspended;
+    }
     return (
+      form.ownerId !== detail.owner.id ||
       form.name !== detail.name ||
       (form.description ?? '') !== (detail.description ?? '') ||
       form.memory !== detail.memory ||
@@ -132,11 +168,12 @@ export function AdminServerDetail() {
       (form.databaseLimit ?? 0) !== (detail.databaseLimit ?? 0) ||
       (form.suspended ?? false) !== detail.suspended
     );
-  }, [detail, form]);
+  }, [detail, form, fullAdmin]);
 
   function resetForm() {
     if (!detail) return;
     setForm({
+      ownerId: detail.owner.id,
       name: detail.name,
       description: detail.description ?? '',
       memory: detail.memory,
@@ -160,7 +197,8 @@ export function AdminServerDetail() {
     setError('');
     setSaved(false);
     try {
-      await api.admin.updateServer(serverId, form);
+      const payload = fullAdmin ? form : { suspended: form.suspended };
+      await api.admin.updateServer(serverId, payload);
       await load();
       setSaved(true);
     } catch (err) {
@@ -183,6 +221,19 @@ export function AdminServerDetail() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${action} server`);
+    } finally {
+      setPowering(null);
+    }
+  }
+
+  async function clearStuckPower() {
+    setPowering('clear');
+    setError('');
+    try {
+      await api.admin.clearServerPowerState(serverId);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clear stuck power state');
     } finally {
       setPowering(null);
     }
@@ -277,6 +328,7 @@ export function AdminServerDetail() {
             />
           }
           actions={
+            fullAdmin ? (
             <Link
               to={`/admin/servers/${detail.id}/manage`}
               className="inline-flex items-center gap-1.5 rounded-lg bg-black/25 px-3 py-2 text-xs font-medium text-white ring-1 ring-white/15 transition hover:bg-black/35"
@@ -284,6 +336,7 @@ export function AdminServerDetail() {
               <ExternalLink className="h-3.5 w-3.5" />
               Manage server
             </Link>
+            ) : undefined
           }
           stats={[
             { icon: HardDrive, label: 'Memory', value: formatResource(detail.memory, 'MiB') },
@@ -375,6 +428,11 @@ export function AdminServerDetail() {
                           ...(detail.egg.name.toLowerCase().includes('fivem')
                             ? [{ to: 'marketplace', label: 'Marketplace', icon: Store }]
                             : []),
+                          ...(/\b(minecraft|paper|spigot|purpur|folia|fabric|forge|neoforge|quilt|velocity|bungee)\b/i.test(
+                            detail.egg.name,
+                          )
+                            ? [{ to: 'plugins', label: 'Plugins', icon: Package }]
+                            : []),
                         ].map(({ to, label, icon: Icon }) => (
                           <Link
                             key={to}
@@ -408,6 +466,42 @@ export function AdminServerDetail() {
                   </>
                 }
               >
+                {fullAdmin && (
+                <AdminSettingsPanel
+                  title="Ownership"
+                  description="Transfer this server and all owner permissions to another account"
+                  icon={User}
+                  className={form.ownerId !== detail.owner.id ? 'border-yellow-500/25 bg-yellow-500/[0.03]' : ''}
+                >
+                  <Select
+                    label="Server owner"
+                    value={form.ownerId ?? detail.owner.id}
+                    onChange={(e) => setForm({ ...form, ownerId: e.target.value })}
+                    disabled={usersLoading || Boolean(usersError)}
+                    required
+                    hint={usersLoading ? 'Loading users…' : usersError || 'The previous owner immediately loses owner access after saving.'}
+                  >
+                    {!users.some((user) => user.id === detail.owner.id) && (
+                      <option value={detail.owner.id}>
+                        {detail.owner.username} ({detail.owner.email})
+                      </option>
+                    )}
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.username} ({user.email}){user.suspended ? ' · suspended' : ''}
+                      </option>
+                    ))}
+                  </Select>
+                  {form.ownerId !== detail.owner.id && (
+                    <p className="mt-2 rounded-lg border border-yellow-500/25 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
+                      Saving will transfer ownership away from <strong>{detail.owner.username}</strong>. The new owner
+                      receives full access immediately.
+                    </p>
+                  )}
+                </AdminSettingsPanel>
+                )}
+
+                {fullAdmin && (
                 <AdminSettingsPanel title="Server details" description="Name and description shown to the owner" icon={Server}>
                   <div className="grid gap-3">
                     <Input
@@ -425,7 +519,9 @@ export function AdminServerDetail() {
                     />
                   </div>
                 </AdminSettingsPanel>
+                )}
 
+                {fullAdmin && (
                 <AdminSettingsPanel title="Resource limits" description="Memory, disk, and CPU — set to 0 for unlimited. Feature limits below use 0 to disable." icon={HardDrive}>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Input
@@ -494,6 +590,7 @@ export function AdminServerDetail() {
                     />
                   </div>
                 </AdminSettingsPanel>
+                )}
 
                 <AdminSettingsPanel
                   title="Account status"
@@ -514,6 +611,7 @@ export function AdminServerDetail() {
                   )}
                 </AdminSettingsPanel>
 
+                {fullAdmin && (
                 <AdminSettingsPanel title="Power controls" description="Send power actions to the node daemon" icon={Zap}>
                   {installing && (
                     <p className="mb-3 rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200">
@@ -532,8 +630,21 @@ export function AdminServerDetail() {
                     <PowerButton icon={Square} label="Stop" loading={powering === 'stop'} onClick={() => power('stop')} />
                     <PowerButton icon={AlertTriangle} label="Kill" loading={powering === 'kill'} onClick={() => power('kill')} variant="danger" />
                   </div>
+                  {(detail.containerState === 'stopping' || detail.containerState === 'starting') && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="mt-3"
+                      disabled={powering !== null}
+                      onClick={() => void clearStuckPower()}
+                    >
+                      {powering === 'clear' ? 'Clearing…' : 'Clear stuck Stopping status'}
+                    </Button>
+                  )}
                 </AdminSettingsPanel>
+                )}
 
+                {fullAdmin && (
                 <AdminSettingsPanel
                   title="Reinstall server"
                   description="Re-run the egg install script for this user's server"
@@ -577,7 +688,9 @@ export function AdminServerDetail() {
                     </div>
                   )}
                 </AdminSettingsPanel>
+                )}
 
+                {fullAdmin && (
                 <AdminSettingsPanel title="Danger zone" description="Permanently remove this server" icon={AlertTriangle} tone="danger">
                   {!confirmDelete ? (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -607,9 +720,12 @@ export function AdminServerDetail() {
                     </div>
                   )}
                 </AdminSettingsPanel>
+                )}
               </AdminDetailManageLayout>
 
-              <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              {(fullAdmin || hasChanges) && (
+                <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
+              )}
             </form>
           )}
 

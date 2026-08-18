@@ -4,14 +4,12 @@ import { api, type AdminServerDetail, type ServerDetail } from '../../lib/api';
 import { AdminSupportProvider } from '../../context/AdminSupportContext';
 import { StaticServerProvider } from '../../context/ServerContext';
 import { adminLiveApi, ServerLiveProvider } from '../../context/ServerLiveContext';
-import { AdminSupportBanner } from '../../components/admin/AdminSupportBanner';
 import {
   ServerLoadingShell,
   ServerNotFoundShell,
   ServerShellInner,
 } from '../../components/ServerLayout';
 import { usePanelBackgroundClass } from '../../hooks/usePanelBackgroundClass';
-import { getServerTheme } from '../../lib/server-theme';
 
 export function AdminServerManageShell() {
   const { serverId = '' } = useParams();
@@ -62,21 +60,11 @@ export function AdminServerManageShell() {
     );
   }
 
-  const theme = getServerTheme(detail.egg.name);
   const panelBgClass = usePanelBackgroundClass();
 
   return (
     <AdminSupportProvider owner={detail.owner} serverName={detail.name} backTo={backTo}>
       <div className={`flex h-dvh flex-col overflow-hidden ${panelBgClass}`}>
-        <AdminSupportBanner
-          compact
-          owner={detail.owner}
-          serverName={detail.name}
-          eggName={detail.egg.name}
-          eggLogoUrl={detail.egg.logoUrl}
-          themeGradient={theme.gradient}
-          backTo={backTo}
-        />
         <div className="min-h-0 flex-1">
           <StaticServerProvider server={clientServer} refresh={refreshAll} power={power}>
             <ServerLiveProvider liveApi={adminLiveApi}>

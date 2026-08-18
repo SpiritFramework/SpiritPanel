@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { requireDaemon } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { verifyPassword } from '../lib/auth.js';
@@ -13,7 +14,6 @@ import { getNodeServers, getServerFull } from '../services/server-helpers.js';
 import { logActivityBatch } from '../services/activity.js';
 import {
   applyContainerStatusUpdate,
-  getContainerStatus,
   parseContainerStatusBody,
 } from '../lib/container-state.js';
 import {
@@ -21,6 +21,8 @@ import {
   sendServerDeployedEmail,
   sendServerInstallFailedEmail,
 } from '../lib/mailer.js';
+import { logWingsFailure } from '../lib/wings-sync.js';
+import { handleTransferFailure, handleTransferSuccess } from '../services/server-transfer.js';
 
 export async function remoteRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireDaemon);
@@ -76,6 +78,10 @@ export async function remoteRoutes(app: FastifyInstance) {
       return reply.status(200).send({ error: 'Invalid credentials' });
     }
 
+    if (server.suspended) {
+      return reply.status(200).send({ error: 'Invalid credentials' });
+    }
+
     const isOwner = server.ownerId === user.id;
     let permissions: string[];
 
@@ -115,9 +121,21 @@ export async function remoteRoutes(app: FastifyInstance) {
   });
 
   app.post('/servers/reset', async (request) => {
+    // Wings boot: clear runtime badges. Do not wipe install-in-progress flags.
     await prisma.server.updateMany({
-      where: { nodeId: request.node!.id },
+      where: {
+        nodeId: request.node!.id,
+        status: { not: 'installing' },
+        installStatus: { not: 'installing' },
+      },
       data: { status: 'normal', containerState: 'offline' },
+    });
+    await prisma.server.updateMany({
+      where: {
+        nodeId: request.node!.id,
+        OR: [{ status: 'installing' }, { installStatus: 'installing' }],
+      },
+      data: { containerState: 'offline' },
     });
     return { success: true, message: 'All server statuses reset successfully' };
   });
@@ -142,7 +160,16 @@ export async function remoteRoutes(app: FastifyInstance) {
 
   app.post('/servers/:uuid/install', async (request, reply) => {
     const { uuid } = request.params as { uuid: string };
-    const body = request.body as { successful?: boolean; reinstall?: boolean };
+    const parsed = z
+      .object({
+        successful: z.boolean(),
+        reinstall: z.boolean().optional(),
+      })
+      .safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Body must include boolean "successful"' });
+    }
+    const body = parsed.data;
     const server = await prisma.server.findUnique({ where: { uuid } });
     if (!server || server.nodeId !== request.node!.id) {
       return reply.status(404).send({ error: 'Server not found' });
@@ -197,9 +224,9 @@ export async function remoteRoutes(app: FastifyInstance) {
     if (!server || server.nodeId !== request.node!.id) {
       return reply.status(404).send({ error: 'Server not found' });
     }
-    const cached = getContainerStatus(uuid);
+    // Return DB state only — never the force-offline UI cache. Wings uses this for crash detection.
     return {
-      state: cached ?? server.containerState,
+      state: server.containerState ?? 'offline',
       server_uuid: server.uuid,
       node_id: request.node!.id,
     };
@@ -247,7 +274,10 @@ export async function remoteRoutes(app: FastifyInstance) {
   app.post('/activity', async (request) => {
     const body = request.body as { data?: unknown[] } | unknown[];
     const entries = Array.isArray(body) ? body : (body.data ?? []);
-    await logActivityBatch(entries as Parameters<typeof logActivityBatch>[0]);
+    await logActivityBatch(entries as Parameters<typeof logActivityBatch>[0], {
+      nodeId: request.node!.id,
+      maxEntries: 100,
+    });
     return { success: true };
   });
 
@@ -260,6 +290,7 @@ export async function remoteRoutes(app: FastifyInstance) {
     if (!backup || backup.server.nodeId !== request.node!.id) {
       return reply.status(404).send({ error: 'Not found' });
     }
+    // Local Wings backups only — remote/S3 multipart upload is not implemented yet.
     return {
       parts: [],
       part_size: 0,
@@ -268,7 +299,17 @@ export async function remoteRoutes(app: FastifyInstance) {
 
   app.post('/backups/:uuid', async (request, reply) => {
     const { uuid } = request.params as { uuid: string };
-    const body = request.body as { checksum?: string; size?: number; successful?: boolean };
+    const parsed = z
+      .object({
+        checksum: z.string().optional(),
+        size: z.number().optional(),
+        successful: z.boolean(),
+      })
+      .safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Body must include boolean "successful"' });
+    }
+    const body = parsed.data;
     const backup = await prisma.backup.findUnique({
       where: { uuid },
       include: { server: { select: { nodeId: true } } },
@@ -279,7 +320,7 @@ export async function remoteRoutes(app: FastifyInstance) {
     await prisma.backup.update({
       where: { uuid },
       data: {
-        isSuccessful: body.successful ?? true,
+        isSuccessful: body.successful,
         bytes: BigInt(body.size ?? 0),
         checksum: body.checksum ?? null,
         completedAt: new Date(),
@@ -299,12 +340,29 @@ export async function remoteRoutes(app: FastifyInstance) {
     }
     await prisma.server
       .updateMany({ where: { id: backup.serverId, status: 'restoring_backup' }, data: { status: 'normal' } })
-      .catch(() => {});
+      .catch((err) => logWingsFailure('backup restore status reset failed', err, { backupUuid: uuid }));
     return reply.status(204).send();
   });
 
-  app.post('/servers/:uuid/transfer/success', async (_request, reply) => reply.status(204).send());
-  app.post('/servers/:uuid/transfer/failure', async (_request, reply) => reply.status(204).send());
+  app.post('/servers/:uuid/transfer/success', async (request, reply) => {
+    const { uuid } = request.params as { uuid: string };
+    const server = await prisma.server.findUnique({ where: { uuid } });
+    if (!server || server.nodeId !== request.node!.id) {
+      return reply.status(404).send({ error: 'Server not found' });
+    }
+    await handleTransferSuccess(prisma, server, request.node!.id);
+    return reply.status(204).send();
+  });
+
+  app.post('/servers/:uuid/transfer/failure', async (request, reply) => {
+    const { uuid } = request.params as { uuid: string };
+    const server = await prisma.server.findUnique({ where: { uuid } });
+    if (!server || server.nodeId !== request.node!.id) {
+      return reply.status(404).send({ error: 'Server not found' });
+    }
+    await handleTransferFailure(prisma, server, request.node!.id);
+    return reply.status(204).send();
+  });
 }
 
 /** Reduce an authorized key to "type body" so comments/whitespace don't affect comparison. */

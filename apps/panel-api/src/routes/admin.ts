@@ -4,7 +4,7 @@ import { ServerStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { reconcilePanelFieldsForContainerState } from '../lib/container-state.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireAdmin, requireFullAdmin } from '../middleware/auth.js';
 import { hashPassword } from '../lib/auth.js';
 import {
   API_KEY_TYPE_ACCOUNT,
@@ -19,16 +19,18 @@ import { generateDaemonToken, isValidBindIp, parseAllocationPorts } from '@spiri
 import { parseEggJson } from '@spirit/shared';
 import { buildWingsConfig, serverInclude } from '../services/server-helpers.js';
 import { wingsForNode } from '../services/wings-client.js';
+import { getNodeHealthSnapshot } from '../lib/node-health-cache.js';
 import { probeNodeHealth, sanitizeAdminNode } from '../lib/node-health.js';
+import { parseRefreshQuery } from '../lib/refresh-query.js';
 import { computeNodeCapacity, loadNodeAllocationTotals } from '../lib/node-capacity.js';
 import { WINGS_CLIENT_PERMISSIONS } from '../lib/client-server.js';
 import { signWingsJwt } from '../lib/auth.js';
 import { describeConsoleAccess, buildWingsWebsocketUrl } from '../lib/wings-socket.js';
-import { normalizeWingsLogLines } from '../lib/wings-logs.js';
+import { normalizeWingsLogLines, emptyInstallLogsIfUnavailable } from '../lib/wings-logs.js';
 import { getConfig } from '../lib/env.js';
 import { logAdminActivity, PANEL_ACTIVITY_PREFIXES } from '../lib/admin-activity.js';
-import { paginateActivityLogs } from '../services/activity.js';
-import { getNodeStats } from '../services/node-stats.js';
+import { paginateActivityLogs, deleteActivityLogs, deleteServerActivityLogs } from '../services/activity.js';
+import { getNodeStats, getNodeLiveUsageSummary } from '../services/node-stats.js';
 import {
   createServerOnPanel,
   assertNodeHasCapacityForUpdate,
@@ -37,6 +39,7 @@ import {
   reinstallServerOnWings,
   isServerInstalling,
   syncServerToWings,
+  clearStuckServerPowerState,
 } from '../services/server-lifecycle.js';
 import {
   enrichServerRefsWithLiveState,
@@ -64,6 +67,8 @@ import {
   getBrandingSettings,
   isValidBrandingAssetUrl,
   getMarketplaceSettings,
+  DEFAULT_MARKETPLACE,
+  DEFAULT_MINECRAFT_PLUGINS,
   getMinPasswordLength,
   getSmtpSettings,
   getTurnstileSettings,
@@ -71,13 +76,20 @@ import {
   getAnnouncementSettings,
   maintenanceSchema,
   marketplaceSchema,
+  minecraftPluginsSchema,
   registrationSchema,
+  ticketsSchema,
   securitySchema,
   smtpSchema,
   EMAIL_TEMPLATE_IDS,
   emailTemplatesSettingsSchema,
   turnstileSchema,
+  cloudflareDnsSchema,
+  getCloudflareDnsSettings,
+  DEFAULT_CLOUDFLARE_DNS,
   upsertPanelSetting,
+  DEFAULT_TICKETS,
+  getTicketsSettings,
 } from '../lib/panel-settings.js';
 import { previewEmailTemplate, emailTemplateSchema } from '../lib/email-templates.js';
 import {
@@ -91,6 +103,16 @@ import {
   sendTestEmail,
   verifySmtp,
 } from '../lib/mailer.js';
+import { assertPublicOutboundHost } from '../lib/network-guard.js';
+import { API_KEY_CREATION_LIMIT } from '../lib/rate-limits.js';
+import { verifyCloudflareCredentials } from '../services/cloudflare-dns.js';
+import {
+  createOrReplaceServerDomain,
+  deleteServerDomain,
+  getDomainFeatureForServer,
+  listAllServerDomains,
+  setPreferSubdomain,
+} from '../services/server-domains.js';
 
 export async function adminRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAdmin);
@@ -157,38 +179,7 @@ export async function adminRoutes(app: FastifyInstance) {
       nodes.map(async (node) => {
         const allocated = allocationTotals.get(node.id) ?? { memory: 0, disk: 0 };
         const capacity = computeNodeCapacity(node, allocated);
-        try {
-          const sys = await wingsForNode(node).getSystem();
-          return {
-            id: node.id,
-            name: node.name,
-            fqdn: node.fqdn,
-            location: node.location.short,
-            online: true,
-            version: sys.version,
-            maintenanceMode: node.maintenanceMode,
-            memory: node.memory,
-            disk: node.disk,
-            serverCount: node._count.servers,
-            allocationCount: node._count.allocations,
-            capacity,
-          };
-        } catch {
-          return {
-            id: node.id,
-            name: node.name,
-            fqdn: node.fqdn,
-            location: node.location.short,
-            online: false,
-            version: null,
-            maintenanceMode: node.maintenanceMode,
-            memory: node.memory,
-            disk: node.disk,
-            serverCount: node._count.servers,
-            allocationCount: node._count.allocations,
-            capacity,
-          };
-        }
+        return getNodeHealthSnapshot(node, capacity);
       }),
     );
 
@@ -223,6 +214,8 @@ export async function adminRoutes(app: FastifyInstance) {
         ...(q.search
           ? {
               OR: [
+                { id: { equals: q.search } },
+                { id: { contains: q.search } },
                 { email: { contains: q.search } },
                 { username: { contains: q.search } },
                 { firstName: { contains: q.search } },
@@ -313,14 +306,14 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/users', async (request, reply) => {
+  app.post('/users', { preHandler: requireFullAdmin }, async (request, reply) => {
     const minPasswordLength = await getMinPasswordLength();
     const body = z
       .object({
         email: z.string().email(),
         username: z.string().min(3),
         password: z.string().min(minPasswordLength),
-        role: z.enum(['admin', 'user']).default('user'),
+        role: z.enum(['admin', 'staff', 'user']).default('user'),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
       })
@@ -345,7 +338,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return sanitizeUser(user);
   });
 
-  app.patch('/users/:id', async (request, reply) => {
+  app.patch('/users/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const minPasswordLength = await getMinPasswordLength();
     const body = z
@@ -353,7 +346,7 @@ export async function adminRoutes(app: FastifyInstance) {
         email: z.string().email().optional(),
         username: z.string().min(3).optional(),
         password: z.string().min(minPasswordLength).optional(),
-        role: z.enum(['admin', 'user']).optional(),
+        role: z.enum(['admin', 'staff', 'user']).optional(),
         enabled: z.boolean().optional(),
         suspended: z.boolean().optional(),
         firstName: z.string().optional(),
@@ -424,7 +417,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return sanitizeUser(user);
   });
 
-  app.delete('/users/:id', async (request, reply) => {
+  app.delete('/users/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     if (id === request.user!.id) {
       return reply.status(422).send({ error: 'You cannot delete your own account' });
@@ -515,7 +508,7 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/locations', async (request) => {
+  app.post('/locations', { preHandler: requireFullAdmin }, async (request) => {
     const body = z.object({ short: z.string(), long: z.string() }).parse(request.body);
     const location = await prisma.location.create({ data: body });
     await logAdminActivity(request, {
@@ -526,7 +519,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return location;
   });
 
-  app.patch('/locations/:id', async (request) => {
+  app.patch('/locations/:id', { preHandler: requireFullAdmin }, async (request) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -543,7 +536,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return location;
   });
 
-  app.delete('/locations/:id', async (request, reply) => {
+  app.delete('/locations/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const location = await prisma.location.findUnique({
       where: { id },
@@ -657,14 +650,12 @@ export async function adminRoutes(app: FastifyInstance) {
 
     const assignedAllocations = node.allocations.filter((a) => a.assigned).length;
 
-    const serverTotals = await prisma.server.aggregate({
-      where: { nodeId: id },
-      _sum: { memory: true, disk: true },
-    });
-    const capacity = computeNodeCapacity(node, {
-      memory: serverTotals._sum.memory ?? 0,
-      disk: serverTotals._sum.disk ?? 0,
-    });
+    const allocationTotals = await loadNodeAllocationTotals(prisma);
+    const allocated = allocationTotals.get(id) ?? { memory: 0, disk: 0 };
+    const capacity = computeNodeCapacity(node, allocated);
+
+    const serverRows = await prisma.server.findMany({ where: { nodeId: id } });
+    const liveUsage = online ? await getNodeLiveUsageSummary(node, serverRows) : null;
 
     const recentActivity = await prisma.activityLog.findMany({
       where: { nodeId: id },
@@ -685,6 +676,7 @@ export async function adminRoutes(app: FastifyInstance) {
       online,
       system,
       capacity,
+      liveUsage,
       allocations: allocations.map((a) => {
         // Primary allocations link via Server.allocationId (serverDefault);
         // secondary allocations link via Allocation.serverId (serverAssigned).
@@ -704,14 +696,14 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/nodes', async (request, reply) => {
+  app.post('/nodes', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z
       .object({
         locationId: z.string(),
         name: z.string(),
         description: z.string().default(''),
         fqdn: z.string().trim().min(1),
-        scheme: z.enum(['http', 'https']).default('http'),
+        scheme: z.enum(['http', 'https']).default('https'),
         behindProxy: z.boolean().default(false),
         maintenanceMode: z.boolean().default(false),
         memory: z.number().default(0),
@@ -751,7 +743,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { ...sanitizeAdminNode(node), online: false, wingsVersion: null, error: null };
   });
 
-  app.patch('/nodes/:id', async (request, reply) => {
+  app.patch('/nodes/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -770,6 +762,9 @@ export async function adminRoutes(app: FastifyInstance) {
         daemonSftp: z.number().int().min(1).max(65535).optional(),
         daemonBase: z.string().min(1).optional(),
         uploadSize: z.number().int().min(1).optional(),
+        publicIp: z.string().max(64).nullable().optional(),
+        domainBase: z.string().max(253).nullable().optional(),
+        cloudflareZoneId: z.string().max(64).nullable().optional(),
       })
       .parse(request.body);
 
@@ -780,7 +775,30 @@ export async function adminRoutes(app: FastifyInstance) {
       }
     }
 
-    const node = await prisma.node.update({ where: { id }, data: body });
+    const node = await prisma.node.update({
+      where: { id },
+      data: {
+        ...body,
+        publicIp:
+          body.publicIp === undefined
+            ? undefined
+            : body.publicIp?.trim()
+              ? body.publicIp.trim()
+              : null,
+        domainBase:
+          body.domainBase === undefined
+            ? undefined
+            : body.domainBase?.trim()
+              ? body.domainBase.trim().toLowerCase()
+              : null,
+        cloudflareZoneId:
+          body.cloudflareZoneId === undefined
+            ? undefined
+            : body.cloudflareZoneId?.trim()
+              ? body.cloudflareZoneId.trim()
+              : null,
+      },
+    });
     await logAdminActivity(request, {
       event: 'admin.node.updated',
       description: `Updated node ${node.name}`,
@@ -790,7 +808,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return sanitizeAdminNode(node);
   });
 
-  app.post('/nodes/:id/rotate-token', async (request) => {
+  app.post('/nodes/:id/rotate-token', { preHandler: requireFullAdmin }, async (request) => {
     const { id } = request.params as { id: string };
     const tokens = generateDaemonToken();
     const node = await prisma.node.update({
@@ -847,7 +865,7 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get('/nodes/:id/config', async (request, reply) => {
+  app.get('/nodes/:id/config', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const node = await prisma.node.findUnique({ where: { id } });
     if (!node) return reply.status(404).send({ error: 'Not found' });
@@ -877,7 +895,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return getNodeStats(node, range);
   });
 
-  app.delete('/nodes/:id', async (request, reply) => {
+  app.delete('/nodes/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const node = await prisma.node.findUnique({
       where: { id },
@@ -906,7 +924,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return prisma.allocation.findMany({ where: { nodeId: id }, orderBy: [{ ip: 'asc' }, { port: 'asc' }] });
   });
 
-  app.post('/nodes/:id/allocations', async (request, reply) => {
+  app.post('/nodes/:id/allocations', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -963,7 +981,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { created: toCreate.length, skipped, ip, ports: toCreate };
   });
 
-  app.patch('/allocations/:id', async (request, reply) => {
+  app.patch('/allocations/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -984,7 +1002,7 @@ export async function adminRoutes(app: FastifyInstance) {
     });
   });
 
-  app.delete('/allocations/:id', async (request, reply) => {
+  app.delete('/allocations/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const alloc = await prisma.allocation.findUnique({ where: { id } });
     if (!alloc) return reply.status(404).send({ error: 'Not found' });
@@ -998,7 +1016,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { deleted: true };
   });
 
-  app.post('/nodes/:id/allocations/bulk-delete', async (request, reply) => {
+  app.post('/nodes/:id/allocations/bulk-delete', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -1095,7 +1113,7 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/nests', async (request) => {
+  app.post('/nests', { preHandler: requireFullAdmin }, async (request) => {
     const body = z.object({ name: z.string(), description: z.string().default('') }).parse(request.body);
     const nest = await prisma.nest.create({ data: body });
     await logAdminActivity(request, {
@@ -1106,7 +1124,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return nest;
   });
 
-  app.patch('/nests/:id', async (request, reply) => {
+  app.patch('/nests/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -1126,7 +1144,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return nest;
   });
 
-  app.delete('/nests/:id', async (request, reply) => {
+  app.delete('/nests/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const nest = await prisma.nest.findUnique({ where: { id } });
     if (!nest) return reply.status(404).send({ error: 'Not found' });
@@ -1164,7 +1182,7 @@ export async function adminRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/eggs/import', async (request, reply) => {
+  app.post('/eggs/import', { preHandler: requireFullAdmin }, async (request, reply) => {
     try {
       const body = z
         .object({
@@ -1240,7 +1258,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // Re-import a Pterodactyl egg JSON over an existing egg, keeping its id/uuid
   // and any servers attached to it while refreshing scripts, images, config,
   // and variables to the latest egg definition.
-  app.put('/eggs/:id/import', async (request, reply) => {
+  app.put('/eggs/:id/import', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
       const body = z.object({ json: z.unknown() }).parse(request.body);
@@ -1389,7 +1407,7 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.patch('/eggs/:id', async (request, reply) => {
+  app.patch('/eggs/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -1436,7 +1454,7 @@ export async function adminRoutes(app: FastifyInstance) {
     fieldType: z.string().default('text'),
   });
 
-  app.put('/eggs/:id/variables', async (request, reply) => {
+  app.put('/eggs/:id/variables', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({ variables: z.array(eggVariableInput) }).parse(request.body);
 
@@ -1502,7 +1520,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return variables;
   });
 
-  app.delete('/eggs/:id', async (request, reply) => {
+  app.delete('/eggs/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const egg = await prisma.egg.findUnique({
       where: { id },
@@ -1528,7 +1546,9 @@ export async function adminRoutes(app: FastifyInstance) {
       nodeId?: string;
       suspended?: string;
       status?: string;
+      refresh?: string;
     };
+    const refresh = parseRefreshQuery(q);
     const statusFilter =
       q.status && Object.values(ServerStatus).includes(q.status as ServerStatus)
         ? (q.status as ServerStatus)
@@ -1572,7 +1592,7 @@ export async function adminRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const enriched = await enrichServerRefsWithLiveState(rows, { refresh: true });
+    const enriched = await enrichServerRefsWithLiveState(rows, { refresh });
     return enriched.map((server) => {
       const reconciled = reconcilePanelFieldsForContainerState(server.containerState ?? 'offline');
       return {
@@ -1612,7 +1632,7 @@ export async function adminRoutes(app: FastifyInstance) {
             { refresh: true },
           )) ?? containerState;
       } catch {
-        containerState = resolveCachedContainerState(server.uuid, server.containerState);
+        containerState = (await resolveCachedContainerState(server.uuid, server.containerState)) ?? containerState;
       }
     }
 
@@ -1632,7 +1652,7 @@ export async function adminRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/servers', async (request, reply) => {
+  app.post('/servers', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z
       .object({
         ownerId: z.string(),
@@ -1699,6 +1719,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const body = z
       .object({
+        ownerId: z.string().trim().min(1).optional(),
         name: z.string().optional(),
         description: z.string().optional(),
         memory: z.number().int().min(0).optional(),
@@ -1713,8 +1734,34 @@ export async function adminRoutes(app: FastifyInstance) {
       })
       .parse(request.body);
 
-    const existing = await prisma.server.findUnique({ where: { id }, include: { node: true } });
+    // Staff may only suspend/unsuspend — other mutations stay full-admin.
+    const { isFullPanelAdmin } = await import('../lib/roles.js');
+    if (!isFullPanelAdmin(request.user!)) {
+      const keys = Object.keys(body);
+      if (keys.length === 0 || keys.some((key) => key !== 'suspended')) {
+        return reply.status(403).send({ error: 'Staff can only suspend or unsuspend servers' });
+      }
+    }
+
+    const existing = await prisma.server.findUnique({
+      where: { id },
+      include: {
+        node: true,
+        owner: { select: { id: true, username: true } },
+      },
+    });
     if (!existing) return reply.status(404).send({ error: 'Not found' });
+
+    const ownerChanged = body.ownerId !== undefined && body.ownerId !== existing.ownerId;
+    const nextOwner = ownerChanged
+      ? await prisma.user.findUnique({
+          where: { id: body.ownerId },
+          select: { id: true, username: true },
+        })
+      : null;
+    if (ownerChanged && !nextOwner) {
+      return reply.status(422).send({ error: 'Selected owner does not exist' });
+    }
 
     const nextMemory = body.memory ?? existing.memory;
     const nextDisk = body.disk ?? existing.disk;
@@ -1726,14 +1773,24 @@ export async function adminRoutes(app: FastifyInstance) {
       }
     }
 
-    const server = await prisma.server.update({
-      where: { id },
-      data: body,
-      include: serverInclude,
+    const server = await prisma.$transaction(async (tx) => {
+      if (ownerChanged) {
+        // Owners already have full access, so a duplicate subuser record is invalid.
+        await tx.subuser.deleteMany({
+          where: { serverId: id, userId: body.ownerId },
+        });
+      }
+
+      return tx.server.update({
+        where: { id },
+        data: body,
+        include: serverInclude,
+      });
     });
     await syncServerToWings(server.uuid);
 
     const changes: string[] = [];
+    if (ownerChanged) changes.push('owner');
     if (body.name && body.name !== existing.name) changes.push('name');
     if (body.suspended !== undefined && body.suspended !== existing.suspended) {
       changes.push(body.suspended ? 'suspended' : 'unsuspended');
@@ -1743,12 +1800,26 @@ export async function adminRoutes(app: FastifyInstance) {
 
     if (changes.length) {
       await logAdminActivity(request, {
-        event: body.suspended !== undefined && body.suspended !== existing.suspended
-          ? (body.suspended ? 'admin.server.suspended' : 'admin.server.unsuspended')
-          : 'admin.server.updated',
+        event: ownerChanged
+          ? 'admin.server.owner_changed'
+          : body.suspended !== undefined && body.suspended !== existing.suspended
+            ? (body.suspended ? 'admin.server.suspended' : 'admin.server.unsuspended')
+            : 'admin.server.updated',
         serverId: server.id,
-        description: `Updated server ${server.name} (${changes.join(', ')})`,
-        properties: { changes },
+        description: ownerChanged
+          ? `Transferred server ${server.name} from ${existing.owner.username} to ${nextOwner!.username}`
+          : `Updated server ${server.name} (${changes.join(', ')})`,
+        properties: {
+          changes,
+          ...(ownerChanged
+            ? {
+                previousOwnerId: existing.ownerId,
+                previousOwnerUsername: existing.owner.username,
+                ownerId: nextOwner!.id,
+                ownerUsername: nextOwner!.username,
+              }
+            : {}),
+        },
       });
     }
 
@@ -1787,7 +1858,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return listServerAllocations(server);
   });
 
-  app.post('/servers/:id/allocations/:allocationId', async (request, reply) => {
+  app.post('/servers/:id/allocations/:allocationId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id, allocationId } = request.params as { id: string; allocationId: string };
     try {
       const server = await assignSecondaryAllocation(id, allocationId);
@@ -1799,19 +1870,21 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post('/servers/:id/allocations/:allocationId/primary', async (request, reply) => {
+  app.post('/servers/:id/allocations/:allocationId/primary', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id, allocationId } = request.params as { id: string; allocationId: string };
     try {
       const server = await setPrimaryAllocation(id, allocationId);
       if (!server) return reply.status(404).send({ error: 'Not found' });
       await syncServerToWings(server.uuid);
+      const { retargetServerDomainIfNeeded } = await import('../services/server-domains.js');
+      await retargetServerDomainIfNeeded(id).catch(() => undefined);
       return listServerAllocations(server);
     } catch (e) {
       return reply.status(422).send({ error: e instanceof Error ? e.message : String(e) });
     }
   });
 
-  app.delete('/servers/:id/allocations/:allocationId', async (request, reply) => {
+  app.delete('/servers/:id/allocations/:allocationId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id, allocationId } = request.params as { id: string; allocationId: string };
     try {
       const server = await unassignSecondaryAllocation(id, allocationId);
@@ -1823,7 +1896,74 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/servers/:id/websocket', async (request, reply) => {
+  app.get('/servers/:id/domain', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 500;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.post('/servers/:id/domain', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z
+      .object({
+        slug: z.string().min(1).max(63),
+        preferSubdomain: z.boolean().optional(),
+      })
+      .parse(request.body);
+    try {
+      await createOrReplaceServerDomain({
+        serverId: id,
+        slug: body.slug,
+        preferSubdomain: body.preferSubdomain,
+        bypassPlanGate: true,
+      });
+      await logAdminActivity(request, {
+        event: 'admin.server.domain.created',
+        description: `Set subdomain for server ${id}`,
+        serverId: id,
+        properties: { slug: body.slug },
+      });
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.patch('/servers/:id/domain', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({ preferSubdomain: z.boolean() }).parse(request.body);
+    try {
+      return await setPreferSubdomain(id, body.preferSubdomain);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.delete('/servers/:id/domain', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      await deleteServerDomain(id);
+      await logAdminActivity(request, {
+        event: 'admin.server.domain.deleted',
+        description: `Removed subdomain for server ${id}`,
+        serverId: id,
+      });
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.get('/domains', async () => listAllServerDomains());
+
+  app.get('/servers/:id/websocket', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findUnique({
       where: { id },
@@ -1836,13 +1976,24 @@ export async function adminRoutes(app: FastifyInstance) {
         jti: crypto.randomUUID(),
         user_uuid: request.user!.uuid,
         server_uuid: server.uuid,
+        // FeatherWings 1.3.7.5+ requires scope=websocket (missing scope surfaces as
+        // "jwt: missing connect permission" even when permissions include connect).
+        scope: 'websocket',
         permissions: [...WINGS_CLIENT_PERMISSIONS],
       },
       '10m',
       server.node.daemonTokenSecret,
     );
 
-    const socket = buildWingsWebsocketUrl(server.uuid, server.node);
+    let socket: string;
+    try {
+      socket = buildWingsWebsocketUrl(server.uuid, server.node);
+    } catch (err) {
+      return reply.status(400).send({
+        error: err instanceof Error ? err.message : 'Console is not available for this node configuration',
+        code: 'console_unavailable',
+      });
+    }
 
     await logAdminActivity(request, {
       event: 'admin.server.console',
@@ -1858,7 +2009,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { token, socket, connection_string: socket };
   });
 
-  app.post('/servers/:id/command', async (request, reply) => {
+  app.post('/servers/:id/command', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { command } = z.object({ command: z.string() }).parse(request.body);
     const server = await prisma.server.findUnique({
@@ -1889,13 +2040,15 @@ export async function adminRoutes(app: FastifyInstance) {
       const raw = await wingsForNode(server.node).getInstallLogs(server.uuid);
       return { response: normalizeWingsLogLines(raw) };
     } catch (e) {
+      const empty = emptyInstallLogsIfUnavailable(e);
+      if (empty) return { response: empty };
       return reply.status(502).send({
         error: e instanceof Error ? e.message : 'Failed to retrieve installation logs',
       });
     }
   });
 
-  app.post('/servers/:id/power', async (request, reply) => {
+  app.post('/servers/:id/power', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { action } = z.object({ action: z.enum(['start', 'stop', 'restart', 'kill']) }).parse(request.body);
     const server = await prisma.server.findUnique({ where: { id } });
@@ -1924,7 +2077,29 @@ export async function adminRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
-  app.post('/servers/:id/reinstall', async (request, reply) => {
+  /** Clear stuck Stopping/Starting when FeatherWings will not leave that state. */
+  app.post('/servers/:id/clear-power-state', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const server = await prisma.server.findUnique({ where: { id } });
+    if (!server) return reply.status(404).send({ error: 'Not found' });
+
+    try {
+      await clearStuckServerPowerState(server.uuid, { kill: true });
+    } catch (err) {
+      request.log.error({ err }, 'Admin clear power state failed');
+      return reply.status(502).send({
+        error: err instanceof Error ? err.message : 'Failed to clear power state',
+      });
+    }
+    await logAdminActivity(request, {
+      event: 'admin.server.power.clear_stuck',
+      serverId: server.id,
+      description: `Admin cleared stuck power state on ${server.name}`,
+    });
+    return { success: true, containerState: 'offline' };
+  });
+
+  app.post('/servers/:id/reinstall', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({ wipeFiles: z.boolean().default(false) }).parse(request.body ?? {});
     const server = await prisma.server.findUnique({ where: { id } });
@@ -1950,7 +2125,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete('/servers/:id', async (request, reply) => {
+  app.delete('/servers/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const server = await prisma.server.findUnique({ where: { id } });
     if (!server) return reply.status(404).send({ error: 'Not found' });
@@ -1980,7 +2155,35 @@ export async function adminRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/system/refresh-server-states', async (request) => {
+  app.delete('/activity', { preHandler: requireFullAdmin }, async (request) => {
+    const q = request.query as { scope?: string };
+    const scope = q.scope === 'auth' || q.scope === 'admin' ? q.scope : 'panel';
+    const where = panelActivityFilter(scope);
+    const result = await deleteActivityLogs(where);
+    await logAdminActivity(request, {
+      event: 'admin.activity.cleared',
+      description: `Cleared ${scope} activity log (${result.count} event${result.count === 1 ? '' : 's'})`,
+      properties: { scope, deleted: result.count },
+    });
+    return { deleted: result.count, scope };
+  });
+
+  app.delete('/servers/:id/activity', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const server = await prisma.server.findUnique({ where: { id }, select: { id: true, name: true } });
+    if (!server) return reply.status(404).send({ error: 'Not found' });
+
+    const result = await deleteServerActivityLogs(id);
+    await logAdminActivity(request, {
+      event: 'admin.server.activity.cleared',
+      description: `Cleared activity for server ${server.name}`,
+      serverId: id,
+      properties: { deleted: result.count },
+    });
+    return { deleted: result.count };
+  });
+
+  app.post('/system/refresh-server-states', { preHandler: requireFullAdmin }, async (request) => {
     const result = await refreshAllServerContainerStates();
     await logAdminActivity(request, {
       event: 'admin.system.refresh_server_states',
@@ -2003,10 +2206,26 @@ export async function adminRoutes(app: FastifyInstance) {
       const turnstile = result.turnstile as Record<string, unknown>;
       result.turnstile = { ...turnstile, secretKey: '', secretKeySet: Boolean(turnstile.secretKey) };
     }
+    if (result.cloudflare_dns && typeof result.cloudflare_dns === 'object') {
+      const cloudflare = result.cloudflare_dns as Record<string, unknown>;
+      result.cloudflare_dns = {
+        ...cloudflare,
+        apiToken: '',
+        apiTokenSet: Boolean(cloudflare.apiToken),
+      };
+    }
+    if (result.tickets && typeof result.tickets === 'object') {
+      const tickets = result.tickets as Record<string, unknown>;
+      result.tickets = {
+        ...tickets,
+        discordWebhookUrl: '',
+        discordWebhookUrlSet: Boolean(tickets.discordWebhookUrl),
+      };
+    }
     return result;
   });
 
-  app.post('/settings/smtp/test', async (request, reply) => {
+  app.post('/settings/smtp/test', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z.object({ to: z.string().email() }).parse(request.body);
     const stored = await getSmtpSettings();
     const candidate = request.body as { smtp?: Record<string, unknown> };
@@ -2019,6 +2238,9 @@ export async function adminRoutes(app: FastifyInstance) {
       }
     }
     try {
+      if (smtp.enabled && smtp.host.trim()) {
+        assertPublicOutboundHost(smtp.host.trim(), 'SMTP host');
+      }
       await verifySmtp(smtp);
       await sendTestEmail(body.to, smtp);
       return { success: true };
@@ -2027,7 +2249,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post('/settings/email-templates/preview', async (request, reply) => {
+  app.post('/settings/email-templates/preview', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z
       .object({
         templateId: z.enum(EMAIL_TEMPLATE_IDS),
@@ -2042,7 +2264,26 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.put('/settings', async (request, reply) => {
+  app.post('/settings/cloudflare/test', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const body = z
+      .object({
+        apiToken: z.string().optional(),
+        zoneId: z.string().optional(),
+      })
+      .parse(request.body ?? {});
+    try {
+      const current = await getCloudflareDnsSettings();
+      const result = await verifyCloudflareCredentials({
+        apiToken: body.apiToken || current.apiToken,
+        zoneId: body.zoneId || current.zoneId,
+      });
+      return result;
+    } catch (err) {
+      return reply.status(400).send({ error: err instanceof Error ? err.message : 'Cloudflare test failed' });
+    }
+  });
+
+  app.put('/settings', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = request.body as Record<string, unknown>;
     const allowed = [
       'branding',
@@ -2050,11 +2291,14 @@ export async function adminRoutes(app: FastifyInstance) {
       'maintenance',
       'announcement',
       'marketplace',
+      'minecraft_plugins',
+      'tickets',
       'security',
       'registration_enabled',
       'smtp',
       'email_templates',
       'turnstile',
+      'cloudflare_dns',
     ] as const;
 
     for (const key of Object.keys(body)) {
@@ -2112,8 +2356,35 @@ export async function adminRoutes(app: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(422).send({ error: parsed.error.flatten().fieldErrors });
       }
-      const current = await getMarketplaceSettings();
-      await upsertPanelSetting('marketplace', { ...current, ...parsed.data });
+      await upsertPanelSetting('marketplace', { ...DEFAULT_MARKETPLACE, ...parsed.data });
+    }
+
+    if (body.minecraft_plugins !== undefined) {
+      const parsed = minecraftPluginsSchema.safeParse(body.minecraft_plugins);
+      if (!parsed.success) {
+        return reply.status(422).send({ error: parsed.error.flatten().fieldErrors });
+      }
+      await upsertPanelSetting('minecraft_plugins', { ...DEFAULT_MINECRAFT_PLUGINS, ...parsed.data });
+    }
+
+    if (body.tickets !== undefined) {
+      const parsed = ticketsSchema.safeParse(body.tickets);
+      if (!parsed.success) {
+        return reply.status(422).send({ error: parsed.error.flatten().fieldErrors });
+      }
+      const current = await getTicketsSettings();
+      let webhookUrl = parsed.data.discordWebhookUrl.trim();
+      if (!webhookUrl && current.discordWebhookUrl) {
+        webhookUrl = current.discordWebhookUrl;
+      }
+      if (parsed.data.discordWebhookEnabled && !webhookUrl) {
+        return reply.status(422).send({ error: 'Discord webhook URL is required when notifications are enabled' });
+      }
+      await upsertPanelSetting('tickets', {
+        ...DEFAULT_TICKETS,
+        ...parsed.data,
+        discordWebhookUrl: webhookUrl,
+      });
     }
 
     if (body.security !== undefined) {
@@ -2140,6 +2411,14 @@ export async function adminRoutes(app: FastifyInstance) {
       // Empty password means "keep existing" so it isn't wiped by the redacted GET.
       const current = await getSmtpSettings();
       const next = { ...parsed.data, password: parsed.data.password || current.password };
+      if (next.enabled && next.host.trim()) {
+        try {
+          assertPublicOutboundHost(next.host.trim(), 'SMTP host');
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
+          return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Invalid SMTP host' });
+        }
+      }
       await upsertPanelSetting('smtp', next);
     }
 
@@ -2161,6 +2440,31 @@ export async function adminRoutes(app: FastifyInstance) {
       await upsertPanelSetting('turnstile', next);
     }
 
+    if (body.cloudflare_dns !== undefined) {
+      const parsed = cloudflareDnsSchema.safeParse(body.cloudflare_dns);
+      if (!parsed.success) {
+        return reply.status(422).send({ error: parsed.error.flatten().fieldErrors });
+      }
+      const current = await getCloudflareDnsSettings();
+      const next = {
+        ...DEFAULT_CLOUDFLARE_DNS,
+        ...parsed.data,
+        apiToken: parsed.data.apiToken || current.apiToken,
+        baseDomain: parsed.data.baseDomain.trim().toLowerCase(),
+        zoneId: parsed.data.zoneId.trim(),
+        reservedSlugs:
+          parsed.data.reservedSlugs.length > 0
+            ? [...new Set(parsed.data.reservedSlugs.map((s) => s.trim().toLowerCase()).filter(Boolean))]
+            : DEFAULT_CLOUDFLARE_DNS.reservedSlugs,
+      };
+      if (next.enabled && (!next.apiToken || !next.zoneId || !next.baseDomain)) {
+        return reply.status(422).send({
+          error: 'API token, zone ID, and base domain are required when Cloudflare DNS is enabled',
+        });
+      }
+      await upsertPanelSetting('cloudflare_dns', next);
+    }
+
     await logAdminActivity(request, {
       event: 'admin.settings.updated',
       description: `Updated panel settings (${Object.keys(body).join(', ')})`,
@@ -2169,7 +2473,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
-  app.post('/settings/branding-asset', async (request, reply) => {
+  app.post('/settings/branding-asset', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z
       .object({
         kind: z.enum(['logo', 'favicon']),
@@ -2202,7 +2506,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { url, branding: updated };
   });
 
-  app.post('/settings/branding-asset-url', async (request, reply) => {
+  app.post('/settings/branding-asset-url', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = z
       .object({
         kind: z.enum(['logo', 'favicon']),
@@ -2245,7 +2549,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return { branding: parsed.data };
   });
 
-  app.delete('/settings/branding-asset/:kind', async (request, reply) => {
+  app.delete('/settings/branding-asset/:kind', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { kind } = request.params as { kind: string };
     if (kind !== 'logo' && kind !== 'favicon') {
       return reply.status(400).send({ error: 'Invalid asset kind' });
@@ -2271,7 +2575,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // API Keys
   app.get('/api-keys', async (request) => listApiKeysForUser(request.user!.id));
 
-  app.post('/api-keys', async (request, reply) => {
+  app.post('/api-keys', { preHandler: requireFullAdmin, config: API_KEY_CREATION_LIMIT }, async (request, reply) => {
     const body = z
       .object({
         memo: z.string().trim().min(1).max(255),
@@ -2302,7 +2606,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete('/api-keys/:id', async (request, reply) => {
+  app.delete('/api-keys/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const deleted = await deleteApiKeyForUser(id, request.user!.id);
     if (!deleted) return reply.status(404).send({ error: 'API key not found' });
@@ -2323,7 +2627,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return listApiKeysForUser(id);
   });
 
-  app.post('/users/:id/api-keys', async (request, reply) => {
+  app.post('/users/:id/api-keys', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return reply.status(404).send({ error: 'User not found' });
@@ -2375,7 +2679,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete('/users/:id/api-keys/:keyId', async (request, reply) => {
+  app.delete('/users/:id/api-keys/:keyId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id, keyId } = request.params as { id: string; keyId: string };
     const key = await prisma.apiKey.findFirst({ where: { id: keyId, userId: id } });
     if (!key) return reply.status(404).send({ error: 'API key not found' });

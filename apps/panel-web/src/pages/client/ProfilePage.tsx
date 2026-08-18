@@ -16,6 +16,7 @@ import {
   User,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin, isStaffOrPanelAdmin } from '../../lib/roles';
 import { useBranding } from '../../context/BrandingContext';
 import { api, type ApiKeySummary } from '../../lib/api';
 import { ApiKeysPanel } from '../../components/ApiKeysPanel';
@@ -28,7 +29,7 @@ import { AccountStatus, RoleBadge, displayName } from '../../components/UserCard
 import { Button, ClientLayout, Input } from '../../components/Layout';
 import { Spinner } from '../../components/ui';
 import { SecuritySettings } from '../../components/SecuritySettings';
-import { ProfileAvatarField } from '../../components/ProfileAvatarField';
+import { ProfileAvatarPreview, ProfileAvatarUrlField } from '../../components/ProfileAvatarField';
 import { UserAvatar } from '../../components/UserAvatar';
 
 type Tab = 'profile' | 'security' | 'keys';
@@ -101,8 +102,10 @@ export function ProfilePage() {
   const [creatingAccountKey, setCreatingAccountKey] = useState(false);
   const [creatingApplicationKey, setCreatingApplicationKey] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [avatarDraft, setAvatarDraft] = useState('');
 
-  const isAdmin = user?.role === 'admin' || user?.rootAdmin;
+  const isStaffAdmin = isStaffOrPanelAdmin(user);
+  const isFullAdmin = isFullPanelAdmin(user);
 
   const loadKeys = useCallback(async () => {
     setKeysLoading(true);
@@ -110,7 +113,7 @@ export function ProfilePage() {
       const [account, servers] = await Promise.all([api.accountApiKeys(), api.client.servers()]);
       setServerCount(servers.length);
       setAccountKeys(account.filter((key) => key.keyType !== 2));
-      if (isAdmin) {
+      if (isFullAdmin) {
         const application = await api.admin.apiKeys();
         setApplicationKeys(application.filter((key) => key.keyType === 2));
       } else {
@@ -122,7 +125,7 @@ export function ProfilePage() {
     } finally {
       setKeysLoading(false);
     }
-  }, [isAdmin]);
+  }, [isFullAdmin]);
 
   useEffect(() => {
     refreshUser()
@@ -141,6 +144,7 @@ export function ProfilePage() {
     setEmail(user.email);
     setFirstName(user.firstName ?? '');
     setLastName(user.lastName ?? '');
+    setAvatarDraft(user.avatarUrl ?? '');
   }, [user]);
 
   const hasProfileChanges = useMemo(() => {
@@ -257,9 +261,9 @@ export function ProfilePage() {
         avatar={<UserAvatar user={user} size="xl" ring className="account-avatar" />}
         title={name}
         subtitle={
-          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="account-subtitle-line">
             <span>@{user.username}</span>
-            <span className="text-[var(--border-strong)]">·</span>
+            <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
               <Mail className="h-3.5 w-3.5 shrink-0 opacity-70" />
               {user.email}
@@ -269,7 +273,7 @@ export function ProfilePage() {
         badges={
           <>
             <RoleBadge role={user.role} rootAdmin={user.rootAdmin} />
-            <AccountStatus suspended={false} />
+            <AccountStatus suspended={user.suspended ?? false} />
           </>
         }
         stats={[
@@ -277,172 +281,140 @@ export function ProfilePage() {
           { icon: Key, label: 'API keys', value: String(totalKeys) },
           { icon: Calendar, label: 'Joined', value: joined },
         ]}
-        adminLink={isAdmin}
+        adminLink={isStaffAdmin}
         tabs={tabs}
         activeTab={tab}
         onTabChange={setTab}
       >
         {tab === 'profile' && (
-          <form onSubmit={saveProfile}>
-            <div className="account-grid account-grid--split">
-              <aside className="account-aside">
-                <div className="account-card">
-                  <p className="account-card-label">Account ID</p>
-                  <div className="account-uuid">
-                    <Fingerprint className="h-3.5 w-3.5 shrink-0" />
-                    <span className="min-w-0 truncate">{user.uuid}</span>
+          <form onSubmit={saveProfile} className="account-profile">
+            <section className="account-identity-board">
+              <div className="account-identity-board-head">
+                <h2>Identity</h2>
+                <p>Name and contact details for your account</p>
+              </div>
+
+              <div className="account-profile-fields">
+                <div className="account-profile-field-grid">
+                  <Input
+                    label="First name"
+                    value={firstName}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    placeholder="Optional"
+                  />
+                  <Input
+                    label="Last name"
+                    value={lastName}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    placeholder="Optional"
+                  />
+                  <Input
+                    label="Username"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    required
+                    minLength={3}
+                    maxLength={32}
+                  />
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    required
+                  />
+                </div>
+
+                <div className="account-id-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="account-card-label">Account ID</p>
+                    <div className="account-uuid">
+                      <Fingerprint className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 truncate">{user.uuid}</span>
+                    </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    className="mt-3 w-full"
-                    onClick={copyUuid}
-                  >
+                  <Button type="button" variant="subtle" onClick={copyUuid}>
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? 'Copied' : 'Copy UUID'}
                   </Button>
                 </div>
+              </div>
 
-                <div className="account-card">
-                  <p className="account-card-label">Quick links</p>
-                  <div className="flex flex-col gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setTab('security')}
-                      className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-xs transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:bg-[var(--surface-hover)]"
-                    >
-                      <Shield className="h-4 w-4 accent-text" />
-                      <span>
-                        <span className="block font-medium">Security</span>
-                        <span className="text-[10px] text-[var(--muted)]">Password, 2FA & keys</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTab('keys')}
-                      className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-xs transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:bg-[var(--surface-hover)]"
-                    >
-                      <Key className="h-4 w-4 accent-text" />
-                      <span>
-                        <span className="block font-medium">API keys</span>
-                        <span className="text-[10px] text-[var(--muted)]">{totalKeys} active</span>
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </aside>
-
-              <div className="space-y-4">
-                <AccountSection
-                  title="Profile photo"
-                  description="Your photo appears in the sidebar and across the panel"
-                  icon={User}
-                >
-                  <ProfileAvatarField
-                    avatarUrl={user.avatarUrl}
+              <div className="account-photo-url">
+                <div className="profile-avatar-upload">
+                  <ProfileAvatarPreview
+                    avatarUrl={avatarDraft.trim() || user.avatarUrl}
                     username={user.username}
+                  />
+                  <ProfileAvatarUrlField
+                    avatarUrl={user.avatarUrl}
+                    draft={avatarDraft}
+                    onDraftChange={setAvatarDraft}
                     onSave={async (url) => {
                       await api.updateProfile({ avatarUrl: url });
                       await refreshUser();
                     }}
                   />
-                </AccountSection>
-
-                <AccountSection
-                  title="Personal details"
-                  description="How your name and contact info appear across the panel"
-                  icon={User}
-                >
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input
-                      label="First name"
-                      value={firstName}
-                      onChange={(e) => {
-                        setFirstName(e.target.value);
-                        setProfileSaved(false);
-                      }}
-                      placeholder="Optional"
-                    />
-                    <Input
-                      label="Last name"
-                      value={lastName}
-                      onChange={(e) => {
-                        setLastName(e.target.value);
-                        setProfileSaved(false);
-                      }}
-                      placeholder="Optional"
-                    />
-                    <Input
-                      label="Username"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        setProfileSaved(false);
-                      }}
-                      required
-                      minLength={3}
-                      maxLength={32}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setProfileSaved(false);
-                      }}
-                      required
-                    />
-                  </div>
-                </AccountSection>
-
-                <div className="account-save-strip">
-                  <div className="min-w-0">
-                    {profileError && (
-                      <p className="text-xs text-[var(--danger-fg)]">{profileError}</p>
-                    )}
-                    {profileSaved && !profileError && (
-                      <p className="text-xs text-[var(--success-fg)]">Profile saved successfully</p>
-                    )}
-                    {!profileError && !profileSaved && hasProfileChanges && (
-                      <p className="text-xs text-[var(--muted)]">You have unsaved changes</p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={resetProfileForm}
-                      disabled={!hasProfileChanges || profileSaving}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Reset
-                    </Button>
-                    <Button type="submit" disabled={!hasProfileChanges || profileSaving}>
-                      {profileSaving ? (
-                        <Spinner className="h-3.5 w-3.5" />
-                      ) : (
-                        <Save className="h-3.5 w-3.5" />
-                      )}
-                      {profileSaving ? 'Saving…' : 'Save profile'}
-                    </Button>
-                  </div>
                 </div>
+              </div>
+            </section>
+
+            <div
+              className={`account-save-strip${hasProfileChanges || profileSaved || profileError ? ' account-save-strip--active' : ''}`}
+            >
+              <div className="min-w-0">
+                {profileError ? <p className="text-xs text-[var(--danger-fg)]">{profileError}</p> : null}
+                {profileSaved && !profileError ? (
+                  <p className="text-xs text-[var(--success-fg)]">Profile saved</p>
+                ) : null}
+                {!profileError && !profileSaved && hasProfileChanges ? (
+                  <p className="text-xs text-[var(--muted)]">You have unsaved changes</p>
+                ) : null}
+                {!profileError && !profileSaved && !hasProfileChanges ? (
+                  <p className="text-xs text-[var(--muted)]">No changes to save</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={resetProfileForm}
+                  disabled={!hasProfileChanges || profileSaving}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                <Button type="submit" disabled={!hasProfileChanges || profileSaving}>
+                  {profileSaving ? <Spinner className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                  {profileSaving ? 'Saving…' : 'Save profile'}
+                </Button>
               </div>
             </div>
           </form>
         )}
 
         {tab === 'security' && (
-          <div className="space-y-4">
-            <AccountSection
-              title="Change password"
-              description={`Use at least ${minPasswordLength} characters — mix letters, numbers, and symbols`}
-              icon={Lock}
-            >
-              <form onSubmit={savePassword}>
-                <div className="account-password-grid">
-                  <div className="account-field account-field--full">
+          <SecuritySettings
+            passwordPanel={
+              <AccountSection
+                title="Password"
+                description={`At least ${minPasswordLength} characters — use a unique passphrase`}
+                icon={Lock}
+              >
+                <form onSubmit={savePassword}>
+                  <div className="account-password-grid account-password-grid--stack">
                     <PasswordField
                       label="Current password"
                       value={currentPassword}
@@ -452,66 +424,76 @@ export function ProfilePage() {
                       }}
                       autoComplete="current-password"
                     />
+                    <PasswordField
+                      label="New password"
+                      value={newPassword}
+                      onChange={(value) => {
+                        setNewPassword(value);
+                        setPasswordSaved(false);
+                      }}
+                      autoComplete="new-password"
+                      minLength={minPasswordLength}
+                    />
+                    <PasswordField
+                      label="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(value) => {
+                        setConfirmPassword(value);
+                        setPasswordSaved(false);
+                      }}
+                      autoComplete="new-password"
+                    />
                   </div>
-                  <PasswordField
-                    label="New password"
-                    value={newPassword}
-                    onChange={(value) => {
-                      setNewPassword(value);
-                      setPasswordSaved(false);
-                    }}
-                    autoComplete="new-password"
-                    minLength={minPasswordLength}
-                  />
-                  <PasswordField
-                    label="Confirm new password"
-                    value={confirmPassword}
-                    onChange={(value) => {
-                      setConfirmPassword(value);
-                      setPasswordSaved(false);
-                    }}
-                    autoComplete="new-password"
-                  />
-                </div>
 
-                {(newPassword || confirmPassword) && (
-                  <div className="account-checklist">
-                    <div className={`account-checklist-item ${passwordChecks.length ? 'account-checklist-item--ok' : ''}`}>
-                      {passwordChecks.length ? <Check className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border border-[var(--border)]" />}
-                      At least {minPasswordLength} characters
+                  {(newPassword || confirmPassword) && (
+                    <div className="account-checklist">
+                      <div
+                        className={`account-checklist-item ${passwordChecks.length ? 'account-checklist-item--ok' : ''}`}
+                      >
+                        {passwordChecks.length ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <span className="h-3.5 w-3.5 rounded-full border border-[var(--border)]" />
+                        )}
+                        At least {minPasswordLength} characters
+                      </div>
+                      <div
+                        className={`account-checklist-item ${passwordChecks.match ? 'account-checklist-item--ok' : ''}`}
+                      >
+                        {passwordChecks.match ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <span className="h-3.5 w-3.5 rounded-full border border-[var(--border)]" />
+                        )}
+                        Passwords match
+                      </div>
                     </div>
-                    <div className={`account-checklist-item ${passwordChecks.match ? 'account-checklist-item--ok' : ''}`}>
-                      {passwordChecks.match ? <Check className="h-3.5 w-3.5" /> : <span className="h-3.5 w-3.5 rounded-full border border-[var(--border)]" />}
-                      Passwords match
+                  )}
+
+                  <div className="account-save-strip account-save-strip--flush">
+                    <div className="min-w-0">
+                      {passwordError ? (
+                        <p className="text-xs text-[var(--danger-fg)]">{passwordError}</p>
+                      ) : null}
+                      {passwordSaved && !passwordError ? (
+                        <p className="text-xs text-[var(--success-fg)]">Password updated</p>
+                      ) : null}
                     </div>
+                    <Button
+                      type="submit"
+                      disabled={passwordSaving || !currentPassword || !newPassword || !passwordChecks.match}
+                    >
+                      {passwordSaving ? 'Updating…' : passwordSaved ? 'Updated' : 'Update password'}
+                    </Button>
                   </div>
-                )}
-
-                <div className="account-save-strip">
-                  <div className="min-w-0">
-                    {passwordError && (
-                      <p className="text-xs text-[var(--danger-fg)]">{passwordError}</p>
-                    )}
-                    {passwordSaved && !passwordError && (
-                      <p className="text-xs text-[var(--success-fg)]">Password updated</p>
-                    )}
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={passwordSaving || !currentPassword || !newPassword || !passwordChecks.match}
-                  >
-                    {passwordSaving ? 'Updating…' : passwordSaved ? 'Updated' : 'Update password'}
-                  </Button>
-                </div>
-              </form>
-            </AccountSection>
-
-            <SecuritySettings />
-          </div>
+                </form>
+              </AccountSection>
+            }
+          />
         )}
 
         {tab === 'keys' && (
-          <div className="space-y-6">
+          <div className="account-stack">
             <ApiKeysPanel
               title="Account API keys"
               description="Authenticate against the client API to manage your servers programmatically."
@@ -533,7 +515,7 @@ export function ProfilePage() {
               }}
             />
 
-            {isAdmin && (
+            {isFullAdmin ? (
               <ApiKeysPanel
                 title="Application API keys"
                 description="Admin-only keys for automating panel management via the application API."
@@ -554,7 +536,7 @@ export function ProfilePage() {
                   await api.admin.deleteApiKey(id);
                 }}
               />
-            )}
+            ) : null}
           </div>
         )}
       </AccountShell>

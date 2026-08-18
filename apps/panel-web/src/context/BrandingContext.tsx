@@ -9,6 +9,7 @@ import {
   BRANDING_THEME_RESOLVED_EVENT,
   normalizeAppearance,
 } from '../lib/branding-appearance';
+import { sanitizeImageSrc } from '../lib/safe-url';
 import { applySurfacePreset } from '../lib/branding-theme-palettes';
 
 interface BrandingContextValue {
@@ -43,7 +44,7 @@ function setFavicon(url: string) {
     link.rel = 'icon';
     document.head.appendChild(link);
   }
-  link.href = url || '/favicon.ico';
+  link.href = sanitizeImageSrc(url) ?? '/favicon.ico';
 }
 
 function applyBranding(config: PanelBranding) {

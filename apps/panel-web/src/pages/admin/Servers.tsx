@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Plus, Search, Server } from 'lucide-react';
 import { api, type AdminNodeSummary, type AdminServerSummary } from '../../lib/api';
@@ -7,10 +7,14 @@ import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/
 import { AdminServerTable } from '../../components/AdminServerRow';
 import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton, StatCard } from '../../components/ui';
 import { isServerEffectivelyRunning, isServerEffectivelyInstalling } from '../../lib/server-runtime';
+import { useAuth } from '../../context/AuthContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 
 type StatusFilter = 'all' | 'normal' | 'installing' | 'suspended';
 
 export function AdminServers() {
+  const { user } = useAuth();
+  const fullAdmin = isFullPanelAdmin(user);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [nodeFilter, setNodeFilter] = useState('');
@@ -25,6 +29,8 @@ export function AdminServers() {
 
   const queryKey = `admin-servers|${debouncedSearch}|${nodeFilter}|${statusFilter}`;
 
+  const wantLiveRef = useRef(false);
+
   const fetchServers = useCallback(
     () =>
       api.admin.servers({
@@ -32,6 +38,7 @@ export function AdminServers() {
         nodeId: nodeFilter || undefined,
         suspended: statusFilter === 'suspended' ? 'true' : undefined,
         status: statusFilter === 'normal' || statusFilter === 'installing' ? statusFilter : undefined,
+        refresh: wantLiveRef.current,
       }),
     [debouncedSearch, nodeFilter, statusFilter],
   );
@@ -45,10 +52,18 @@ export function AdminServers() {
   const list = servers ?? [];
   const nodeList = nodes ?? [];
 
-  useEffect(() => {
-    const timer = window.setInterval(() => void refetch(), 15_000);
-    return () => window.clearInterval(timer);
+  const pollServers = useCallback(() => {
+    wantLiveRef.current = false;
+    return refetch();
   }, [refetch]);
+
+  const pollRef = useRef(pollServers);
+  pollRef.current = pollServers;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void pollRef.current(), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const stats = useMemo(
     () => ({
@@ -68,12 +83,14 @@ export function AdminServers() {
           description="Provision, manage, and monitor all game servers"
           icon={<DsIcon icon={Server} className="ds-icon--muted" />}
           action={
+            fullAdmin ? (
             <Link to="/admin/servers/new">
               <Button>
                 <DsIcon icon={Plus} />
                 Provision server
               </Button>
             </Link>
+            ) : undefined
           }
         />
 
@@ -103,7 +120,7 @@ export function AdminServers() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name, owner, UUID…"
-                className="ds-field py-2 pl-8 pr-3"
+                className="ds-field ds-field--icon-left"
               />
             </div>
             <FilterSelect value={nodeFilter} onChange={(e) => setNodeFilter(e.target.value)}>
@@ -137,9 +154,11 @@ export function AdminServers() {
               title="No servers match your filters"
               description="Broaden your search or provision a new server to populate this list."
               action={
+                fullAdmin ? (
                 <Link to="/admin/servers/new">
                   <Button>Provision server</Button>
                 </Link>
+                ) : undefined
               }
             />
           ) : (

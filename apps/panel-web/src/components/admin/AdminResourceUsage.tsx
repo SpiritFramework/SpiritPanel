@@ -1,7 +1,7 @@
 import { HardDrive, MemoryStick } from 'lucide-react';
 import type { NodeCapacityStats } from '../../lib/api';
 import { formatCapacityLabel, formatFreeLabel, usageTone } from '../../lib/node-capacity';
-import { formatResource } from '../../lib/server-theme';
+import { formatResourceAmount } from '../../lib/server-theme';
 
 const TONE_BAR: Record<'success' | 'warning' | 'danger', string> = {
   success: 'bg-green-500',
@@ -57,7 +57,7 @@ export function NodeCapacityBars({
     return (
       <span className="text-[10px] text-[var(--muted)]">
         {capacity.allocatedMemory > 0 || capacity.allocatedDisk > 0
-          ? `${formatCapacityLabel(capacity.allocatedMemory, 0)} · ${formatResource(capacity.allocatedDisk, 'MiB')} disk`
+          ? `${formatCapacityLabel(capacity.allocatedMemory, 0)} · ${formatResourceAmount(capacity.allocatedDisk, 'MiB')} disk`
           : 'No limits configured'}
       </span>
     );

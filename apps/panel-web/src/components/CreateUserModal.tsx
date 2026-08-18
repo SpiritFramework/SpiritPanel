@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, User, UserPlus } from 'lucide-react';
+import { Shield, User, UserCog, UserPlus } from 'lucide-react';
 import { api, type CreateAdminUserInput } from '../lib/api';
 import { Button, Input } from './Layout';
 import { ModalShell } from './ModalShell';
@@ -107,13 +107,20 @@ export function CreateUserModal({ onClose, onCreated }: { onClose: () => void; o
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
             Access level
           </h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             <RoleOption
               active={form.role === 'user'}
               icon={User}
               title="User"
               description="Can manage their own servers and profile"
               onClick={() => setForm({ ...form, role: 'user' })}
+            />
+            <RoleOption
+              active={form.role === 'staff'}
+              icon={UserCog}
+              title="Staff"
+              description="Light admin: tickets, suspend, read-only infra"
+              onClick={() => setForm({ ...form, role: 'staff' })}
             />
             <RoleOption
               active={form.role === 'admin'}

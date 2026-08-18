@@ -1,5 +1,38 @@
 import type { AdminServerDetail, ServerAccessFlags, ServerDetail } from './api';
 
+const DENY_ACCESS: ServerAccessFlags = {
+  isOwner: false,
+  isAdminSupport: false,
+  permissions: [],
+  canConsole: false,
+  canStart: false,
+  canStop: false,
+  canRestart: false,
+  canReadFiles: false,
+  canWriteFiles: false,
+  canCreateFiles: false,
+  canDeleteFiles: false,
+  canReadStartup: false,
+  canUpdateStartup: false,
+  canReadDatabases: false,
+  canCreateDatabases: false,
+  canDeleteDatabases: false,
+  canViewDatabasePassword: false,
+  canManageSubusers: false,
+  canUpdateSettings: false,
+  canReinstall: false,
+  canReadBackups: false,
+  canCreateBackups: false,
+  canDeleteBackups: false,
+  canReadSchedules: false,
+  canManageSchedules: false,
+  canReadAllocations: false,
+  canCreateAllocations: false,
+  canUpdateAllocations: false,
+  canDeleteAllocations: false,
+  canInstallMarketplace: false,
+};
+
 const FULL_ACCESS: ServerAccessFlags = {
   isOwner: true,
   isAdminSupport: false,
@@ -34,7 +67,7 @@ const FULL_ACCESS: ServerAccessFlags = {
 };
 
 export function getServerAccess(server: ServerDetail): ServerAccessFlags {
-  return server.access ?? FULL_ACCESS;
+  return server.access ?? DENY_ACCESS;
 }
 
 /** Map admin server detail into the client shape for shared console UI. */

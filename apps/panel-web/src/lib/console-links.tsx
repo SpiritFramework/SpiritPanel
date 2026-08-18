@@ -1,10 +1,32 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { parseAnsi, type AnsiStyle } from './ansi';
 import { sanitizeLinkHref } from './safe-url';
 
 const URL_PATTERN = /(https?:\/\/[^\s<>"')\]]+)/g;
 
-/** Split console text into plain spans and clickable external links. */
-export function renderConsoleText(text: string): ReactNode[] {
+function styleToCss(style: AnsiStyle): CSSProperties | undefined {
+  if (
+    !style.color &&
+    !style.backgroundColor &&
+    !style.bold &&
+    !style.dim &&
+    !style.underline &&
+    !style.italic
+  ) {
+    return undefined;
+  }
+  return {
+    color: style.color,
+    backgroundColor: style.backgroundColor,
+    fontWeight: style.bold ? 600 : undefined,
+    opacity: style.dim ? 0.72 : undefined,
+    textDecoration: style.underline ? 'underline' : undefined,
+    fontStyle: style.italic ? 'italic' : undefined,
+  };
+}
+
+/** Split plain text into plain spans and clickable external links. */
+function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -21,7 +43,7 @@ export function renderConsoleText(text: string): ReactNode[] {
     if (safeHref) {
       parts.push(
         <a
-          key={`link-${key++}`}
+          key={`${keyPrefix}-link-${key++}`}
           href={safeHref}
           target="_blank"
           rel="noopener noreferrer"
@@ -43,4 +65,23 @@ export function renderConsoleText(text: string): ReactNode[] {
   }
 
   return parts.length > 0 ? parts : [text];
+}
+
+/** Render console text with ANSI colors + clickable links. */
+export function renderConsoleText(text: string): ReactNode[] {
+  const segments = parseAnsi(text);
+  const nodes: ReactNode[] = [];
+
+  for (let index = 0; index < segments.length; index++) {
+    const segment = segments[index]!;
+    if (!segment.text) continue;
+    const css = styleToCss(segment.style);
+    nodes.push(
+      <span key={`ansi-${index}`} className={css ? 'console-ansi' : undefined} style={css}>
+        {renderLinkedText(segment.text, `s${index}`)}
+      </span>,
+    );
+  }
+
+  return nodes.length > 0 ? nodes : [''];
 }

@@ -1,8 +1,33 @@
 import { ApiError, dispatchSessionExpired, sanitizeClientError } from './api-errors';
+import { sanitizeLinkHref } from './safe-url';
 
 const API = '/api';
 
 export { ApiError } from './api-errors';
+
+// Exponential backoff configuration for 429 (rate limit) responses
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000; // 1 second
+const MAX_DELAY_MS = 15000; // 15 seconds
+
+// Request deduplication for GET requests to prevent duplicate API calls
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+function getRequestCacheKey(path: string, options: RequestInit): string | null {
+  // Only cache GET requests (no method specified defaults to GET)
+  const method = options.method?.toUpperCase() ?? 'GET';
+  if (method !== 'GET') return null;
+  
+  // Don't cache if there's custom behavior requested
+  return `${method}:${path}`;
+}
+
+function calculateBackoffDelay(attempt: number): number {
+  // Exponential backoff: base * 2^attempt + jitter
+  const exponentialDelay = BASE_DELAY_MS * Math.pow(2, attempt);
+  const jitter = Math.random() * 0.1 * exponentialDelay; // 0-10% jitter
+  return Math.min(exponentialDelay + jitter, MAX_DELAY_MS);
+}
 
 export interface User {
   id: string;
@@ -59,7 +84,7 @@ export interface CreateAdminUserInput {
   email: string;
   username: string;
   password: string;
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'staff' | 'user';
   firstName?: string;
   lastName?: string;
 }
@@ -68,7 +93,7 @@ export interface UpdateAdminUserInput {
   email?: string;
   username?: string;
   password?: string;
-  role?: 'admin' | 'user';
+  role?: 'admin' | 'staff' | 'user';
   suspended?: boolean;
   firstName?: string | null;
   lastName?: string | null;
@@ -127,23 +152,66 @@ async function failRequest(res: Response): Promise<never> {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers: { ...requestHeaders(options), ...options.headers },
-    });
-  } catch {
-    throw new ApiError(sanitizeClientError(503), 503);
+  const cacheKey = getRequestCacheKey(path, options);
+  
+  // Return cached pending request for GET requests to prevent duplicate calls
+  if (cacheKey && pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey) as Promise<T>;
   }
-  if (!res.ok) {
-    await failRequest(res);
+
+  const executeRequest = async (): Promise<T> => {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(`${API}${path}`, {
+          ...options,
+          credentials: 'include',
+          headers: { ...requestHeaders(options), ...options.headers },
+        });
+      } catch {
+        throw new ApiError(sanitizeClientError(503), 503);
+      }
+
+      // Handle 429 (rate limit) with exponential backoff — skip for bootstrap auth calls
+      const isBootstrapAuth = path === '/auth/me' || path === '/auth/branding';
+      if (res.status === 429 && attempt < MAX_RETRIES && !isBootstrapAuth) {
+        const delay = calculateBackoffDelay(attempt);
+        console.warn(`Rate limited (429). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+
+      if (!res.ok) {
+        await failRequest(res);
+      }
+
+      if (res.status === 204 || res.status === 202) return {} as T;
+      const text = await res.text();
+      if (!text.trim()) return {} as T;
+      return JSON.parse(text) as T;
+    }
+
+    // Should not reach here, but fail if we do
+    throw new ApiError(sanitizeClientError(429), 429);
+  };
+
+  const promise = executeRequest();
+
+  // Store the promise for deduplication
+  if (cacheKey) {
+    pendingRequests.set(cacheKey, promise);
+    promise
+      .catch(() => {
+        // Remove from cache on error so it can be retried
+        pendingRequests.delete(cacheKey);
+      })
+      .finally(() => {
+        // Remove from cache after completion
+        pendingRequests.delete(cacheKey);
+      });
   }
-  if (res.status === 204 || res.status === 202) return {} as T;
-  const text = await res.text();
-  if (!text.trim()) return {} as T;
-  return JSON.parse(text) as T;
+
+  return promise;
 }
 
 async function requestText(path: string, options: RequestInit = {}): Promise<string> {
@@ -357,6 +425,32 @@ export const api = {
       request<ServerAllocationsResponse>(`/admin/servers/${serverId}/allocations/${allocationId}`, {
         method: 'DELETE',
       }),
+    serverDomain: (serverId: string) => request<ServerDomainResponse>(`/admin/servers/${serverId}/domain`),
+    createServerDomain: (serverId: string, data: { slug: string; preferSubdomain?: boolean }) =>
+      request<ServerDomainResponse>(`/admin/servers/${serverId}/domain`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateServerDomainPreference: (serverId: string, preferSubdomain: boolean) =>
+      request<ServerDomainResponse>(`/admin/servers/${serverId}/domain`, {
+        method: 'PATCH',
+        body: JSON.stringify({ preferSubdomain }),
+      }),
+    deleteServerDomain: (serverId: string) =>
+      request<ServerDomainResponse>(`/admin/servers/${serverId}/domain`, { method: 'DELETE' }),
+    listDomains: () =>
+      request<
+        Array<
+          ServerDomainInfo & {
+            server: {
+              id: string;
+              name: string;
+              owner: { id: string; username: string; email: string };
+              node: { id: string; name: string; domainBase: string | null };
+            };
+          }
+        >
+      >('/admin/domains'),
     nests: (params?: { search?: string }) => {
       const q = new URLSearchParams();
       if (params?.search) q.set('search', params.search);
@@ -394,12 +488,14 @@ export const api = {
       nodeId?: string;
       suspended?: string;
       status?: string;
+      refresh?: boolean;
     }) => {
       const q = new URLSearchParams();
       if (params?.search) q.set('search', params.search);
       if (params?.nodeId) q.set('nodeId', params.nodeId);
       if (params?.suspended) q.set('suspended', params.suspended);
       if (params?.status) q.set('status', params.status);
+      if (params?.refresh) q.set('refresh', 'true');
       const qs = q.toString();
       return request<AdminServerSummary[]>(`/admin/servers${qs ? `?${qs}` : ''}`);
     },
@@ -416,6 +512,10 @@ export const api = {
       request<{ response: string[] }>(`/admin/servers/${id}/install-logs`),
     serverPower: (id: string, action: string) =>
       request(`/admin/servers/${id}/power`, { method: 'POST', body: JSON.stringify({ action }) }),
+    clearServerPowerState: (id: string) =>
+      request<{ success: boolean; containerState: string }>(`/admin/servers/${id}/clear-power-state`, {
+        method: 'POST',
+      }),
     reinstallServer: (id: string, wipeFiles = false) =>
       request(`/admin/servers/${id}/reinstall`, {
         method: 'POST',
@@ -431,6 +531,12 @@ export const api = {
       if (options?.cursor) params.set('cursor', options.cursor);
       return request<ActivityPageResponse>(`/admin/activity?${params}`);
     },
+    clearActivity: (scope: 'panel' | 'auth' | 'admin' = 'panel') =>
+      request<{ deleted: number; scope: string }>(`/admin/activity?scope=${scope}`, {
+        method: 'DELETE',
+      }),
+    clearServerActivity: (id: string) =>
+      request<{ deleted: number }>(`/admin/servers/${id}/activity`, { method: 'DELETE' }),
     settings: () => request<Record<string, unknown>>('/admin/settings'),
     updateSettings: (data: Record<string, unknown>) =>
       request('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
@@ -438,6 +544,11 @@ export const api = {
       request<{ success: boolean }>('/admin/settings/smtp/test', {
         method: 'POST',
         body: JSON.stringify({ to, smtp }),
+      }),
+    testCloudflareDns: (data?: { apiToken?: string; zoneId?: string }) =>
+      request<{ ok: true; zoneName?: string }>('/admin/settings/cloudflare/test', {
+        method: 'POST',
+        body: JSON.stringify(data ?? {}),
       }),
     previewEmailTemplate: (
       templateId: import('./email-templates').EmailTemplateId,
@@ -513,32 +624,63 @@ export const api = {
         method: 'DELETE',
       }),
     databases: () => request<AdminDatabaseSummary[]>('/admin/databases'),
-    marketplacePlugins: () => request<AdminMarketplacePlugin[]>('/admin/marketplace/plugins'),
-    createMarketplacePlugin: (data: MarketplacePluginInput) =>
-      request<MarketplacePluginSummary>('/admin/marketplace/plugins', {
+
+    tickets: (params?: {
+      status?: TicketStatus;
+      priority?: TicketPriority;
+      search?: string;
+      assigneeId?: string;
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set('status', params.status);
+      if (params?.priority) qs.set('priority', params.priority);
+      if (params?.search) qs.set('search', params.search);
+      if (params?.assigneeId) qs.set('assigneeId', params.assigneeId);
+      const q = qs.toString();
+      return request<{ items: TicketSummary[] }>(`/admin/tickets${q ? `?${q}` : ''}`);
+    },
+    ticket: (id: string) => request<TicketDetail>(`/admin/tickets/${id}`),
+    updateTicket: (id: string, data: UpdateTicketInput) =>
+      request<TicketDetail>(`/admin/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    replyTicket: async (id: string, input: { body: string; images?: File[] }) => {
+      if (input.images?.length) {
+        const form = new FormData();
+        form.append('body', input.body);
+        for (const img of input.images) form.append('images', img, img.name);
+        const res = await fetch(`${API}/admin/tickets/${id}/messages`, {
+          method: 'POST',
+          credentials: 'include',
+          body: form,
+        });
+        if (!res.ok) await failRequest(res);
+        return res.json() as Promise<TicketDetail>;
+      }
+      return request<TicketDetail>(`/admin/tickets/${id}/messages`, {
         method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    updateMarketplacePlugin: (id: string, data: Partial<MarketplacePluginInput>) =>
-      request<MarketplacePluginSummary>(`/admin/marketplace/plugins/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-    deleteMarketplacePlugin: (id: string) =>
-      request<{ deleted: boolean }>(`/admin/marketplace/plugins/${id}`, { method: 'DELETE' }),
+        body: JSON.stringify({ body: input.body }),
+      });
+    },
+    deleteTicket: (id: string) =>
+      request<{ deleted: boolean }>(`/admin/tickets/${id}`, { method: 'DELETE' }),
   },
 
   client: {
-    servers: () => request<ServerSummary[]>('/client/servers'),
+    servers: (refresh = false) =>
+      request<ServerSummary[]>(`/client/servers${refresh ? '?refresh=true' : ''}`),
     server: (id: string) => request<ServerDetail>(`/client/servers/${id}`),
     power: (id: string, action: string) =>
       request(`/client/servers/${id}/power`, { method: 'POST', body: JSON.stringify({ action }) }),
+    clearPowerState: (id: string) =>
+      request<{ success: boolean; containerState: string }>(`/client/servers/${id}/clear-power-state`, {
+        method: 'POST',
+      }),
     reinstall: (id: string, wipeFiles: boolean) =>
       request(`/client/servers/${id}/reinstall`, {
         method: 'POST',
         body: JSON.stringify({ wipeFiles }),
       }),
     ping: (id: string) => request<{ ping: number | null; reachable: boolean }>(`/client/servers/${id}/ping`),
+    playerCount: (id: string) => request<ServerPlayerCountResponse>(`/client/servers/${id}/players`),
     websocket: (id: string) => request<{ token: string; socket: string }>(`/client/servers/${id}/websocket`),
     files: (id: string, directory = '/') =>
       request(`/client/servers/${id}/files?directory=${encodeURIComponent(directory)}`),
@@ -591,6 +733,8 @@ export const api = {
       if (options?.cursor) params.set('cursor', options.cursor);
       return request<ActivityPageResponse>(`/client/servers/${id}/activity?${params}`);
     },
+    clearActivity: (id: string) =>
+      request<{ deleted: number }>(`/client/servers/${id}/activity`, { method: 'DELETE' }),
     stats: (id: string, range = '24h') =>
       request<ServerStatsResponse>(`/client/servers/${id}/stats?range=${range}`),
     statsSnapshot: (
@@ -611,6 +755,19 @@ export const api = {
     networkAllocations: (id: string) =>
       request<ServerAllocationsResponse>(`/client/servers/${id}/network/allocations`),
     connection: (id: string) => request<ServerConnectionInfo>(`/client/servers/${id}/connection`),
+    serverDomain: (id: string) => request<ServerDomainResponse>(`/client/servers/${id}/network/domain`),
+    createServerDomain: (id: string, data: { slug: string; preferSubdomain?: boolean }) =>
+      request<ServerDomainResponse>(`/client/servers/${id}/network/domain`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateServerDomainPreference: (id: string, preferSubdomain: boolean) =>
+      request<ServerDomainResponse>(`/client/servers/${id}/network/domain`, {
+        method: 'PATCH',
+        body: JSON.stringify({ preferSubdomain }),
+      }),
+    deleteServerDomain: (id: string) =>
+      request<ServerDomainResponse>(`/client/servers/${id}/network/domain`, { method: 'DELETE' }),
     createNetworkAllocation: (id: string) =>
       request<ServerAllocationsResponse>(`/client/servers/${id}/network/allocations`, { method: 'POST' }),
     setPrimaryNetworkAllocation: (id: string, allocationId: string) =>
@@ -656,6 +813,11 @@ export const api = {
       request(`/client/servers/${serverId}/files/rename`, {
         method: 'PUT',
         body: JSON.stringify({ root, files }),
+      }),
+    moveFiles: (serverId: string, files: Array<{ source: string; destination: string }>) =>
+      request<{ success: boolean; moved: number }>(`/client/servers/${serverId}/files/move`, {
+        method: 'POST',
+        body: JSON.stringify({ files }),
       }),
     copyFile: (serverId: string, location: string) =>
       request(`/client/servers/${serverId}/files/copy`, {
@@ -720,12 +882,14 @@ export const api = {
         limit: number;
         used: number;
         canCreate: boolean;
+        disk?: ServerBackupDiskBudget;
       }>(`/client/servers/${serverId}/backups`);
       return {
         items: res.backups,
         limit: res.limit,
         used: res.used,
         canCreate: res.canCreate,
+        disk: res.disk,
       } satisfies ServerResourceQuotaResponse<ServerBackupSummary>;
     },
     createBackup: (serverId: string, name: string, ignored?: string) =>
@@ -743,7 +907,9 @@ export const api = {
       }),
     downloadBackup: async (id: string) => {
       const { url } = await request<{ url: string }>(`/client/backups/${id}/download`);
-      window.open(url, '_blank');
+      const safe = sanitizeLinkHref(url);
+      if (!safe) throw new ApiError('Invalid download URL', 400);
+      window.open(safe, '_blank', 'noopener,noreferrer');
     },
     schedules: (serverId: string) => request<ServerScheduleSummary[]>(`/client/servers/${serverId}/schedules`),
     createSchedule: (
@@ -778,11 +944,8 @@ export const api = {
     deleteSchedule: (id: string) => request<{ deleted: boolean }>(`/client/schedules/${id}`, { method: 'DELETE' }),
     marketplace: (serverId: string) =>
       request<MarketplacePageResponse>(`/client/servers/${serverId}/marketplace`),
-    marketplaceInstall: (serverId: string, pluginId: string) =>
-      request(`/client/servers/${serverId}/marketplace/install`, {
-        method: 'POST',
-        body: JSON.stringify({ pluginId }),
-      }),
+    marketplaceLayout: (serverId: string) =>
+      request<{ layout: FivemServerLayout }>(`/client/servers/${serverId}/marketplace/layout`),
     marketplaceUninstall: (serverId: string, pluginId: string) =>
       request(`/client/servers/${serverId}/marketplace/uninstall`, {
         method: 'POST',
@@ -835,6 +998,77 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ installId }),
       }),
+
+    plugins: (serverId: string) =>
+      request<MinecraftPluginsPageResponse>(`/client/servers/${serverId}/plugins`),
+    pluginsSearch: (
+      serverId: string,
+      params?: { q?: string; offset?: number; limit?: number; index?: string; category?: string },
+    ) => {
+      const qs = new URLSearchParams();
+      if (params?.q) qs.set('q', params.q);
+      if (params?.offset != null) qs.set('offset', String(params.offset));
+      if (params?.limit != null) qs.set('limit', String(params.limit));
+      if (params?.index) qs.set('index', params.index);
+      if (params?.category) qs.set('category', params.category);
+      const q = qs.toString();
+      return request<MinecraftPluginsSearchResponse>(
+        `/client/servers/${serverId}/plugins/search${q ? `?${q}` : ''}`,
+      );
+    },
+    pluginsProject: (serverId: string, slug: string) =>
+      request<MinecraftPluginProjectResponse>(
+        `/client/servers/${serverId}/plugins/project/${encodeURIComponent(slug)}`,
+      ),
+    pluginsInstall: (
+      serverId: string,
+      body: { projectId: string; versionId?: string | null; installDependencies?: boolean },
+    ) =>
+      request<{ installed: MinecraftPluginInstallEntry }>(`/client/servers/${serverId}/plugins/install`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    pluginsUninstall: (serverId: string, installId: string, installPath?: string) =>
+      request(`/client/servers/${serverId}/plugins/uninstall`, {
+        method: 'POST',
+        body: JSON.stringify({ installId, ...(installPath ? { installPath } : {}) }),
+      }),
+    pluginsUpdate: (serverId: string, installId: string) =>
+      request<{ installed: MinecraftPluginInstallEntry }>(`/client/servers/${serverId}/plugins/update`, {
+        method: 'POST',
+        body: JSON.stringify({ installId }),
+      }),
+
+    ticketMeta: () => request<TicketMetaResponse>('/client/tickets/meta'),
+    tickets: (params?: { status?: 'open' | 'closed' | 'all' }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set('status', params.status);
+      const q = qs.toString();
+      return request<{ items: TicketSummary[] }>(`/client/tickets${q ? `?${q}` : ''}`);
+    },
+    ticket: (id: string) => request<TicketDetail>(`/client/tickets/${id}`),
+    createTicket: (data: CreateTicketInput) =>
+      request<TicketDetail>('/client/tickets', { method: 'POST', body: JSON.stringify(data) }),
+    replyTicket: async (id: string, input: { body: string; images?: File[] }) => {
+      if (input.images?.length) {
+        const form = new FormData();
+        form.append('body', input.body);
+        for (const img of input.images) form.append('images', img, img.name);
+        const res = await fetch(`${API}/client/tickets/${id}/messages`, {
+          method: 'POST',
+          credentials: 'include',
+          body: form,
+        });
+        if (!res.ok) await failRequest(res);
+        return res.json() as Promise<TicketDetail>;
+      }
+      return request<TicketDetail>(`/client/tickets/${id}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ body: input.body }),
+      });
+    },
+    closeTicket: (id: string) =>
+      request<TicketDetail>(`/client/tickets/${id}/close`, { method: 'POST' }),
   },
 
   branding: () => request<import('./panel-settings').PanelBranding>('/auth/branding'),
@@ -988,6 +1222,15 @@ export interface NodeCapacityStats {
   diskUsedPercent: number;
 }
 
+export interface NodeLiveUsageSummary {
+  liveMemoryBytes: number;
+  liveDiskBytes: number;
+  liveCpuPercent: number;
+  liveServerCount: number;
+  serverCount: number;
+  runningCount: number;
+}
+
 export interface NodeStatsSeriesPoint {
   recordedAt: string;
   cpu: number;
@@ -1048,6 +1291,9 @@ export interface AdminNodeSummary {
   disk: number;
   daemonListen: number;
   daemonSftp: number;
+  publicIp?: string | null;
+  domainBase?: string | null;
+  cloudflareZoneId?: string | null;
   createdAt: string;
   online?: boolean;
   wingsVersion?: string | null;
@@ -1075,11 +1321,66 @@ export interface NodeDiagnostics {
 }
 
 export interface ServerConnectionInfo {
-  game: { address: string; hostname: string; port: number };
+  game: {
+    address: string;
+    hostname: string;
+    port: number;
+    ipAddress?: string;
+    subdomainAddress?: string | null;
+    preferSubdomain?: boolean;
+  };
+  domain?: {
+    feature: ServerDomainFeature;
+    current: ServerDomainInfo | null;
+  } | null;
   sftp: { host: string; port: number; username: string; uri: string };
   node: { name: string; fqdn: string; scheme: string; behindProxy: boolean };
   panel: { url: string };
   console: { hint: string };
+}
+
+export interface ServerDomainFeature {
+  enabled: boolean;
+  baseDomain: string;
+  canManage: boolean;
+  reason: string | null;
+  reservedSlugs: string[];
+  /** True when this egg can use Minecraft Java SRV (hostname-only join). */
+  hostnameOnlySupported?: boolean;
+}
+
+export interface ServerDomainInfo {
+  id: string;
+  slug: string;
+  fqdn: string;
+  targetIp: string;
+  status: string;
+  message: string | null;
+  preferSubdomain: boolean;
+  hostnameOnly?: boolean;
+  srvPort?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServerDomainResponse {
+  feature: ServerDomainFeature;
+  domain: ServerDomainInfo | null;
+  preferSubdomain: boolean;
+  ipAddress: string;
+  subdomainAddress: string | null;
+  preferredAddress: string;
+  port: number;
+}
+
+export interface ServerPlayerCountResponse {
+  online: number;
+  max: number | null;
+  source: 'fivem' | 'gamedig' | 'none';
+  queryType: string | null;
+  supported: boolean;
+  offline: boolean;
+  error: string | null;
 }
 
 export interface AdminNodeDetail extends Omit<AdminNodeSummary, '_count'> {
@@ -1095,6 +1396,7 @@ export interface AdminNodeDetail extends Omit<AdminNodeSummary, '_count'> {
   online: boolean;
   system: Record<string, unknown> | null;
   capacity: NodeCapacityStats;
+  liveUsage: NodeLiveUsageSummary | null;
   servers: Array<{
     id: string;
     name: string;
@@ -1174,6 +1476,9 @@ export interface UpdateAdminNodeInput {
   daemonSftp?: number;
   daemonBase?: string;
   uploadSize?: number;
+  publicIp?: string | null;
+  domainBase?: string | null;
+  cloudflareZoneId?: string | null;
 }
 
 export interface AdminServerSummary {
@@ -1212,6 +1517,7 @@ export interface AdminServerDetail extends Omit<AdminServerSummary, 'node' | 'eg
 }
 
 export interface UpdateAdminServerInput {
+  ownerId?: string;
   name?: string;
   description?: string;
   memory?: number;
@@ -1270,6 +1576,17 @@ export interface ServerResourceQuotaResponse<T> {
   limit: number;
   used: number;
   canCreate: boolean;
+  disk?: ServerBackupDiskBudget;
+}
+
+export interface ServerBackupDiskBudget {
+  limitBytes: number | null;
+  fileBytes: number;
+  backupBytes: number;
+  usedBytes: number;
+  freeBytes: number | null;
+  estimatedBackupBytes: number;
+  canFitEstimatedBackup: boolean;
 }
 
 export interface ServerDatabaseSummary {
@@ -1348,6 +1665,77 @@ export interface ActivityPageResponse {
   nextCursor: string | null;
 }
 
+export type TicketStatus = 'open' | 'awaiting_reply' | 'in_progress' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface TicketUserSummary {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface TicketSummary {
+  id: string;
+  number: number;
+  subject: string;
+  category: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  user: TicketUserSummary;
+  server: { id: string; name: string } | null;
+  assignee: TicketUserSummary | null;
+  lastMessageAt: string | null;
+  lastMessageStaff: boolean;
+}
+
+export interface TicketAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  body: string;
+  isStaff: boolean;
+  createdAt: string;
+  author: TicketUserSummary;
+  attachments: TicketAttachment[];
+}
+
+export interface TicketDetail extends TicketSummary {
+  messages: TicketMessage[];
+}
+
+export interface TicketMetaResponse {
+  categories: Array<{ id: string; label: string }>;
+  allowServerTickets: boolean;
+  requireServer: boolean;
+  maxOpenPerUser: number;
+}
+
+export interface CreateTicketInput {
+  subject: string;
+  category: string;
+  serverId?: string | null;
+  message: string;
+  priority?: TicketPriority;
+}
+
+export interface UpdateTicketInput {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+}
+
 export interface ServerDetail extends ServerSummary {
   memory: number;
   disk: number;
@@ -1370,6 +1758,7 @@ export interface ServerDetail extends ServerSummary {
   }>;
   access?: ServerAccessFlags;
   marketplaceEnabled?: boolean;
+  minecraftPluginsEnabled?: boolean;
 }
 
 export interface ServerAccessFlags {
@@ -1469,6 +1858,8 @@ export type MarketplaceInstallEntry = MarketplaceCatalogInstallEntry | Marketpla
 
 export interface FivemServerLayout {
   layout: 'txadmin' | 'flat' | 'unknown';
+  /** Detected resources directory (parent folder for installs). */
+  resourcesPath: string;
   resourcesBase: string;
   cfgFile: string;
   profileName: string | null;
@@ -1556,11 +1947,115 @@ export interface GithubFeaturedScript extends GithubSearchResult {
 
 export interface MarketplacePageResponse {
   isFiveM: boolean;
-  allowCatalog: boolean;
   allowGithubInstalls: boolean;
-  layout: FivemServerLayout | null;
-  catalog: MarketplaceCatalogEntry[];
   installed: MarketplaceInstallEntry[];
+}
+
+export interface MinecraftPluginInstallEntry {
+  id: string;
+  source: 'modrinth' | 'disk';
+  projectId: string | null;
+  projectSlug: string | null;
+  versionId: string | null;
+  versionNumber: string;
+  displayName: string;
+  name: string;
+  filename: string;
+  installPath: string;
+  installDir: string;
+  projectType: string;
+  iconUrl: string | null;
+  loaders: string[];
+  installedAt: string | null;
+  modrinthUrl: string | null;
+  onDisk?: boolean;
+  recognized?: boolean;
+  updateAvailable?: { latestVersionId: string; latestVersionNumber: string } | null;
+}
+
+export interface MinecraftPluginsPageResponse {
+  isMinecraft: boolean;
+  allowModrinthInstalls: boolean;
+  platformLabel: string;
+  kind: string;
+  loaders: string[];
+  projectTypes: string[];
+  gameVersion: string | null;
+  diskFilenames?: string[];
+  diskPaths?: string[];
+  installedProjectIds?: string[];
+  installed: MinecraftPluginInstallEntry[];
+}
+
+export interface MinecraftPluginSearchHit {
+  projectId: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  iconUrl: string | null;
+  downloads: number;
+  follows: number;
+  categories: string[];
+  displayCategories: string[];
+  projectType: string;
+  versions: string[];
+  dateModified: string;
+  clientSide: string;
+  serverSide: string;
+}
+
+export interface MinecraftPluginsSearchResponse {
+  hits: MinecraftPluginSearchHit[];
+  offset: number;
+  limit: number;
+  totalHits: number;
+  gameVersion: string | null;
+  platformLabel: string;
+  kind?: string;
+  loaders: string[];
+  category?: string | null;
+}
+
+export interface MinecraftPluginProjectResponse {
+  project: {
+    id: string;
+    slug: string;
+    title: string;
+    description: string;
+    body: string;
+    iconUrl: string | null;
+    downloads: number;
+    followers: number;
+    categories: string[];
+    loaders: string[];
+    gameVersions: string[];
+    projectType: string;
+    serverSide: string;
+    clientSide: string;
+    sourceUrl: string | null;
+    issuesUrl: string | null;
+    discordUrl: string | null;
+    gallery?: Array<{ url: string; featured: boolean; title: string | null }>;
+  };
+  versions: Array<{
+    id: string;
+    name: string;
+    versionNumber: string;
+    versionType: string;
+    loaders: string[];
+    gameVersions: string[];
+    datePublished: string;
+    downloads: number;
+    primaryFilename: string | null;
+    onDisk?: boolean;
+  }>;
+  gameVersion: string | null;
+  platformLabel: string;
+  loaders: string[];
+  diskFilenames?: string[];
+  diskPaths?: string[];
+  installed: MinecraftPluginInstallEntry | null;
 }
 
 export interface AdminMarketplacePlugin extends MarketplacePluginSummary {
@@ -1630,4 +2125,6 @@ export interface ServerStatsResponse {
   range: string;
   live: StatPoint | null;
   series: StatPoint[];
+  /** Completed backup archive bytes counted toward disk with file usage. */
+  diskBackupBytes?: number;
 }

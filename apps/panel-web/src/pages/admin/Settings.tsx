@@ -12,6 +12,7 @@ import {
   Sparkles,
   RefreshCw,
   Store,
+  LifeBuoy,
   Type,
   UserPlus,
   Wrench,
@@ -30,10 +31,14 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAINTENANCE,
   DEFAULT_MARKETPLACE,
+  DEFAULT_MINECRAFT_PLUGINS,
+  DEFAULT_TICKETS,
   DEFAULT_SECURITY,
   type PanelGeneralSettings,
   type PanelMaintenanceSettings,
   type PanelMarketplaceSettings,
+  type PanelMinecraftPluginsSettings,
+  type PanelTicketsSettings,
   type PanelSecuritySettings,
 } from '../../lib/panel-settings';
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
@@ -57,8 +62,10 @@ import { EmailTemplatesPanel } from '../../components/admin/EmailTemplatesPanel'
 import {
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_TURNSTILE_FORM,
+  DEFAULT_CLOUDFLARE_DNS_FORM,
   type EmailTemplatesSettings,
   type TurnstileForm,
+  type CloudflareDnsForm,
 } from '../../lib/email-templates';
 
 type Tab = 'branding' | 'general' | 'access' | 'maintenance' | 'email';
@@ -120,11 +127,17 @@ export function AdminSettings() {
   const [security, setSecurity] = useState<PanelSecuritySettings>(DEFAULT_SECURITY);
   const [registration, setRegistration] = useState(false);
   const [marketplace, setMarketplace] = useState<PanelMarketplaceSettings>(DEFAULT_MARKETPLACE);
+  const [minecraftPlugins, setMinecraftPlugins] = useState<PanelMinecraftPluginsSettings>(DEFAULT_MINECRAFT_PLUGINS);
+  const [tickets, setTickets] = useState<PanelTicketsSettings>(DEFAULT_TICKETS);
   const [smtp, setSmtp] = useState<SmtpForm>(DEFAULT_SMTP_FORM);
   const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplatesSettings>(DEFAULT_EMAIL_TEMPLATES);
   const [turnstile, setTurnstile] = useState<TurnstileForm>(DEFAULT_TURNSTILE_FORM);
   const [turnstileSecretSet, setTurnstileSecretSet] = useState(false);
+  const [cloudflareDns, setCloudflareDns] = useState<CloudflareDnsForm>(DEFAULT_CLOUDFLARE_DNS_FORM);
+  const [cloudflareTokenSet, setCloudflareTokenSet] = useState(false);
+  const [cfTestResult, setCfTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [cfTesting, setCfTesting] = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -155,6 +168,11 @@ export function AdminSettings() {
       const nextSecurity = { ...DEFAULT_SECURITY, ...(s.security as PanelSecuritySettings | undefined) };
       const nextRegistration = Boolean((s.registration_enabled as { enabled?: boolean } | undefined)?.enabled);
       const nextMarketplace = { ...DEFAULT_MARKETPLACE, ...(s.marketplace as PanelMarketplaceSettings | undefined) };
+      const nextMinecraftPlugins = {
+        ...DEFAULT_MINECRAFT_PLUGINS,
+        ...(s.minecraft_plugins as PanelMinecraftPluginsSettings | undefined),
+      };
+      const nextTickets = { ...DEFAULT_TICKETS, ...(s.tickets as PanelTicketsSettings | undefined) };
       const rawSmtp = (s.smtp ?? {}) as Partial<SmtpForm> & { passwordSet?: boolean };
       const nextSmtp: SmtpForm = {
         enabled: Boolean(rawSmtp.enabled),
@@ -179,6 +197,22 @@ export function AdminSettings() {
         siteKey: rawTurnstile.siteKey ?? '',
         secretKey: '',
       };
+      const rawCf = (s.cloudflare_dns ?? {}) as Partial<CloudflareDnsForm> & {
+        apiTokenSet?: boolean;
+        reservedSlugs?: string[] | string;
+      };
+      const reservedText = Array.isArray(rawCf.reservedSlugs)
+        ? rawCf.reservedSlugs.join(', ')
+        : typeof rawCf.reservedSlugs === 'string'
+          ? rawCf.reservedSlugs
+          : DEFAULT_CLOUDFLARE_DNS_FORM.reservedSlugs;
+      const nextCloudflare: CloudflareDnsForm = {
+        enabled: Boolean(rawCf.enabled),
+        apiToken: '',
+        zoneId: rawCf.zoneId ?? '',
+        baseDomain: rawCf.baseDomain ?? '',
+        reservedSlugs: reservedText,
+      };
 
       setBranding(nextBranding);
       setGeneral(nextGeneral);
@@ -186,11 +220,15 @@ export function AdminSettings() {
       setSecurity(nextSecurity);
       setRegistration(nextRegistration);
       setMarketplace(nextMarketplace);
+      setMinecraftPlugins(nextMinecraftPlugins);
+      setTickets(nextTickets);
       setSmtp(nextSmtp);
       setSmtpPasswordSet(Boolean(rawSmtp.passwordSet));
       setEmailTemplates(nextEmailTemplates);
       setTurnstile(nextTurnstile);
       setTurnstileSecretSet(Boolean(rawTurnstile.secretKeySet));
+      setCloudflareDns(nextCloudflare);
+      setCloudflareTokenSet(Boolean(rawCf.apiTokenSet));
       setInitial(JSON.stringify({
         branding: nextBranding,
         general: nextGeneral,
@@ -198,9 +236,12 @@ export function AdminSettings() {
         security: nextSecurity,
         registration: nextRegistration,
         marketplace: nextMarketplace,
+        minecraftPlugins: nextMinecraftPlugins,
+        tickets: nextTickets,
         smtp: nextSmtp,
         emailTemplates: nextEmailTemplates,
         turnstile: nextTurnstile,
+        cloudflareDns: nextCloudflare,
       }));
     }).finally(() => setLoading(false));
   }, []);
@@ -223,8 +264,8 @@ export function AdminSettings() {
 
   const hasChanges = useMemo(() => {
     if (loading || !initial) return false;
-    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, marketplace, smtp, emailTemplates, turnstile });
-  }, [branding, general, maintenance, security, registration, marketplace, smtp, emailTemplates, turnstile, initial, loading]);
+    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, marketplace, minecraftPlugins, tickets, smtp, emailTemplates, turnstile, cloudflareDns });
+  }, [branding, general, maintenance, security, registration, marketplace, minecraftPlugins, tickets, smtp, emailTemplates, turnstile, cloudflareDns, initial, loading]);
 
   async function save() {
     setSaving(true);
@@ -246,6 +287,16 @@ export function AdminSettings() {
         siteKey: turnstile.siteKey,
       };
       if (turnstile.secretKey) turnstilePayload.secretKey = turnstile.secretKey;
+      const cloudflarePayload: Record<string, unknown> = {
+        enabled: cloudflareDns.enabled,
+        zoneId: cloudflareDns.zoneId.trim(),
+        baseDomain: cloudflareDns.baseDomain.trim().toLowerCase(),
+        reservedSlugs: cloudflareDns.reservedSlugs
+          .split(/[,\n]+/)
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      };
+      if (cloudflareDns.apiToken) cloudflarePayload.apiToken = cloudflareDns.apiToken;
       await api.admin.updateSettings({
         branding: {
           ...branding,
@@ -256,15 +307,20 @@ export function AdminSettings() {
         security,
         registration_enabled: { enabled: registration },
         marketplace,
+        minecraft_plugins: minecraftPlugins,
+        tickets,
         smtp: smtpPayload,
         email_templates: emailTemplates,
         turnstile: turnstilePayload,
+        cloudflare_dns: cloudflarePayload,
       });
       await refreshBranding();
       if (smtp.password) setSmtpPasswordSet(true);
       if (turnstile.secretKey) setTurnstileSecretSet(true);
+      if (cloudflareDns.apiToken) setCloudflareTokenSet(true);
       setSmtp((prev) => ({ ...prev, password: '' }));
       setTurnstile((prev) => ({ ...prev, secretKey: '' }));
+      setCloudflareDns((prev) => ({ ...prev, apiToken: '' }));
       setInitial(JSON.stringify({
         branding,
         general,
@@ -272,9 +328,12 @@ export function AdminSettings() {
         security,
         registration,
         marketplace,
+        minecraftPlugins,
+        tickets,
         smtp: { ...smtp, password: '' },
         emailTemplates,
         turnstile: { ...turnstile, secretKey: '' },
+        cloudflareDns: { ...cloudflareDns, apiToken: '' },
       }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -294,9 +353,12 @@ export function AdminSettings() {
       security: PanelSecuritySettings;
       registration: boolean;
       marketplace: PanelMarketplaceSettings;
+      minecraftPlugins: PanelMinecraftPluginsSettings;
+      tickets: PanelTicketsSettings;
       smtp: SmtpForm;
       emailTemplates: EmailTemplatesSettings;
       turnstile: TurnstileForm;
+      cloudflareDns: CloudflareDnsForm;
     };
     setBranding(s.branding);
     setGeneral(s.general);
@@ -304,9 +366,12 @@ export function AdminSettings() {
     setSecurity(s.security);
     setRegistration(s.registration);
     setMarketplace(s.marketplace);
+    setMinecraftPlugins(s.minecraftPlugins);
+    setTickets(s.tickets);
     setSmtp(s.smtp);
     setEmailTemplates(s.emailTemplates);
     setTurnstile(s.turnstile);
+    setCloudflareDns(s.cloudflareDns);
     setError('');
     setSaved(false);
   }
@@ -413,11 +478,18 @@ export function AdminSettings() {
               icon: Store,
               label: 'Marketplace',
               value: marketplace.enabled
-                ? marketplace.allowCatalog && marketplace.allowGithubInstalls
-                  ? 'Full'
-                  : marketplace.allowGithubInstalls
-                    ? 'GitHub'
-                    : 'Catalog'
+                ? marketplace.allowGithubInstalls
+                  ? 'GitHub'
+                  : 'Off'
+                : 'Off',
+            },
+            {
+              icon: LifeBuoy,
+              label: 'Tickets',
+              value: tickets.enabled
+                ? tickets.discordWebhookEnabled
+                  ? 'On · Discord'
+                  : 'Enabled'
                 : 'Off',
             },
             { icon: Mail, label: 'Email', value: smtp.enabled ? 'Enabled' : 'Off' },
@@ -569,20 +641,13 @@ export function AdminSettings() {
                           onChange={setRegistration}
                         />
                       </AdminSettingsPanel>
-                      <AdminSettingsPanel title="FiveM marketplace" description="Let users browse and install curated resources on FiveM servers" icon={Store}>
+                      <AdminSettingsPanel title="FiveM marketplace" description="Let users browse and install FiveM resources from GitHub" icon={Store}>
                         <div className="space-y-3">
                           <Checkbox
                             label="Enable FiveM marketplace"
-                            description="When off, the marketplace tab is hidden from users and install APIs return forbidden. Admins can still manage the catalog."
+                            description="When off, the marketplace tab is hidden from users and install APIs return forbidden."
                             checked={marketplace.enabled}
                             onChange={(enabled) => setMarketplace((m) => ({ ...m, enabled }))}
-                          />
-                          <Checkbox
-                            label="Show host catalog"
-                            description="Curated plugins added by admins. Turn off for GitHub-only marketplace."
-                            checked={marketplace.allowCatalog}
-                            disabled={!marketplace.enabled}
-                            onChange={(allowCatalog) => setMarketplace((m) => ({ ...m, allowCatalog }))}
                           />
                           <Checkbox
                             label="Allow GitHub installs"
@@ -591,6 +656,93 @@ export function AdminSettings() {
                             disabled={!marketplace.enabled}
                             onChange={(allowGithubInstalls) => setMarketplace((m) => ({ ...m, allowGithubInstalls }))}
                           />
+                        </div>
+                      </AdminSettingsPanel>
+                      <AdminSettingsPanel title="Minecraft plugins" description="One-click Modrinth installs for Paper, Fabric, Forge, and other Minecraft platforms" icon={Store}>
+                        <div className="space-y-3">
+                          <Checkbox
+                            label="Enable Minecraft plugin store"
+                            description="When off, the Plugins tab is hidden on Minecraft servers."
+                            checked={minecraftPlugins.enabled}
+                            onChange={(enabled) => setMinecraftPlugins((m) => ({ ...m, enabled }))}
+                          />
+                          <Checkbox
+                            label="Allow Modrinth installs"
+                            description="Download plugins/mods/datapacks from Modrinth into the server filesystem."
+                            checked={minecraftPlugins.allowModrinthInstalls}
+                            disabled={!minecraftPlugins.enabled}
+                            onChange={(allowModrinthInstalls) =>
+                              setMinecraftPlugins((m) => ({ ...m, allowModrinthInstalls }))
+                            }
+                          />
+                        </div>
+                      </AdminSettingsPanel>
+                      <AdminSettingsPanel title="Support tickets" description="Let users open tickets for billing, account, and server help" icon={LifeBuoy}>
+                        <div className="space-y-3">
+                          <Checkbox
+                            label="Enable support tickets"
+                            description="When off, the Support tab is hidden and ticket APIs return forbidden."
+                            checked={tickets.enabled}
+                            onChange={(enabled) => setTickets((t) => ({ ...t, enabled }))}
+                          />
+                          <Checkbox
+                            label="Allow server-specific tickets"
+                            description="Users can link a ticket to one of their servers."
+                            checked={tickets.allowServerTickets}
+                            disabled={!tickets.enabled}
+                            onChange={(allowServerTickets) => setTickets((t) => ({ ...t, allowServerTickets }))}
+                          />
+                          <Checkbox
+                            label="Require server selection"
+                            description="Users must pick a server when opening a ticket."
+                            checked={tickets.requireServer}
+                            disabled={!tickets.enabled || !tickets.allowServerTickets}
+                            onChange={(requireServer) => setTickets((t) => ({ ...t, requireServer }))}
+                          />
+                          <div className="max-w-xs">
+                            <Input
+                              label="Max open tickets per user"
+                              type="number"
+                              min={1}
+                              max={50}
+                              value={String(tickets.maxOpenPerUser)}
+                              disabled={!tickets.enabled}
+                              onChange={(e) =>
+                                setTickets((t) => ({
+                                  ...t,
+                                  maxOpenPerUser: Math.min(50, Math.max(1, Number(e.target.value) || 10)),
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="border-t border-[var(--border)] pt-3">
+                            <Checkbox
+                              label="Discord notifications"
+                              description="Send a message to Discord when a user opens a ticket or replies."
+                              checked={tickets.discordWebhookEnabled}
+                              disabled={!tickets.enabled}
+                              onChange={(discordWebhookEnabled) =>
+                                setTickets((t) => ({ ...t, discordWebhookEnabled }))
+                              }
+                            />
+                            <div className="mt-3 max-w-xl">
+                              <Input
+                                label="Discord webhook URL"
+                                type="url"
+                                placeholder={
+                                  tickets.discordWebhookUrlSet
+                                    ? 'Webhook saved — paste a new URL to replace'
+                                    : 'https://discord.com/api/webhooks/…'
+                                }
+                                value={tickets.discordWebhookUrl}
+                                disabled={!tickets.enabled || !tickets.discordWebhookEnabled}
+                                onChange={(e) =>
+                                  setTickets((t) => ({ ...t, discordWebhookUrl: e.target.value }))
+                                }
+                                hint="Discord channel → Edit channel → Integrations → Webhooks → New webhook → Copy webhook URL"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </AdminSettingsPanel>
                       <AdminSettingsPanel title="Security" description="Password requirements for new accounts" icon={KeyRound}>
@@ -646,6 +798,94 @@ export function AdminSettings() {
                               Cloudflare Turnstile
                             </a>
                             . Use managed or non-interactive mode. Turnstile only activates when enabled and both keys are saved.
+                          </p>
+                        </div>
+                      </AdminSettingsPanel>
+                      <AdminSettingsPanel
+                        title="Cloudflare DNS (subdomains)"
+                        description="Let users create one subdomain per server under your zone (DNS-only A/AAAA)"
+                        icon={Globe}
+                      >
+                        <div className="space-y-4">
+                          <Checkbox
+                            label="Enable subdomain manager"
+                            description="Users can create slug.yourdomain.com pointing at their server IP"
+                            checked={cloudflareDns.enabled}
+                            onChange={(enabled) => setCloudflareDns({ ...cloudflareDns, enabled })}
+                          />
+                          <div className="grid w-full gap-4 sm:grid-cols-2">
+                            <Input
+                              label="API token"
+                              type="password"
+                              value={cloudflareDns.apiToken}
+                              onChange={(e) => setCloudflareDns({ ...cloudflareDns, apiToken: e.target.value })}
+                              placeholder={cloudflareTokenSet ? '•••••••• (unchanged)' : 'Cloudflare API token'}
+                              autoComplete="new-password"
+                            />
+                            <Input
+                              label="Zone ID"
+                              value={cloudflareDns.zoneId}
+                              onChange={(e) => setCloudflareDns({ ...cloudflareDns, zoneId: e.target.value })}
+                              placeholder="32-character zone id"
+                              autoComplete="off"
+                            />
+                          </div>
+                          <Input
+                            label="Base domain"
+                            value={cloudflareDns.baseDomain}
+                            onChange={(e) => setCloudflareDns({ ...cloudflareDns, baseDomain: e.target.value })}
+                            placeholder="spirithost.co.uk"
+                            hint="Users create subdomains like fivemrp.spirithost.co.uk — not the panel hostname"
+                          />
+                          <Textarea
+                            label="Reserved slugs"
+                            value={cloudflareDns.reservedSlugs}
+                            onChange={(e) => setCloudflareDns({ ...cloudflareDns, reservedSlugs: e.target.value })}
+                            rows={3}
+                            hint="Comma-separated names users cannot claim (panel, www, api, …)"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={cfTesting}
+                              onClick={async () => {
+                                setCfTesting(true);
+                                setCfTestResult(null);
+                                try {
+                                  const result = await api.admin.testCloudflareDns({
+                                    apiToken: cloudflareDns.apiToken || undefined,
+                                    zoneId: cloudflareDns.zoneId || undefined,
+                                  });
+                                  setCfTestResult({
+                                    ok: true,
+                                    message: result.zoneName
+                                      ? `Connected to zone ${result.zoneName}`
+                                      : 'Cloudflare credentials look good',
+                                  });
+                                } catch (err) {
+                                  setCfTestResult({
+                                    ok: false,
+                                    message: err instanceof Error ? err.message : 'Cloudflare test failed',
+                                  });
+                                } finally {
+                                  setCfTesting(false);
+                                }
+                              }}
+                            >
+                              {cfTesting ? 'Testing…' : 'Test Cloudflare'}
+                            </Button>
+                            {cfTestResult && (
+                              <span className={cfTestResult.ok ? 'text-xs text-emerald-400' : 'text-xs text-rose-400'}>
+                                {cfTestResult.message}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[var(--muted)]">
+                            Create an API token with Zone → DNS → Edit on this zone. Records are always
+                            DNS-only (not proxied) so game ports work. Minecraft Java eggs also get an
+                            SRV record so players can join with the hostname only on random ports. Set
+                            each node’s public IP if allocations use 0.0.0.0.
                           </p>
                         </div>
                       </AdminSettingsPanel>
@@ -813,6 +1053,8 @@ export function AdminSettings() {
                     <div className="mt-3 space-y-1 text-[11px] text-[var(--muted)]">
                       <p className="flex items-center gap-1"><Shield className="h-3 w-3" /> Registration {registration ? 'open' : 'closed'}</p>
                       <p className="flex items-center gap-1"><Store className="h-3 w-3" /> Marketplace {marketplace.enabled ? 'enabled' : 'disabled'}</p>
+                      <p className="flex items-center gap-1"><Store className="h-3 w-3" /> MC plugins {minecraftPlugins.enabled ? 'enabled' : 'disabled'}</p>
+                      <p className="flex items-center gap-1"><LifeBuoy className="h-3 w-3" /> Tickets {tickets.enabled ? 'enabled' : 'disabled'}</p>
                       <p className="flex items-center gap-1"><Lock className="h-3 w-3" /> Min password: {security.minPasswordLength} chars</p>
                       <p className="flex items-center gap-1"><Shield className="h-3 w-3" /> Turnstile {turnstile.enabled ? 'on' : 'off'}</p>
                     </div>

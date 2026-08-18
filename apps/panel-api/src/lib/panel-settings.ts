@@ -5,6 +5,7 @@ import {
   PANEL_TAGLINE,
 } from './product-meta.js';
 import { isSafeHttpUrl, isSafeImageSrc } from './safe-url.js';
+import { isDiscordWebhookUrl } from './discord-webhook.js';
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -113,9 +114,33 @@ export const registrationSchema = z.object({
 
 export const marketplaceSchema = z.object({
   enabled: z.boolean(),
-  allowCatalog: z.boolean().default(true),
   allowGithubInstalls: z.boolean().default(true),
 });
+
+export const minecraftPluginsSchema = z.object({
+  enabled: z.boolean(),
+  allowModrinthInstalls: z.boolean().default(true),
+});
+
+export const ticketsSchema = z
+  .object({
+    enabled: z.boolean(),
+    allowServerTickets: z.boolean().default(true),
+    requireServer: z.boolean().default(false),
+    maxOpenPerUser: z.number().int().min(1).max(50).default(10),
+    discordWebhookEnabled: z.boolean().default(false),
+    discordWebhookUrl: z.string().max(512).default(''),
+  })
+  .superRefine((data, ctx) => {
+    const url = data.discordWebhookUrl.trim();
+    if (url && !isDiscordWebhookUrl(url)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Must be a valid Discord webhook URL (https://discord.com/api/webhooks/…)',
+        path: ['discordWebhookUrl'],
+      });
+    }
+  });
 
 export const smtpSchema = z.object({
   enabled: z.boolean(),
@@ -172,6 +197,14 @@ export const turnstileSchema = z.object({
   secretKey: z.string().max(512).optional().default(''),
 });
 
+export const cloudflareDnsSchema = z.object({
+  enabled: z.boolean(),
+  apiToken: z.string().max(255).optional().default(''),
+  zoneId: z.string().max(64).default(''),
+  baseDomain: z.string().max(253).default(''),
+  reservedSlugs: z.array(z.string().max(63)).max(200).default([]),
+});
+
 export type EmailTemplateId = (typeof EMAIL_TEMPLATE_IDS)[number];
 
 export interface EmailTemplate {
@@ -201,6 +234,14 @@ export interface TurnstileSettings {
   enabled: boolean;
   siteKey: string;
   secretKey: string;
+}
+
+export interface CloudflareDnsSettings {
+  enabled: boolean;
+  apiToken: string;
+  zoneId: string;
+  baseDomain: string;
+  reservedSlugs: string[];
 }
 
 export interface BrandingSettings {
@@ -265,8 +306,21 @@ export interface SecuritySettings {
 
 export interface MarketplaceSettings {
   enabled: boolean;
-  allowCatalog: boolean;
   allowGithubInstalls: boolean;
+}
+
+export interface MinecraftPluginsSettings {
+  enabled: boolean;
+  allowModrinthInstalls: boolean;
+}
+
+export interface TicketsSettings {
+  enabled: boolean;
+  allowServerTickets: boolean;
+  requireServer: boolean;
+  maxOpenPerUser: number;
+  discordWebhookEnabled: boolean;
+  discordWebhookUrl: string;
 }
 
 export interface SmtpSettings {
@@ -339,8 +393,21 @@ export const DEFAULT_SECURITY: SecuritySettings = {
 
 export const DEFAULT_MARKETPLACE: MarketplaceSettings = {
   enabled: true,
-  allowCatalog: true,
   allowGithubInstalls: true,
+};
+
+export const DEFAULT_MINECRAFT_PLUGINS: MinecraftPluginsSettings = {
+  enabled: true,
+  allowModrinthInstalls: true,
+};
+
+export const DEFAULT_TICKETS: TicketsSettings = {
+  enabled: true,
+  allowServerTickets: true,
+  requireServer: false,
+  maxOpenPerUser: 10,
+  discordWebhookEnabled: false,
+  discordWebhookUrl: '',
 };
 
 export const DEFAULT_SMTP: SmtpSettings = {
@@ -458,6 +525,39 @@ export const DEFAULT_TURNSTILE: TurnstileSettings = {
   secretKey: '',
 };
 
+export const DEFAULT_CLOUDFLARE_DNS: CloudflareDnsSettings = {
+  enabled: false,
+  apiToken: '',
+  zoneId: '',
+  baseDomain: '',
+  reservedSlugs: [
+    'panel',
+    'www',
+    'api',
+    'mail',
+    'ftp',
+    'admin',
+    'wings',
+    'ns1',
+    'ns2',
+    'mx',
+    'status',
+    'cdn',
+    'static',
+    'assets',
+    'billing',
+    'support',
+    'help',
+    'remote',
+    'daemon',
+    'sftp',
+    'client',
+    'app',
+    'vpn',
+    'proxy',
+  ],
+};
+
 async function readSetting<T extends object>(key: string, defaults: T): Promise<T> {
   const row = await prisma.panelSetting.findUnique({ where: { key } });
   if (!row?.value || typeof row.value !== 'object') return defaults;
@@ -496,6 +596,22 @@ export async function getTurnstileSettings(): Promise<TurnstileSettings> {
   return readSetting('turnstile', DEFAULT_TURNSTILE);
 }
 
+export async function getCloudflareDnsSettings(): Promise<CloudflareDnsSettings> {
+  const raw = await readSetting('cloudflare_dns', DEFAULT_CLOUDFLARE_DNS);
+  const reserved = Array.isArray(raw.reservedSlugs)
+    ? raw.reservedSlugs
+        .map((s) => String(s).trim().toLowerCase())
+        .filter(Boolean)
+    : DEFAULT_CLOUDFLARE_DNS.reservedSlugs;
+  return {
+    enabled: Boolean(raw.enabled),
+    apiToken: typeof raw.apiToken === 'string' ? raw.apiToken : '',
+    zoneId: typeof raw.zoneId === 'string' ? raw.zoneId.trim() : '',
+    baseDomain: typeof raw.baseDomain === 'string' ? raw.baseDomain.trim().toLowerCase() : '',
+    reservedSlugs: reserved.length > 0 ? [...new Set(reserved)] : DEFAULT_CLOUDFLARE_DNS.reservedSlugs,
+  };
+}
+
 export async function getRegistrationEnabled(): Promise<boolean> {
   const row = await prisma.panelSetting.findUnique({ where: { key: 'registration_enabled' } });
   if (!row?.value) return false;
@@ -504,7 +620,11 @@ export async function getRegistrationEnabled(): Promise<boolean> {
 }
 
 export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
-  return readSetting('marketplace', DEFAULT_MARKETPLACE);
+  const raw = await readSetting('marketplace', DEFAULT_MARKETPLACE);
+  return {
+    enabled: Boolean(raw.enabled),
+    allowGithubInstalls: raw.allowGithubInstalls !== false,
+  };
 }
 
 export async function isMarketplaceEnabled(): Promise<boolean> {
@@ -517,13 +637,52 @@ export async function isMarketplaceGithubInstallsAllowed(): Promise<boolean> {
   return settings.enabled && settings.allowGithubInstalls;
 }
 
-export async function isMarketplaceCatalogAllowed(): Promise<boolean> {
-  const settings = await getMarketplaceSettings();
-  return settings.enabled && settings.allowCatalog;
+export async function getMinecraftPluginsSettings(): Promise<MinecraftPluginsSettings> {
+  const raw = await readSetting('minecraft_plugins', DEFAULT_MINECRAFT_PLUGINS);
+  return {
+    enabled: Boolean(raw.enabled),
+    allowModrinthInstalls: raw.allowModrinthInstalls !== false,
+  };
+}
+
+export async function isMinecraftPluginsEnabled(): Promise<boolean> {
+  const settings = await getMinecraftPluginsSettings();
+  return settings.enabled;
+}
+
+export async function isMinecraftModrinthInstallsAllowed(): Promise<boolean> {
+  const settings = await getMinecraftPluginsSettings();
+  return settings.enabled && settings.allowModrinthInstalls;
+}
+
+export async function getTicketsSettings(): Promise<TicketsSettings> {
+  const raw = await readSetting('tickets', DEFAULT_TICKETS);
+  return {
+    enabled: Boolean(raw.enabled),
+    allowServerTickets: raw.allowServerTickets !== false,
+    requireServer: Boolean(raw.requireServer),
+    maxOpenPerUser: raw.maxOpenPerUser ?? DEFAULT_TICKETS.maxOpenPerUser,
+    discordWebhookEnabled: Boolean(raw.discordWebhookEnabled),
+    discordWebhookUrl: typeof raw.discordWebhookUrl === 'string' ? raw.discordWebhookUrl : '',
+  };
+}
+
+export async function isTicketsEnabled(): Promise<boolean> {
+  const settings = await getTicketsSettings();
+  return settings.enabled;
+}
+
+export async function assertTicketsEnabledForClients(): Promise<void> {
+  const enabled = await isTicketsEnabled();
+  if (!enabled) {
+    const err = new Error('Support tickets are currently disabled');
+    (err as { statusCode?: number }).statusCode = 403;
+    throw err;
+  }
 }
 
 export async function getPublicPanelConfig() {
-  const [branding, general, maintenance, announcement, registrationEnabled, security, turnstile] =
+  const [branding, general, maintenance, announcement, registrationEnabled, security, turnstile, tickets] =
     await Promise.all([
     getBrandingSettings(),
     getGeneralSettings(),
@@ -532,6 +691,7 @@ export async function getPublicPanelConfig() {
     getRegistrationEnabled(),
     getSecuritySettings(),
     getTurnstileSettings(),
+    getTicketsSettings(),
   ]);
 
   const turnstileActive = turnstile.enabled && Boolean(turnstile.siteKey) && Boolean(turnstile.secretKey);
@@ -555,6 +715,7 @@ export async function getPublicPanelConfig() {
     },
     registrationEnabled,
     minPasswordLength: security.minPasswordLength,
+    ticketsEnabled: tickets.enabled,
     turnstileEnabled: turnstileActive,
     turnstileSiteKey: turnstileActive ? turnstile.siteKey : '',
   };

@@ -34,3 +34,26 @@ export const PING_TONE_CLASS: Record<PingTone, string> = {
   danger: 'text-orange-400',
   muted: 'text-[var(--muted)]',
 };
+
+export function formatPlayerCount(
+  online: number | null,
+  max: number | null,
+  loading: boolean,
+  live: boolean,
+  unavailable?: boolean,
+): string {
+  if (!live) return '—';
+  if (loading && online == null) return '…';
+  if (unavailable) return '—';
+  if (online == null) return '—';
+  return max != null ? `${online} / ${max}` : String(online);
+}
+
+export function playerCountTone(
+  online: number | null,
+  live: boolean,
+  unavailable?: boolean,
+): PingTone | 'success' | 'muted' {
+  if (!live || unavailable || online == null) return 'muted';
+  return online > 0 ? 'success' : 'muted';
+}

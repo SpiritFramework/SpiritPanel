@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { getConfig } from '../lib/env.js';
 
 const serverInclude = {
-  egg: { include: { variables: true } },
+  egg: { include: { variables: true, nest: true } },
   node: true,
   defaultAllocation: true,
   extraAllocations: true,

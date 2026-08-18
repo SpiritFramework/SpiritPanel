@@ -5,8 +5,9 @@ import {
   type AdminAllocation,
   type ServerAllocationEntry,
   type ServerAllocationsResponse,
+  type ServerDomainResponse,
 } from '../../lib/api';
-import { Button, Select } from '../Layout';
+import { Button, Input, Select } from '../Layout';
 import { EmptyState, Spinner } from '../ui';
 import { ConfirmModal } from '../ConfirmModal';
 import { AdminEditPanel } from './AdminEditLayout';
@@ -26,6 +27,8 @@ export function AdminServerNetwork({
   fqdn: string;
 }) {
   const [data, setData] = useState<ServerAllocationsResponse | null>(null);
+  const [domainInfo, setDomainInfo] = useState<ServerDomainResponse | null>(null);
+  const [slugDraft, setSlugDraft] = useState('');
   const [free, setFree] = useState<AdminAllocation[]>([]);
   const [selectedFree, setSelectedFree] = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,7 @@ export function AdminServerNetwork({
   const [notice, setNotice] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; address: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDomainOpen, setDeleteDomainOpen] = useState(false);
 
   const loadFree = useCallback(async () => {
     try {
@@ -48,8 +52,14 @@ export function AdminServerNetwork({
     setLoading(true);
     setError('');
     try {
-      const [allocations] = await Promise.all([api.admin.serverAllocations(serverId), loadFree()]);
+      const [allocations, domain] = await Promise.all([
+        api.admin.serverAllocations(serverId),
+        api.admin.serverDomain(serverId).catch(() => null),
+        loadFree(),
+      ]);
       setData(allocations);
+      setDomainInfo(domain);
+      if (domain?.domain?.slug) setSlugDraft(domain.domain.slug);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load allocations');
     } finally {
@@ -117,9 +127,98 @@ export function AdminServerNetwork({
 
   const limit = data?.limit ?? 0;
   const used = data?.used ?? 0;
+  const baseDomain = domainInfo?.feature.baseDomain || '';
+
+  async function saveDomain() {
+    setWorking('domain');
+    setError('');
+    setNotice('');
+    try {
+      const next = await api.admin.createServerDomain(serverId, {
+        slug: slugDraft,
+        preferSubdomain: true,
+      });
+      setDomainInfo(next);
+      setNotice(`Subdomain ${next.domain?.fqdn ?? slugDraft} ready.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save subdomain');
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  async function preferDomain(preferSubdomain: boolean) {
+    setWorking('prefer');
+    setError('');
+    try {
+      setDomainInfo(await api.admin.updateServerDomainPreference(serverId, preferSubdomain));
+      setNotice(preferSubdomain ? 'Players will see the subdomain.' : 'Players will see the IP.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preference');
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  async function confirmDeleteDomain() {
+    setDeleteLoading(true);
+    setWorking('domain-delete');
+    setError('');
+    try {
+      setDomainInfo(await api.admin.deleteServerDomain(serverId));
+      setSlugDraft('');
+      setDeleteDomainOpen(false);
+      setNotice('Subdomain removed from Cloudflare.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove subdomain');
+    } finally {
+      setDeleteLoading(false);
+      setWorking(null);
+    }
+  }
 
   return (
     <>
+    <AdminEditPanel title="Subdomain" icon={Globe}>
+      {!domainInfo ? (
+        <p className="text-sm text-[var(--muted)]">Unable to load subdomain settings.</p>
+      ) : !domainInfo.feature.enabled || !domainInfo.feature.canManage ? (
+        <p className="text-sm text-[var(--muted)]">
+          {domainInfo.feature.reason || 'Configure Cloudflare DNS in Admin Settings to enable subdomains.'}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <Input
+                label="Subdomain"
+                value={slugDraft}
+                onChange={(e) => setSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                placeholder="fivemrp"
+                hint={baseDomain ? `Creates slug.${baseDomain}` : undefined}
+              />
+            </div>
+            <Button type="button" disabled={working === 'domain' || !slugDraft.trim()} onClick={() => void saveDomain()}>
+              {working === 'domain' ? 'Saving…' : domainInfo.domain ? 'Update' : 'Create'}
+            </Button>
+          </div>
+          {domainInfo.domain && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-mono">{domainInfo.subdomainAddress}</span>
+                {domainInfo.domain.hostnameOnly && (
+                  <span className="text-emerald-400">Minecraft SRV · hostname only</span>
+                )}
+                <Button type="button" size="sm" variant={!domainInfo.preferSubdomain ? 'primary' : 'secondary'} disabled={working === 'prefer'} onClick={() => void preferDomain(false)}>Prefer IP</Button>
+                <Button type="button" size="sm" variant={domainInfo.preferSubdomain ? 'primary' : 'secondary'} disabled={working === 'prefer'} onClick={() => void preferDomain(true)}>Prefer subdomain</Button>
+                <Button type="button" size="sm" variant="danger" onClick={() => setDeleteDomainOpen(true)}><Trash2 className="h-3.5 w-3.5" /> Remove</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </AdminEditPanel>
+
     <AdminEditPanel title="Network & allocations" icon={Network}>
       <p className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]/40 px-3 py-2 text-[11px] text-[var(--muted)]">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -192,6 +291,16 @@ export function AdminServerNetwork({
       loading={deleteLoading}
       onClose={() => setDeleteTarget(null)}
       onConfirm={confirmUnassign}
+    />
+    <ConfirmModal
+      open={deleteDomainOpen}
+      title="Remove subdomain?"
+      description="Deletes the Cloudflare DNS record for this server."
+      confirmLabel="Remove subdomain"
+      tone="warning"
+      loading={deleteLoading}
+      onClose={() => setDeleteDomainOpen(false)}
+      onConfirm={() => void confirmDeleteDomain()}
     />
   </>
   );

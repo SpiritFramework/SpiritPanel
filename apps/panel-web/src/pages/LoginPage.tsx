@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Eye, EyeOff, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isStaffOrPanelAdmin } from '../lib/roles';
 import { useBranding } from '../context/BrandingContext';
 import { AuthCard, AuthError, AuthField, AuthLayout } from '../components/AuthLayout';
 import { Button } from '../components/Layout';
@@ -9,7 +10,7 @@ import { Spinner } from '../components/ui';
 import { TurnstileWidget, resetTurnstileWidget } from '../components/TurnstileWidget';
 
 export function LoginPage() {
-  const { user, loading: authLoading, login, completeTwoFactor } = useAuth();
+  const { user, loading: authLoading, login, completeTwoFactor, refreshUser } = useAuth();
   const { branding } = useBranding();
   const navigate = useNavigate();
 
@@ -40,7 +41,7 @@ export function LoginPage() {
   }
 
   if (user) {
-    return <Navigate to="/servers" replace />;
+    return <Navigate to={isStaffOrPanelAdmin(user) ? '/admin' : '/servers'} replace />;
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -52,7 +53,8 @@ export function LoginPage() {
       if (res.twoFactorRequired && res.challenge) {
         setChallenge(res.challenge);
       } else {
-        navigate('/servers');
+        const me = await refreshUser();
+        navigate(isStaffOrPanelAdmin(me) ? '/admin' : '/servers');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -69,7 +71,8 @@ export function LoginPage() {
     setError('');
     try {
       await completeTwoFactor(challenge, code.trim());
-      navigate('/servers');
+      const me = await refreshUser();
+      navigate(isStaffOrPanelAdmin(me) ? '/admin' : '/servers');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {

@@ -1,5 +1,7 @@
 import type { Node, Server } from '@prisma/client';
 import { computeNodeCapacity } from '../lib/node-capacity.js';
+import { mapWithConcurrency } from '../lib/map-concurrency.js';
+import { serverResourceContribution } from '../lib/server-resources.js';
 import { prisma } from '../lib/prisma.js';
 import {
   fetchLiveStats,
@@ -45,6 +47,15 @@ export interface NodeServerLiveStats {
   containerState: string | null;
   live: StatPoint | null;
   liveSource: NodeLiveStatSource;
+}
+
+export interface NodeLiveUsageSummary {
+  liveMemoryBytes: number;
+  liveDiskBytes: number;
+  liveCpuPercent: number;
+  liveServerCount: number;
+  serverCount: number;
+  runningCount: number;
 }
 
 export interface NodeStatsResponse {
@@ -112,23 +123,29 @@ function aggregateSeries(
     });
 }
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let index = 0;
-
-  async function worker() {
-    while (index < items.length) {
-      const i = index++;
-      results[i] = await fn(items[i]);
-    }
+async function loadLatestSnapshots(serverIds: string[]) {
+  if (serverIds.length === 0) {
+    return new Map<
+      string,
+      {
+        recordedAt: Date;
+        cpu: number;
+        memoryBytes: bigint;
+        diskBytes: bigint;
+        networkRxBytes: bigint;
+        networkTxBytes: bigint;
+        state: string;
+      }
+    >();
   }
 
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
-  return results;
+  const rows = await prisma.serverStatSnapshot.findMany({
+    where: { serverId: { in: serverIds } },
+    orderBy: { recordedAt: 'desc' },
+    distinct: ['serverId'],
+  });
+
+  return new Map(rows.map((row) => [row.serverId, row]));
 }
 
 function isServerRunning(
@@ -159,29 +176,54 @@ async function resolveServerLiveStat(
   return { live: null, liveSource: null };
 }
 
-async function loadLatestSnapshots(serverIds: string[]) {
-  if (serverIds.length === 0) {
-    return new Map<
-      string,
-      {
-        recordedAt: Date;
-        cpu: number;
-        memoryBytes: bigint;
-        diskBytes: bigint;
-        networkRxBytes: bigint;
-        networkTxBytes: bigint;
-        state: string;
-      }
-    >();
+function summarizeLiveUsage(
+  servers: NodeServerLiveStats[],
+): NodeLiveUsageSummary {
+  return {
+    serverCount: servers.length,
+    runningCount: servers.filter((s) => isServerRunning(s.live, s.containerState, s.suspended)).length,
+    liveServerCount: servers.filter((s) => s.liveSource === 'wings').length,
+    liveCpuPercent: servers.reduce((sum, s) => sum + (s.live?.cpu ?? 0), 0),
+    liveMemoryBytes: servers.reduce((sum, s) => sum + (s.live?.memoryBytes ?? 0), 0),
+    liveDiskBytes: servers.reduce((sum, s) => sum + (s.live?.diskBytes ?? 0), 0),
+  };
+}
+
+/** Poll Wings for current resource usage across all servers on a node. */
+export async function getNodeLiveUsageSummary(
+  node: Node,
+  servers: Server[],
+): Promise<NodeLiveUsageSummary | null> {
+  if (servers.length === 0) {
+    return {
+      serverCount: 0,
+      runningCount: 0,
+      liveServerCount: 0,
+      liveCpuPercent: 0,
+      liveMemoryBytes: 0,
+      liveDiskBytes: 0,
+    };
   }
 
-  const rows = await prisma.serverStatSnapshot.findMany({
-    where: { serverId: { in: serverIds } },
-    orderBy: { recordedAt: 'desc' },
-    distinct: ['serverId'],
+  const latestSnapshots = await loadLatestSnapshots(servers.map((s) => s.id));
+  const liveResults = await mapWithConcurrency(servers, 4, async (server) => {
+    const { live, liveSource } = await resolveServerLiveStat({ ...server, node }, latestSnapshots);
+    return {
+      id: server.id,
+      name: server.name,
+      memory: server.memory,
+      disk: server.disk,
+      cpu: server.cpu,
+      status: server.status,
+      suspended: server.suspended,
+      installStatus: server.installStatus,
+      containerState: server.containerState,
+      live,
+      liveSource,
+    } satisfies NodeServerLiveStats;
   });
 
-  return new Map(rows.map((row) => [row.serverId, row]));
+  return summarizeLiveUsage(liveResults);
 }
 
 export async function getNodeStats(node: Node & { servers: Server[] }, range: string): Promise<NodeStatsResponse> {
@@ -203,7 +245,10 @@ export async function getNodeStats(node: Node & { servers: Server[] }, range: st
   ]);
 
   const allocated = node.servers.reduce(
-    (acc, s) => ({ memory: acc.memory + s.memory, disk: acc.disk + s.disk }),
+    (acc, s) => ({
+      memory: acc.memory + serverResourceContribution(s.memory),
+      disk: acc.disk + serverResourceContribution(s.disk),
+    }),
     { memory: 0, disk: 0 },
   );
   const capacity = computeNodeCapacity(node, allocated);
@@ -228,27 +273,19 @@ export async function getNodeStats(node: Node & { servers: Server[] }, range: st
   }));
 
   const runningCount = servers.filter((s) => isServerRunning(s.live, s.containerState, s.suspended)).length;
-  const liveServerCount = servers.filter((s) => s.liveSource === 'wings').length;
+  const summary = summarizeLiveUsage(servers);
   const suspendedCount = servers.filter((s) => s.suspended).length;
-  const liveCpuPercent = servers.reduce((sum, s) => sum + (s.live?.cpu ?? 0), 0);
-  const liveMemoryBytes = servers.reduce((sum, s) => sum + (s.live?.memoryBytes ?? 0), 0);
-  const liveDiskBytes = servers.reduce((sum, s) => sum + (s.live?.diskBytes ?? 0), 0);
   const totalCpuLimit = servers.reduce((sum, s) => sum + s.cpu, 0);
 
   return {
     range: rangeKey,
     capacity,
     summary: {
-      serverCount: node.servers.length,
-      runningCount,
+      ...summary,
       suspendedCount,
       totalCpuLimit,
-      liveCpuPercent,
-      liveMemoryBytes,
-      liveDiskBytes,
       assignedAllocations,
       allocationCount,
-      liveServerCount,
     },
     series: aggregateSeries(snapshots, bucketMs),
     servers,

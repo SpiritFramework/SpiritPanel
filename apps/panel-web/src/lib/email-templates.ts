@@ -211,3 +211,20 @@ export const DEFAULT_TURNSTILE_FORM: TurnstileForm = {
   siteKey: '',
   secretKey: '',
 };
+
+export interface CloudflareDnsForm {
+  enabled: boolean;
+  apiToken: string;
+  zoneId: string;
+  baseDomain: string;
+  reservedSlugs: string;
+}
+
+export const DEFAULT_CLOUDFLARE_DNS_FORM: CloudflareDnsForm = {
+  enabled: false,
+  apiToken: '',
+  zoneId: '',
+  baseDomain: '',
+  reservedSlugs:
+    'panel, www, api, mail, ftp, admin, wings, ns1, ns2, mx, status, cdn, static, assets, billing, support, help, remote, daemon, sftp, client, app, vpn, proxy',
+};

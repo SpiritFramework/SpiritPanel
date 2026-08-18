@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
-import { RequireAdmin, RequireAuth } from './components/RequireAuth';
+import { RequireAdmin, RequireAuth, RequireFullAdmin } from './components/RequireAuth';
+import { RequireServerPermission } from './components/RequireServerPermission';
 import { CommandPalette } from './components/CommandPalette';
 import { ServiceUnavailable } from './components/ServiceUnavailable';
 import { PageLoading } from './components/ui';
@@ -32,6 +33,7 @@ const AdminLocationDetail = lazy(() => import('./pages/admin/LocationDetail').th
 const AdminActivity = lazy(() => import('./pages/admin/Activity').then((m) => ({ default: m.AdminActivity })));
 const AdminAnnouncePage = lazy(() => import('./pages/admin/Announce').then((m) => ({ default: m.AdminAnnouncePage })));
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
+const AdminDomainsPage = lazy(() => import('./pages/admin/AdminDomains').then((m) => ({ default: m.AdminDomainsPage })));
 const ServerListPage = lazy(() => import('./pages/client/ServerList').then((m) => ({ default: m.ServerListPage })));
 const ServerConsolePage = lazy(() => import('./pages/client/ServerConsole').then((m) => ({ default: m.ServerConsolePage })));
 const ServerFilesPage = lazy(() => import('./pages/client/ServerFiles').then((m) => ({ default: m.ServerFilesPage })));
@@ -46,8 +48,13 @@ const ServerDatabasesPage = lazy(() => import('./pages/client/ServerDatabases').
 const ServerBackupsPage = lazy(() => import('./pages/client/ServerBackups').then((m) => ({ default: m.ServerBackupsPage })));
 const ServerSchedulesPage = lazy(() => import('./pages/client/ServerSchedules').then((m) => ({ default: m.ServerSchedulesPage })));
 const MarketplaceRoutes = lazy(() => import('./pages/client/MarketplaceRoutes').then((m) => ({ default: m.MarketplaceRoutes })));
+const PluginsRoutes = lazy(() => import('./pages/client/PluginsRoutes').then((m) => ({ default: m.PluginsRoutes })));
 const AdminMarketplacePage = lazy(() => import('./pages/admin/Marketplace').then((m) => ({ default: m.AdminMarketplacePage })));
+const AdminTicketsPage = lazy(() => import('./pages/admin/Tickets').then((m) => ({ default: m.AdminTicketsPage })));
+const AdminTicketDetailPage = lazy(() => import('./pages/admin/TicketDetail').then((m) => ({ default: m.AdminTicketDetailPage })));
 const ProfilePage = lazy(() => import('./pages/client/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+const TicketsPage = lazy(() => import('./pages/client/Tickets').then((m) => ({ default: m.TicketsPage })));
+const TicketDetailPage = lazy(() => import('./pages/client/TicketDetail').then((m) => ({ default: m.TicketDetailPage })));
 const ServerShell = lazy(() => import('./components/ServerLayout').then((m) => ({ default: m.ServerShell })));
 
 function RouteFallback() {
@@ -85,58 +92,67 @@ function PanelRouter() {
             <Route element={<RequireAuth />}>
               <Route path="/servers" element={<ServerListPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/tickets" element={<TicketsPage />} />
+              <Route path="/tickets/:id" element={<TicketDetailPage />} />
               <Route path="/servers/:id" element={<ServerShell />}>
                 <Route index element={<Navigate to="console" replace />} />
-                <Route path="console" element={<ServerConsolePage />} />
-                <Route path="analytics" element={<ServerAnalyticsPage />} />
-                <Route path="network" element={<ServerNetworkPage />} />
-                <Route path="files" element={<ServerFilesPage />} />
-                <Route path="files/edit" element={<ServerFileEditPage />} />
-                <Route path="backups" element={<ServerBackupsPage />} />
-                <Route path="schedules" element={<ServerSchedulesPage />} />
-                <Route path="databases" element={<ServerDatabasesPage />} />
-                <Route path="startup" element={<ServerStartupPage />} />
-                <Route path="users" element={<ServerSubusersPage />} />
-                <Route path="settings" element={<ServerSettingsPage />} />
+                <Route path="console" element={<RequireServerPermission flag="canConsole"><ServerConsolePage /></RequireServerPermission>} />
+                <Route path="analytics" element={<RequireServerPermission flag="canConsole"><ServerAnalyticsPage /></RequireServerPermission>} />
+                <Route path="network" element={<RequireServerPermission flag="canReadAllocations"><ServerNetworkPage /></RequireServerPermission>} />
+                <Route path="files" element={<RequireServerPermission flag="canReadFiles"><ServerFilesPage /></RequireServerPermission>} />
+                <Route path="files/edit" element={<RequireServerPermission flag="canReadFiles"><ServerFileEditPage /></RequireServerPermission>} />
+                <Route path="backups" element={<RequireServerPermission flag="canReadBackups"><ServerBackupsPage /></RequireServerPermission>} />
+                <Route path="schedules" element={<RequireServerPermission flag="canReadSchedules"><ServerSchedulesPage /></RequireServerPermission>} />
+                <Route path="databases" element={<RequireServerPermission flag="canReadDatabases"><ServerDatabasesPage /></RequireServerPermission>} />
+                <Route path="startup" element={<RequireServerPermission flag="canReadStartup"><ServerStartupPage /></RequireServerPermission>} />
+                <Route path="users" element={<RequireServerPermission flag="canManageSubusers"><ServerSubusersPage /></RequireServerPermission>} />
+                <Route path="settings" element={<RequireServerPermission flag="canUpdateSettings"><ServerSettingsPage /></RequireServerPermission>} />
                 <Route path="activity" element={<ServerActivityPage />} />
-                <Route path="marketplace/*" element={<MarketplaceRoutes />} />
+                <Route path="marketplace/*" element={<RequireServerPermission flag="canReadFiles"><MarketplaceRoutes /></RequireServerPermission>} />
+                <Route path="plugins/*" element={<RequireServerPermission flag="canReadFiles"><PluginsRoutes /></RequireServerPermission>} />
               </Route>
               <Route element={<RequireAdmin />}>
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
                 <Route path="/admin/nodes" element={<AdminNodes />} />
-                <Route path="/admin/nodes/new" element={<AdminNodeCreate />} />
-                <Route path="/admin/nodes/:nodeId" element={<AdminNodeDetail />} />
                 <Route path="/admin/servers" element={<AdminServers />} />
-                <Route path="/admin/servers/new" element={<AdminServerCreate />} />
                 <Route path="/admin/servers/:serverId" element={<AdminServerDetail />} />
-                <Route path="/admin/servers/:serverId/console" element={<AdminConsoleRedirect />} />
-                <Route path="/admin/servers/:serverId/manage" element={<AdminServerManageShell />}>
-                  <Route index element={<Navigate to="console" replace />} />
-                  <Route path="console" element={<ServerConsolePage />} />
-                  <Route path="analytics" element={<ServerAnalyticsPage />} />
-                  <Route path="network" element={<ServerNetworkPage />} />
-                  <Route path="files" element={<ServerFilesPage />} />
-                  <Route path="files/edit" element={<ServerFileEditPage />} />
-                  <Route path="backups" element={<ServerBackupsPage />} />
-                  <Route path="schedules" element={<ServerSchedulesPage />} />
-                  <Route path="databases" element={<ServerDatabasesPage />} />
-                  <Route path="startup" element={<ServerStartupPage />} />
-                  <Route path="users" element={<ServerSubusersPage />} />
-                  <Route path="settings" element={<ServerSettingsPage />} />
-                  <Route path="activity" element={<ServerActivityPage />} />
-                  <Route path="marketplace/*" element={<MarketplaceRoutes />} />
-                </Route>
                 <Route path="/admin/nests" element={<AdminNests />} />
                 <Route path="/admin/nests/:nestId" element={<AdminNestDetail />} />
                 <Route path="/admin/eggs/:eggId" element={<AdminEggDetail />} />
                 <Route path="/admin/locations" element={<AdminLocations />} />
                 <Route path="/admin/locations/:locationId" element={<AdminLocationDetail />} />
                 <Route path="/admin/activity" element={<AdminActivity />} />
+                <Route path="/admin/domains" element={<AdminDomainsPage />} />
                 <Route path="/admin/announce" element={<AdminAnnouncePage />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-                <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
+                <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+                <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
+                <Route element={<RequireFullAdmin />}>
+                  <Route path="/admin/nodes/new" element={<AdminNodeCreate />} />
+                  <Route path="/admin/servers/new" element={<AdminServerCreate />} />
+                  <Route path="/admin/servers/:serverId/console" element={<AdminConsoleRedirect />} />
+                  <Route path="/admin/servers/:serverId/manage" element={<AdminServerManageShell />}>
+                    <Route index element={<Navigate to="console" replace />} />
+                    <Route path="console" element={<ServerConsolePage />} />
+                    <Route path="analytics" element={<ServerAnalyticsPage />} />
+                    <Route path="network" element={<ServerNetworkPage />} />
+                    <Route path="files" element={<ServerFilesPage />} />
+                    <Route path="files/edit" element={<ServerFileEditPage />} />
+                    <Route path="backups" element={<ServerBackupsPage />} />
+                    <Route path="schedules" element={<ServerSchedulesPage />} />
+                    <Route path="databases" element={<ServerDatabasesPage />} />
+                    <Route path="startup" element={<ServerStartupPage />} />
+                    <Route path="users" element={<ServerSubusersPage />} />
+                    <Route path="settings" element={<ServerSettingsPage />} />
+                    <Route path="activity" element={<ServerActivityPage />} />
+                    <Route path="marketplace/*" element={<MarketplaceRoutes />} />
+                    <Route path="plugins/*" element={<PluginsRoutes />} />
+                  </Route>
+                  <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
+                </Route>
+                <Route path="/admin/nodes/:nodeId" element={<AdminNodeDetail />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/servers" replace />} />

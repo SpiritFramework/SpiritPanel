@@ -1,320 +1,252 @@
-import { createElement, useMemo, useState, type ReactNode } from 'react';
-import { sanitizeLinkHref } from '../lib/safe-url';
+import { useMemo, useState } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { sanitizeImageSrc, sanitizeLinkHref } from '../lib/safe-url';
 
+const INITIAL_CHAR_LIMIT = 12_000;
 
+export type GithubReadmeContext = {
+  owner: string;
+  repo: string;
+  branch?: string | null;
+};
 
-const INITIAL_BLOCK_LIMIT = 48;
+const schema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'input'],
+  attributes: {
+    ...defaultSchema.attributes,
+    a: [...(defaultSchema.attributes?.a ?? []), 'target', 'rel'],
+    code: [...(defaultSchema.attributes?.code ?? []), 'className'],
+    span: [...(defaultSchema.attributes?.span ?? []), 'className'],
+    img: [...(defaultSchema.attributes?.img ?? []), 'loading', 'decoding'],
+    input: [['type', 'checkbox'], 'checked', 'disabled'],
+  },
+};
 
+function normalizeBranch(branch?: string | null): string {
+  const value = branch?.trim();
+  return value || 'main';
+}
 
+function encodeGithubPath(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
 
-type Block =
+/** Shields / CI / package badges — keep these compact and inline. */
+export function isReadmeBadgeUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (
+      host === 'img.shields.io' ||
+      host === 'shields.io' ||
+      host.endsWith('.shields.io') ||
+      host === 'badge.fury.io' ||
+      host === 'badges.gitter.im' ||
+      host === 'ci.appveyor.com' ||
+      host === 'travis-ci.org' ||
+      host === 'travis-ci.com' ||
+      host === 'circleci.com' ||
+      host === 'codecov.io' ||
+      host.endsWith('.codecov.io') ||
+      host === 'coveralls.io' ||
+      host === 'flat.badgen.net' ||
+      host === 'badgen.net' ||
+      host === 'versionbadge.com' ||
+      host === 'api.dependabot.com'
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return /(?:^|[/.])(?:badge|shields?)(?:[/.]|$)/i.test(url);
+}
 
-  | { type: 'heading'; level: number; text: string }
+/** Rewrite relative README paths to absolute GitHub / raw.githubusercontent URLs. */
+export function resolveGithubMarkdownUrl(
+  href: string,
+  ctx: GithubReadmeContext | undefined,
+  kind: 'image' | 'link',
+): string | null {
+  const raw = href.trim().replace(/^<|>$/g, '');
+  if (!raw) return null;
+  if (raw.startsWith('#')) return kind === 'link' ? raw : null;
+  if (raw.startsWith('mailto:')) return kind === 'link' ? sanitizeLinkHref(raw) : null;
+  if (raw.startsWith('data:')) return null;
 
-  | { type: 'paragraph'; text: string }
+  if (/^https?:\/\//i.test(raw)) {
+    return kind === 'image' ? sanitizeImageSrc(raw) : sanitizeLinkHref(raw);
+  }
 
-  | { type: 'list'; ordered: boolean; items: string[] }
+  if (!ctx?.owner || !ctx?.repo) return null;
+  if (raw.includes('..')) return null;
 
-  | { type: 'code'; lang: string; code: string }
+  const branch = normalizeBranch(ctx.branch);
+  const path = raw.replace(/^\.\//, '').replace(/^\/+/, '');
+  if (!path) return null;
+  const encoded = encodeGithubPath(path);
 
-  | { type: 'hr' };
+  if (kind === 'image') {
+    return sanitizeImageSrc(
+      `https://raw.githubusercontent.com/${ctx.owner}/${ctx.repo}/${encodeURIComponent(branch)}/${encoded}`,
+    );
+  }
 
-
-
-function safeLink(href: string, label: ReactNode, key: number) {
-  const safe = sanitizeLinkHref(href);
-  if (!safe) return label;
-  return (
-    <a key={key} href={safe} target="_blank" rel="noopener noreferrer" className="mp-readme-link">
-      {label}
-    </a>
+  return sanitizeLinkHref(
+    `https://github.com/${ctx.owner}/${ctx.repo}/blob/${encodeURIComponent(branch)}/${encoded}`,
   );
 }
 
-function inlineMarkdown(text: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const pattern =
-    /(\[([^\]]+)\]\(([^)]+)\)|<(https?:\/\/[^>]+)>|(https?:\/\/[^\s<]+[^\s<.,;:!?"'\])])|(`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*))/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
+/** Convert common GitHub HTML <img> tags into markdown so they render safely. */
+function hoistHtmlImages(source: string): string {
+  return source.replace(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi, (full, src: string) => {
+    const altMatch = full.match(/\balt=["']([^"']*)["']/i);
+    const alt = altMatch?.[1] ?? '';
+    return `\n\n![${alt}](${String(src).trim()})\n\n`;
+  });
+}
 
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > last) {
-      nodes.push(text.slice(last, match.index));
+function absolutizeMarkdownAssets(source: string, ctx?: GithubReadmeContext): string {
+  if (!ctx) return source;
+
+  // Images first.
+  let next = source.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (full, alt: string, href: string) => {
+    const resolved = resolveGithubMarkdownUrl(href, ctx, 'image');
+    if (!resolved || resolved === href.trim()) return full;
+    return `![${alt}](${resolved})`;
+  });
+
+  // Then non-image links.
+  next = next.replace(/(^|[^!])\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (full, prefix: string, label: string, href: string) => {
+    const trimmed = href.trim();
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('#') || trimmed.startsWith('mailto:')) {
+      return full;
     }
-    if (match[2] && match[3]) {
-      nodes.push(safeLink(match[3], match[2], key++));
-    } else if (match[4]) {
-      nodes.push(safeLink(match[4], match[4], key++));
-    } else if (match[5]) {
-      nodes.push(safeLink(match[5], match[5], key++));
-    } else if (match[6]) {
-      nodes.push(
-        <code key={key++} className="mp-readme-inline-code">
-          {match[6]}
-        </code>,
+    const resolved = resolveGithubMarkdownUrl(trimmed, ctx, 'link');
+    if (!resolved) return full;
+    return `${prefix}[${label}](${resolved})`;
+  });
+
+  return next;
+}
+
+function normalizeReadme(source: string, ctx?: GithubReadmeContext): string {
+  return absolutizeMarkdownAssets(hoistHtmlImages(source), ctx)
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+const components: Components = {
+  a: ({ href, children }) => {
+    const safe = sanitizeLinkHref(href) ?? (href?.startsWith('#') ? href : null);
+    if (!safe) return <span>{children}</span>;
+    if (safe.startsWith('#')) return <a href={safe}>{children}</a>;
+    return (
+      <a href={safe} target="_blank" rel="noopener noreferrer" className="mp-readme-link">
+        {children}
+      </a>
+    );
+  },
+  img: ({ src, alt }) => {
+    const safe = sanitizeImageSrc(src);
+    if (!safe) return null;
+    if (isReadmeBadgeUrl(safe)) {
+      return (
+        <img
+          src={safe}
+          alt={alt || 'badge'}
+          loading="lazy"
+          decoding="async"
+          className="mp-readme-badge"
+        />
       );
-    } else if (match[7]) {
-      nodes.push(<strong key={key++}>{match[7]}</strong>);
-    } else if (match[8]) {
-      nodes.push(<em key={key++}>{match[8]}</em>);
     }
-    last = match.index + match[0].length;
-  }
-
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes.length ? nodes : [text];
-}
-
-
-
-function parseMarkdown(source: string): Block[] {
-
-  const blocks: Block[] = [];
-
-  const lines = source.replace(/\r\n/g, '\n').split('\n');
-
-  let i = 0;
-
-
-
-  while (i < lines.length) {
-
-    const line = lines[i] ?? '';
-
-
-
-    if (line.trim().startsWith('```')) {
-
-      const lang = line.trim().slice(3).trim();
-
-      const codeLines: string[] = [];
-
-      i++;
-
-      while (i < lines.length && !(lines[i] ?? '').trim().startsWith('```')) {
-
-        codeLines.push(lines[i] ?? '');
-
-        i++;
-
-      }
-
-      blocks.push({ type: 'code', lang, code: codeLines.join('\n') });
-
-      i++;
-
-      continue;
-
-    }
-
-
-
-    if (/^#{1,6}\s/.test(line)) {
-
-      const level = line.match(/^#+/)![0].length;
-
-      blocks.push({ type: 'heading', level, text: line.replace(/^#+\s*/, '') });
-
-      i++;
-
-      continue;
-
-    }
-
-
-
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
-
-      blocks.push({ type: 'hr' });
-
-      i++;
-
-      continue;
-
-    }
-
-
-
-    if (/^[-*+]\s/.test(line)) {
-
-      const items: string[] = [];
-
-      while (i < lines.length && /^[-*+]\s/.test(lines[i] ?? '')) {
-
-        items.push((lines[i] ?? '').replace(/^[-*+]\s/, ''));
-
-        i++;
-
-      }
-
-      blocks.push({ type: 'list', ordered: false, items });
-
-      continue;
-
-    }
-
-
-
-    if (/^\d+\.\s/.test(line)) {
-
-      const items: string[] = [];
-
-      while (i < lines.length && /^\d+\.\s/.test(lines[i] ?? '')) {
-
-        items.push((lines[i] ?? '').replace(/^\d+\.\s/, ''));
-
-        i++;
-
-      }
-
-      blocks.push({ type: 'list', ordered: true, items });
-
-      continue;
-
-    }
-
-
-
-    if (!line.trim()) {
-
-      i++;
-
-      continue;
-
-    }
-
-
-
-    const para: string[] = [];
-
-    while (i < lines.length && (lines[i] ?? '').trim() && !/^#{1,6}\s/.test(lines[i] ?? '') && !/^[-*+]\s/.test(lines[i] ?? '') && !/^\d+\.\s/.test(lines[i] ?? '') && !(lines[i] ?? '').trim().startsWith('```')) {
-
-      para.push(lines[i] ?? '');
-
-      i++;
-
-    }
-
-    blocks.push({ type: 'paragraph', text: para.join(' ') });
-
-  }
-
-
-
-  return blocks;
-
-}
-
-
-
-function renderBlock(block: Block, index: number) {
-
-  if (block.type === 'heading') {
-
-    const level = Math.min(block.level, 6);
-
-    return createElement(
-
-      `h${level}`,
-
-      { key: index, className: `mp-readme-h${level}` },
-
-      inlineMarkdown(block.text),
-
-    );
-
-  }
-
-  if (block.type === 'paragraph') {
-
     return (
-
-      <p key={index} className="mp-readme-p">
-
-        {inlineMarkdown(block.text)}
-
-      </p>
-
+      <figure className="mp-readme-figure">
+        <a href={safe} target="_blank" rel="noopener noreferrer" className="mp-readme-image-link">
+          <img src={safe} alt={alt ?? ''} loading="lazy" decoding="async" />
+        </a>
+        {alt ? <figcaption>{alt}</figcaption> : null}
+      </figure>
     );
-
-  }
-
-  if (block.type === 'list') {
-
-    const List = block.ordered ? 'ol' : 'ul';
-
+  },
+  table: ({ children }) => (
+    <div className="mp-readme-table-wrap">
+      <table>{children}</table>
+    </div>
+  ),
+  pre: ({ children }) => <pre className="mp-readme-code-block">{children}</pre>,
+  code: ({ className, children, ...props }) => {
+    const isBlock = Boolean(className?.includes('language-') || String(children).includes('\n'));
+    if (!isBlock) {
+      return (
+        <code className="mp-readme-inline-code" {...props}>
+          {children}
+        </code>
+      );
+    }
+    const lang = className?.match(/language-([\w+-]+)/)?.[1];
     return (
-
-      <List key={index} className="mp-readme-list">
-
-        {block.items.map((item, itemIndex) => (
-
-          <li key={itemIndex}>{inlineMarkdown(item)}</li>
-
-        ))}
-
-      </List>
-
+      <>
+        {lang ? <span className="mp-readme-code-lang">{lang}</span> : null}
+        <code className={className} {...props}>
+          {children}
+        </code>
+      </>
     );
+  },
+  h1: ({ children }) => <h1 className="mp-readme-h1">{children}</h1>,
+  h2: ({ children }) => <h2 className="mp-readme-h2">{children}</h2>,
+  h3: ({ children }) => <h3 className="mp-readme-h3">{children}</h3>,
+  h4: ({ children }) => <h4 className="mp-readme-h4">{children}</h4>,
+  h5: ({ children }) => <h5 className="mp-readme-h5">{children}</h5>,
+  h6: ({ children }) => <h6 className="mp-readme-h6">{children}</h6>,
+  p: ({ children }) => <p className="mp-readme-p">{children}</p>,
+  ul: ({ children }) => <ul className="mp-readme-list">{children}</ul>,
+  ol: ({ children }) => <ol className="mp-readme-list">{children}</ol>,
+  blockquote: ({ children }) => <blockquote className="mp-readme-quote">{children}</blockquote>,
+  hr: () => <hr className="mp-readme-hr" />,
+};
 
-  }
-
-  if (block.type === 'code') {
-
-    return (
-
-      <pre key={index} className="mp-readme-code-block">
-
-        {block.lang && <span className="mp-readme-code-lang">{block.lang}</span>}
-
-        <code>{block.code}</code>
-
-      </pre>
-
-    );
-
-  }
-
-  return <hr key={index} className="mp-readme-hr" />;
-
-}
-
-
-
-export function MarkdownReadme({ source }: { source: string }) {
-
-  const blocks = useMemo(() => parseMarkdown(source), [source]);
-
+export function MarkdownReadme({
+  source,
+  github,
+}: {
+  source: string;
+  /** Used to resolve relative README images/links against the repo. */
+  github?: GithubReadmeContext;
+}) {
+  const markdown = useMemo(() => normalizeReadme(source, github), [source, github]);
   const [expanded, setExpanded] = useState(false);
 
-  const truncated = blocks.length > INITIAL_BLOCK_LIMIT;
+  if (!markdown) return null;
 
-  const visibleBlocks = expanded || !truncated ? blocks : blocks.slice(0, INITIAL_BLOCK_LIMIT);
-
-
+  const truncated = markdown.length > INITIAL_CHAR_LIMIT;
+  const visible = expanded || !truncated ? markdown : `${markdown.slice(0, INITIAL_CHAR_LIMIT).trimEnd()}\n\n…`;
 
   return (
-
     <article className="mp-readme-content">
-
-      {visibleBlocks.map((block, index) => renderBlock(block, index))}
-
-      {truncated && !expanded && (
-
+      <div className="mp-readme-body">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[[rehypeSanitize, schema]]}
+          components={components}
+        >
+          {visible}
+        </ReactMarkdown>
+      </div>
+      {truncated && !expanded ? (
         <button type="button" className="mp-readme-expand" onClick={() => setExpanded(true)}>
-
-          Show full documentation ({blocks.length - INITIAL_BLOCK_LIMIT} more sections)
-
+          Show full documentation
         </button>
-
-      )}
-
+      ) : null}
     </article>
-
   );
-
 }
-
-

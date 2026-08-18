@@ -92,7 +92,7 @@ export function parseRuntimeState(raw: unknown): string | null {
   return null;
 }
 
-/** Route console WebSocket through panel nginx (/wings/) when direct daemon URLs won't work. */
+/** Route console WebSocket through panel nginx (/wings/) only for same-host daemons. */
 export function normalizeWingsSocketUrl(socket: string): string {
   if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
     return socket;
@@ -116,11 +116,12 @@ export function normalizeWingsSocketUrl(socket: string): string {
     const sameHost = url.hostname === panelHost;
     const daemonPort = url.port || (url.protocol === 'wss:' ? '443' : '80');
 
-    // Browsers cannot use ws:// from HTTPS. Same-host :8080/Wings is not on nginx :443.
+    // Only rewrite co-located Wings. Never send remote nodes through panel /wings/ (localhost).
     const needsProxy =
-      url.protocol === 'ws:' ||
-      (sameHost && daemonPort !== '443') ||
-      (sameHost && url.pathname.startsWith('/api/servers/'));
+      sameHost &&
+      (url.protocol === 'ws:' ||
+        daemonPort !== '443' ||
+        url.pathname.startsWith('/api/servers/'));
 
     if (needsProxy) {
       return `wss://${window.location.host}/wings/api/servers/${serverUuid}/ws`;
@@ -129,7 +130,6 @@ export function normalizeWingsSocketUrl(socket: string): string {
     /* fall through */
   }
 
-  if (socket.startsWith('wss://')) return socket;
   return socket.replace(/^ws:/i, 'wss:');
 }
 

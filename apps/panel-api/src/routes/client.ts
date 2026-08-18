@@ -7,7 +7,6 @@ import {
   getServerForOwnerActions,
   getServerAccess,
   hasClientPermission,
-  isPanelAdmin,
   logServerActivity,
   POWER_ACTION_PERMISSION,
   WINGS_CLIENT_PERMISSIONS,
@@ -19,7 +18,7 @@ import { getConfig } from '../lib/env.js';
 import { buildWingsWebsocketUrl, describeConsoleAccess } from '../lib/wings-socket.js';
 import { formatAllocationAddress, formatSftpUsername, resolveAllocationHost } from '@spirit/shared';
 import { measureTcpPing } from '../lib/tcp-ping.js';
-import { isMarketplaceEnabled } from '../lib/panel-settings.js';
+import { isMarketplaceEnabled, isMinecraftPluginsEnabled } from '../lib/panel-settings.js';
 import { isMailEnabled, sendSubuserAddedEmail } from '../lib/mailer.js';
 import {
   API_KEY_TYPE_ACCOUNT,
@@ -28,23 +27,31 @@ import {
   listApiKeysForUser,
 } from '../lib/api-keys.js';
 import { serverInclude } from '../services/server-helpers.js';
-import { powerServer, reinstallServerOnWings, syncServerToWings, isServerInstalling } from '../services/server-lifecycle.js';
+import { powerServer, reinstallServerOnWings, syncServerToWings, isServerInstalling, clearStuckServerPowerState } from '../services/server-lifecycle.js';
 import {
   autoAssignAllocation,
   listServerAllocations,
   setPrimaryAllocation,
   unassignSecondaryAllocation,
 } from '../services/allocations.js';
-import { wingsForNode } from '../services/wings-client.js';
-import { normalizeWingsLogLines } from '../lib/wings-logs.js';
+import {
+  createOrReplaceServerDomain,
+  deleteServerDomain,
+  getDomainFeatureForServer,
+  retargetServerDomainIfNeeded,
+  setPreferSubdomain,
+} from '../services/server-domains.js';
+import { wingsForNode, WingsError } from '../services/wings-client.js';
+import { normalizeWingsLogLines, emptyInstallLogsIfUnavailable } from '../lib/wings-logs.js';
 import { getServerStats, recordStatSnapshotFromPayload } from '../services/server-stats.js';
-import { paginateActivityLogs } from '../services/activity.js';
+import { paginateActivityLogs, deleteServerActivityLogs } from '../services/activity.js';
+import { queryServerPlayerCount } from '../services/game-query.js';
 import { reconcilePanelFieldsForContainerState } from '../lib/container-state.js';
 import { enrichServerRefsWithLiveState, resolveServerContainerState } from '../services/server-runtime-status.js';
 import { stripServerNodeSecrets } from '../lib/node-health.js';
-import { assertSafeFileName, assertSafeServerPath, UnsafeFilePathError } from '../lib/file-paths.js';
+import { assertSafeFileName, assertSafeServerPath, isPathInside, UnsafeFilePathError } from '../lib/file-paths.js';
 import { redactedCommandProperties } from '../lib/activity-sanitize.js';
-import { EXPENSIVE_ROUTE_RATE_LIMIT, UPLOAD_RATE_LIMIT } from '../lib/rate-limits.js';
+import { API_KEY_CREATION_LIMIT, EXPENSIVE_ROUTE_RATE_LIMIT, UPLOAD_RATE_LIMIT } from '../lib/rate-limits.js';
 import { sendClientError } from '../lib/safe-errors.js';
 import {
   InvalidSubuserPermissionsError,
@@ -56,7 +63,7 @@ import {
   releaseUploadSlot,
   UploadConcurrencyError,
 } from '../lib/upload-concurrency.js';
-import { WingsError } from '../services/wings-client.js';
+import { parseRefreshQuery } from '../lib/refresh-query.js';
 
 export async function clientRoutes(app: FastifyInstance) {
   app.register(async (accountApp) => {
@@ -64,7 +71,7 @@ export async function clientRoutes(app: FastifyInstance) {
 
     accountApp.get('/account/api-keys', async (request) => listApiKeysForUser(request.user!.id));
 
-    accountApp.post('/account/api-keys', async (request) => {
+    accountApp.post('/account/api-keys', { config: API_KEY_CREATION_LIMIT }, async (request) => {
       const body = z.object({ memo: z.string().max(255).default('') }).parse(request.body ?? {});
       return createApiKeyForUser(request.user!.id, {
         memo: body.memo,
@@ -84,6 +91,7 @@ export async function clientRoutes(app: FastifyInstance) {
 
   app.get('/servers', async (request) => {
     const userId = request.user!.id;
+    const refresh = parseRefreshQuery(request.query as Record<string, unknown>);
     const include = {
       egg: { select: { name: true, logoUrl: true } },
       node: { select: { name: true, fqdn: true } },
@@ -105,7 +113,7 @@ export async function clientRoutes(app: FastifyInstance) {
         nodeId: server.nodeId,
         containerState: server.containerState,
       })),
-      { refresh: true },
+      { refresh },
     );
     const stateById = new Map(enriched.map((row) => [row.id, row.containerState]));
     return all.map(({ memory, disk, cpu, uuid, containerState, status, installStatus, ...rest }) => {
@@ -143,7 +151,8 @@ export async function clientRoutes(app: FastifyInstance) {
     );
 
     const reconciled = reconcilePanelFieldsForContainerState(containerState ?? server.containerState);
-    const marketplaceEnabled = await isMarketplaceEnabled();
+    const marketplaceEnabled = (await isMarketplaceEnabled()) && server.fivemMarketplaceAccess;
+    const minecraftPluginsEnabled = (await isMinecraftPluginsEnabled()) && server.minecraftPluginsAccess;
 
     return stripServerNodeSecrets({
       ...server,
@@ -151,6 +160,7 @@ export async function clientRoutes(app: FastifyInstance) {
       status: reconciled.status ?? server.status,
       installStatus: reconciled.installStatus ?? server.installStatus,
       marketplaceEnabled,
+      minecraftPluginsEnabled,
       variables: server.variables
         .filter((v) => v.eggVariable.userViewable)
         .map((v) => ({
@@ -268,6 +278,22 @@ export async function clientRoutes(app: FastifyInstance) {
     });
   });
 
+  app.delete('/servers/:id/activity', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const server = await getServerForOwnerActions(id, request.user!.id);
+    if (!server) return reply.status(403).send({ error: 'Only the server owner can clear activity' });
+
+    const result = await deleteServerActivityLogs(id);
+    await logServerActivity(request, {
+      serverId: id,
+      event: 'server.activity.cleared',
+      description: 'Cleared server activity log',
+      properties: { deleted: result.count },
+    });
+
+    return { deleted: result.count };
+  });
+
   app.post('/servers/:id/power', async (request, reply) => {
     const { id } = request.params as { id: string };
     const { action } = z.object({ action: z.enum(['start', 'stop', 'restart', 'kill']) }).parse(request.body);
@@ -295,6 +321,27 @@ export async function clientRoutes(app: FastifyInstance) {
       description: `${request.user!.username} sent power action: ${action}`,
     });
     return { success: true };
+  });
+
+  /** Clear a stuck Stopping/Starting badge when FeatherWings will not leave that state. */
+  app.post('/servers/:id/clear-power-state', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'control.stop');
+    if (!access) return;
+    const server = await getAccessibleServer(id, request.user!.id);
+    if (!server) return reply.status(404).send({ error: 'Not found' });
+
+    try {
+      await clearStuckServerPowerState(server.uuid, { kill: true });
+    } catch (err) {
+      return sendClientError(reply, 502, 'power', request.log, err, 'Failed to clear power state');
+    }
+    await logServerActivity(request, {
+      serverId: id,
+      event: 'server.power.clear_stuck',
+      description: `${request.user!.username} cleared stuck power state`,
+    });
+    return { success: true, containerState: 'offline' };
   });
 
   app.post('/servers/:id/reinstall', async (request, reply) => {
@@ -333,6 +380,9 @@ export async function clientRoutes(app: FastifyInstance) {
         jti: crypto.randomUUID(),
         user_uuid: request.user!.uuid,
         server_uuid: server.uuid,
+        // FeatherWings 1.3.7.5+ requires scope=websocket (missing scope surfaces as
+        // "jwt: missing connect permission" even when permissions include connect).
+        scope: 'websocket',
         permissions: wingsPermissionsForUser(
           access.isOwner || access.isAdminSupport,
           access.permissions,
@@ -343,7 +393,15 @@ export async function clientRoutes(app: FastifyInstance) {
       server.node.daemonTokenSecret,
     );
 
-    const socket = buildWingsWebsocketUrl(server.uuid, server.node);
+    let socket: string;
+    try {
+      socket = buildWingsWebsocketUrl(server.uuid, server.node);
+    } catch (err) {
+      return reply.status(400).send({
+        error: err instanceof Error ? err.message : 'Console is not available for this node configuration',
+        code: 'console_unavailable',
+      });
+    }
 
     return { token, socket, connection_string: socket };
   });
@@ -367,6 +425,33 @@ export async function clientRoutes(app: FastifyInstance) {
     return { ping, reachable: ping != null };
   });
 
+  app.get('/servers/:id/players', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'allocation.read');
+    if (!access) return;
+    const server = await getAccessibleServer(id, request.user!.id, true);
+    if (!server) return reply.status(404).send({ error: 'Not found' });
+
+    const egg = server.egg as typeof server.egg & { nest?: { name: string } | null };
+
+    return queryServerPlayerCount({
+      serverId: server.id,
+      containerState: server.containerState,
+      egg: {
+        name: egg.name,
+        features: egg.features,
+        dockerImages: egg.dockerImages,
+        nest: egg.nest ?? null,
+      },
+      allocation: {
+        ip: server.defaultAllocation.ip,
+        port: server.defaultAllocation.port,
+        alias: server.defaultAllocation.alias,
+      },
+      node: { fqdn: server.node.fqdn },
+    });
+  });
+
   app.get('/servers/:id/connection', async (request, reply) => {
     const { id } = request.params as { id: string };
     const access = await requireServerAccess(request, reply, id, 'allocation.read');
@@ -376,10 +461,13 @@ export async function clientRoutes(app: FastifyInstance) {
 
     const node = server.node;
     const primary = server.defaultAllocation;
-    const address = formatAllocationAddress(
-      { ip: primary.ip, port: primary.port, alias: primary.alias },
-      { fqdn: node.fqdn },
-    );
+    const domainInfo = await getDomainFeatureForServer(server.id).catch(() => null);
+    const address =
+      domainInfo?.preferredAddress ??
+      formatAllocationAddress(
+        { ip: primary.ip, port: primary.port, alias: primary.alias },
+        { fqdn: node.fqdn },
+      );
     const cfg = getConfig();
     const panelUrl = cfg.panelUrl || cfg.apiUrl;
 
@@ -388,7 +476,16 @@ export async function clientRoutes(app: FastifyInstance) {
         address,
         hostname: address.split(':')[0] ?? node.fqdn,
         port: primary.port,
+        ipAddress: domainInfo?.ipAddress ?? address,
+        subdomainAddress: domainInfo?.subdomainAddress ?? null,
+        preferSubdomain: domainInfo?.preferSubdomain ?? false,
       },
+      domain: domainInfo
+        ? {
+            feature: domainInfo.feature,
+            current: domainInfo.domain,
+          }
+        : null,
       sftp: {
         host: node.fqdn,
         port: node.daemonSftp,
@@ -408,6 +505,85 @@ export async function clientRoutes(app: FastifyInstance) {
         hint: describeConsoleAccess(node, panelUrl.startsWith('https://')),
       },
     };
+  });
+
+  app.get('/servers/:id/network/domain', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'allocation.read');
+    if (!access) return;
+    try {
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 500;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.post('/servers/:id/network/domain', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'allocation.update');
+    if (!access) return;
+    const body = z
+      .object({
+        slug: z.string().min(1).max(63),
+        preferSubdomain: z.boolean().optional(),
+      })
+      .parse(request.body);
+    try {
+      const domain = await createOrReplaceServerDomain({
+        serverId: id,
+        slug: body.slug,
+        preferSubdomain: body.preferSubdomain,
+      });
+      await logServerActivity(request, {
+        serverId: id,
+        event: 'server.domain.created',
+        description: `${request.user!.username} set subdomain ${domain?.fqdn}`,
+      });
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.patch('/servers/:id/network/domain', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'allocation.update');
+    if (!access) return;
+    const body = z.object({ preferSubdomain: z.boolean() }).parse(request.body);
+    try {
+      const result = await setPreferSubdomain(id, body.preferSubdomain);
+      await logServerActivity(request, {
+        serverId: id,
+        event: 'server.domain.preference',
+        description: `${request.user!.username} set connection preference to ${
+          body.preferSubdomain ? 'subdomain' : 'IP'
+        }`,
+      });
+      return result;
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
+  app.delete('/servers/:id/network/domain', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const access = await requireServerAccess(request, reply, id, 'allocation.update');
+    if (!access) return;
+    try {
+      await deleteServerDomain(id);
+      await logServerActivity(request, {
+        serverId: id,
+        event: 'server.domain.deleted',
+        description: `${request.user!.username} removed the server subdomain`,
+      });
+      return await getDomainFeatureForServer(id);
+    } catch (e) {
+      const status = (e as { statusCode?: number }).statusCode ?? 422;
+      return reply.status(status).send({ error: e instanceof Error ? e.message : String(e) });
+    }
   });
 
   app.get('/servers/:id/network/allocations', async (request, reply) => {
@@ -451,6 +627,7 @@ export async function clientRoutes(app: FastifyInstance) {
         event: 'server.allocation.primary',
         description: `${request.user!.username} changed the primary allocation`,
       });
+      await retargetServerDomainIfNeeded(id).catch(() => undefined);
       return listServerAllocations(server);
     } catch (e) {
       return reply.status(422).send({ error: e instanceof Error ? e.message : String(e) });
@@ -517,7 +694,12 @@ export async function clientRoutes(app: FastifyInstance) {
 
   app.post('/servers/:id/files/write', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const body = z.object({ file: z.string(), content: z.string() }).parse(request.body);
+    const body = z
+      .object({
+        file: z.string(),
+        content: z.string().max(10 * 1024 * 1024),
+      })
+      .parse(request.body);
     const file = safePathOrReply(reply, body.file, 'file');
     if (file === null) return;
     const access = await requireServerAccess(request, reply, id, 'file.update');
@@ -619,6 +801,54 @@ export async function clientRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
+  app.post('/servers/:id/files/move', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z
+      .object({
+        files: z
+          .array(
+            z.object({
+              source: z.string().min(1),
+              destination: z.string().min(1),
+            }),
+          )
+          .min(1),
+      })
+      .parse(request.body);
+
+    const access = await requireServerAccess(request, reply, id, 'file.update');
+    if (!access) return;
+    const server = await getAccessibleServer(id, request.user!.id, true);
+    if (!server) return reply.status(404).send({ error: 'Not found' });
+
+    const wingsOps: Array<{ from: string; to: string }> = [];
+    for (const entry of body.files) {
+      const source = safePathOrReply(reply, entry.source, 'source');
+      if (source === null) return;
+      const destination = safePathOrReply(reply, entry.destination, 'destination');
+      if (destination === null) return;
+      if (source === destination) {
+        return reply.status(400).send({ error: 'Source and destination are the same' });
+      }
+      if (isPathInside(source, destination)) {
+        return reply.status(400).send({ error: 'Cannot move a folder into itself' });
+      }
+      wingsOps.push({
+        from: source.replace(/^\//, ''),
+        to: destination.replace(/^\//, ''),
+      });
+    }
+
+    await wingsForNode(server.node).renameFiles(server.uuid, '/', wingsOps);
+    await logServerActivity(request, {
+      serverId: id,
+      event: 'server.file.move',
+      description: `${request.user!.username} moved ${wingsOps.length} item(s)`,
+      properties: { files: body.files },
+    });
+    return { success: true, moved: wingsOps.length };
+  });
+
   app.post('/servers/:id/files/copy', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z.object({ location: z.string().min(1) }).parse(request.body);
@@ -657,8 +887,7 @@ export async function clientRoutes(app: FastifyInstance) {
       });
       return { success: true, file: created };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to compress';
-      return reply.status(502).send({ error: message });
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to compress files');
     }
   });
 
@@ -683,8 +912,7 @@ export async function clientRoutes(app: FastifyInstance) {
       });
       return { success: true };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to extract';
-      return reply.status(502).send({ error: message });
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to extract archive');
     }
   });
 
@@ -693,7 +921,14 @@ export async function clientRoutes(app: FastifyInstance) {
     const body = z
       .object({
         root: z.string(),
-        files: z.array(z.object({ file: z.string(), mode: z.string() })).min(1),
+        files: z
+          .array(
+            z.object({
+              file: z.string(),
+              mode: z.string().regex(/^[0-7]{3,4}$/, 'Invalid file mode'),
+            }),
+          )
+          .min(1),
       })
       .parse(request.body);
     const root = safePathOrReply(reply, body.root, 'root');
@@ -738,9 +973,10 @@ export async function clientRoutes(app: FastifyInstance) {
       });
       return reply.send(Buffer.from(arrayBuffer));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to download';
-      if (message.includes('(404)')) return reply.status(404).send({ error: 'File not found' });
-      return reply.status(502).send({ error: message });
+      if (err instanceof WingsError && err.status === 404) {
+        return reply.status(404).send({ error: 'File not found' });
+      }
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to download file');
     }
   });
 
@@ -775,15 +1011,20 @@ export async function clientRoutes(app: FastifyInstance) {
           return reply.status(413).send({ error: 'File too large' });
         }
         const target = joinFilePath(directory, part.filename);
-        await wings.uploadFileStream(
-          server.uuid,
-          target,
-          part.file,
-          MAX_UPLOAD_FILE_BYTES,
-        );
+        const data = await part.toBuffer();
+        if (data.length > MAX_UPLOAD_FILE_BYTES) {
+          return reply.status(413).send({ error: 'File too large' });
+        }
+        await wings.uploadFile(server.uuid, target, data);
         uploaded += 1;
       }
     } catch (err) {
+      if (err instanceof WingsError && err.status && err.status < 500) {
+        const message = err.message.includes('Missing Content-Length')
+          ? 'Upload could not be sent to the node. Please try again.'
+          : err.message.replace(/^FeatherWings POST \S+ failed \(\d+\): /, '');
+        return reply.status(err.status).send({ error: message || 'File upload failed' });
+      }
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 413) {
         return reply.status(413).send({ error: 'File too large' });
@@ -845,6 +1086,8 @@ export async function clientRoutes(app: FastifyInstance) {
       const raw = await wingsForNode(server.node).getInstallLogs(server.uuid);
       return { response: normalizeWingsLogLines(raw) };
     } catch (e) {
+      const empty = emptyInstallLogsIfUnavailable(e);
+      if (empty) return { response: empty };
       return reply.status(502).send({
         error: e instanceof Error ? e.message : 'Failed to retrieve installation logs',
       });
@@ -1143,6 +1386,9 @@ function safeRootAndNamesOrReply(
 }
 
 async function getAccessibleServer(id: string, userId: string, full = false) {
+  const access = await getServerAccess(id, userId);
+  if (!access) return null;
+
   const include = full
     ? serverInclude
     : {
@@ -1153,21 +1399,7 @@ async function getAccessibleServer(id: string, userId: string, full = false) {
         variables: { include: { eggVariable: true } },
       };
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true, rootAdmin: true },
-  });
-  if (user && isPanelAdmin(user)) {
-    return prisma.server.findUnique({ where: { id }, include });
-  }
-
-  return prisma.server.findFirst({
-    where: {
-      id,
-      OR: [{ ownerId: userId }, { subusers: { some: { userId } } }],
-    },
-    include,
-  });
+  return prisma.server.findUnique({ where: { id }, include });
 }
 
 async function requireServerAccess(
@@ -1175,6 +1407,7 @@ async function requireServerAccess(
   reply: FastifyReply,
   serverId: string,
   permission?: string,
+  opts?: { allowSuspended?: boolean },
 ) {
   const access = await getServerAccess(serverId, request.user!.id);
   if (!access) {
@@ -1183,6 +1416,18 @@ async function requireServerAccess(
   }
   if (permission && !hasClientPermission(access.permissions, permission)) {
     reply.status(403).send({ error: 'You do not have permission to perform this action' });
+    return null;
+  }
+  // Admin support may still open suspended servers; owners/subusers may not control them.
+  if (
+    !opts?.allowSuspended &&
+    !access.isAdminSupport &&
+    access.server.suspended
+  ) {
+    reply.status(403).send({
+      error: 'This server is suspended',
+      code: 'server_suspended',
+    });
     return null;
   }
   return access;

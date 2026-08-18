@@ -88,7 +88,7 @@ export function ServerPanel({
               {description && <p className="text-[11px] text-[var(--muted)]">{description}</p>}
             </div>
           </div>
-          {actions}
+          {actions && <div className="server-panel-actions">{actions}</div>}
         </div>
       )}
       <div className={noPadding ? bodyClassName : `p-4 ${bodyClassName}`}>{children}</div>

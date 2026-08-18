@@ -85,7 +85,8 @@ export function ServerBackupsPage() {
   useEffect(() => {
     const hasPending = backups.some((b) => !b.isSuccessful && !b.completedAt);
     if (hasPending && pollRef.current === null) {
-      pollRef.current = window.setInterval(() => void load(), 4000);
+      // Poll pending backups every 15 seconds instead of 4 to reduce API load
+      pollRef.current = window.setInterval(() => void load(), 15_000);
     } else if (!hasPending && pollRef.current !== null) {
       window.clearInterval(pollRef.current);
       pollRef.current = null;
@@ -203,9 +204,9 @@ export function ServerBackupsPage() {
                 tone={atLimit ? 'warning' : 'default'}
               />
               <StatCard
-                label="Storage used"
+                label="Backup archives"
                 value={formatBytes(totalBytes)}
-                hint="Combined archive size on node"
+                hint="Combined archive size (counts toward server disk)"
                 icon={<HardDrive className="h-3.5 w-3.5" />}
               />
               <StatCard

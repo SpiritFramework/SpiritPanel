@@ -51,6 +51,9 @@ export function formFromDetail(node: AdminNodeDetail): UpdateAdminNodeInput {
     daemonSftp: node.daemonSftp,
     daemonBase: node.daemonBase,
     uploadSize: node.uploadSize,
+    publicIp: node.publicIp ?? '',
+    domainBase: node.domainBase ?? '',
+    cloudflareZoneId: node.cloudflareZoneId ?? '',
   };
 }
 
@@ -70,6 +73,9 @@ export function nodeFormHasChanges(detail: AdminNodeDetail, form: UpdateAdminNod
     form.daemonListen !== detail.daemonListen ||
     form.daemonSftp !== detail.daemonSftp ||
     (form.daemonBase ?? '') !== detail.daemonBase ||
-    form.uploadSize !== detail.uploadSize
+    form.uploadSize !== detail.uploadSize ||
+    (form.publicIp ?? '') !== (detail.publicIp ?? '') ||
+    (form.domainBase ?? '') !== (detail.domainBase ?? '') ||
+    (form.cloudflareZoneId ?? '') !== (detail.cloudflareZoneId ?? '')
   );
 }

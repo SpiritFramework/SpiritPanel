@@ -28,14 +28,17 @@ import { databaseRoutes, adminDatabaseRoutes } from './routes/databases.js';
 
 import { marketplaceRoutes, adminMarketplaceRoutes } from './routes/marketplace.js';
 
+import { minecraftPluginRoutes } from './routes/minecraft-plugins.js';
+
+import { clientTicketRoutes, adminTicketRoutes } from './routes/tickets.js';
+
 import { requireAdmin } from './middleware/auth.js';
 
 import { startScheduleWorker, stopScheduleWorker } from './workers/schedule.js';
 import { startStatsCollector, stopStatsCollector } from './workers/stats-collector.js';
-import { pingRedis } from './lib/redis.js';
+import { pingRedis, closeSharedRedis } from './lib/redis.js';
 import { GLOBAL_RATE_LIMIT } from './lib/rate-limits.js';
 import { MAX_UPLOAD_FILE_BYTES } from './lib/upload-concurrency.js';
-import { ensureMarketplaceCatalog, isMarketplaceSchemaMissing } from './lib/marketplace-db.js';
 import { API_SECURITY_HEADERS } from './lib/security-headers.js';
 
 
@@ -93,8 +96,6 @@ await app.register(cors, {
 
 await app.register(rateLimit, GLOBAL_RATE_LIMIT);
 
-
-
 await app.register(multipart, {
 
   limits: { fileSize: MAX_UPLOAD_FILE_BYTES, files: 10 },
@@ -116,6 +117,35 @@ const healthPayload = () => ({
 app.get('/health', async () => healthPayload());
 
 app.get('/api/health', async () => healthPayload());
+
+// Add request ID tracking for debugging
+app.addHook('onRequest', async (request, reply) => {
+  const requestId = request.headers['x-request-id'] as string || `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  request.id = requestId;
+  reply.header('X-Request-ID', requestId);
+});
+
+// Global error handler to prevent information leakage
+app.setErrorHandler(async (error, request, reply) => {
+  app.log.error({ err: error, requestId: request.id }, 'Request error');
+  
+  // In production, sanitize error messages
+  const isProduction = getConfig().isProduction;
+  const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+  const message = error instanceof Error ? error.message : 'An error occurred';
+  
+  if (isProduction && statusCode === 500) {
+    return reply.status(statusCode).send({
+      error: 'Internal server error',
+      requestId: request.id,
+    });
+  }
+  
+  return reply.status(statusCode).send({
+    error: message,
+    requestId: request.id,
+  });
+});
 
 
 
@@ -171,6 +201,10 @@ await app.register(databaseRoutes, { prefix: '/api/client' });
 
 await app.register(marketplaceRoutes, { prefix: '/api/client' });
 
+await app.register(minecraftPluginRoutes, { prefix: '/api/client' });
+
+await app.register(clientTicketRoutes, { prefix: '/api/client' });
+
 await app.register(adminDatabaseRoutes, { prefix: '/api/admin' });
 
 await app.register(
@@ -181,12 +215,15 @@ await app.register(
   { prefix: '/api/admin' },
 );
 
+await app.register(adminTicketRoutes, { prefix: '/api/admin' });
+
 
 
 async function shutdown() {
   app.log.info('Shutting down...');
   stopStatsCollector();
   await stopScheduleWorker();
+  await closeSharedRedis();
   await closeDatabase();
   await app.close();
   process.exit(0);
@@ -205,17 +242,6 @@ try {
   await verifyDatabaseConnection();
 
   app.log.info('Database connection verified');
-
-  try {
-    await ensureMarketplaceCatalog();
-    app.log.info('Marketplace catalog ready');
-  } catch (err) {
-    if (isMarketplaceSchemaMissing(err)) {
-      app.log.warn('Marketplace tables missing — run: cd apps/panel-api && pnpm db:deploy');
-    } else {
-      app.log.warn({ err }, 'Marketplace catalog seed skipped');
-    }
-  }
 
   startScheduleWorker();
 

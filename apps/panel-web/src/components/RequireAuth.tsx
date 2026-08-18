@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isFullPanelAdmin, isStaffOrPanelAdmin } from '../lib/roles';
 
 export function RequireAuth() {
   const { user, loading } = useAuth();
@@ -12,6 +13,15 @@ export function RequireAuth() {
 export function RequireAdmin() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user || (user.role !== 'admin' && !user.rootAdmin)) return <Navigate to="/servers" replace />;
+  if (!user || !isStaffOrPanelAdmin(user)) return <Navigate to="/servers" replace />;
   return <Outlet />;
 }
+
+/** Full admin only (settings, infra mutations). */
+export function RequireFullAdmin() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user || !isFullPanelAdmin(user)) return <Navigate to="/admin" replace />;
+  return <Outlet />;
+}
+

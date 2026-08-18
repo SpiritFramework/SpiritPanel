@@ -16,6 +16,12 @@ export function getUserTheme(user: { role: string; rootAdmin: boolean; suspended
       glow: 'rgba(99, 102, 241, 0.35)',
     };
   }
+  if (user.role === 'staff') {
+    return {
+      gradient: 'linear-gradient(135deg, #0d9488 0%, #115e59 100%)',
+      glow: 'rgba(20, 184, 166, 0.28)',
+    };
+  }
   return {
     gradient: 'linear-gradient(135deg, #475569 0%, #1e293b 100%)',
     glow: 'rgba(148, 163, 184, 0.22)',
@@ -74,6 +80,20 @@ export function RoleBadge({
       >
         <Shield className="h-3 w-3" />
         {rootAdmin ? 'Root admin' : 'Admin'}
+      </span>
+    );
+  }
+  if (role === 'staff') {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          onDark
+            ? 'bg-teal-400/20 text-teal-100 backdrop-blur-sm'
+            : 'border border-teal-500/30 bg-teal-500/10 text-teal-400'
+        }`}
+      >
+        <Shield className="h-3 w-3" />
+        Staff
       </span>
     );
   }

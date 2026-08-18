@@ -1,9 +1,13 @@
 import { useCallback, useState } from 'react';
-import { Activity, LayoutDashboard, RefreshCw, ShieldAlert, Users } from 'lucide-react';
+import { Activity, LayoutDashboard, RefreshCw, ShieldAlert, Trash2, Users } from 'lucide-react';
 import { api, type ActivityLogEntry } from '../../lib/api';
 import { type ActivityEntry } from '../../lib/activity';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { isFullPanelAdmin } from '../../lib/roles';
 import { AdminLayout, Button } from '../../components/Layout';
 import { ActivityFeed } from '../../components/ActivityFeed';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import {
   AdminDetailBody,
   AdminDetailHero,
@@ -35,8 +39,14 @@ function mapActivityEntry(row: ActivityLogEntry): ActivityEntry {
 }
 
 export function AdminActivity() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const canClear = isFullPanelAdmin(user);
   const [scope, setScope] = useState<ActivityScope>('panel');
   const [refreshToken, setRefreshToken] = useState(0);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState('');
   const [totals, setTotals] = useState({ total: 0, loaded: 0, filtered: 0 });
 
   const fetchPage = useCallback(
@@ -54,6 +64,26 @@ export function AdminActivity() {
 
   const activeScope = SCOPES.find((s) => s.id === scope) ?? SCOPES[0];
 
+  async function clearActivity() {
+    if (!canClear) return;
+    setClearing(true);
+    setClearError('');
+    try {
+      const result = await api.admin.clearActivity(scope);
+      toast.success(
+        result.deleted === 0
+          ? 'Activity log was already empty'
+          : `Deleted ${result.deleted} activity event${result.deleted === 1 ? '' : 's'}`,
+      );
+      setClearOpen(false);
+      setRefreshToken((n) => n + 1);
+    } catch (err) {
+      setClearError(err instanceof Error ? err.message : 'Could not clear activity');
+    } finally {
+      setClearing(false);
+    }
+  }
+
   return (
     <AdminLayout>
       <AdminDetailPage breadcrumb={[{ label: 'Admin', to: '/admin' }, { label: 'Activity' }]}>
@@ -61,7 +91,7 @@ export function AdminActivity() {
           gradient={ACTIVITY_GRADIENT}
           icon={Activity}
           title="System activity"
-          subtitle={activeScope.description}
+          subtitle={`${activeScope.description}. Events older than 30 days are removed automatically.`}
           stats={[
             { icon: LayoutDashboard, label: 'Scope', value: activeScope.label },
             { icon: Activity, label: 'Total', value: String(totals.total) },
@@ -69,15 +99,32 @@ export function AdminActivity() {
             { icon: ShieldAlert, label: 'Showing', value: String(totals.filtered) },
           ]}
           actions={
-            <Button
-              type="button"
-              variant="ghost"
-              className="border border-white/15 bg-black/20 text-white hover:bg-black/30"
-              onClick={() => setRefreshToken((n) => n + 1)}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </Button>
+            <>
+              {canClear ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="border border-white/15 bg-black/20 text-white hover:bg-black/30"
+                  disabled={clearing}
+                  onClick={() => {
+                    setClearError('');
+                    setClearOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear scope
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                className="border border-white/15 bg-black/20 text-white hover:bg-black/30"
+                onClick={() => setRefreshToken((n) => n + 1)}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </Button>
+            </>
           }
         />
 
@@ -101,6 +148,23 @@ export function AdminActivity() {
           />
         </AdminDetailBody>
       </AdminDetailPage>
+
+      <ConfirmModal
+        open={clearOpen}
+        title={`Clear ${activeScope.label.toLowerCase()} activity?`}
+        description="This permanently deletes every event in the current scope. New actions will still be logged afterward."
+        detail={`${totals.total} event${totals.total === 1 ? '' : 's'} in “${activeScope.label}” will be removed. Logs older than 30 days are already pruned automatically.`}
+        confirmLabel="Clear activity"
+        tone="danger"
+        loading={clearing}
+        error={clearError || undefined}
+        onClose={() => {
+          if (clearing) return;
+          setClearOpen(false);
+          setClearError('');
+        }}
+        onConfirm={() => void clearActivity()}
+      />
     </AdminLayout>
   );
 }

@@ -1,10 +1,10 @@
 import type { WingsClient } from './wings-client.js';
 
-/** Bracket folder under `resources/` for Spirit marketplace GitHub installs. */
-export const MARKETPLACE_RESOURCES_FOLDER = '[scripts-marketplace]';
-
 export interface FivemServerLayout {
   layout: 'txadmin' | 'flat' | 'unknown';
+  /** Detected `resources` directory on the server (install parent folder). */
+  resourcesPath: string;
+  /** @deprecated Use `resourcesPath` — kept for API compatibility. */
   resourcesBase: string;
   cfgFile: string;
   profileName: string | null;
@@ -37,8 +37,23 @@ async function listDir(wings: WingsClient, uuid: string, dir: string) {
   }
 }
 
-function marketplaceResourcesBase(resourcesPath: string): string {
-  return joinPath(resourcesPath, MARKETPLACE_RESOURCES_FOLDER);
+function layoutFromResources(
+  resourcesPath: string,
+  cfgFile: string,
+  profileName: string | null,
+  profilePath: string | null,
+  layout: FivemServerLayout['layout'],
+  confidence: FivemServerLayout['confidence'],
+): FivemServerLayout {
+  return {
+    layout,
+    resourcesPath,
+    resourcesBase: resourcesPath,
+    cfgFile,
+    profileName,
+    profilePath,
+    confidence,
+  };
 }
 
 async function scoreProfile(
@@ -49,8 +64,6 @@ async function scoreProfile(
   const resourcesPath = joinPath(profilePath, 'resources');
   const resourcesEntries = await listDir(wings, uuid, resourcesPath);
   if (!resourcesEntries.some((e) => e.directory)) return null;
-
-  const resourcesBase = marketplaceResourcesBase(resourcesPath);
 
   const cfgCandidates = [
     joinPath(profilePath, 'server.cfg'),
@@ -73,18 +86,19 @@ async function scoreProfile(
   const profileName = profilePath.split('/').filter(Boolean).pop() ?? null;
   const hasCfg = await hasFile(wings, uuid, cfgFile);
 
-  return {
-    layout: 'txadmin',
-    resourcesBase,
+  return layoutFromResources(
+    resourcesPath,
     cfgFile,
     profileName,
     profilePath,
-    confidence: hasCfg ? 'high' : 'medium',
-  };
+    'txadmin',
+    hasCfg ? 'high' : 'medium',
+  );
 }
 
 export function suggestInstallPathForRepo(layout: FivemServerLayout, repoName: string): string {
-  return joinPath(layout.resourcesBase, repoName);
+  const base = layout.resourcesPath || layout.resourcesBase;
+  return joinPath(base, repoName);
 }
 
 export function suggestCfgResource(installPath: string, repoName: string): string {
@@ -129,7 +143,6 @@ export async function detectFivemServerLayout(
   const flatResources = root.find((e) => e.directory && e.name === 'resources');
   if (flatResources) {
     const resourcesPath = '/resources';
-    const resourcesBase = marketplaceResourcesBase(resourcesPath);
 
     let cfgFile = '/server.cfg';
     if (!(await hasFile(wings, serverUuid, cfgFile))) {
@@ -137,26 +150,19 @@ export async function detectFivemServerLayout(
       if (alt) cfgFile = '/server.cfg';
     }
 
-    const layout: FivemServerLayout = {
-      layout: 'flat',
-      resourcesBase,
+    const layout = layoutFromResources(
+      resourcesPath,
       cfgFile,
-      profileName: null,
-      profilePath: null,
-      confidence: (await hasFile(wings, serverUuid, cfgFile)) ? 'high' : 'medium',
-    };
+      null,
+      null,
+      'flat',
+      (await hasFile(wings, serverUuid, cfgFile)) ? 'high' : 'medium',
+    );
     layoutCache.set(serverUuid, { expiresAt: Date.now() + CACHE_TTL_MS, layout });
     return layout;
   }
 
-  const fallback: FivemServerLayout = {
-    layout: 'unknown',
-    resourcesBase: marketplaceResourcesBase('/resources'),
-    cfgFile: '/server.cfg',
-    profileName: null,
-    profilePath: null,
-    confidence: 'low',
-  };
+  const fallback = layoutFromResources('/resources', '/server.cfg', null, null, 'unknown', 'low');
   layoutCache.set(serverUuid, { expiresAt: Date.now() + CACHE_TTL_MS, layout: fallback });
   return fallback;
 }

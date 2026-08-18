@@ -1,6 +1,10 @@
 import type { MarketplacePlugin } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { isFiveMEgg } from '../lib/fivem-egg.js';
+import { assertSafeServerPath, UnsafeFilePathError } from '../lib/file-paths.js';
+import {
+  assertSafeCfgResource,
+} from '../lib/marketplace-safety.js';
 import { wingsForNode, type WingsClient } from './wings-client.js';
 import { downloadGithubArchive, resolveGithubRelease } from './github-release.js';
 import type { GithubAuthContext } from '../lib/github-auth.js';
@@ -10,9 +14,14 @@ import { getServerAccess, hasClientPermission } from '../lib/client-server.js';
 export const MARKETPLACE_CFG_MARKER = '### Spirit Marketplace — auto-managed ###';
 
 function normalizePath(path: string): string {
-  const trimmed = path.trim();
-  if (!trimmed || trimmed === '/') return '/';
-  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  try {
+    return assertSafeServerPath(path.trim() || '/');
+  } catch (err) {
+    if (err instanceof UnsafeFilePathError) {
+      throw new Error(err.message);
+    }
+    throw err;
+  }
 }
 
 function parentAndName(fullPath: string): { parent: string; name: string } {
@@ -24,7 +33,9 @@ function parentAndName(fullPath: string): { parent: string; name: string } {
 }
 
 export function cfgLineFrom(cfgAction: string, cfgResource: string): string {
-  return `${cfgAction} ${cfgResource}`;
+  const action = cfgAction === 'start' ? 'start' : 'ensure';
+  const resource = assertSafeCfgResource(cfgResource);
+  return `${action} ${resource}`;
 }
 
 export function cfgLineFor(plugin: Pick<MarketplacePlugin, 'cfgAction' | 'cfgResource'>): string {
@@ -46,6 +57,10 @@ export async function assertFiveMServerView(serverId: string, userId: string) {
   });
   if (!server) return { error: 'not_found' as const, server: null };
   if (!isFiveMEgg(server.egg)) return { error: 'not_fivem' as const, server: null };
+  const isSupport = 'isAdminSupport' in access && access.isAdminSupport;
+  if (!server.fivemMarketplaceAccess && !isSupport) {
+    return { error: 'plan_denied' as const, server: null };
+  }
 
   return { error: null, server };
 }
@@ -61,8 +76,13 @@ export async function assertFiveMServerAccess(serverId: string, userId: string) 
   if (!server) return { error: 'not_found' as const, server: null };
   if (!isFiveMEgg(server.egg)) return { error: 'not_fivem' as const, server: null };
 
+  const isSupport = 'isAdminSupport' in access && access.isAdminSupport;
+  if (!server.fivemMarketplaceAccess && !isSupport) {
+    return { error: 'plan_denied' as const, server: null };
+  }
+
   const canInstall =
-    ('isAdminSupport' in access && access.isAdminSupport) ||
+    isSupport ||
     access.isOwner ||
     hasClientPermission(access.permissions, 'marketplace.install');
 
@@ -309,6 +329,9 @@ export async function installMarketplacePlugin(serverId: string, pluginId: strin
   const check = await assertFiveMServerAccess(serverId, userId);
   if (check.error === 'not_found') throw Object.assign(new Error('Server not found'), { statusCode: 404 });
   if (check.error === 'not_fivem') throw Object.assign(new Error('Marketplace is only available for FiveM servers'), { statusCode: 400 });
+  if (check.error === 'plan_denied') {
+    throw Object.assign(new Error('FiveM marketplace is not included with this server plan.'), { statusCode: 403 });
+  }
   if (check.error === 'forbidden') throw Object.assign(new Error('Permission denied'), { statusCode: 403 });
 
   const plugin = await prisma.marketplacePlugin.findFirst({ where: { id: pluginId, enabled: true } });
@@ -325,8 +348,23 @@ export async function installMarketplacePlugin(serverId: string, pluginId: strin
 
 export async function uninstallMarketplacePlugin(serverId: string, pluginId: string, userId: string) {
   const check = await assertFiveMServerAccess(serverId, userId);
-  if (check.error) throw Object.assign(new Error('Not allowed'), { statusCode: check.error === 'forbidden' ? 403 : 404 });
-
+  if (check.error) {
+    const status =
+      check.error === 'forbidden' || check.error === 'plan_denied'
+        ? 403
+        : check.error === 'not_fivem'
+          ? 400
+          : 404;
+    const message =
+      check.error === 'plan_denied'
+        ? 'FiveM marketplace is not included with this server plan.'
+        : check.error === 'not_fivem'
+          ? 'Marketplace is only available for FiveM servers'
+          : check.error === 'forbidden'
+            ? 'Permission denied'
+            : 'Not allowed';
+    throw Object.assign(new Error(message), { statusCode: status });
+  }
   const install = await prisma.marketplaceInstall.findUnique({
     where: { serverId_pluginId: { serverId, pluginId } },
     include: { plugin: true },

@@ -10,6 +10,12 @@ import {
   cfgLineFrom,
 } from './marketplace-installer.js';
 import {
+  assertSafeCfgAction,
+  assertSafeCfgResource,
+  assertSafeGithubName,
+  assertSafeMarketplacePath,
+} from '../lib/marketplace-safety.js';
+import {
   detectFivemServerLayout,
   suggestCfgResource,
   suggestInstallPathForRepo,
@@ -40,38 +46,33 @@ export async function resolveGithubInstallPaths(
   const auto = config.useAutoPaths !== false;
 
   if (auto && layout.confidence !== 'low') {
-    const installPath = suggestInstallPathForRepo(layout, repoName);
+    const installPath = assertSafeMarketplacePath(suggestInstallPathForRepo(layout, repoName), 'install path');
+    const cfgFile = assertSafeMarketplacePath(layout.cfgFile, 'config file');
+    const cfgResource = config.cfgResource.trim()
+      ? assertSafeCfgResource(config.cfgResource.trim())
+      : assertSafeCfgResource(suggestCfgResource(installPath, repoName));
     return {
       layout,
       installPath,
-      cfgFile: layout.cfgFile,
-      cfgResource: config.cfgResource.trim() || suggestCfgResource(installPath, repoName),
+      cfgFile,
+      cfgResource,
     };
   }
 
-  const installPath = validateInstallPath(config.installPath);
-  const cfgFile = config.cfgFile.trim().startsWith('/')
-    ? config.cfgFile.trim()
-    : `/${config.cfgFile.trim()}`;
+  const installPath = assertSafeMarketplacePath(config.installPath, 'install path');
+  const cfgFile = assertSafeMarketplacePath(
+    config.cfgFile.trim().startsWith('/') ? config.cfgFile.trim() : `/${config.cfgFile.trim()}`,
+    'config file',
+  );
   return {
     layout,
     installPath,
     cfgFile,
-    cfgResource: config.cfgResource.trim() || suggestCfgResource(installPath, repoName),
+    cfgResource: assertSafeCfgResource(config.cfgResource.trim() || suggestCfgResource(installPath, repoName)),
   };
 }
 
 export { type FivemServerLayout };
-
-function validateInstallPath(path: string): string {
-  const normalized = path.trim();
-  if (!normalized.startsWith('/')) throw new Error('Install path must start with /');
-  if (normalized.includes('..')) throw new Error('Install path cannot contain ..');
-  if (normalized.length > 512) throw new Error('Install path is too long');
-  const parts = normalized.split('/').filter(Boolean);
-  if (parts.length === 0) throw new Error('Install path must include a folder name');
-  return normalized.startsWith('/') ? normalized : `/${normalized}`;
-}
 
 export function serializeGithubInstall(install: MarketplaceGithubInstall) {
   return {
@@ -105,15 +106,23 @@ export async function installGithubResource(
   if (check.error === 'not_fivem') {
     throw Object.assign(new Error('Marketplace is only available for FiveM servers'), { statusCode: 400 });
   }
+  if (check.error === 'plan_denied') {
+    throw Object.assign(new Error('Marketplace is not included with this server plan.'), { statusCode: 403 });
+  }
   if (check.error === 'forbidden') throw Object.assign(new Error('Permission denied'), { statusCode: 403 });
 
+  const githubOwner = assertSafeGithubName(config.githubOwner, 'GitHub owner');
+  const githubRepo = assertSafeGithubName(config.githubRepo, 'GitHub repository');
+  const safeConfig = { ...config, githubOwner, githubRepo };
+
   const wings = wingsForNode(check.server!.node);
-  const paths = await resolveGithubInstallPaths(wings, check.server!.uuid, config.githubRepo, config);
+  const paths = await resolveGithubInstallPaths(wings, check.server!.uuid, safeConfig.githubRepo, safeConfig);
   const installPath = paths.installPath;
   const cfgFile = paths.cfgFile;
-  const cfgResource = paths.cfgResource;
-  const cfgLine = cfgLineFrom(config.cfgAction, cfgResource);
-  const slug = `${config.githubOwner}-${config.githubRepo}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  const cfgResource = assertSafeCfgResource(paths.cfgResource);
+  const cfgAction = assertSafeCfgAction(safeConfig.cfgAction);
+  const cfgLine = cfgLineFrom(cfgAction, cfgResource);
+  const slug = `${githubOwner}-${githubRepo}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
   const existing = await prisma.marketplaceGithubInstall.findUnique({
     where: { serverId_installPath: { serverId, installPath } },
@@ -123,38 +132,38 @@ export async function installGithubResource(
   }
 
   const release = await resolveGithubRelease(
-    config.githubOwner,
-    config.githubRepo,
-    config.githubRef,
-    config.githubAsset ?? null,
+    githubOwner,
+    githubRepo,
+    safeConfig.githubRef,
+    safeConfig.githubAsset ?? null,
     { userId },
   );
 
   await deployGithubArchive(wings, check.server!.uuid, {
     slug,
     installPath,
-    owner: config.githubOwner,
-    repo: config.githubRepo,
+    owner: githubOwner,
+    repo: githubRepo,
     release,
   }, { userId });
 
-  if (config.patchCfg) {
+  if (safeConfig.patchCfg) {
     await patchServerCfg(wings, check.server!.uuid, cfgFile, cfgLine, false);
   }
 
   const record = await prisma.marketplaceGithubInstall.create({
     data: {
       serverId,
-      githubOwner: config.githubOwner,
-      githubRepo: config.githubRepo,
-      githubRef: config.githubRef,
-      githubAsset: config.githubAsset ?? null,
-      displayName: config.displayName.trim() || config.githubRepo,
+      githubOwner,
+      githubRepo,
+      githubRef: safeConfig.githubRef,
+      githubAsset: safeConfig.githubAsset ?? null,
+      displayName: safeConfig.displayName.trim() || githubRepo,
       installPath,
       cfgResource,
-      cfgAction: config.cfgAction,
+      cfgAction,
       cfgFile,
-      patchCfg: config.patchCfg,
+      patchCfg: safeConfig.patchCfg,
       installedRef: release.tag,
       cfgLine,
       installedById: userId,
@@ -166,7 +175,21 @@ export async function installGithubResource(
 
 export async function uninstallGithubResource(serverId: string, installId: string, userId: string) {
   const check = await assertFiveMServerAccess(serverId, userId);
-  if (check.error) throw Object.assign(new Error('Not allowed'), { statusCode: check.error === 'forbidden' ? 403 : 404 });
+  if (check.error) {
+    const status =
+      check.error === 'forbidden' || check.error === 'plan_denied'
+        ? 403
+        : check.error === 'not_fivem'
+          ? 400
+          : 404;
+    const message =
+      check.error === 'plan_denied'
+        ? 'Marketplace is not included with this server plan.'
+        : check.error === 'not_fivem'
+          ? 'Marketplace is only available for FiveM servers'
+          : 'Not allowed';
+    throw Object.assign(new Error(message), { statusCode: status });
+  }
 
   const install = await prisma.marketplaceGithubInstall.findFirst({
     where: { id: installId, serverId },
@@ -184,7 +207,21 @@ export async function uninstallGithubResource(serverId: string, installId: strin
 
 export async function updateGithubResource(serverId: string, installId: string, userId: string) {
   const check = await assertFiveMServerAccess(serverId, userId);
-  if (check.error) throw Object.assign(new Error('Not allowed'), { statusCode: check.error === 'forbidden' ? 403 : 404 });
+  if (check.error) {
+    const status =
+      check.error === 'forbidden' || check.error === 'plan_denied'
+        ? 403
+        : check.error === 'not_fivem'
+          ? 400
+          : 404;
+    const message =
+      check.error === 'plan_denied'
+        ? 'Marketplace is not included with this server plan.'
+        : check.error === 'not_fivem'
+          ? 'Marketplace is only available for FiveM servers'
+          : 'Not allowed';
+    throw Object.assign(new Error(message), { statusCode: status });
+  }
 
   const install = await prisma.marketplaceGithubInstall.findFirst({
     where: { id: installId, serverId },

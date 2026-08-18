@@ -4,22 +4,28 @@ import {
   Copy,
   Gamepad2,
   Globe,
-  Link2,
+  HardDrive,
   Network,
   Plus,
   Server,
   Star,
   Trash2,
-  Upload,
 } from 'lucide-react';
-import { api, type ServerAllocationsResponse, type ServerConnectionInfo } from '../../lib/api';
+import { api, type ServerAllocationsResponse, type ServerConnectionInfo, type ServerDomainResponse } from '../../lib/api';
 import { useServer } from '../../context/ServerContext';
 import { useServerRouteId } from '../../hooks/useServerRouteId';
 import { getServerAccess } from '../../lib/server-access';
-import { Button } from '../../components/Layout';
+import { Button, Input } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { EmptyState, Spinner, StatCard } from '../../components/ui';
-import { ServerErrorBanner, ServerPage, ServerPageHeader } from '../../components/server/ServerPage';
+import { ResourceQuotaStrip } from '../../components/server/ResourceQuotaStrip';
+import { EmptyState, Spinner } from '../../components/ui';
+import {
+  ServerErrorBanner,
+  ServerNotice,
+  ServerPage,
+  ServerPageHeader,
+  ServerPanel,
+} from '../../components/server/ServerPage';
 
 export function ServerNetworkPage() {
   const id = useServerRouteId();
@@ -27,24 +33,30 @@ export function ServerNetworkPage() {
   const access = getServerAccess(server);
   const [data, setData] = useState<ServerAllocationsResponse | null>(null);
   const [connection, setConnection] = useState<ServerConnectionInfo | null>(null);
+  const [domainInfo, setDomainInfo] = useState<ServerDomainResponse | null>(null);
+  const [slugDraft, setSlugDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; address: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDomainOpen, setDeleteDomainOpen] = useState(false);
 
   async function load() {
     if (!id) return;
     setLoading(true);
     setError('');
     try {
-      const [allocations, conn] = await Promise.all([
+      const [allocations, conn, domain] = await Promise.all([
         api.client.networkAllocations(id),
         api.client.connection(id).catch(() => null),
+        api.client.serverDomain(id).catch(() => null),
       ]);
       setData(allocations);
       setConnection(conn);
+      setDomainInfo(domain);
+      if (domain?.domain?.slug) setSlugDraft(domain.domain.slug);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load network settings');
     } finally {
@@ -53,12 +65,17 @@ export function ServerNetworkPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, [id]);
 
   async function refreshConnection() {
     if (!id) return;
-    setConnection(await api.client.connection(id).catch(() => null));
+    const [conn, domain] = await Promise.all([
+      api.client.connection(id).catch(() => null),
+      api.client.serverDomain(id).catch(() => null),
+    ]);
+    setConnection(conn);
+    setDomainInfo(domain);
   }
 
   async function handleAutoAssign() {
@@ -112,21 +129,75 @@ export function ServerNetworkPage() {
     setTimeout(() => setCopiedKey(null), 1500);
   }
 
+  async function handleSaveDomain() {
+    if (!id) return;
+    setWorking('domain');
+    setError('');
+    try {
+      const next = await api.client.createServerDomain(id, { slug: slugDraft, preferSubdomain: true });
+      setDomainInfo(next);
+      await refreshConnection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create subdomain');
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  async function handlePrefer(preferSubdomain: boolean) {
+    if (!id) return;
+    setWorking('prefer');
+    setError('');
+    try {
+      setDomainInfo(await api.client.updateServerDomainPreference(id, preferSubdomain));
+      await refreshConnection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preference');
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  async function confirmDeleteDomain() {
+    if (!id) return;
+    setDeleteLoading(true);
+    setWorking('domain-delete');
+    setError('');
+    try {
+      setDomainInfo(await api.client.deleteServerDomain(id));
+      setSlugDraft('');
+      setDeleteDomainOpen(false);
+      await refreshConnection();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove subdomain');
+    } finally {
+      setDeleteLoading(false);
+      setWorking(null);
+    }
+  }
+
   const limit = data?.limit ?? 0;
   const used = data?.used ?? 0;
-  const usagePercent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : used > 0 ? 100 : 0;
   const primary = data?.allocations.find((a) => a.isDefault);
+  const baseDomain = domainInfo?.feature.baseDomain || '';
+  const previewFqdn = slugDraft.trim()
+    ? `${slugDraft.trim().toLowerCase()}${baseDomain ? `.${baseDomain}` : ''}`
+    : domainInfo?.domain?.fqdn || '';
+  const joinAddress =
+    connection?.game.address ??
+    primary?.address ??
+    `${server.defaultAllocation.ip}:${server.defaultAllocation.port}`;
 
   return (
     <ServerPage>
       <ServerPageHeader
         title="Network"
-        description={`Connection details, SFTP access, and port allocations for ${server.name}`}
+        description="Connection details, ports, and optional subdomain"
         actions={
           access.canCreateAllocations && data?.canCreate ? (
-            <Button type="button" disabled={working === 'create'} onClick={handleAutoAssign}>
+            <Button type="button" disabled={working === 'create'} onClick={() => void handleAutoAssign()}>
               <Plus className="h-3.5 w-3.5" />
-              {working === 'create' ? 'Assigning…' : 'Auto-assign port'}
+              {working === 'create' ? 'Assigning…' : 'Add port'}
             </Button>
           ) : undefined
         }
@@ -134,202 +205,256 @@ export function ServerNetworkPage() {
 
       <ServerErrorBanner message={error} />
 
-      {connection && (
-        <section className="network-panel overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <div className="border-b border-[var(--border)] bg-[var(--bg-elevated)]/60 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/15">
-                <Link2 className="h-4 w-4 text-green-400" />
-              </span>
-              <div>
-                <h3 className="text-sm font-semibold">Connect to your server</h3>
-                <p className="text-[11px] text-[var(--muted)]">
-                  Share the game address with players · use SFTP to upload files
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 p-4 lg:grid-cols-2">
-            <ConnectionCard
-              icon={Gamepad2}
-              tone="game"
-              label="Game address"
-              value={connection.game.address}
-              detail={`${connection.game.hostname}:${connection.game.port}`}
-              hint="Paste this into your game client to join"
-              copied={copiedKey === 'game'}
-              onCopy={() => copyText(connection.game.address, 'game')}
-            />
-            <ConnectionCard
-              icon={Upload}
-              tone="sftp"
+      <ServerPanel
+        icon={Gamepad2}
+        iconTone="green"
+        title="Connection"
+        description="Share these with players and tools"
+        noPadding
+        bodyClassName="p-0"
+      >
+        <dl className="divide-y divide-[var(--border)]/50">
+          <CopyRow
+            icon={Gamepad2}
+            label="Game address"
+            value={joinAddress}
+            hint={
+              connection
+                ? `${connection.game.hostname}:${connection.game.port}`
+                : `Primary :${primary?.port ?? server.defaultAllocation.port}`
+            }
+            copied={copiedKey === 'game'}
+            onCopy={() => void copyText(joinAddress, 'game')}
+          />
+          {connection ? (
+            <CopyRow
+              icon={HardDrive}
               label="SFTP"
               value={`${connection.sftp.username}@${connection.sftp.host}:${connection.sftp.port}`}
-              detail={connection.sftp.uri}
-              hint="Use your panel account password to authenticate"
+              hint="Authenticate with your panel password"
               copied={copiedKey === 'sftp'}
-              onCopy={() => copyText(connection.sftp.uri, 'sftp')}
+              onCopy={() => void copyText(connection.sftp.uri, 'sftp')}
             />
-          </div>
-        </section>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Allocations used"
-          value={`${used} / ${limit}`}
-          hint={limit === 0 ? 'Additional ports disabled (limit 0)' : `${usagePercent}% of limit`}
-          icon={<Network className="h-3.5 w-3.5" />}
-          tone={used >= limit ? 'warning' : 'default'}
-        />
-        <StatCard
-          label="Primary port"
-          value={primary?.port ?? server.defaultAllocation.port}
-          hint={primary?.address ?? 'Main player connection'}
-          icon={<Star className="h-3.5 w-3.5" />}
-          tone="success"
-        />
-        <StatCard
-          label="Node"
-          value={server.node.name}
-          hint={server.node.fqdn ?? connection?.node.fqdn ?? 'Hosting node'}
-          icon={<Server className="h-3.5 w-3.5" />}
-        />
-      </div>
-
-      <div className="network-panel rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-        <div className="mb-2 flex items-center justify-between text-[11px]">
-          <span className="text-[var(--muted)]">Allocation capacity</span>
-          <span className="font-medium tabular-nums">
-            {used} / {limit} ports
-          </span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-          <div
-            className={`h-full rounded-full transition-all ${
-              used >= limit ? 'bg-amber-500' : 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)]'
-            }`}
-            style={{ width: `${usagePercent}%` }}
+          ) : null}
+          <InfoRow
+            icon={Server}
+            label="Node"
+            value={server.node.name}
+            hint={server.node.fqdn ?? connection?.node.fqdn}
           />
-        </div>
-      </div>
+        </dl>
+      </ServerPanel>
 
-      <section className="network-panel overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--bg-elevated)]/60 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-muted)]">
-              <Globe className="h-4 w-4 accent-text" />
-            </span>
-            <div>
-              <h3 className="text-sm font-semibold">Port allocations</h3>
-              <p className="text-[11px] text-[var(--muted)]">
-                Primary and additional ports · bind address is the interface on the node
-              </p>
-            </div>
+      <ResourceQuotaStrip
+        label="Ports"
+        used={used}
+        limit={limit}
+        canCreate={Boolean(access.canCreateAllocations && data?.canCreate)}
+        icon={<Network className="h-3.5 w-3.5" />}
+      />
+
+      <ServerPanel
+        icon={Network}
+        title="Port allocations"
+        description="Primary and additional ports on this node"
+        noPadding
+        bodyClassName="p-0"
+      >
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Spinner className="h-6 w-6" />
           </div>
-        </div>
-
-        <div className="p-4">
-          {loading ? (
-            <div className="flex justify-center py-14">
-              <Spinner className="h-6 w-6" />
-            </div>
-          ) : !data || data.allocations.length === 0 ? (
-            <EmptyState
-              title="No allocations"
-              description="This server has no network allocations assigned yet."
-            />
-          ) : (
-            <div className="space-y-3">
-              {data.allocations.map((alloc) => {
-                const busy = working === alloc.id;
-                return (
-                  <article
-                    key={alloc.id}
-                    className={`group rounded-xl border p-4 transition ${
-                      alloc.isDefault
-                        ? 'border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] bg-[var(--accent-muted)]/25'
-                        : 'border-[var(--border)] bg-[var(--bg-elevated)]/30 hover:border-[color-mix(in_srgb,var(--accent)_25%,var(--border))] hover:bg-[var(--surface-hover)]/40'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          {alloc.isDefault ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-muted)] px-2 py-0.5 text-[10px] font-semibold accent-text">
-                              <Star className="h-3 w-3 fill-current" />
-                              Primary
-                            </span>
-                          ) : (
-                            <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
-                              Additional
-                            </span>
-                          )}
-                          <span className="font-mono text-[10px] text-[var(--muted)]">:{alloc.port}</span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-mono text-base font-semibold tracking-tight">{alloc.address}</p>
-                          <CopyButton
-                            label="Copy address"
-                            copied={copiedKey === alloc.id}
-                            onCopy={() => copyText(alloc.address, alloc.id)}
-                          />
-                        </div>
-
-                        <dl className="mt-3 grid gap-2 text-[11px] sm:grid-cols-2">
-                          <div className="rounded-lg border border-[var(--border)]/60 bg-[var(--bg)]/50 px-2.5 py-2">
-                            <dt className="text-[var(--muted)]">Hostname</dt>
-                            <dd className="mt-0.5 font-mono">{alloc.displayHost}</dd>
-                          </div>
-                          <div className="rounded-lg border border-[var(--border)]/60 bg-[var(--bg)]/50 px-2.5 py-2">
-                            <dt className="text-[var(--muted)]">Bind address</dt>
-                            <dd className="mt-0.5 font-mono">{alloc.bindAddress}</dd>
-                          </div>
-                        </dl>
-                      </div>
-
-                      <div className="flex shrink-0 flex-wrap gap-1.5">
-                        {access.canUpdateAllocations && !alloc.isDefault && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            disabled={busy}
-                            onClick={() => handleSetPrimary(alloc.id)}
-                            className="text-[12px]"
-                          >
-                            {busy ? 'Updating…' : 'Make primary'}
-                          </Button>
-                        )}
-                        {access.canDeleteAllocations && !alloc.isDefault && (
-                          <button
-                            type="button"
-                            title="Remove allocation"
-                            disabled={busy}
-                            onClick={() => setDeleteTarget({ id: alloc.id, address: alloc.address })}
-                            className="inline-flex items-center justify-center rounded-md border border-red-500/20 bg-red-500/5 p-1.5 text-red-400 transition hover:bg-red-500/15 disabled:opacity-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
+        ) : !data || data.allocations.length === 0 ? (
+          <div className="px-4 py-8">
+            <EmptyState title="No ports assigned" description="This server has no network allocations yet." />
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--border)]/50">
+            {data.allocations.map((alloc) => {
+              const busy = working === alloc.id;
+              return (
+                <li key={alloc.id} className="net-alloc">
+                  <div className="net-alloc-main min-w-0">
+                    <div className="net-alloc-top">
+                      {alloc.isDefault ? (
+                        <span className="net-alloc-badge net-alloc-badge--primary">
+                          <Star className="h-3 w-3 fill-current" />
+                          Primary
+                        </span>
+                      ) : (
+                        <span className="net-alloc-badge">Additional</span>
+                      )}
+                      <span className="net-alloc-port">:{alloc.port}</span>
                     </div>
-                  </article>
-                );
-              })}
+                    <div className="net-alloc-address">
+                      <p className="font-mono text-sm font-semibold">{alloc.address}</p>
+                      <button
+                        type="button"
+                        className="net-alloc-copy"
+                        title="Copy address"
+                        onClick={() => void copyText(alloc.address, alloc.id)}
+                      >
+                        {copiedKey === alloc.id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="net-alloc-meta">
+                      Host {alloc.displayHost}
+                      <span aria-hidden>·</span>
+                      Bind {alloc.bindAddress}
+                    </p>
+                  </div>
+                  <div className="net-alloc-actions">
+                    {access.canUpdateAllocations && !alloc.isDefault ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => void handleSetPrimary(alloc.id)}
+                      >
+                        {busy ? 'Updating…' : 'Make primary'}
+                      </Button>
+                    ) : null}
+                    {access.canDeleteAllocations && !alloc.isDefault ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => setDeleteTarget({ id: alloc.id, address: alloc.address })}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {data && !data.canCreate && access.canCreateAllocations ? (
+          <div className="border-t border-[var(--border)]/50 p-4">
+            <ServerNotice tone="warning">
+              {data.limit === 0
+                ? 'Additional ports are disabled on this server (limit 0).'
+                : `Port limit reached (${data.limit}). Ask an admin to raise it.`}
+            </ServerNotice>
+          </div>
+        ) : null}
+      </ServerPanel>
+
+      {domainInfo ? (
+        <ServerPanel
+          icon={Globe}
+          iconTone="cyan"
+          title="Subdomain"
+          description="Optional DNS name for this server"
+        >
+          {!domainInfo.feature.enabled || !domainInfo.feature.canManage ? (
+            <ServerNotice tone="muted">
+              {domainInfo.feature.reason || 'Subdomains are not available on this node yet.'}
+            </ServerNotice>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="Subdomain slug"
+                    value={slugDraft}
+                    onChange={(e) =>
+                      setSlugDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                    }
+                    placeholder="myserver"
+                    disabled={!access.canUpdateAllocations}
+                    hint={
+                      previewFqdn
+                        ? `Resolves as ${previewFqdn}`
+                        : baseDomain
+                          ? `Creates slug.${baseDomain}`
+                          : undefined
+                    }
+                  />
+                </div>
+                {access.canUpdateAllocations ? (
+                  <Button
+                    type="button"
+                    disabled={working === 'domain' || !slugDraft.trim()}
+                    onClick={() => void handleSaveDomain()}
+                  >
+                    {working === 'domain'
+                      ? 'Saving…'
+                      : domainInfo.domain
+                        ? 'Update subdomain'
+                        : 'Create subdomain'}
+                  </Button>
+                ) : null}
+              </div>
+
+              {domainInfo.domain ? (
+                <>
+                  <dl className="overflow-hidden rounded-xl border border-[var(--border)] divide-y divide-[var(--border)]/50">
+                    <InfoRow icon={Server} label="IP" value={domainInfo.ipAddress} mono />
+                    <InfoRow
+                      icon={Globe}
+                      label="Hostname"
+                      value={domainInfo.subdomainAddress ?? '—'}
+                      hint={
+                        domainInfo.domain.hostnameOnly
+                          ? 'Minecraft SRV active — hostname only'
+                          : domainInfo.feature.hostnameOnlySupported
+                            ? 'Re-save to create Minecraft SRV'
+                            : 'This game needs hostname:port'
+                      }
+                      mono
+                    />
+                  </dl>
+
+                  {access.canUpdateAllocations ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-[var(--muted)]">Show players:</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!domainInfo.preferSubdomain ? 'primary' : 'secondary'}
+                        disabled={working === 'prefer'}
+                        onClick={() => void handlePrefer(false)}
+                      >
+                        Use IP
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={domainInfo.preferSubdomain ? 'primary' : 'secondary'}
+                        disabled={working === 'prefer'}
+                        onClick={() => void handlePrefer(true)}
+                      >
+                        Use subdomain
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        disabled={working === 'domain-delete'}
+                        onClick={() => setDeleteDomainOpen(true)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           )}
-
-          {data && !data.canCreate && access.canCreateAllocations && (
-            <p className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-              {data.limit === 0
-                ? 'Additional port allocations are disabled on this server (limit 0).'
-                : `Allocation limit reached (${data.limit}). Contact an administrator to increase it.`}
-            </p>
-          )}
-        </div>
-      </section>
+        </ServerPanel>
+      ) : null}
 
       <ConfirmModal
         open={deleteTarget !== null}
@@ -340,89 +465,86 @@ export function ServerNetworkPage() {
         tone="warning"
         loading={deleteLoading}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={confirmDeleteAllocation}
+        onConfirm={() => void confirmDeleteAllocation()}
+      />
+      <ConfirmModal
+        open={deleteDomainOpen}
+        title="Remove subdomain?"
+        description="This deletes the Cloudflare DNS record. Players using the subdomain will stop connecting until you create a new one."
+        confirmLabel="Remove subdomain"
+        tone="warning"
+        loading={deleteLoading}
+        onClose={() => setDeleteDomainOpen(false)}
+        onConfirm={() => void confirmDeleteDomain()}
       />
     </ServerPage>
   );
 }
 
-function ConnectionCard({
+function InfoRow({
   icon: Icon,
-  tone,
   label,
   value,
-  detail,
   hint,
-  copied,
-  onCopy,
+  mono,
 }: {
-  icon: typeof Gamepad2;
-  tone: 'game' | 'sftp';
+  icon: typeof Server;
   label: string;
   value: string;
-  detail: string;
-  hint: string;
-  copied: boolean;
-  onCopy: () => void;
+  hint?: string;
+  mono?: boolean;
 }) {
-  const toneStyles = {
-    game: 'bg-green-500/15 text-green-400',
-    sftp: 'bg-cyan-500/15 text-cyan-400',
-  };
-
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/40 p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneStyles[tone]}`}>
-            <Icon className="h-4 w-4" />
-          </span>
-          <span className="text-xs font-semibold">{label}</span>
-        </div>
-        <CopyButton label={`Copy ${label.toLowerCase()}`} copied={copied} onCopy={onCopy} prominent />
-      </div>
-      <p className="break-all font-mono text-sm font-medium leading-relaxed">{value}</p>
-      <p className="mt-2 truncate font-mono text-[10px] text-[var(--muted)]">{detail}</p>
-      <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{hint}</p>
+    <div className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,9rem)_1fr] sm:items-start sm:gap-4">
+      <dt className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
+        <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        {label}
+      </dt>
+      <dd className="min-w-0">
+        <p className={`text-sm font-medium ${mono ? 'break-all font-mono text-[12px]' : ''}`}>{value}</p>
+        {hint ? <p className="mt-0.5 text-[11px] text-[var(--muted)]">{hint}</p> : null}
+      </dd>
     </div>
   );
 }
 
-function CopyButton({
+function CopyRow({
+  icon: Icon,
   label,
+  value,
+  hint,
   copied,
   onCopy,
-  prominent,
 }: {
+  icon: typeof Server;
   label: string;
+  value: string;
+  hint?: string;
   copied: boolean;
   onCopy: () => void;
-  prominent?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      title={label}
-      onClick={onCopy}
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition ${
-        copied
-          ? 'border-green-500/30 bg-green-500/10 text-green-400'
-          : prominent
-            ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:accent-text'
-            : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface)] hover:accent-text'
-      }`}
-    >
-      {copied ? (
-        <>
-          <Check className="h-3 w-3" />
-          Copied
-        </>
-      ) : (
-        <>
-          <Copy className="h-3 w-3" />
-          Copy
-        </>
-      )}
-    </button>
+    <div className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,9rem)_1fr_auto] sm:items-center sm:gap-4">
+      <dt className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
+        <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+        {label}
+      </dt>
+      <dd className="min-w-0">
+        <p className="break-all font-mono text-[13px] font-semibold">{value}</p>
+        {hint ? <p className="mt-0.5 text-[11px] text-[var(--muted)]">{hint}</p> : null}
+      </dd>
+      <button
+        type="button"
+        onClick={onCopy}
+        className={`inline-flex items-center gap-1.5 justify-self-start rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition sm:justify-self-end ${
+          copied
+            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+            : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--muted)] hover:text-[var(--text)]'
+        }`}
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
   );
 }

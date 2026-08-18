@@ -8,6 +8,11 @@ import { executeSchedule } from '../services/schedule-runner.js';
 import { wingsForNode } from '../services/wings-client.js';
 import { signWingsJwt } from '../lib/auth.js';
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
+import {
+  assertBackupFitsDiskBudget,
+  getServerDiskBudget,
+  serializeDiskBudget,
+} from '../lib/server-disk-budget.js';
 import { sendClientError } from '../lib/safe-errors.js';
 
 const POWER_ACTIONS = ['start', 'stop', 'restart', 'kill'] as const;
@@ -42,7 +47,7 @@ export async function backupRoutes(app: FastifyInstance) {
 
     const server = await prisma.server.findUnique({
       where: { id: access.server.id },
-      select: { backupLimit: true },
+      include: { node: true },
     });
     if (!server) return reply.status(404).send({ error: 'Not found' });
 
@@ -54,10 +59,13 @@ export async function backupRoutes(app: FastifyInstance) {
     const used = backups.length;
     const canCreatePermission = hasClientPermission(access.permissions, 'backup.create');
     const meta = resourceQuotaMeta(server.backupLimit, used, canCreatePermission);
+    const disk = await getServerDiskBudget(server, prisma);
 
     return {
       backups: backups.map(serializeBackup),
       ...meta,
+      canCreate: meta.canCreate && disk.canFitEstimatedBackup,
+      disk: serializeDiskBudget(disk),
     };
   });
 
@@ -71,15 +79,24 @@ export async function backupRoutes(app: FastifyInstance) {
 
     let backup;
     try {
+      const server = await prisma.server.findUnique({
+        where: { id: access.server.id },
+        include: { node: true },
+      });
+      if (!server) return reply.status(404).send({ error: 'Not found' });
+
+      // Disk budget check outside the short transaction (needs Wings I/O).
+      await assertBackupFitsDiskBudget(server, prisma);
+
       backup = await prisma.$transaction(async (tx) => {
-        const server = await tx.server.findUnique({
-          where: { id: access.server.id },
-          include: { node: true },
+        const row = await tx.server.findUnique({
+          where: { id: server.id },
+          select: { backupLimit: true },
         });
-        if (!server) throw new ResourceQuotaError('Not found');
+        if (!row) throw new ResourceQuotaError('Not found');
 
         const count = await tx.backup.count({ where: { serverId: server.id } });
-        assertUnderLimit(server.backupLimit, count, 'Backup');
+        assertUnderLimit(row.backupLimit, count, 'Backup');
 
         return tx.backup.create({
           data: { serverId: server.id, name: body.name, ignored: body.ignored ? body.ignored : '[]' },
@@ -423,6 +440,10 @@ async function requireServerAccess(
   }
   if (permission && !hasClientPermission(access.permissions, permission)) {
     reply.status(403).send({ error: 'You do not have permission to perform this action' });
+    return null;
+  }
+  if (!access.isAdminSupport && access.server.suspended) {
+    reply.status(403).send({ error: 'This server is suspended', code: 'server_suspended' });
     return null;
   }
   return access;

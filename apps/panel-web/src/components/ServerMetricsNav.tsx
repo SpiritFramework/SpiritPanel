@@ -1,8 +1,10 @@
-import { Clock, Signal } from 'lucide-react';
+import { Clock, Signal, Users } from 'lucide-react';
 import {
   formatPing,
+  formatPlayerCount,
   formatUptime,
   pingTone,
+  playerCountTone,
   PING_TONE_CLASS,
   type PingTone,
 } from '../lib/format-uptime';
@@ -13,17 +15,30 @@ export function ServerMetricsNav({
   pingState,
   uptimeMs,
   uptimeLive,
+  playerOnline,
+  playerMax,
+  playerLoading,
+  playerLive,
+  playerUnavailable,
   compact,
 }: {
   ping: number | null;
   pingState: ServerPingState;
   uptimeMs: number | null;
   uptimeLive: boolean;
+  playerOnline: number | null;
+  playerMax: number | null;
+  playerLoading: boolean;
+  playerLive: boolean;
+  playerUnavailable?: boolean;
   compact?: boolean;
 }) {
+  const playersValue = formatPlayerCount(playerOnline, playerMax, playerLoading, playerLive, playerUnavailable);
+  const playersTone = playerCountTone(playerOnline, playerLive, playerUnavailable);
+
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="server-metrics-strip flex flex-wrap items-center gap-2">
         <MetricChip
           icon={Signal}
           label="Ping"
@@ -36,6 +51,13 @@ export function ServerMetricsNav({
           label="Uptime"
           value={uptimeLive && uptimeMs != null ? formatUptime(uptimeMs) : '—'}
           tone={uptimeLive ? 'success' : 'muted'}
+        />
+        <MetricChip
+          icon={Users}
+          label="Players"
+          value={playersValue}
+          tone={playersTone}
+          pulse={playerLoading && playerOnline == null}
         />
       </div>
     );
@@ -61,6 +83,20 @@ export function ServerMetricsNav({
           value={uptimeLive && uptimeMs != null ? formatUptime(uptimeMs) : '—'}
           hint={uptimeLive ? 'Container running' : 'Start server for uptime'}
           tone={uptimeLive ? 'success' : 'muted'}
+        />
+        <MetricTile
+          icon={Users}
+          label="Players"
+          value={playersValue}
+          hint={
+            !playerLive
+              ? 'Start server for player count'
+              : playerUnavailable
+                ? 'Player count unavailable'
+                : 'Online players'
+          }
+          tone={playersTone}
+          loading={playerLoading && playerOnline == null}
         />
       </div>
     </div>
@@ -126,7 +162,7 @@ function MetricChip({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--bg-elevated)]/40 px-2.5 py-1 text-[11px]">
       <Icon className="h-3 w-3 shrink-0 text-[var(--muted)]" />
-      <span className="text-[var(--muted)]">{label}</span>
+      <span className="metric-chip-label text-[var(--muted)]">{label}</span>
       <span className={`font-semibold tabular-nums ${valueClass} ${pulse ? 'animate-pulse' : ''}`}>{value}</span>
     </span>
   );

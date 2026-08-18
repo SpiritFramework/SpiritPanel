@@ -1,13 +1,16 @@
-import type { Node } from '@prisma/client';
 import {
   applyContainerStatusUpdate,
   clearContainerStatusCache,
   getContainerStatus,
   setContainerStatus,
+  resolveReportedContainerState,
 } from '../lib/container-state.js';
+import { mapWithConcurrency } from '../lib/map-concurrency.js';
 import { inferStateFromWingsResources } from '../lib/wings-resources.js';
+import { logWingsFailure } from '../lib/wings-sync.js';
 import { prisma } from '../lib/prisma.js';
 import { wingsForNode } from './wings-client.js';
+import type { Node } from '@prisma/client';
 
 export interface ServerRuntimeRecord {
   id: string;
@@ -23,25 +26,28 @@ export interface ServerRuntimeRef {
   nodeId: string;
 }
 
+const WINGS_POLL_CONCURRENCY = 6;
+
 /** Read cached Wings status, falling back to the persisted DB value. */
-export function resolveCachedContainerState(uuid: string, persisted: string | null): string | null {
-  return getContainerStatus(uuid) ?? persisted;
+export async function resolveCachedContainerState(uuid: string, persisted: string | null): Promise<string | null> {
+  return (await getContainerStatus(uuid)) ?? persisted;
 }
 
 /** Poll FeatherWings for the current container state and warm the cache. */
 export async function fetchLiveContainerState(node: Node, uuid: string): Promise<string | null> {
   try {
     const resources = await wingsForNode(node).getResources(uuid);
-    const state = inferStateFromWingsResources(resources);
+    const state = resolveReportedContainerState(uuid, inferStateFromWingsResources(resources));
     setContainerStatus(uuid, state);
     return state;
   } catch {
     try {
       const legacy = await wingsForNode(node).getResourcesLegacy(uuid);
-      const state = inferStateFromWingsResources(legacy);
+      const state = resolveReportedContainerState(uuid, inferStateFromWingsResources(legacy));
       setContainerStatus(uuid, state);
       return state;
-    } catch {
+    } catch (err) {
+      logWingsFailure('live container state poll failed', err, { uuid, nodeId: node.id });
       return null;
     }
   }
@@ -58,14 +64,16 @@ export async function resolveServerContainerState(
   server: ServerRuntimeRecord,
   opts?: { refresh?: boolean },
 ): Promise<string | null> {
-  const cached = getContainerStatus(server.uuid);
+  const cached = await getContainerStatus(server.uuid);
   if (cached && !opts?.refresh) return cached;
 
   const fromWings = await fetchLiveContainerState(server.node, server.uuid);
   const resolved = fromWings ?? cached ?? server.containerState;
 
   if (fromWings) {
-    persistContainerStateIfChanged(server, fromWings).catch(() => {});
+    persistContainerStateIfChanged(server, fromWings).catch((err) => {
+      logWingsFailure('persist container state failed', err, { serverUuid: server.uuid });
+    });
   }
 
   return resolved;
@@ -78,11 +86,11 @@ export async function enrichServersWithLiveState<T extends ServerRuntimeRecord>(
 ): Promise<(T & { containerState: string | null })[]> {
   if (servers.length === 0) return [];
 
-  const refresh = opts?.refresh ?? true;
+  const refresh = opts?.refresh ?? false;
   const byNode = new Map<string, T[]>();
 
   for (const server of servers) {
-    if (!refresh && getContainerStatus(server.uuid)) continue;
+    if (!refresh && (await getContainerStatus(server.uuid))) continue;
     const list = byNode.get(server.node.id) ?? [];
     list.push(server);
     byNode.set(server.node.id, list);
@@ -92,22 +100,23 @@ export async function enrichServersWithLiveState<T extends ServerRuntimeRecord>(
 
   await Promise.all(
     [...byNode.values()].map(async (nodeServers) => {
-      await Promise.all(
-        nodeServers.map(async (server) => {
-          const state = refresh
-            ? await resolveServerContainerState(server, { refresh: true })
-            : resolveCachedContainerState(server.uuid, server.containerState);
-          resolved.set(server.uuid, state);
-        }),
-      );
+      await mapWithConcurrency(nodeServers, WINGS_POLL_CONCURRENCY, async (server) => {
+        const state = refresh
+          ? await resolveServerContainerState(server, { refresh: true })
+          : await resolveCachedContainerState(server.uuid, server.containerState);
+        resolved.set(server.uuid, state);
+      });
     }),
   );
 
-  return servers.map((server) => ({
-    ...server,
-    containerState:
-      resolved.get(server.uuid) ?? resolveCachedContainerState(server.uuid, server.containerState),
-  }));
+  return Promise.all(
+    servers.map(async (server) => ({
+      ...server,
+      containerState:
+        resolved.get(server.uuid) ??
+        (await resolveCachedContainerState(server.uuid, server.containerState)),
+    })),
+  );
 }
 
 /** Attach live container state to API records that only include nodeId. */
@@ -123,42 +132,43 @@ export async function enrichServerRefsWithLiveState<T extends ServerRuntimeRef>(
     });
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
-    return Promise.all(
-      servers.map(async (server): Promise<T & { containerState: string | null }> => {
-        const node = nodeById.get(server.nodeId);
-        if (!node) {
-          return {
-            ...server,
-            containerState: resolveCachedContainerState(server.uuid, server.containerState),
-          };
-        }
-        try {
-          const state = await resolveServerContainerState(
-            {
-              id: server.id,
-              uuid: server.uuid,
-              containerState: server.containerState,
-              node,
-            },
-            opts,
-          );
-          return {
-            ...server,
-            containerState: state ?? resolveCachedContainerState(server.uuid, server.containerState),
-          };
-        } catch {
-          return {
-            ...server,
-            containerState: resolveCachedContainerState(server.uuid, server.containerState),
-          };
-        }
-      }),
-    );
+    return mapWithConcurrency(servers, WINGS_POLL_CONCURRENCY, async (server) => {
+      const node = nodeById.get(server.nodeId);
+      if (!node) {
+        return {
+          ...server,
+          containerState: await resolveCachedContainerState(server.uuid, server.containerState),
+        };
+      }
+      try {
+        const state = await resolveServerContainerState(
+          {
+            id: server.id,
+            uuid: server.uuid,
+            containerState: server.containerState,
+            node,
+          },
+          opts,
+        );
+        return {
+          ...server,
+          containerState:
+            state ?? (await resolveCachedContainerState(server.uuid, server.containerState)),
+        };
+      } catch {
+        return {
+          ...server,
+          containerState: await resolveCachedContainerState(server.uuid, server.containerState),
+        };
+      }
+    });
   } catch {
-    return servers.map((server) => ({
-      ...server,
-      containerState: resolveCachedContainerState(server.uuid, server.containerState),
-    }));
+    return Promise.all(
+      servers.map(async (server) => ({
+        ...server,
+        containerState: await resolveCachedContainerState(server.uuid, server.containerState),
+      })),
+    );
   }
 }
 
@@ -169,7 +179,7 @@ export async function refreshAllServerContainerStates(): Promise<{
   serversUpdated: number;
   pollFailures: number;
 }> {
-  const cacheEntriesCleared = clearContainerStatusCache();
+  const cacheEntriesCleared = await clearContainerStatusCache();
 
   const servers = await prisma.server.findMany({
     select: { id: true, uuid: true, containerState: true, nodeId: true },
@@ -180,28 +190,26 @@ export async function refreshAllServerContainerStates(): Promise<{
   let serversUpdated = 0;
   let pollFailures = 0;
 
-  await Promise.all(
-    servers.map(async (server) => {
-      const node = nodeById.get(server.nodeId);
-      if (!node) {
-        pollFailures++;
-        return;
-      }
+  await mapWithConcurrency(servers, WINGS_POLL_CONCURRENCY, async (server) => {
+    const node = nodeById.get(server.nodeId);
+    if (!node) {
+      pollFailures++;
+      return;
+    }
 
-      const state = await fetchLiveContainerState(node, server.uuid);
-      if (!state) {
-        pollFailures++;
-        return;
-      }
+    const state = await fetchLiveContainerState(node, server.uuid);
+    if (!state) {
+      pollFailures++;
+      return;
+    }
 
-      try {
-        await persistContainerStateIfChanged({ ...server, node }, state);
-        serversUpdated++;
-      } catch {
-        pollFailures++;
-      }
-    }),
-  );
+    try {
+      await persistContainerStateIfChanged({ ...server, node }, state);
+      serversUpdated++;
+    } catch {
+      pollFailures++;
+    }
+  });
 
   return {
     cacheEntriesCleared,

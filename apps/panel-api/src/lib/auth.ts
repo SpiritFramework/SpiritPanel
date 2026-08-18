@@ -36,7 +36,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function sessionExpiresIn(role: string): string {
-  return role === 'admin' ? '24h' : '7d';
+  return role === 'admin' || role === 'staff' ? '24h' : '7d';
 }
 
 export function signToken(user: SessionUser): string {
@@ -159,10 +159,12 @@ export function signWingsJwt(
   claims: Record<string, unknown>,
   expiresIn: string | number = '10m',
   /** FeatherWings verifies console JWTs with the node daemon token secret. */
-  secret?: string,
+  secret: string,
 ): string {
-  const key = secret ?? getConfig().appKey.replace('base64:', '');
-  return jwt.sign(claims, key, { algorithm: 'HS256', expiresIn } as jwt.SignOptions);
+  if (!secret?.trim()) {
+    throw new Error('Daemon token secret is required to sign FeatherWings JWTs');
+  }
+  return jwt.sign(claims, secret, { algorithm: 'HS256', expiresIn } as jwt.SignOptions);
 }
 
 export async function hashApiToken(token: string): Promise<string> {

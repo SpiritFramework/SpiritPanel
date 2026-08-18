@@ -105,6 +105,7 @@ describe('server configuration builder', () => {
       allocationLimit: 1,
       backupLimit: 0,
       databaseLimit: 0,
+      preferSubdomain: false,
       createdAt: new Date(),
       updatedAt: new Date(),
       egg: {
@@ -153,6 +154,9 @@ describe('server configuration builder', () => {
         daemonListen: 8080,
         daemonSftp: 2022,
         daemonBase: '/var/lib/pterodactyl/volumes',
+        publicIp: null,
+        domainBase: null,
+        cloudflareZoneId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

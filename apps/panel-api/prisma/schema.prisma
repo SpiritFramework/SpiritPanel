@@ -9,6 +9,7 @@ datasource db {
 
 enum UserRole {
   admin
+  staff
   user
 }
 
@@ -55,6 +56,10 @@ model User {
   passwordResets PasswordReset[]
   marketplaceInstalls       MarketplaceInstall[]
   marketplaceGithubInstalls MarketplaceGithubInstall[]
+  minecraftModrinthInstalls MinecraftModrinthInstall[]
+  ticketsCreated          SupportTicket[] @relation("TicketCreator")
+  ticketsAssigned         SupportTicket[] @relation("TicketAssignee")
+  ticketMessages          TicketMessage[]
 
   @@map("users")
 }
@@ -104,6 +109,12 @@ model Node {
   daemonListen       Int      @default(8080) @map("daemon_listen")
   daemonSftp         Int      @default(2022) @map("daemon_sftp")
   daemonBase           String   @default("/var/lib/pterodactyl/volumes") @map("daemon_base")
+  /// Public IPv4/IPv6 used for Cloudflare A/AAAA records when allocations bind 0.0.0.0.
+  publicIp             String?  @map("public_ip")
+  /// Optional subdomain base override (e.g. eu.spirithost.co.uk). Falls back to global Cloudflare setting.
+  domainBase           String?  @map("domain_base")
+  /// Optional Cloudflare zone override when domainBase lives in a different zone.
+  cloudflareZoneId     String?  @map("cloudflare_zone_id")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -228,6 +239,15 @@ model Server {
   allocationLimit  Int            @default(0) @map("allocation_limit")
   backupLimit      Int            @default(0) @map("backup_limit")
   databaseLimit    Int            @default(0) @map("database_limit")
+  /// When true and a subdomain exists, player-facing address prefers the subdomain over IP.
+  preferSubdomain  Boolean        @default(false) @map("prefer_subdomain")
+  /// Billing/commercial gate: clients may manage a subdomain only when this is true (and Cloudflare DNS is ready).
+  /// Defaults to true so panel-created / existing servers keep access until billing explicitly disables it.
+  subdomainAccess  Boolean        @default(true) @map("subdomain_access")
+  /// Billing/commercial gate for FiveM marketplace one-click installs.
+  fivemMarketplaceAccess Boolean  @default(true) @map("fivem_marketplace_access")
+  /// Billing/commercial gate for Minecraft Modrinth plugin installs.
+  minecraftPluginsAccess Boolean  @default(true) @map("minecraft_plugins_access")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 
@@ -245,8 +265,37 @@ model Server {
   databases        ServerDatabase[]
   marketplaceInstalls       MarketplaceInstall[]
   marketplaceGithubInstalls MarketplaceGithubInstall[]
+  minecraftModrinthInstalls MinecraftModrinthInstall[]
+  supportTickets            SupportTicket[]
+  domain           ServerDomain?
 
+  @@index([ownerId])
+  @@index([nodeId])
+  @@index([status])
+  @@index([suspended])
   @@map("servers")
+}
+
+/// One Cloudflare-managed subdomain per game server (A/AAAA DNS-only + optional Minecraft SRV).
+model ServerDomain {
+  id            String   @id @default(cuid())
+  serverId      String   @unique @map("server_id")
+  slug          String
+  fqdn          String   @unique
+  zoneId        String   @map("zone_id")
+  cfRecordId    String?  @map("cf_record_id")
+  cfSrvRecordId String?  @map("cf_srv_record_id")
+  targetIp      String   @map("target_ip")
+  srvPort       Int?     @map("srv_port")
+  status        String   @default("active")
+  message       String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([fqdn])
+  @@map("server_domains")
 }
 
 enum MarketplaceCategory {
@@ -334,6 +383,33 @@ model MarketplaceGithubInstall {
   @@map("marketplace_github_installs")
 }
 
+model MinecraftModrinthInstall {
+  id             String   @id @default(cuid())
+  serverId       String   @map("server_id")
+  projectId      String   @map("project_id")
+  projectSlug    String   @map("project_slug")
+  versionId      String   @map("version_id")
+  versionNumber  String   @map("version_number")
+  displayName    String   @map("display_name")
+  filename       String
+  installPath    String   @map("install_path")
+  installDir     String   @map("install_dir")
+  projectType    String   @default("mod") @map("project_type")
+  iconUrl        String?  @map("icon_url")
+  loaders        Json     @default("[]")
+  installedById  String?  @map("installed_by_id")
+  installedAt    DateTime @default(now()) @map("installed_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  server      Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  installedBy User?  @relation(fields: [installedById], references: [id], onDelete: SetNull)
+
+  @@unique([serverId, projectId])
+  @@unique([serverId, installPath])
+  @@index([serverId])
+  @@map("minecraft_modrinth_installs")
+}
+
 model ServerStatSnapshot {
   id             String   @id @default(cuid())
   serverId       String   @map("server_id")
@@ -375,6 +451,7 @@ model Subuser {
   user   User   @relation("SubuserUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([serverId, userId])
+  @@index([userId])
   @@map("subusers")
 }
 
@@ -410,6 +487,7 @@ model Schedule {
   server  Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
   tasks   ScheduleTask[]
 
+  @@index([isActive])
   @@map("schedules")
 }
 
@@ -478,7 +556,84 @@ model ActivityLog {
 
   @@index([event])
   @@index([timestamp])
+  @@index([serverId])
+  @@index([actorId])
   @@map("activity_logs")
+}
+
+enum TicketStatus {
+  open
+  awaiting_reply
+  in_progress
+  resolved
+  closed
+}
+
+enum TicketPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+model SupportTicket {
+  id         String         @id @default(cuid())
+  number     Int            @unique @default(autoincrement())
+  subject    String
+  category   String
+  status     TicketStatus   @default(open)
+  priority   TicketPriority @default(normal)
+  userId     String         @map("user_id")
+  serverId   String?        @map("server_id")
+  assigneeId String?        @map("assignee_id")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+  closedAt   DateTime?      @map("closed_at")
+
+  user     User            @relation("TicketCreator", fields: [userId], references: [id], onDelete: Cascade)
+  server   Server?         @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  assignee User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  messages TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([serverId])
+  @@index([assigneeId])
+  @@index([updatedAt])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  ticketId  String   @map("ticket_id")
+  authorId  String   @map("author_id")
+  body      String   @db.Text
+  isStaff   Boolean  @default(false) @map("is_staff")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket      SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  attachments TicketAttachment[]
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@map("ticket_messages")
+}
+
+model TicketAttachment {
+  id          String   @id @default(cuid())
+  messageId   String   @map("message_id")
+  filename    String
+  mimeType    String   @map("mime_type")
+  size        Int
+  storageName String   @map("storage_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  message TicketMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("ticket_attachments")
 }
 
 model PanelSetting {

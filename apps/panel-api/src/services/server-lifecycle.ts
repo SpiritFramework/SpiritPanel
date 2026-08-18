@@ -1,10 +1,17 @@
 import { prisma } from '../lib/prisma.js';
+import {
+  applyContainerStatusUpdate,
+  forcePanelServerOffline,
+  suppressTransitionalContainerReports,
+} from '../lib/container-state.js';
 import { deprovisionServerDatabase, hostFromRecord } from '../lib/database-provision.js';
 import { generateUuidShort } from './server-configuration.js';
 import { getServerFull, serverInclude } from './server-helpers.js';
 import { releaseServerAllocations, resolveAllocationForCreate } from './allocations.js';
 import { effectiveResourceLimit } from '../lib/node-capacity.js';
 import { serverResourceContribution } from '../lib/server-resources.js';
+import { inferStateFromWingsResources } from '../lib/wings-resources.js';
+import { logWingsFailure } from '../lib/wings-sync.js';
 import { wingsForNode, type WingsClient } from './wings-client.js';
 
 export interface CreateServerInput {
@@ -14,6 +21,7 @@ export interface CreateServerInput {
   allocationId?: string;
   name: string;
   description?: string;
+  externalId?: string;
   memory?: number;
   swap?: number;
   disk?: number;
@@ -25,6 +33,9 @@ export interface CreateServerInput {
   allocationLimit?: number;
   backupLimit?: number;
   databaseLimit?: number;
+  subdomainAccess?: boolean;
+  fivemMarketplaceAccess?: boolean;
+  minecraftPluginsAccess?: boolean;
 }
 
 /**
@@ -122,6 +133,7 @@ export async function createServerOnPanel(input: CreateServerInput) {
       data: {
         uuid,
         uuidShort: generateUuidShort(uuid),
+        externalId: input.externalId || null,
         ownerId: input.ownerId,
         nodeId: input.nodeId,
         eggId: input.eggId,
@@ -138,6 +150,9 @@ export async function createServerOnPanel(input: CreateServerInput) {
         allocationLimit,
         backupLimit: input.backupLimit ?? 0,
         databaseLimit: input.databaseLimit ?? 0,
+        subdomainAccess: input.subdomainAccess ?? true,
+        fivemMarketplaceAccess: input.fivemMarketplaceAccess ?? true,
+        minecraftPluginsAccess: input.minecraftPluginsAccess ?? true,
         installStatus: 'installing',
         status: 'installing',
         containerState: 'installing',
@@ -207,20 +222,90 @@ export async function syncServerToWings(uuid: string) {
   await wings.syncServer(uuid);
 }
 
+async function readWingsContainerState(wings: WingsClient, uuid: string): Promise<string | null> {
+  try {
+    return inferStateFromWingsResources(await wings.getResources(uuid));
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort Kill to FeatherWings — never waits for the daemon soft-stop window. */
+async function sendKillBestEffort(wings: WingsClient, uuid: string): Promise<void> {
+  try {
+    await wings.power(uuid, 'kill', 0);
+  } catch (err) {
+    logWingsFailure('kill power action failed', err, { uuid });
+  }
+}
+
+/**
+ * Send a power action to FeatherWings and keep the panel badge usable.
+ *
+ * FeatherWings accepts power with HTTP 202 and can sit on "stopping" for up to ~10
+ * minutes while a soft-stop is wedged (e.g. 0 TPS). The panel must not block on that
+ * or re-apply "stopping" from a later Wings poll after the user already Killed.
+ */
 export async function powerServer(uuid: string, action: string) {
   const server = await getServerFull(prisma, uuid);
   if (!server) throw new Error('Server not found');
 
-  // Starting a server that is still installing makes the daemon interrupt the
-  // running install and re-run it, racing the install temp-dir cleanup and
-  // leaving a corrupt install. Block start/restart until installation finishes.
   if ((action === 'start' || action === 'restart') && isServerInstalling(server)) {
     throw new Error('Server is still installing. Wait for installation to finish before starting it.');
   }
 
-  await ensureServerOnWings(uuid);
   const wings = wingsForNode(server.node);
+
+  if (action === 'kill') {
+    // Do not call ensureServerOnWings / waitForOffline — those hang when the daemon is wedged.
+    await sendKillBestEffort(wings, uuid);
+    await forcePanelServerOffline(prisma, server);
+    return;
+  }
+
+  if (action === 'stop') {
+    await applyContainerStatusUpdate(prisma, server, 'stopping');
+    await wings.power(uuid, 'stop');
+    return;
+  }
+
+  // start / restart
+  await ensureServerOnWings(uuid);
+  const liveState = await readWingsContainerState(wings, uuid);
+  const stuck =
+    liveState === 'stopping' ||
+    liveState === 'starting' ||
+    server.containerState === 'stopping' ||
+    server.containerState === 'starting';
+
+  if (stuck) {
+    await sendKillBestEffort(wings, uuid);
+    await forcePanelServerOffline(prisma, server);
+    // Short poll only — if Wings is still wedged, Start may no-op on the daemon until
+    // it finishes its stop window; the panel badge is at least clear.
+    await wings.waitForOffline(uuid, 5_000).catch(() => false);
+    await wings.power(uuid, 'start');
+    suppressTransitionalContainerReports(uuid);
+    await applyContainerStatusUpdate(prisma, server, 'starting');
+    return;
+  }
+
   await wings.power(uuid, action);
+  if (action === 'start') {
+    await applyContainerStatusUpdate(prisma, server, 'starting');
+  }
+}
+
+/** Clear stuck stopping/starting in the panel DB; optionally poke FeatherWings with Kill. */
+export async function clearStuckServerPowerState(uuid: string, opts?: { kill?: boolean }) {
+  const server = await getServerFull(prisma, uuid);
+  if (!server) throw new Error('Server not found');
+
+  if (opts?.kill !== false) {
+    await sendKillBestEffort(wingsForNode(server.node), uuid);
+  }
+  await forcePanelServerOffline(prisma, server);
+  return server;
 }
 
 async function ensureServerStoppedForReinstall(wings: WingsClient, uuid: string): Promise<void> {
@@ -240,13 +325,15 @@ async function ensureServerStoppedForReinstall(wings: WingsClient, uuid: string)
     // Stop is best-effort — kill below if the instance is still running.
   }
 
-  if (await wings.waitForOffline(uuid, 90_000)) {
+  const stoppedGracefully = await wings.waitForOffline(uuid, 90_000).catch(() => false);
+  if (stoppedGracefully) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return;
   }
 
   await wings.power(uuid, 'kill');
-  if (!(await wings.waitForOffline(uuid, 30_000))) {
+  const killed = await wings.waitForOffline(uuid, 30_000).catch(() => false);
+  if (!killed) {
     throw new Error('Could not stop the server before reinstall. Stop it manually, then try again.');
   }
 
@@ -285,7 +372,7 @@ export async function reinstallServerOnWings(uuid: string, opts?: { wipeFiles?: 
         where: { id: server.id },
         data: previous,
       })
-      .catch(() => {});
+      .catch((err) => logWingsFailure('reinstall rollback failed', err, { serverId: server.id }));
     throw e;
   }
 }
@@ -305,6 +392,13 @@ export async function deleteServerFromPanel(uuid: string) {
     await wingsForNode(server.node).deleteServer(uuid);
   } catch {
     // wings may already have removed it
+  }
+
+  try {
+    const { cleanupServerDomainBestEffort } = await import('./server-domains.js');
+    await cleanupServerDomainBestEffort(server.id);
+  } catch (e) {
+    console.error(`Failed to cleanup Cloudflare subdomain for server ${uuid}:`, e);
   }
 
   const databases = await prisma.serverDatabase.findMany({

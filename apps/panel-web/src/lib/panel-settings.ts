@@ -52,14 +52,41 @@ export interface PanelSecuritySettings {
 
 export interface PanelMarketplaceSettings {
   enabled: boolean;
-  allowCatalog: boolean;
   allowGithubInstalls: boolean;
 }
 
 export const DEFAULT_MARKETPLACE: PanelMarketplaceSettings = {
   enabled: true,
-  allowCatalog: true,
   allowGithubInstalls: true,
+};
+
+export interface PanelMinecraftPluginsSettings {
+  enabled: boolean;
+  allowModrinthInstalls: boolean;
+}
+
+export const DEFAULT_MINECRAFT_PLUGINS: PanelMinecraftPluginsSettings = {
+  enabled: true,
+  allowModrinthInstalls: true,
+};
+
+export interface PanelTicketsSettings {
+  enabled: boolean;
+  allowServerTickets: boolean;
+  requireServer: boolean;
+  maxOpenPerUser: number;
+  discordWebhookEnabled: boolean;
+  discordWebhookUrl: string;
+  discordWebhookUrlSet?: boolean;
+}
+
+export const DEFAULT_TICKETS: PanelTicketsSettings = {
+  enabled: true,
+  allowServerTickets: true,
+  requireServer: false,
+  maxOpenPerUser: 10,
+  discordWebhookEnabled: false,
+  discordWebhookUrl: '',
 };
 
 export interface PanelBranding {
@@ -94,6 +121,7 @@ export interface PanelBranding {
   };
   announcement: PanelAnnouncementSettings;
   registrationEnabled: boolean;
+  ticketsEnabled: boolean;
   minPasswordLength: number;
   turnstileEnabled: boolean;
   turnstileSiteKey: string;
@@ -131,6 +159,7 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
   },
   announcement: DEFAULT_ANNOUNCEMENT,
   registrationEnabled: false,
+  ticketsEnabled: true,
   minPasswordLength: 8,
   turnstileEnabled: false,
   turnstileSiteKey: '',

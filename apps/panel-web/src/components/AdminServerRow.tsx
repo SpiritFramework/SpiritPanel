@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Cpu, HardDrive, MemoryStick, Trash2 } from 'lucide-react';
 import { api, type AdminServerSummary } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { isFullPanelAdmin } from '../lib/roles';
 import { formatAllocationAddress } from '../lib/allocation';
 import { formatResource, getServerTheme } from '../lib/server-theme';
 import { ConfirmModal } from './ConfirmModal';
@@ -102,6 +104,8 @@ function AdminServerRow({
   onDeleted?: () => void;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const fullAdmin = isFullPanelAdmin(user);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -199,6 +203,7 @@ function AdminServerRow({
 
       <td className="px-2 py-3">
         <div className="flex items-center justify-end gap-1">
+          {fullAdmin && (
           <button
             type="button"
             title="Delete server"
@@ -208,6 +213,7 @@ function AdminServerRow({
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
+          )}
           <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:accent-text" />
         </div>
       </td>
