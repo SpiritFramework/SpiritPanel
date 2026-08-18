@@ -5,6 +5,7 @@ Spirit-Panel is a self-hosted game server control panel built by **SpiritFramewo
 It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons running on separate game nodes.
 
 📚 FeatherWings Documentation: https://docs.mythical.systems/docs/featherpanel/wings
+
 📚 Spirit-Panel Documentation: https://framework.spirithost.co.uk/docs?script=spirit-panel
 
 > ⚠️ The panel runs only the control panel (web + API). Game servers are never hosted on the panel machine. All Docker workloads are executed on FeatherWings nodes.
