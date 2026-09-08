@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Spirit Panel are documented here. Version numbers are kept in sync across the monorepo (`package.json` files).
+All notable changes to Spirit Panel are documented here. The root and `apps/*` `package.json` files share the four-part version below. The three internal libraries under `packages/*` use plain semver instead, because `workspace:*` cannot resolve a four-part version — see 1.3.0.1. They are private and never published, so their version carries no meaning.
 
 **Format:** `MAJOR.MINOR.FEATURE.PATCH` (four parts, e.g. `1.5.3.0`). Displayed as `v1.5.3.0`.
 
@@ -16,6 +16,30 @@ Bump only the segment that matches the size of the change; reset trailing segmen
 Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
+
+## [1.3.0.1] - 2026-09-08
+
+### Security
+
+Clears all 23 advisories reported by `pnpm audit` (15 high, 7 moderate, 1 low). `pnpm audit` now reports no known vulnerabilities.
+
+Direct dependencies upgraded — the existing caret ranges already allowed these, the lockfile was simply pinned to older builds:
+
+- **fastify** 5.8.5 → 5.12.3 — schema validation bypass via root primitive coercion, and `X-Forwarded-*` spoofing under `trustProxy` hop-count.
+- **react-router** 7.17.0 → 7.18.0 — open redirect via backslash in `<Link>`/`useNavigate`, RSC CSRF bypass, unauthenticated DoS via inefficient route matching, arbitrary constructor injection in `deserializeErrors()`, and an `RSCErrorHandler` XSS.
+- **mysql2** 3.22.5 → 3.23.1 — decompression-bomb DoS via unbounded zlib inflate in the compressed protocol handler.
+
+Transitive dependencies pinned through `pnpm.overrides`, since their parents still depend on vulnerable versions. Each stays within the same major and can be dropped when the parent catches up:
+
+- **fast-uri** ≥3.1.4 (six advisories: host confusion and SSRF via malformed authority, IDN, and IPv6 handling), **find-my-way** ≥9.7.0 (HTTP/2 DoS) — both reached through Fastify.
+- **postcss** ≥8.5.23 (path traversal via `sourceMappingURL`) and **nanoid** ≥3.3.16 (infinite loop on zero/negative size), reached through Vite.
+- **browserslist** ≥4.28.7 (unbounded memory growth, prototype write via untrusted stats).
+- **deepmerge-ts** ≥8.0.0 (stack exhaustion on recursive object graphs), reached through Prisma. No Prisma release fixes this — every version through `6.20.0-dev` pins `deepmerge-ts` at exactly `7.1.5` — so the override forces a major bump. Verified `prisma generate` and `prisma validate` still work, which exercises the `@prisma/config` code path that consumes it.
+- **esbuild** ≥0.28.1 (dev-server arbitrary file read on Windows), scoped to `tsx` only. Vite requires `^0.25.0`, which sits below the vulnerable range and so was never affected; forcing it to 0.28 breaks the web build.
+
+### Fixed
+
+- **Dependency updates were impossible to install.** The four-part version in each workspace `package.json` is not valid semver, so `workspace:*` could not resolve and any change that forced re-resolution failed with `ERR_PNPM_NO_MATCHING_VERSION_INSIDE_WORKSPACE`. This stayed hidden while the lockfile was already satisfied. The three internal libraries (`shared`, `shared-types`, `plugin-sdk`) now carry plain semver versions; they are private and referenced only via `workspace:*`, so nothing consumes their version. `apps/*` and the root keep the four-part scheme, and the displayed panel version is unchanged.
 
 ## [1.3.0.0] - 2026-09-08
 

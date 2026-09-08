@@ -195,8 +195,19 @@ Force users to sign in again after deploys that change session or cookie behavio
 
 - Session verification uses **`jsonwebtoken`** with explicit **`crit`** header validation (`apps/panel-api/src/lib/jwt-crit.ts`).
 - Keep dependencies updated (`pnpm install`, review Dependabot alerts).
-- Audit with `pnpm --filter @spirit/panel-api audit:security` (fails at moderate severity and above).
+- Audit with `pnpm audit`, or `pnpm --filter @spirit/panel-api audit:security` to fail at moderate severity and above.
 - Run production installs with `pnpm install` on the server; avoid copying unverified `node_modules` trees.
+
+### Transitive dependency overrides
+
+Some advisories sit in packages the panel does not depend on directly, where the parent still pins a vulnerable version. Those are forced to a patched release through `pnpm.overrides` in the root `package.json`.
+
+Two rules apply when editing that block:
+
+- **Stay within the same major** unless the upgrade is verified. `deepmerge-ts` is the one exception — no Prisma release fixes it, so the override crosses a major and was validated by running the Prisma CLI.
+- **Scope the override when the package is shared.** `esbuild` is pinned as `tsx>esbuild` rather than globally: Vite requires `^0.25.0`, which is below the vulnerable range, and forcing it to 0.28 breaks the web build. A global override would have traded a low-severity dev-only issue for a broken release build.
+
+Re-run `pnpm audit` after changing dependencies, and drop an override once its parent ships a fixed version.
 
 ---
 
