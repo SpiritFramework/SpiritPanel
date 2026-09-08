@@ -17,6 +17,34 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.0.2] - 2026-09-08
+
+### Added
+
+- **One-command installer and updater** (`scripts/spirit.sh`). A menu-driven script that runs standalone, so it does not need a checkout to bootstrap one:
+
+  ```bash
+  sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+  ```
+
+  Options are Install, Update, Status, Backup and Uninstall; each also has a non-interactive form (`install --domain ... -y`) for automation. See `--help`.
+
+  **Install** takes a bare Ubuntu 22.04+ / Debian 12+ server to a working panel: Node 20, pnpm, MariaDB, Redis, nginx and certbot; the `spiritpanel` user; a clone into `/home/spiritpanel/Spirit-Panel`; `.env` with generated secrets; database provisioning; build; systemd unit and nginx site retargeted at the install directory; a Let's Encrypt certificate; and `.env` locked to `600`. Re-running keeps an existing `.env` and does not touch a customised nginx site unless given `--force-nginx`.
+
+  Three details the installer handles that a manual deploy usually gets wrong:
+
+  - It configures Redis `requirepass` **and** the matching `REDIS_PASSWORD`. The API refuses to boot in production with the schedule worker enabled and no Redis password, and a password in `.env` that Redis does not enforce fails just as hard.
+  - It writes `ADMIN_EMAIL`, `ADMIN_USERNAME` and a 12+ character `ADMIN_PASSWORD` into `.env` *before* seeding, because the production seed exits if any are missing or weak.
+  - It serves plain HTTP until certbot has issued a certificate, then swaps in the hardened config. The shipped nginx config references certificate paths that do not exist on a new server, so installing it first would break the ACME challenge. A failed issuance now leaves the panel on HTTP rather than an unloadable nginx.
+
+  **Update** backs up `.env` and dumps the database before touching anything, then updates the source (git, or the release tarball for zip deploys), installs, builds, migrates, restarts, and polls `/health`. A failed build or migration stops **before** the restart so the running version stays up, and the backup path is always printed. `.env`, `node_modules/` and `dist/` are never overwritten by the source sync. The database password is passed to `mysqldump` through a defaults file rather than the command line.
+
+- **Installer test suite** (`scripts/spirit.test.sh`, `pnpm test:installer`) — 45 assertions covering argument handling, `.env` generation, Redis setup, TLS bootstrap and fallback, idempotent re-runs, backup ordering, migration and build failure paths, and `.env` preservation across updates. System commands are replaced with recording stubs, so the real control flow runs without a server.
+
+### Fixed
+
+- Shell scripts, systemd units and nginx configs are now pinned to LF in `.gitattributes`. With only `* text=auto`, a Windows checkout produced CRLF copies, and the deploy zip is built from the working tree — a CRLF `install` fails on Linux with `bad interpreter: No such file or directory`.
+
 ## [1.3.0.1] - 2026-09-08
 
 ### Security

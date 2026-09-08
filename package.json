@@ -1,6 +1,6 @@
 {
   "name": "spirit-panel",
-  "version": "1.3.0.1",
+  "version": "1.3.0.2",
   "private": true,
   "bin": {
     "spirit-install": "./scripts/spirit-install-bin.cjs"
@@ -19,6 +19,7 @@
     "db:seed": "pnpm --filter @spirit/panel-api db:seed",
     "import-eggs": "tsx scripts/import-eggs.ts",
     "verify:prod": "tsx scripts/verify-production.ts",
+    "test:installer": "bash scripts/spirit.test.sh",
     "postinstall": "pnpm db:generate"
   },
   "devDependencies": {

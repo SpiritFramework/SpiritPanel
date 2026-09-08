@@ -1,2 +1,12 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must keep LF even when checked out on Windows. A CRLF copy
+# fails on Linux with "bad interpreter: No such file or directory", and the
+# deploy zip is built from a Windows working tree.
+*.sh text eol=lf
+install text eol=lf
+
+# Unit files and nginx configs are only ever read by Linux.
+*.service text eol=lf
+*.conf text eol=lf

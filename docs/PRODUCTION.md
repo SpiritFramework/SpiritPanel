@@ -29,13 +29,51 @@
 
 ## Quick start
 
-On a fresh Ubuntu server with Node 20+, pnpm, and MariaDB:
+### Guided installer (recommended)
+
+On a **fresh** Ubuntu 22.04+ / Debian 12+ server, as root:
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+```
+
+This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, clones the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
+
+**Point DNS at the server first.** Certbot validates over HTTP, so the domain has to resolve before you run it. If issuance fails the installer leaves the panel serving plain HTTP and tells you the command to retry — it does not leave nginx in a broken state.
+
+Unattended:
+
+```bash
+sudo bash <(curl -fsSL .../scripts/spirit.sh) install \
+  --domain panel.example.com --admin-email you@example.com -y
+```
+
+
+| Flag                    | Purpose                                                    |
+| ----------------------- | ---------------------------------------------------------- |
+| `--domain DOMAIN`       | Public panel domain — becomes `API_URL` and Wings `remote:` |
+| `--admin-email MAIL`    | Admin account, and the Let's Encrypt contact                |
+| `--admin-password PASS` | Admin password (12+ chars; generated if omitted)            |
+| `--no-tls`              | Skip certbot — use behind an existing proxy or load balancer |
+| `--ref REF`             | Install a specific branch or tag                            |
+| `--force-nginx`         | Overwrite an existing nginx site config                     |
+| `--install-dir DIR`     | Install somewhere other than `/home/spiritpanel/Spirit-Panel` |
+| `-y`, `--yes`           | Never prompt                                                |
+
+
+Re-running it is safe: an existing `.env` is kept as-is, and a customised nginx site is left alone unless you pass `--force-nginx`.
+
+### Manual install (existing checkout)
+
+If the server already has Node 20+, pnpm and MariaDB, and you only want the app configured:
 
 ```bash
 cd ~/Spirit-Panel
 pnpm install
 pnpm spirit-install --production --api-url https://panel.example.com
 ```
+
+This covers the database, `.env`, admin user and build. systemd, nginx and TLS remain manual — see the sections below.
 
 Same via shell wrapper:
 
@@ -646,6 +684,26 @@ Requirements and caveats:
 
 
 ## Updates
+
+### Guided updater (recommended)
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh) update
+```
+
+Order of operations, which is what makes it safe to run on a live panel:
+
+1. Copies `.env` and runs `mysqldump` into `/var/backups/spirit-panel/<timestamp>/`. If the dump fails it stops and asks before going further.
+2. Updates the source — `git fetch` and a hard reset onto the tracked upstream, or the release tarball if the deploy was not a git checkout. Local modifications prompt to stash rather than being silently discarded.
+3. `pnpm install`, then `pnpm build`.
+4. `prisma migrate deploy`.
+5. Restarts the API, reloads nginx, then polls `/health`.
+
+**A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. Add `--ref V1.3.0.1` to move to a specific release, or `-y` to skip prompts.
+
+`.env`, `node_modules/`, and the existing `dist/` are never overwritten by the source sync.
+
+### Manual update
 
 ```bash
 cd ~/Spirit-Panel

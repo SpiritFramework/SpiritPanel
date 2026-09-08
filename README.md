@@ -113,21 +113,41 @@ Dev credentials and seed data: `docs/LOCAL.md`
 
 ### Production
 
-On Ubuntu 24.04+:
+On a fresh Ubuntu 22.04+ or Debian 12+ server, run the installer as root:
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+```
+
+That opens a menu with **Install**, **Update**, **Status**, **Backup**, and **Uninstall**. It takes a bare server all the way to a working panel: Node 20, pnpm, MariaDB, Redis (with a password), nginx, and a Let's Encrypt certificate.
+
+Unattended:
+
+```bash
+sudo bash <(curl -fsSL .../scripts/spirit.sh) install \
+  --domain panel.example.com --admin-email you@example.com -y
+```
+
+Point DNS at the server **before** installing, so certbot can issue a certificate.
+
+#### Updating
+
+```bash
+sudo bash <(curl -fsSL .../scripts/spirit.sh) update
+```
+
+Backs up `.env` and the database first, then rebuilds, migrates, and restarts. If the build or a migration fails it stops **before** restarting, so the running version stays up.
+
+#### Already have a checkout?
 
 ```bash
 pnpm install
 pnpm spirit-install --production --api-url https://panel.example.com
 ```
 
-This installer:
+This configures the database, `.env`, admin user, and build, but leaves systemd, nginx, and TLS to you.
 
-* creates database schema
-* generates `.env`
-* builds frontend + backend
-* creates admin user
-
-> ⚠️ Save generated credentials. Do not run as root.
+> ⚠️ Save the generated credentials. Do not run `spirit-install` itself as root.
 
 Full guide: `docs/PRODUCTION.md`
 
