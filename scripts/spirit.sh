@@ -112,8 +112,49 @@ detect_os() {
 is_installed() { [[ -f "${INSTALL_DIR}/package.json" ]]; }
 
 # Run a command as the panel user, with a login shell so nvm/npm paths resolve.
+app_home() {
+  getent passwd "$APP_USER" 2>/dev/null | cut -d: -f6
+}
+
 as_app() {
-  runuser -u "$APP_USER" -- bash -lc "$1"
+  local home
+  home="$(app_home)"
+  # Corepack defaults its cache to $HOME/.cache/node/corepack and aborts with
+  # EACCES if that path is root-owned, which happens easily on a box where
+  # root has run node tooling in the panel user's home. Pin it somewhere we
+  # know is writable and never prompt for a download.
+  runuser -u "$APP_USER" -- bash -lc \
+    "export COREPACK_ENABLE_DOWNLOAD_PROMPT=0${home:+ COREPACK_HOME='${home}/.cache/node/corepack'}; $1"
+}
+
+# Root-run tooling leaves root-owned dotdirs in the panel user's home, and
+# every later pnpm/npm/corepack call as that user then fails with EACCES.
+# Create the caches the toolchain writes to and hand them to the panel user.
+ensure_app_home() {
+  local home d
+  home="$(app_home)"
+  [[ -n "$home" && -d "$home" ]] || return 0
+  for d in .cache .cache/node .cache/node/corepack .local .local/share .local/state .config .npm; do
+    mkdir -p "${home}/${d}" 2>/dev/null || true
+  done
+  chown "${APP_USER}:${APP_USER}" "$home" 2>/dev/null || true
+  chown -R "${APP_USER}:${APP_USER}" \
+    "${home}/.cache" "${home}/.local" "${home}/.config" "${home}/.npm" 2>/dev/null || true
+}
+
+# Percent-decode a URL component. Backslashes are doubled first so printf %b
+# cannot turn a literal \n or \t in a password into whitespace, and + is left
+# alone because it is a literal plus in the userinfo part of a URL.
+urldecode() {
+  local s="${1//\\/\\\\}"
+  printf '%b' "${s//%/\\x}"
+}
+
+# Escape a value for a double-quoted my.cnf entry. Quoting matters because an
+# unquoted # would start a comment and swallow the rest of a password.
+cnf_escape() {
+  local s="${1//\\/\\\\}"
+  printf '%s' "${s//\"/\\\"}"
 }
 
 # Read a key from the panel .env without sourcing it.
@@ -215,11 +256,25 @@ install_node() {
 }
 
 install_pnpm() {
+  # `command -v pnpm` is not a good enough test. Node's deb ships a corepack
+  # shim named pnpm that resolves fine but downloads the real pnpm on first
+  # use, writing to the calling user's cache. That download fails for the
+  # panel user (EACCES, or no network on locked-down boxes), so prefer a real
+  # global pnpm that is already on disk.
+  local resolved=""
   if command -v pnpm >/dev/null 2>&1; then
-    ok "pnpm $(pnpm --version)"
-    return
+    resolved="$(readlink -f "$(command -v pnpm)" 2>/dev/null || true)"
+    if [[ "$resolved" != *corepack* ]] && pnpm --version >/dev/null 2>&1; then
+      ok "pnpm $(pnpm --version)"
+      return
+    fi
+    info "Replacing the corepack pnpm shim with a real install"
   fi
-  npm install -g "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 || die "Failed to install pnpm"
+  # --force because the corepack shim already owns /usr/bin/pnpm.
+  npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
+    die "Failed to install pnpm ${PNPM_VERSION}"
+  hash -r 2>/dev/null || true
+  pnpm --version >/dev/null 2>&1 || die "pnpm is still not runnable after installing it"
   ok "pnpm $(pnpm --version)"
 }
 
@@ -379,6 +434,7 @@ set_env_value() {
 
 run_panel_installer() {
   step "Installing dependencies"
+  ensure_app_home
 
   # NODE_ENV=production makes pnpm skip devDependencies, which the installer
   # (tsx), the build (vite, tsc) and Prisma all need.
@@ -711,50 +767,80 @@ backup_before_update() {
     return 0
   fi
 
-  # mysql://user:pass@host:port/database
+  # mysql://user:pass@host:port/database?params
+  #
+  # Split the credentials on the *last* @ and the host on the *first* /, so a
+  # password containing @ or / survives. Prisma requires percent-encoding in
+  # this URL, so both halves of the credentials need decoding before mysqldump
+  # sees them - that decode is why a generated password used to fail here.
   local rest creds hostport db user pass host port
   rest="${url#mysql://}"
-  creds="${rest%%@*}"
-  hostport="${rest#*@}"
+  creds="${rest%@*}"
+  hostport="${rest##*@}"
   db="${hostport#*/}"
   db="${db%%\?*}"
   hostport="${hostport%%/*}"
-  user="${creds%%:*}"
-  pass="${creds#*:}"
+  user="$(urldecode "${creds%%:*}")"
+  pass="$(urldecode "${creds#*:}")"
   host="${hostport%%:*}"
   port="${hostport#*:}"
-  [[ "$port" == "$host" ]] && port=3306
+  [[ "$port" == "$host" || -z "$port" ]] && port=3306
+  [[ -z "$host" ]] && host=127.0.0.1
 
   if ! command -v mysqldump >/dev/null 2>&1; then
     warn "mysqldump not installed - skipping database dump"
     return 0
   fi
 
-  # A defaults file avoids putting the password on the command line and
-  # sidesteps quoting problems with generated passwords.
+  local out="${BACKUP_PATH}/${db}.sql"
+  local err="${BACKUP_PATH}/mysqldump.err"
   local cnf="${BACKUP_PATH}/.my.cnf"
+
+  # A defaults file keeps the password off the command line, where it would be
+  # visible in ps output.
   umask 077
   cat > "$cnf" <<EOF
 [client]
-user=${user}
-password="${pass}"
-host=${host}
+user="$(cnf_escape "$user")"
+password="$(cnf_escape "$pass")"
+host="$(cnf_escape "$host")"
 port=${port}
 EOF
 
+  local dumped=0
   if mysqldump --defaults-extra-file="$cnf" --single-transaction --quick \
-    --routines --events "$db" > "${BACKUP_PATH}/${db}.sql" 2>/dev/null; then
-    gzip -f "${BACKUP_PATH}/${db}.sql" 2>/dev/null || true
+    --routines --events "$db" > "$out" 2>"$err"; then
+    dumped=1
+  elif mysqldump --single-transaction --quick --routines --events "$db" \
+    > "$out" 2>>"$err"; then
+    # Fallback: on Debian/Ubuntu MariaDB the root account authenticates over
+    # the unix socket, so a plain root dump works even when the panel's own
+    # credentials do not.
+    dumped=1
+    info "Used root socket authentication for the dump"
+  fi
+  rm -f "$cnf"
+
+  if [[ "$dumped" == "1" ]]; then
+    gzip -f "$out" 2>/dev/null || true
+    rm -f "$err"
     ok "Dumped database '${db}'"
   else
-    rm -f "${BACKUP_PATH}/${db}.sql"
+    rm -f "$out"
     warn "Database dump failed for '${db}'"
+    # Show the reason instead of swallowing it - almost always access denied
+    # or an unreachable host, and the user cannot decide safely without it.
+    if [[ -s "$err" ]]; then
+      local line
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && printf '      %s\n' "$line"
+      done < <(grep -v '^$' "$err" | head -n3)
+      info "Full error: ${err}"
+    fi
     if ! confirm "Continue updating without a database backup?" "n"; then
-      rm -f "$cnf"
       die "Cancelled. Back up manually, then re-run the update."
     fi
   fi
-  rm -f "$cnf"
   info "Backup: ${BACKUP_PATH}"
 }
 
@@ -852,8 +938,14 @@ action_update() {
   fi
 
   step "Installing dependencies"
+  # A panel installed before this script existed may have a corepack pnpm
+  # shim and root-owned caches in the panel user's home; both break the
+  # install as the panel user, so normalise them here too.
+  install_pnpm
+  ensure_app_home
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
-  as_app "${base} pnpm install --no-frozen-lockfile" || die "pnpm install failed"
+  as_app "${base} pnpm install --no-frozen-lockfile" ||
+    die "pnpm install failed. Nothing was restarted, so the running version is untouched."
   ok "Dependencies up to date"
 
   step "Building"

@@ -17,6 +17,32 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.0.3] - 2026-09-08
+
+### Fixed
+
+- **Installer: `pnpm install` failed with `EACCES` on the panel user's cache.** `install_pnpm` only checked `command -v pnpm`, which happily matches the corepack shim that Node's deb installs. The shim resolves but downloads the real pnpm on first use, into `$HOME/.cache/node/corepack`; where root had previously run node tooling in the panel user's home, that directory is root-owned and the update died mid-flight:
+
+  ```
+  Error: EACCES: permission denied, mkdir '/home/spiritpanel/.cache/node/corepack/v1'
+  ```
+
+  The check now resolves the `pnpm` on `PATH` and replaces a corepack-backed one with a real global install (`npm install -g --force`). A new `ensure_app_home` creates `.cache`, `.local`, `.config` and `.npm` under the panel user's home and hands them over, `COREPACK_HOME` is pinned to a known-writable path for every command run as that user, and the download prompt is disabled. The update path runs both, so a panel installed before this script existed gets repaired rather than failing.
+
+- **Installer: the pre-update database dump always failed.** `DATABASE_URL` must be percent-encoded for Prisma, but the credentials were passed to `mysqldump` still encoded, so a generated password was rejected with `Access denied` and every update ran with no database backup. The URL parser now percent-decodes the user and password, splits credentials on the **last** `@` and the host on the **first** `/` so a password containing `@` or `/` survives, defaults a missing port, and escapes `"` and `\` when writing the defaults file. If the panel's own credentials still fail, the dump retries as root over the unix socket, which is how MariaDB authenticates root on Debian and Ubuntu. A dump that fails for real now prints the actual `mysqldump` error and the path to the full log instead of discarding it, so the prompt to continue without a backup is an informed one.
+
+- **Documentation: the published install command could not work.** `sudo bash <(curl ...)` was documented in the README, the production guide and the script's own help. Process substitution passes bash a `/dev/fd` path belonging to the calling shell, and `sudo` closes inherited descriptors before `exec`, so it always failed:
+
+  ```
+  bash: /dev/fd/63: No such file or directory
+  ```
+
+  All entry points now download to a file first, and note the `curl ... | sudo bash -s --` pipe form for non-interactive runs. An installed panel is pointed at the copy of the script inside its own checkout.
+
+### Changed
+
+- The installer test suite covers all three fixes, including the encoded-password dump, the socket fallback, error surfacing, corepack shim replacement and cache preparation. The `mysqldump` stub now rejects a wrong password the way the real tool does; the previous stub succeeded regardless, which is why the encoding bug reached a server. 60 tests.
+
 ## [1.3.0.2] - 2026-09-08
 
 ### Added

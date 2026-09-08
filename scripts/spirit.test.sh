@@ -149,6 +149,7 @@ bash -c "$cmd"
 EOF
 
   _stub pnpm <<'EOF'
+[[ "${1:-}" == "--version" ]] && { echo "9.15.9"; exit 0; }
 # spirit-install normally writes DATABASE_URL back into .env after
 # provisioning the database; emulate just that side effect.
 for arg in "$@"; do
@@ -193,12 +194,59 @@ exit 0
 EOF
 
   _stub mysqldump <<'EOF'
-if [[ "${SPIRIT_TEST_DUMP_FAIL:-0}" == "1" ]]; then exit 1; fi
+# Record the credentials we were handed, then behave like the real thing:
+# reject a wrong password on stderr. The previous stub succeeded regardless,
+# which is why a percent-encoded password silently broke the dump in the field.
+cnf=""
+for arg in "$@"; do
+  case "$arg" in --defaults-extra-file=*) cnf="${arg#*=}" ;; esac
+done
+
+if [[ -n "$cnf" && -f "$cnf" ]]; then
+  cp "$cnf" "$SANDBOX/last-mysqldump.cnf"
+  got="$(sed -n 's/^password="\{0,1\}//p' "$cnf" | sed 's/"$//')"
+  printf '%s\n' "$got" > "$SANDBOX/last-mysqldump-password"
+else
+  # No defaults file means the root socket fallback.
+  echo "socket" > "$SANDBOX/last-mysqldump-socket"
+  if [[ "${SPIRIT_TEST_SOCKET_DUMP_FAIL:-0}" == "1" ]]; then
+    echo "mysqldump: Got error: 1045: Access denied for user 'root'@'localhost'" >&2
+    exit 2
+  fi
+  echo "-- dump"
+  exit 0
+fi
+
+if [[ "${SPIRIT_TEST_DUMP_FAIL:-0}" == "1" ]]; then
+  echo "mysqldump: Got error: 1045: Access denied for user 'spirit_panel'@'localhost' (using password: YES)" >&2
+  exit 2
+fi
+
+# When a test declares the password the panel really has, enforce it.
+if [[ -n "${SPIRIT_TEST_EXPECT_DB_PASSWORD:-}" && "$got" != "$SPIRIT_TEST_EXPECT_DB_PASSWORD" ]]; then
+  echo "mysqldump: Got error: 1045: Access denied for user (using password: YES)" >&2
+  exit 2
+fi
 echo "-- dump"
 exit 0
 EOF
 
+  _stub getent <<'EOF'
+# getent passwd <user> -> the sandbox home, so app_home/ensure_app_home work.
+if [[ "${1:-}" == "passwd" ]]; then
+  printf '%s:x:1001:1001::%s:/bin/bash\n' "${2:-spiritpanel}" "$SANDBOX/apphome"
+  exit 0
+fi
+exit 2
+EOF
+
   _stub gzip <<'EOF'
+exit 0
+EOF
+
+  _stub chown <<'EOF'
+# Ownership changes cannot be verified in the sandbox, so record the call and
+# succeed. Tests assert on the recorded arguments instead.
 exit 0
 EOF
 
@@ -208,6 +256,13 @@ exit 0
 EOF
 
   _stub npm <<'EOF'
+# Emulate `npm install -g pnpm@x` taking over /usr/bin/pnpm from the corepack
+# shim: promote the shim in bin/corepack/ to a plain global pnpm.
+if [[ "$*" == *"pnpm@"* && -f "$SANDBOX/bin/corepack/pnpm" ]]; then
+  cp "$SANDBOX/bin/corepack/pnpm" "$SANDBOX/bin/pnpm"
+  chmod +x "$SANDBOX/bin/pnpm"
+  rm -f "$SANDBOX/bin/corepack/pnpm"
+fi
 exit 0
 EOF
 
@@ -944,9 +999,194 @@ done
 done_test
 
 it "a failed dump does not silently pass"
-out="$(SPIRIT_TEST_DUMP_FAIL=1 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+# Both the credentialed dump and the root-socket fallback have to fail before
+# the script is allowed to report a problem.
+out="$(SPIRIT_TEST_DUMP_FAIL=1 SPIRIT_TEST_SOCKET_DUMP_FAIL=1 \
+  SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
   SPIRIT_BACKUP_DIR="$SANDBOX/backups3" run_spirit backup -y < /dev/null)"
 expect_contains "$out" "dump failed" "output"
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
+# Tests: database credential handling
+#
+# Regression cover for a dump that failed on a real install: Prisma requires
+# DATABASE_URL to be percent-encoded, and the generated password was being
+# handed to mysqldump still encoded.
+# ---------------------------------------------------------------------------
+
+section "Database credentials"
+
+# Pure-function checks on the helpers, pulled straight out of spirit.sh.
+eval "$(sed -n '/^urldecode()/,/^}/p;/^cnf_escape()/,/^}/p' "$TARGET")"
+
+parse_db_url() {
+  local url="$1" rest creds hostport db user pass host port
+  rest="${url#mysql://}"
+  creds="${rest%@*}"
+  hostport="${rest##*@}"
+  db="${hostport#*/}"
+  db="${db%%\?*}"
+  hostport="${hostport%%/*}"
+  user="$(urldecode "${creds%%:*}")"
+  pass="$(urldecode "${creds#*:}")"
+  host="${hostport%%:*}"
+  port="${hostport#*:}"
+  [[ "$port" == "$host" || -z "$port" ]] && port=3306
+  printf 'user=[%s] pass=[%s] host=[%s] port=[%s] db=[%s]\n' \
+    "$user" "$pass" "$host" "$port" "$db"
+}
+
+it "decodes a percent-encoded password"
+expect_eq "$(parse_db_url 'mysql://spirit:p%40ss%3Aw%2Frd%23x@127.0.0.1:3306/spirit_panel')" \
+  'user=[spirit] pass=[p@ss:w/rd#x] host=[127.0.0.1] port=[3306] db=[spirit_panel]' "parsed url"
+done_test
+
+it "splits credentials on the last @ so an unencoded @ survives"
+expect_eq "$(parse_db_url 'mysql://spirit:has@sign@127.0.0.1:3306/spirit_panel')" \
+  'user=[spirit] pass=[has@sign] host=[127.0.0.1] port=[3306] db=[spirit_panel]' "parsed url"
+done_test
+
+it "strips query parameters from the database name"
+expect_eq "$(parse_db_url 'mysql://spirit:pw@db.internal:3307/spirit_panel?connection_limit=5')" \
+  'user=[spirit] pass=[pw] host=[db.internal] port=[3307] db=[spirit_panel]' "parsed url"
+done_test
+
+it "defaults the port when the URL omits it"
+expect_eq "$(parse_db_url 'mysql://spirit:pw@localhost/spirit_panel')" \
+  'user=[spirit] pass=[pw] host=[localhost] port=[3306] db=[spirit_panel]' "parsed url"
+done_test
+
+it "treats + as a literal and does not expand backslash escapes"
+expect_eq "$(parse_db_url 'mysql://spirit:a+b\nc@127.0.0.1:3306/spirit_panel')" \
+  'user=[spirit] pass=[a+b\nc] host=[127.0.0.1] port=[3306] db=[spirit_panel]' "parsed url"
+done_test
+
+it "escapes my.cnf metacharacters"
+expect_eq "$(cnf_escape 'a"b')" 'a\"b' "quote"
+expect_eq "$(cnf_escape 'a\b')" 'a\\b' "backslash"
+done_test
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.2"
+mkdir -p "$INSTALL_DIR/apps/panel-api"
+# The encoded form of  p@ss:w/rd#x  exactly as Prisma requires it.
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:p%40ss%3Aw%2Frd%23x@127.0.0.1:3306/spirit_panel"
+API_URL="https://panel.example.com"
+EOF
+
+it "hands mysqldump the decoded password, not the encoded one"
+out="$(SPIRIT_TEST_EXPECT_DB_PASSWORD='p@ss:w/rd#x' \
+  SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/b-enc" \
+  run_spirit backup -y < /dev/null)"
+dbg "encoded-password backup" "$out"
+expect_contains "$out" "Dumped database" "output"
+expect_eq "$(cat "$SANDBOX/last-mysqldump-password" 2>/dev/null)" 'p@ss:w/rd#x' "password given to mysqldump"
+done_test
+
+it "still keeps the password off the command line"
+expect_not_contains "$(cat "$CMDLOG")" 'p@ss:w/rd' "commands"
+done_test
+
+it "falls back to root socket authentication when the panel credentials fail"
+rm -f "$SANDBOX/last-mysqldump-socket"
+out="$(SPIRIT_TEST_DUMP_FAIL=1 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/b-fallback" run_spirit backup -y < /dev/null)"
+dbg "socket fallback" "$out"
+expect_contains "$out" "root socket authentication" "output"
+expect_contains "$out" "Dumped database" "output"
+expect_file_exists "$SANDBOX/last-mysqldump-socket"
+done_test
+
+it "surfaces the real mysqldump error instead of swallowing it"
+out="$(SPIRIT_TEST_DUMP_FAIL=1 SPIRIT_TEST_SOCKET_DUMP_FAIL=1 \
+  SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/b-err" \
+  run_spirit backup -y < /dev/null)"
+dbg "dump error surfaced" "$out"
+expect_contains "$out" "Access denied" "output"
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
+# Tests: Node toolchain
+#
+# Regression cover for an update that died with
+#   EACCES: permission denied, mkdir '/home/spiritpanel/.cache/node/corepack/v1'
+# because `command -v pnpm` found Node's corepack shim, which then tried to
+# download the real pnpm into a root-owned cache in the panel user's home.
+# ---------------------------------------------------------------------------
+
+section "Node toolchain"
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.2"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+API_URL="https://panel.example.com"
+EOF
+
+# Move pnpm into a directory named corepack so `readlink -f` reports a
+# corepack-backed path, which is how the script recognises the shim. A real
+# directory avoids depending on symlink support in the test environment.
+mkdir -p "$SANDBOX/bin/corepack"
+mv "$SANDBOX/bin/pnpm" "$SANDBOX/bin/corepack/pnpm"
+export PATH="$SANDBOX/bin/corepack:$PATH"
+
+# A root-owned cache in the panel user's home is the condition that triggers
+# the EACCES; ensure_app_home has to create and hand over these directories.
+mkdir -p "$SANDBOX/apphome"
+
+corepack_out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+dbg "corepack update" "$corepack_out"
+
+it "detects the corepack pnpm shim and replaces it"
+expect_contains "$corepack_out" "Replacing the corepack pnpm shim" "output"
+expect_contains "$(cat "$CMDLOG")" "npm install -g --force pnpm@" "commands"
+done_test
+
+it "still completes the update afterwards"
+expect_contains "$corepack_out" "Update complete" "output"
+done_test
+
+it "prepares the panel user's caches so pnpm can write to them"
+for d in .cache/node/corepack .local/share .config .npm; do
+  [[ -d "$SANDBOX/apphome/$d" ]] ||
+    TEST_ERRORS+="      ensure_app_home did not create ${d}"$'\n'
+done
+expect_contains "$(cat "$CMDLOG")" "chown" "commands"
+done_test
+
+it "pins COREPACK_HOME for commands run as the panel user"
+expect_contains "$(cat "$CMDLOG")" "COREPACK_HOME" "commands"
+done_test
+teardown_sandbox
+
+it "accepts a pnpm that is already a real global install"
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.2"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+expect_not_contains "$out" "Replacing the corepack" "output"
+expect_not_contains "$(cat "$CMDLOG")" "npm install -g --force" "commands"
+expect_contains "$out" "Update complete" "output"
 done_test
 teardown_sandbox
 
