@@ -146,6 +146,17 @@ if [[ "${SPIRIT_TEST_MIGRATE_FAIL:-0}" == "1" ]] && [[ "$cmd" == *"migrate deplo
   exit 1
 fi
 
+# npm applies root's umask to a global install, so a hardened umask leaves
+# pnpm mode 700: root can run it, the panel user cannot. File modes are not
+# reliable in the sandbox, so model the outcome - pnpm lookups as the panel
+# user fail until something reinstalls it readable.
+if [[ "${SPIRIT_TEST_APP_PNPM_PRIVATE:-0}" == "1" ]] &&
+   [[ ! -f "$SANDBOX/pnpm-made-readable" ]] &&
+   [[ "$cmd" == *"command -v pnpm"* || "$cmd" == *"pnpm install"* ]]; then
+  echo "bash: line 1: pnpm: Permission denied" >&2
+  exit 126
+fi
+
 # `bash -l` rebuilds PATH from /etc/profile, so a directory that root can see
 # is not necessarily on the panel user's PATH. Drop one to model that.
 if [[ -n "${SPIRIT_TEST_LOGIN_PATH_DROP:-}" ]]; then
@@ -274,6 +285,11 @@ if [[ "$*" == *"pnpm@"* && -f "$SANDBOX/bin/corepack/pnpm" ]]; then
   cp "$SANDBOX/bin/corepack/pnpm" "$SANDBOX/bin/pnpm"
   chmod +x "$SANDBOX/bin/pnpm"
   rm -f "$SANDBOX/bin/corepack/pnpm"
+fi
+# A reinstall under `umask 022 --prefix /usr/local` is what makes a private
+# pnpm readable again.
+if [[ "$*" == *"pnpm@"* && "$*" == *"--prefix"* ]]; then
+  touch "$SANDBOX/pnpm-made-readable"
 fi
 exit 0
 EOF
@@ -1215,6 +1231,39 @@ expect_not_contains "$out" "pnpm install failed" "output"
 expect_contains "$out" "Update complete" "output"
 done_test
 unset SPIRIT_TEST_LOGIN_PATH_DROP
+teardown_sandbox
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.4"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
+export SPIRIT_TEST_APP_PNPM_PRIVATE=1
+
+it "reinstalls a pnpm that root can run but the panel user cannot"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+dbg "private pnpm" "$out"
+expect_contains "$out" "cannot run it" "output"
+expect_contains "$out" "Reinstalling pnpm" "output"
+expect_contains "$(cat "$CMDLOG")" "--prefix /usr/local" "commands"
+expect_contains "$out" "Update complete" "output"
+done_test
+
+it "does not reach the dependency step with an unusable pnpm"
+# The reinstall has to happen before `pnpm install`, not after it fails.
+fixlog="$(grep -n 'npm install -g' "$CMDLOG" | head -n1 | cut -d: -f1)"
+deplog="$(grep -n 'runuser.*pnpm install' "$CMDLOG" | head -n1 | cut -d: -f1)"
+if [[ -n "$fixlog" && -n "$deplog" ]] && (( fixlog > deplog )); then
+  TEST_ERRORS+="      pnpm was reinstalled only after the dependency step"$'\n'
+fi
+done_test
+unset SPIRIT_TEST_APP_PNPM_PRIVATE
 teardown_sandbox
 
 it "accepts a pnpm that is already a real global install"

@@ -263,56 +263,103 @@ install_node() {
 }
 
 install_pnpm() {
-  # `command -v pnpm` is not a good enough test. Node's deb ships a corepack
-  # shim named pnpm that resolves fine but downloads the real pnpm on first
-  # use, writing to the calling user's cache. That download fails for the
-  # panel user (EACCES, or no network on locked-down boxes), so prefer a real
-  # global pnpm that is already on disk.
+  resolve_pnpm
+
   local resolved=""
-  if command -v pnpm >/dev/null 2>&1; then
-    resolved="$(readlink -f "$(command -v pnpm)" 2>/dev/null || true)"
-    if [[ "$resolved" != *corepack* ]] && pnpm --version >/dev/null 2>&1; then
-      resolve_pnpm
-      ok "pnpm $(pnpm --version)"
+  [[ -n "$PNPM_BIN" ]] && resolved="$(readlink -f "$PNPM_BIN" 2>/dev/null || true)"
+
+  if [[ -n "$PNPM_BIN" && "$resolved" != *corepack* ]] && "$PNPM_BIN" --version >/dev/null 2>&1; then
+    # Root being able to run pnpm proves nothing - the install runs as the
+    # panel user.
+    if pnpm_usable_by_app; then
+      ok "pnpm $("$PNPM_BIN" --version 2>/dev/null)"
       return
     fi
+    info "pnpm exists but ${APP_USER} cannot run it - repairing permissions"
+    repair_pnpm_permissions
+    if pnpm_usable_by_app; then
+      ok "pnpm $("$PNPM_BIN" --version 2>/dev/null) (permissions repaired)"
+      return
+    fi
+    info "Reinstalling pnpm where every user can reach it"
+  elif [[ -n "$PNPM_BIN" ]]; then
+    # Node's deb ships a corepack shim named pnpm. It resolves fine but
+    # downloads the real pnpm on first use into the calling user's cache,
+    # which fails for the panel user.
     info "Replacing the corepack pnpm shim with a real install"
   fi
-  # --force because the corepack shim already owns the pnpm name.
-  # --prefix /usr/local because npm's configured prefix may be root-only
-  # (e.g. a prefix under /root), which would leave the panel user unable to
-  # read the binary we just installed.
-  npm install -g --force --prefix /usr/local "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
-    npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
+
+  # umask 022 because npm applies the invoking shell's umask to what it
+  # writes; under a hardened umask (077) the global install lands mode 700 and
+  # only root can run it. --prefix /usr/local because npm's configured prefix
+  # may be somewhere the panel user cannot read at all.
+  (umask 022; npm install -g --force --prefix /usr/local "pnpm@${PNPM_VERSION}" >/dev/null 2>&1) ||
+    (umask 022; npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1) ||
     die "Failed to install pnpm ${PNPM_VERSION}"
   hash -r 2>/dev/null || true
   resolve_pnpm
   [[ -n "$PNPM_BIN" ]] || die "pnpm is not on PATH after installing it"
+  repair_pnpm_permissions
   ok "pnpm $("$PNPM_BIN" --version 2>/dev/null)"
 }
 
-# Find pnpm as an absolute path. `command -v` alone is not enough on a box
-# where npm's global prefix is not on the current PATH.
+# Find pnpm as an absolute path, preferring one that is not a corepack shim.
+# `command -v` alone is not enough: npm's global prefix is not necessarily on
+# the current PATH, and an older broken copy can shadow a newer good one.
 resolve_pnpm() {
-  PNPM_BIN="$(command -v pnpm 2>/dev/null || true)"
-  if [[ -z "$PNPM_BIN" ]]; then
-    local prefix candidate
-    prefix="$(npm prefix -g 2>/dev/null || true)"
-    for candidate in "${prefix}/bin/pnpm" /usr/local/bin/pnpm /usr/bin/pnpm; do
-      [[ -x "$candidate" ]] && { PNPM_BIN="$candidate"; break; }
-    done
+  local candidate prefix onpath
+  prefix="$(npm prefix -g 2>/dev/null || true)"
+  onpath="$(command -v pnpm 2>/dev/null || true)"
+  PNPM_BIN=""
+  for candidate in /usr/local/bin/pnpm ${prefix:+"${prefix}/bin/pnpm"} "$onpath" /usr/bin/pnpm; do
+    [[ -n "$candidate" && -x "$candidate" ]] || continue
+    [[ "$(readlink -f "$candidate" 2>/dev/null)" == *corepack* ]] && continue
+    PNPM_BIN="$candidate"
+    return
+  done
+  # Nothing clean found; fall back to whatever is on PATH so the caller can
+  # see it is a corepack shim and replace it.
+  PNPM_BIN="$onpath"
+}
+
+pnpm_usable_by_app() {
+  # During a fresh install the panel user may not exist yet.
+  id "$APP_USER" >/dev/null 2>&1 || return 0
+  as_app "command -v pnpm >/dev/null 2>&1 && pnpm --version >/dev/null 2>&1"
+}
+
+# Re-open a global install that root's umask made private.
+repair_pnpm_permissions() {
+  local groot target
+  groot="$(npm root -g 2>/dev/null || true)"
+  [[ -n "$groot" && -d "${groot}/pnpm" ]] &&
+    chmod -R a+rX "${groot}/pnpm" 2>/dev/null || true
+  if [[ -n "$PNPM_BIN" ]]; then
+    chmod a+rx "$PNPM_BIN" 2>/dev/null || true
+    target="$(readlink -f "$PNPM_BIN" 2>/dev/null || true)"
+    [[ -n "$target" && -e "$target" ]] && chmod a+rx "$target" 2>/dev/null || true
   fi
 }
 
-# The install runs as the panel user, so it is that user - not root - who has
-# to be able to execute pnpm. Check before the long dependency step instead of
-# failing halfway through it.
+# Safety net before the long dependency step, so a toolchain problem surfaces
+# in seconds rather than halfway through an install.
 verify_pnpm_for_app_user() {
-  as_app "command -v pnpm >/dev/null 2>&1" && return 0
+  pnpm_usable_by_app && return 0
+  repair_pnpm_permissions
+  pnpm_usable_by_app && { ok "Repaired pnpm permissions for ${APP_USER}"; return 0; }
+
   warn "${APP_USER} cannot run pnpm"
   info "pnpm resolved to: ${PNPM_BIN:-not found}"
-  info "Install it somewhere all users can reach, then re-run:"
-  info "  npm install -g --prefix /usr/local pnpm@${PNPM_VERSION}"
+  if [[ -n "$PNPM_BIN" ]]; then
+    info "  $(ls -l "$PNPM_BIN" 2>/dev/null || echo 'cannot stat')"
+    local target
+    target="$(readlink -f "$PNPM_BIN" 2>/dev/null || true)"
+    [[ -n "$target" && "$target" != "$PNPM_BIN" ]] &&
+      info "  -> $(ls -l "$target" 2>/dev/null || echo "broken symlink: ${target}")"
+  fi
+  info "As ${APP_USER}: $(as_app 'command -v pnpm || echo "pnpm not on PATH"' 2>&1 | tail -n1)"
+  info "Reinstall it manually, then re-run this update:"
+  info "  umask 022 && npm install -g --force --prefix /usr/local pnpm@${PNPM_VERSION}"
   die "Stopped before installing dependencies. Nothing was changed."
 }
 
