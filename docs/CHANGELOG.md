@@ -27,7 +27,13 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
   Error: EACCES: permission denied, mkdir '/home/spiritpanel/.cache/node/corepack/v1'
   ```
 
-  The check now resolves the `pnpm` on `PATH` and replaces a corepack-backed one with a real global install (`npm install -g --force`). A new `ensure_app_home` creates `.cache`, `.local`, `.config` and `.npm` under the panel user's home and hands them over, `COREPACK_HOME` is pinned to a known-writable path for every command run as that user, and the download prompt is disabled. The update path runs both, so a panel installed before this script existed gets repaired rather than failing.
+  Fixing that exposed two more ways the toolchain can be unusable by the panel user, all three of which the script now handles. The acceptance test is no longer "root can run pnpm" but "the panel user can run pnpm":
+
+  - **Corepack shim.** `install_pnpm` now resolves what `pnpm` actually points at and replaces a corepack-backed one with a real global install. `ensure_app_home` creates `.cache`, `.local`, `.config` and `.npm` under the panel user's home and hands them over, `COREPACK_HOME` is pinned to a known-writable path, and the download prompt is disabled.
+  - **npm's global prefix off the panel user's `PATH`.** `bash -l` rebuilds `PATH` from `/etc/profile`, so a prefix root can see may be missing for the panel user — and a prefix under `/root` is unreadable to them however `PATH` is set. pnpm is resolved to an absolute path whose directory is prepended to `PATH` for every command run as the panel user, and installs go to `--prefix /usr/local`.
+  - **A global install made private by root's umask.** `npm -g` applies the invoking shell's umask, so under a hardened umask the install lands mode `700` and only root can execute it. The script chmods the global install readable, and reinstalls under `umask 022` if that is not enough. `resolve_pnpm` prefers `/usr/local/bin` and skips corepack shims so a stale broken copy cannot shadow a good one.
+
+  `verify_pnpm_for_app_user` runs before the long dependency step, attempts the same repairs, and on real failure prints `ls -l` for the binary and its symlink target rather than a bare error. The update path runs all of this, so a panel installed before this script existed gets repaired rather than failing.
 
 - **Installer: the pre-update database dump always failed.** `DATABASE_URL` must be percent-encoded for Prisma, but the credentials were passed to `mysqldump` still encoded, so a generated password was rejected with `Access denied` and every update ran with no database backup. The URL parser now percent-decodes the user and password, splits credentials on the **last** `@` and the host on the **first** `/` so a password containing `@` or `/` survives, defaults a missing port, and escapes `"` and `\` when writing the defaults file. If the panel's own credentials still fail, the dump retries as root over the unix socket, which is how MariaDB authenticates root on Debian and Ubuntu. A dump that fails for real now prints the actual `mysqldump` error and the path to the full log instead of discarding it, so the prompt to continue without a backup is an informed one.
 
@@ -41,7 +47,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
-- The installer test suite covers all three fixes, including the encoded-password dump, the socket fallback, error surfacing, corepack shim replacement and cache preparation. The `mysqldump` stub now rejects a wrong password the way the real tool does; the previous stub succeeded regardless, which is why the encoding bug reached a server. 60 tests.
+- The installer test suite covers every fix above: the encoded-password dump, the socket fallback, error surfacing, corepack shim replacement, cache preparation, a pnpm off the panel user's login `PATH`, and a pnpm root can run but the panel user cannot. Two stubs were making the suite lie — `mysqldump` succeeded whatever password it was given, and `runuser` inherited root's `PATH` instead of rebuilding it like a login shell. Both now behave like the real thing, and the new tests fail against the previous script. 63 tests.
 
 ## [1.3.0.2] - 2026-09-08
 
