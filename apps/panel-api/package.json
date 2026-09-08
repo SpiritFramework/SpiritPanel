@@ -31,7 +31,7 @@
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.23.1",
-    "nodemailer": "^9.0.1",
+    "nodemailer": "^9.1.1",
     "otplib": "^13.4.1",
     "qrcode": "^1.5.4",
     "zod": "^3.25.51"
