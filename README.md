@@ -113,27 +113,31 @@ Dev credentials and seed data: `docs/LOCAL.md`
 
 ### Production
 
-On a fresh Ubuntu 22.04+ or Debian 12+ server, run the installer as root:
+On a fresh Ubuntu 22.04+ or Debian 12+ server, download the installer and run it as root:
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
+sudo bash /tmp/spirit.sh
 ```
 
 That opens a menu with **Install**, **Update**, **Status**, **Backup**, and **Uninstall**. It takes a bare server all the way to a working panel: Node 20, pnpm, MariaDB, Redis (with a password), nginx, and a Let's Encrypt certificate.
 
+> Download it to a file rather than using `sudo bash <(curl ...)`. Process substitution passes bash a `/dev/fd` path from the calling shell, and `sudo` closes inherited descriptors, so that form dies with `/dev/fd/63: No such file or directory`.
+
 Unattended:
 
 ```bash
-sudo bash <(curl -fsSL .../scripts/spirit.sh) install \
-  --domain panel.example.com --admin-email you@example.com -y
+sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
 ```
 
 Point DNS at the server **before** installing, so certbot can issue a certificate.
 
 #### Updating
 
+Once installed, use the copy in the checkout:
+
 ```bash
-sudo bash <(curl -fsSL .../scripts/spirit.sh) update
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update
 ```
 
 Backs up `.env` and the database first, then rebuilds, migrates, and restarts. If the build or a migration fails it stops **before** restarting, so the running version stays up.

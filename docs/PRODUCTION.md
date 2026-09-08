@@ -34,8 +34,11 @@
 On a **fresh** Ubuntu 22.04+ / Debian 12+ server, as root:
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
+sudo bash /tmp/spirit.sh
 ```
+
+> **Do not use** `sudo bash <(curl ...)`. Process substitution gives bash a `/dev/fd/63` path belonging to the calling shell, and `sudo` closes inherited file descriptors before exec, so bash reports `/dev/fd/63: No such file or directory`. Download to a file, or pipe (`curl ... | sudo bash -s -- update -y`) when you do not need the interactive menu.
 
 This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, clones the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
 
@@ -44,8 +47,7 @@ This is the only step that needs `sudo`, and it is the one path that covers the 
 Unattended:
 
 ```bash
-sudo bash <(curl -fsSL .../scripts/spirit.sh) install \
-  --domain panel.example.com --admin-email you@example.com -y
+sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
 ```
 
 
@@ -687,8 +689,17 @@ Requirements and caveats:
 
 ### Guided updater (recommended)
 
+The installer ships inside the checkout, so an installed panel updates itself:
+
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh) update
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update
+```
+
+If the checkout predates the script (or you deployed by zip), fetch it first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
+sudo bash /tmp/spirit.sh update
 ```
 
 Order of operations, which is what makes it safe to run on a live panel:

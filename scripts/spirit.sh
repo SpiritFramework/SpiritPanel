@@ -2,7 +2,12 @@
 #
 # Spirit-Panel installer / updater
 #
-#   bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+#   curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
+#   sudo bash /tmp/spirit.sh
+#
+# Download first rather than `sudo bash <(curl ...)`: process substitution
+# hands bash a /dev/fd path from the calling shell, and sudo closes inherited
+# descriptors, so bash fails with "/dev/fd/63: No such file or directory".
 #
 # Runs standalone: it clones the panel itself, so it does not need to live
 # inside a checkout. Interactive menu by default; every action also has a
@@ -87,8 +92,8 @@ ART
 
 require_root() {
   if [[ "$(id -u)" != "0" ]]; then
-    die "This action needs root. Re-run with sudo:
-  sudo bash <(curl -fsSL https://raw.githubusercontent.com/${REPO_SLUG}/main/scripts/spirit.sh)"
+    die "This action needs root. Re-run as:
+  sudo bash $0"
   fi
 }
 
@@ -675,7 +680,7 @@ print_install_summary() {
   fi
   printf '    3. Admin -> Settings to disable public registration and set SMTP\n'
   printf '\n  Logs:    journalctl -u %s -f\n' "$SERVICE_NAME"
-  printf '  Update:  bash <(curl -fsSL https://raw.githubusercontent.com/%s/main/scripts/spirit.sh) update\n\n' "$REPO_SLUG"
+  printf '  Update:  sudo bash %s update\n\n' "$INSTALL_DIR/scripts/spirit.sh"
 }
 
 # ---------------------------------------------------------------------------
@@ -1011,7 +1016,11 @@ usage() {
   cat <<EOF
 Spirit-Panel installer / updater (v${SCRIPT_VERSION})
 
-  bash <(curl -fsSL https://raw.githubusercontent.com/${REPO_SLUG}/main/scripts/spirit.sh) [command] [options]
+  curl -fsSL https://raw.githubusercontent.com/${REPO_SLUG}/main/scripts/spirit.sh -o /tmp/spirit.sh
+  sudo bash /tmp/spirit.sh [command] [options]
+
+  Already installed? Use the copy in the checkout:
+  sudo bash ${INSTALL_DIR}/scripts/spirit.sh update
 
 Commands:
   (none)              Interactive menu
@@ -1036,13 +1045,18 @@ Options:
 
 Examples:
   # Unattended install
-  ... spirit.sh install --domain panel.example.com --admin-email me@example.com -y
+  sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email me@example.com -y
 
   # Update to a specific release
-  ... spirit.sh update --ref V1.3.0.1 -y
+  sudo bash /tmp/spirit.sh update --ref V1.3.0.1 -y
 
   # Install without TLS (behind an existing proxy)
-  ... spirit.sh install --domain panel.example.com --no-tls -y
+  sudo bash /tmp/spirit.sh install --domain panel.example.com --no-tls -y
+
+  # Fully non-interactive, no temp file (a pipe survives sudo; the
+  # interactive menu does not, since it needs stdin)
+  curl -fsSL https://raw.githubusercontent.com/${REPO_SLUG}/main/scripts/spirit.sh \\
+    | sudo bash -s -- update -y
 EOF
 }
 

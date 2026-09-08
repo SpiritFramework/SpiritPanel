@@ -24,7 +24,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **One-command installer and updater** (`scripts/spirit.sh`). A menu-driven script that runs standalone, so it does not need a checkout to bootstrap one:
 
   ```bash
-  sudo bash <(curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh)
+  curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
+  sudo bash /tmp/spirit.sh
   ```
 
   Options are Install, Update, Status, Backup and Uninstall; each also has a non-interactive form (`install --domain ... -y`) for automation. See `--help`.
