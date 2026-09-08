@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, KeyRound, Mail } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBranding } from '../context/BrandingContext';
-import { AuthCard, AuthError, AuthField, AuthLayout } from '../components/AuthLayout';
+import { AuthError, AuthField, AuthFooter, AuthHeader, AuthLayout, AuthShell } from '../components/AuthLayout';
 import { Button } from '../components/Layout';
 import { Spinner } from '../components/ui';
 import { TurnstileWidget, resetTurnstileWidget } from '../components/TurnstileWidget';
@@ -41,21 +41,16 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout branding={branding}>
-      <AuthCard>
-        <div className="mb-6 flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl accent-bg text-white shadow-lg">
-            <KeyRound className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 pt-0.5">
-            <h2 className="text-lg font-semibold tracking-tight">Forgot password</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
-              Enter your account email and we&apos;ll send you a reset link.
-            </p>
-          </div>
-        </div>
+      <AuthShell>
+        <AuthHeader
+          eyebrow="Account recovery"
+          title="Forgot your password?"
+          description="Enter your account email and we'll send you a reset link."
+          icon={KeyRound}
+        />
 
         {sent ? (
-          <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] px-4 py-4 text-sm" style={{ color: 'var(--success-fg)' }}>
+          <div className="ds-auth-alert ds-auth-alert--success">
             <CheckCircle2 className="mb-2 h-5 w-5" />
             <p className="font-medium">Check your inbox</p>
             <p className="mt-1 text-xs opacity-90">
@@ -65,7 +60,7 @@ export function ForgotPasswordPage() {
         ) : mailDisabled ? (
           <AuthError message="Email delivery is not configured on this panel. Please contact an administrator to reset your password." />
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="ds-auth-form">
             <AuthField
               label="Email address"
               icon={Mail}
@@ -85,18 +80,24 @@ export function ForgotPasswordPage() {
                 className="flex justify-center"
               />
             )}
-            <Button type="submit" disabled={loading || (turnstileRequired && !turnstileToken)} className="w-full rounded-xl py-2.5 text-sm font-semibold">
+            <Button
+              type="submit"
+              disabled={loading || (turnstileRequired && !turnstileToken)}
+              variant="primary"
+              className="ds-auth-submit"
+            >
               {loading ? <Spinner className="h-4 w-4" /> : 'Send reset link'}
             </Button>
           </form>
         )}
 
-        <p className="mt-5 text-center text-sm text-[var(--muted)]">
-          <Link to="/login" className="inline-flex items-center gap-1 font-medium accent-text transition hover:underline">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
+        <AuthFooter>
+          <Link to="/login" className="ds-auth-link-btn">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to sign in
           </Link>
-        </p>
-      </AuthCard>
+        </AuthFooter>
+      </AuthShell>
     </AuthLayout>
   );
 }

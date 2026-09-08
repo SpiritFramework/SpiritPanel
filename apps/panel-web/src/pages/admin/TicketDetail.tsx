@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Lock, Trash2, UserCheck, UserMinus } from 'lucide-react';
 import { api, type TicketDetail, type TicketPriority, type TicketStatus } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { AdminLayout, Button, Page, Select } from '../../components/Layout';
+import { AdminLayout, Button, Page } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertBanner, PageHeader, PageLoading } from '../../components/ui';
 import {
@@ -11,6 +11,7 @@ import {
   TicketDetailsCard,
   TicketMetaCard,
 } from '../../components/tickets/TicketDetailShell';
+import { displayTicketUser } from '../../lib/ticket-utils';
 
 const STATUS_OPTIONS: Array<{ value: TicketStatus; label: string }> = [
   { value: 'open', label: 'Open' },
@@ -58,7 +59,7 @@ export function AdminTicketDetailPage() {
     void load();
   }, [load]);
 
-  async function patchTicket(data: { status?: TicketStatus; priority?: TicketPriority }) {
+  async function patchTicket(data: { status?: TicketStatus; priority?: TicketPriority; assigneeId?: string | null }) {
     if (!id) return;
     setSaving(true);
     setError('');
@@ -125,6 +126,7 @@ export function AdminTicketDetailPage() {
   }
 
   const closed = ticket.status === 'closed';
+  const assignedToMe = Boolean(user?.id && ticket.assignee?.id === user.id);
 
   return (
     <AdminLayout fillHeight>
@@ -132,6 +134,7 @@ export function AdminTicketDetailPage() {
         ticket={ticket}
         backHref="/admin/tickets"
         backLabel="All tickets"
+        variant="admin"
         error={error || undefined}
         currentUserId={user?.id}
         reply={reply}
@@ -140,50 +143,97 @@ export function AdminTicketDetailPage() {
         sending={sending}
         closed={closed}
         replyPlaceholder="Reply as staff…"
-        closedMessage={<span>This ticket is closed. Reopen it from the controls to send another reply.</span>}
+        closedMessage={
+          <>
+            <Lock className="h-4 w-4 shrink-0" />
+            <span>This ticket is closed. Reopen it from Controls to send another reply.</span>
+          </>
+        }
         headerActions={
           <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} disabled={deleting}>
             <Trash2 className="h-4 w-4" />
-            Delete
+            <span className="hidden sm:inline">Delete</span>
           </Button>
         }
         sidebar={
           <>
-            <TicketMetaCard title="Controls">
-              <div className="ticket-page__fields">
-                <Select
-                  label="Status"
-                  value={ticket.status}
-                  disabled={saving}
-                  onChange={(e) => void patchTicket({ status: e.target.value as TicketStatus })}
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  label="Priority"
-                  value={ticket.priority}
-                  disabled={saving}
-                  onChange={(e) => void patchTicket({ priority: e.target.value as TicketPriority })}
-                >
-                  {PRIORITY_OPTIONS.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </TicketMetaCard>
-
             <TicketDetailsCard
               ticket={ticket}
               showUser
               userHref={`/admin/users/${ticket.user.id}`}
               serverHref={ticket.server ? `/admin/servers/${ticket.server.id}` : undefined}
             />
+
+            <TicketMetaCard title="Controls">
+              <div className="ticket-page__control-block">
+                <p className="ticket-page__control-label">Status</p>
+                <div className="ticket-page__chip-grid" role="group" aria-label="Ticket status">
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      className={`ticket-page__chip${ticket.status === s.value ? ' is-active' : ''}`}
+                      disabled={saving}
+                      onClick={() => void patchTicket({ status: s.value })}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ticket-page__control-block" style={{ marginTop: '0.9rem' }}>
+                <p className="ticket-page__control-label">Priority</p>
+                <div className="ticket-page__chip-grid" role="group" aria-label="Ticket priority">
+                  {PRIORITY_OPTIONS.map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      className={`ticket-page__chip${p.value === 'urgent' ? ' ticket-page__chip--danger' : ''}${p.value === 'high' ? ' ticket-page__chip--warning' : ''}${ticket.priority === p.value ? ' is-active' : ''}`}
+                      disabled={saving}
+                      onClick={() => void patchTicket({ priority: p.value })}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ticket-page__assign">
+                <p className="ticket-page__assign-label">Assignee</p>
+                <div className="ticket-page__assign-row">
+                  <p className="ticket-page__assign-value">
+                    {ticket.assignee ? displayTicketUser(ticket.assignee) : 'Unassigned'}
+                  </p>
+                  <div className="ticket-page__assign-actions">
+                    {user?.id && !assignedToMe ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => void patchTicket({ assigneeId: user.id })}
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        Assign to me
+                      </Button>
+                    ) : null}
+                    {ticket.assignee ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={saving}
+                        onClick={() => void patchTicket({ assigneeId: null })}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                        Unassign
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </TicketMetaCard>
           </>
         }
       />

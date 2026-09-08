@@ -66,7 +66,7 @@ export function computeFleetStats(nodes: AdminNodeSummary[]): FleetStats {
 }
 
 export interface LocationFleetRow {
-  location: Pick<AdminLocationSummary, 'id' | 'short' | 'long'>;
+  location: Pick<AdminLocationSummary, 'id' | 'short' | 'long' | 'flagUrl'>;
   nodes: AdminNodeSummary[];
   online: number;
 }

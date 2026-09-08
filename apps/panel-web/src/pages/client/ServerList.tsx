@@ -71,7 +71,8 @@ function sortLabel(key: SortKey): string {
 export function ServerListPage() {
   const { user } = useAuth();
   const { branding } = useBranding();
-  const defaultView = normalizeAppearance(branding).serverListDefaultView;
+  const appearance = normalizeAppearance(branding);
+  const defaultView = appearance.serverListDefaultView;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -87,8 +88,11 @@ export function ServerListPage() {
   const refreshing = validating && list.length > 0;
 
   const pollServers = useCallback(() => {
-    wantLiveRef.current = false;
-    return refetch();
+    pollTickRef.current += 1;
+    wantLiveRef.current = pollTickRef.current % 3 === 0;
+    return refetch().finally(() => {
+      wantLiveRef.current = false;
+    });
   }, [refetch]);
 
   const refreshServersLive = useCallback(async () => {
@@ -102,6 +106,7 @@ export function ServerListPage() {
 
   const pollRef = useRef(pollServers);
   pollRef.current = pollServers;
+  const pollTickRef = useRef(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => void pollRef.current(), 15_000);
@@ -139,13 +144,14 @@ export function ServerListPage() {
   );
 
   const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
+  const logoSrc = sanitizeImageSrc(branding.logoUrl);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let filtered = list.filter((s) => serverMatchesFilter(s, statusFilter));
+    let next = list.filter((s) => serverMatchesFilter(s, statusFilter));
 
     if (q) {
-      filtered = filtered.filter((s) => {
+      next = next.filter((s) => {
         const address = formatAllocationAddress(s.defaultAllocation, {
           fqdn: s.node.fqdn ?? s.defaultAllocation.ip,
         });
@@ -158,7 +164,7 @@ export function ServerListPage() {
       });
     }
 
-    return [...filtered].sort((a, b) => {
+    return [...next].sort((a, b) => {
       if (sortKey === 'name') return a.name.localeCompare(b.name);
       if (sortKey === 'node') return a.node.name.localeCompare(b.node.name);
       const rank = (s: ServerSummary) => {
@@ -184,51 +190,61 @@ export function ServerListPage() {
     { value: 'node', label: 'Sort by node' },
   ];
 
+  const summaryText =
+    stats.total === 0
+      ? 'No servers on your account yet — contact your host to get started.'
+      : stats.running > 0
+        ? `${stats.running} of ${stats.total} online`
+        : `${stats.total} server${stats.total === 1 ? '' : 's'} — none running right now`;
+
   return (
     <ClientLayout>
       <Page>
-      <div className="mb-4">
-        <PanelAnnouncementBanner location="servers" />
-      </div>
+        <div className="mb-4">
+          <PanelAnnouncementBanner location="servers" />
+        </div>
 
-      <section className="ds-card mb-4 overflow-hidden">
-        {normalizeAppearance(branding).showHeroStripe && <div className="ds-hero-stripe" />}
-        <div className="px-4 py-4 sm:px-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              {sanitizeImageSrc(branding.logoUrl) ? (
-                <img
-                  src={sanitizeImageSrc(branding.logoUrl)!}
-                  alt=""
-                  className="h-10 w-10 shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] object-contain p-1.5"
-                />
+        <section className="ds-servers-fleet" aria-label="Your servers">
+          {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
+
+          <div className="ds-servers-fleet-top">
+            <div className="ds-servers-fleet-identity">
+              {logoSrc ? (
+                <div className="ds-servers-fleet-mark">
+                  <img src={logoSrc} alt="" />
+                </div>
               ) : (
-                <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm"
-                  style={panelNameGradientStyle()}
-                >
+                <div className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback" style={panelNameGradientStyle()}>
                   {panelNameInitial(branding.panelName)}
                 </div>
               )}
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium text-[var(--muted)]">
+              <div className="ds-servers-fleet-copy">
+                <p className="ds-servers-fleet-greeting">
                   {getGreeting()}
                   {user ? `, ${displayName(user)}` : ''}
                 </p>
-                <h1 className="text-lg font-bold tracking-tight sm:text-xl">My servers</h1>
-                <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 truncate text-[11px]">
+                <h1 className="ds-servers-fleet-title">My servers</h1>
+                <div className="ds-servers-fleet-brand">
                   <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-                  {branding.tagline ? <span className="truncate text-[var(--muted)]">{branding.tagline}</span> : null}
-                </p>
+                  {branding.tagline ? <span className="ds-servers-fleet-tagline">{branding.tagline}</span> : null}
+                </div>
+                {loading ? (
+                  <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+                    Loading your servers…
+                  </p>
+                ) : (
+                  <p className="ds-servers-fleet-summary">{summaryText}</p>
+                )}
               </div>
             </div>
 
-            {!loading && stats.total > 0 && (
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+            {!loading && stats.total > 0 ? (
+              <div className="ds-servers-fleet-aside">
                 <HeaderStat label="Online" value={stats.running} tone="success" />
                 <HeaderStat label="Total" value={stats.total} />
-                {stats.installing > 0 && <HeaderStat label="Installing" value={stats.installing} tone="info" />}
-                {stats.suspended > 0 && <HeaderStat label="Suspended" value={stats.suspended} tone="warn" />}
+                {stats.installing > 0 ? <HeaderStat label="Installing" value={stats.installing} tone="info" /> : null}
+                {stats.suspended > 0 ? <HeaderStat label="Suspended" value={stats.suspended} tone="warn" /> : null}
                 <button
                   type="button"
                   onClick={() => void refreshServersLive()}
@@ -239,180 +255,156 @@ export function ServerListPage() {
                   <RefreshCw className={`ds-icon ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {loading ? (
-            <p className="mt-3 flex items-center gap-2 text-xs text-[var(--muted)]">
-              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-              Loading your servers…
-            </p>
-          ) : (
-            <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-              {stats.total === 0
-                ? 'No servers on your account yet — contact your host to get started.'
-                : stats.running > 0
-                  ? `${stats.running} of ${stats.total} online`
-                  : `${stats.total} server${stats.total === 1 ? '' : 's'} — none running right now`}
-            </p>
-          )}
-        </div>
-      </section>
-
-      {!loading && stats.total > 0 && (
-        <section className="ds-card mb-4">
-          <div className="ds-card-body ds-card-body--compact">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-1.5">
-              {filterPills.map((pill) => {
-                const Icon = pill.icon;
-                const isActive = statusFilter === pill.id;
-                return (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    onClick={() => setStatusFilter(pill.id)}
-                    className={`ds-filter-pill ${isActive ? 'is-active' : ''}`}
-                  >
-                    <Icon
-                      className={`ds-icon ${pill.id === 'installing' && isActive ? 'animate-spin' : ''}`}
-                    />
-                    {pill.label}
-                    <span className="ds-filter-pill-count">{pill.count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative min-w-0 w-full flex-1 sm:min-w-[12rem] lg:max-w-xs">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search servers…"
-                  className="ds-field ds-field--icon-left ds-field--icon-right"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch('')}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+          {!loading && stats.total > 0 ? (
+            <div className="ds-servers-fleet-tools">
+              <div className="ds-servers-fleet-pills" role="toolbar" aria-label="Filter by status">
+                {filterPills.map((pill) => {
+                  const Icon = pill.icon;
+                  const isActive = statusFilter === pill.id;
+                  return (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      onClick={() => setStatusFilter(pill.id)}
+                      className={`ds-filter-pill ${isActive ? 'is-active' : ''}`}
+                      aria-pressed={isActive}
+                    >
+                      <Icon
+                        className={`ds-icon ${pill.id === 'installing' && isActive ? 'animate-spin' : ''}`}
+                      />
+                      {pill.label}
+                      <span className="ds-filter-pill-count">{pill.count}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <SelectControl
-                controlSize="sm"
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
-                className="min-w-0 shrink-0"
-              >
-                {sortOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </SelectControl>
+              <div className="ds-servers-fleet-controls">
+                <div className="ds-servers-fleet-search">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search servers…"
+                    className="ds-field ds-field--icon-left ds-field--icon-right"
+                    aria-label="Search servers"
+                  />
+                  {search ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="ds-servers-fleet-search-clear"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
 
-              <div className="ds-segmented shrink-0">
-                <ViewButton active={view === 'grid'} onClick={() => setViewMode('grid')} label="Grid view">
-                  <LayoutGrid className="ds-icon" />
-                </ViewButton>
-                <ViewButton active={view === 'list'} onClick={() => setViewMode('list')} label="List view">
-                  <List className="ds-icon" />
-                </ViewButton>
-              </div>
-            </div>
-          </div>
-          </div>
-        </section>
-      )}
-
-      {error && !loading && list.length > 0 && (
-        <AlertBanner tone="error" className="mb-4 flex-wrap justify-between">
-          <p>We couldn&apos;t refresh your servers. You&apos;re seeing the last saved list.</p>
-          <Button type="button" variant="secondary" onClick={() => void refreshServersLive()}>
-            Retry
-          </Button>
-        </AlertBanner>
-      )}
-
-      {loading ? (
-        <ListPageSkeleton />
-      ) : list.length === 0 ? (
-        error ? (
-          <EmptyState
-            icon={<DsIcon icon={Server} className="ds-icon--md" />}
-            title="Couldn't load your servers"
-            description="Check your connection and try again. If this keeps happening, contact support."
-            action={
-              <Button type="button" onClick={() => void refreshServersLive()}>
-                Try again
-              </Button>
-            }
-          />
-        ) : (
-          <EmptyState
-            icon={<DsIcon icon={Server} className="ds-icon--md" />}
-            title="No servers on your account"
-            description="When your host provisions a server, it will appear here with status, address, and controls."
-          />
-        )
-      ) : (
-        <>
-          {list.length > 0 && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-[var(--muted)]">
-                Showing{' '}
-                <span className="font-medium text-[var(--text)]">{filtered.length}</span>
-                {filtered.length !== list.length && (
-                  <>
-                    {' '}
-                    of <span className="font-medium text-[var(--text)]">{list.length}</span>
-                  </>
-                )}{' '}
-                server{filtered.length === 1 ? '' : 's'}
-                <span className="hidden sm:inline"> · sorted by {sortLabel(sortKey)}</span>
-              </p>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="ds-btn ds-btn--ghost ds-btn--sm"
+                <SelectControl
+                  controlSize="sm"
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  className="min-w-0 shrink-0"
                 >
-                  <X className="h-3 w-3" />
-                  Clear filters
-                </button>
-              )}
-            </div>
-          )}
+                  {sortOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </SelectControl>
 
-          {filtered.length === 0 ? (
+                <div className="ds-segmented shrink-0">
+                  <ViewButton active={view === 'grid'} onClick={() => setViewMode('grid')} label="Grid view">
+                    <LayoutGrid className="ds-icon" />
+                  </ViewButton>
+                  <ViewButton active={view === 'list'} onClick={() => setViewMode('list')} label="List view">
+                    <List className="ds-icon" />
+                  </ViewButton>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        {error && !loading && list.length > 0 ? (
+          <AlertBanner tone="error" className="mb-4 flex-wrap justify-between">
+            <p>We couldn&apos;t refresh your servers. You&apos;re seeing the last saved list.</p>
+            <Button type="button" variant="secondary" onClick={() => void refreshServersLive()}>
+              Retry
+            </Button>
+          </AlertBanner>
+        ) : null}
+
+        {loading ? (
+          <ListPageSkeleton />
+        ) : list.length === 0 ? (
+          error ? (
             <EmptyState
-              icon={<Search className="h-5 w-5" />}
-              title="No matching servers"
-              description="Nothing matches your current search or filter. Try different terms or show all servers again."
+              icon={<DsIcon icon={Server} className="ds-icon--md" />}
+              title="Couldn't load your servers"
+              description="Check your connection and try again. If this keeps happening, contact support."
               action={
-                <Button type="button" variant="ghost" onClick={clearFilters}>
-                  Clear filters
+                <Button type="button" onClick={() => void refreshServersLive()}>
+                  Try again
                 </Button>
               }
             />
-          ) : view === 'grid' ? (
-            <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((s) => (
-                <ServerCard key={s.id} server={s} />
-              ))}
-            </div>
           ) : (
-            <ServerListTable servers={filtered} />
-          )}
-        </>
-      )}
+            <EmptyState
+              icon={<DsIcon icon={Server} className="ds-icon--md" />}
+              title="No servers on your account"
+              description="When your host provisions a server, it will appear here with status, address, and controls."
+            />
+          )
+        ) : (
+          <>
+            <div className="ds-servers-fleet-meta">
+              <p className="ds-servers-fleet-meta-text">
+                Showing <strong>{filtered.length}</strong>
+                {filtered.length !== list.length ? (
+                  <>
+                    {' '}
+                    of <strong>{list.length}</strong>
+                  </>
+                ) : null}{' '}
+                server{filtered.length === 1 ? '' : 's'}
+                <span className="hidden sm:inline"> · sorted by {sortLabel(sortKey)}</span>
+              </p>
+              {hasActiveFilters ? (
+                <button type="button" onClick={clearFilters} className="ds-btn ds-btn--ghost ds-btn--sm">
+                  <X className="h-3 w-3" />
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={<Search className="h-5 w-5" />}
+                title="No matching servers"
+                description="Nothing matches your current search or filter. Try different terms or show all servers again."
+                action={
+                  <Button type="button" variant="ghost" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : view === 'grid' ? (
+              <div className="ds-servers-fleet-grid">
+                {filtered.map((s) => (
+                  <ServerCard key={s.id} server={s} />
+                ))}
+              </div>
+            ) : (
+              <ServerListTable servers={filtered} />
+            )}
+          </>
+        )}
       </Page>
     </ClientLayout>
   );

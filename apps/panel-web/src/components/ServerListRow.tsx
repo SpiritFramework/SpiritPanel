@@ -103,13 +103,18 @@ function ServerListRow({ server }: { server: ServerSummary }) {
         </div>
       </td>
       <td>
-        <ServerStatusBadge
-          status={server.status}
-          suspended={server.suspended}
-          installStatus={server.installStatus}
-          containerState={server.containerState}
-          compact
-        />
+        <div className="flex flex-col gap-0.5">
+          <ServerStatusBadge
+            status={server.status}
+            suspended={server.suspended}
+            installStatus={server.installStatus}
+            containerState={server.containerState}
+            compact
+          />
+          {server.nodeReachable === false ? (
+            <span className="text-[10px] text-[var(--warning-fg)]">Node unreachable</span>
+          ) : null}
+        </div>
       </td>
       <td>
         <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />

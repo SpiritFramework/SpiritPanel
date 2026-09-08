@@ -10,6 +10,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { ServerEggIcon } from './ServerEggIcon';
 import { AdminServerStatusBadge } from './admin/AdminServerStatus';
 import { AdminMobileCard, AdminResponsiveTable } from './admin/AdminMobileCard';
+import { LocationFlag } from './LocationFlag';
 
 export function AdminServerTable({
   servers,
@@ -170,7 +171,12 @@ function AdminServerRow({
       <td className="px-4 py-3">
         <div className="min-w-[100px]">
           <p className="truncate">{server.node.name}</p>
-          <p className="truncate text-[11px] text-[var(--muted)]">{server.node.location.short}</p>
+          <p className="flex items-center gap-1 truncate text-[11px] text-[var(--muted)]">
+            {server.node.location.flagUrl ? (
+              <LocationFlag url={server.node.location.flagUrl} size="sm" />
+            ) : null}
+            {server.node.location.short}
+          </p>
         </div>
       </td>
 

@@ -18,7 +18,12 @@ export function githubHttpError(status: number, bodyText = ''): Error & { status
     message = 'GitHub rejected the configured token. Check GITHUB_TOKEN / your profile PAT.';
   } else if (status === 404) {
     statusCode = 404;
-    message = 'GitHub repository not found (it may be private, renamed, or deleted).';
+    const lowered = bodyText.toLowerCase();
+    if (lowered.includes('release') && lowered.includes('not found')) {
+      message = 'No GitHub release found for this repository — try a specific tag or install from the default branch.';
+    } else {
+      message = 'GitHub repository not found (it may be private, renamed, or deleted).';
+    }
   } else if (status === 422) {
     statusCode = 400;
     message = 'GitHub rejected that request — try a shorter search term.';

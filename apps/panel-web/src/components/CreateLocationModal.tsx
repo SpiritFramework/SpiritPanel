@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { api } from '../lib/api';
 import { Button, Input } from './Layout';
+import { LocationFlag } from './LocationFlag';
 import { ModalShell } from './ModalShell';
 
 export function CreateLocationModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ short: '', long: '' });
+  const [form, setForm] = useState({ short: '', long: '', flagUrl: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -14,7 +15,11 @@ export function CreateLocationModal({ onClose, onCreated }: { onClose: () => voi
     setSaving(true);
     setError('');
     try {
-      await api.admin.createLocation(form);
+      await api.admin.createLocation({
+        short: form.short,
+        long: form.long,
+        flagUrl: form.flagUrl.trim() || null,
+      });
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create location');
@@ -59,6 +64,28 @@ export function CreateLocationModal({ onClose, onCreated }: { onClose: () => voi
           required
           placeholder="US East (New York)"
         />
+        <div className="space-y-2">
+          <Input
+            label="Flag image URL"
+            value={form.flagUrl}
+            onChange={(e) => setForm({ ...form, flagUrl: e.target.value })}
+            placeholder="https://flagcdn.com/w40/us.png"
+            type="url"
+          />
+          {form.flagUrl.trim() ? (
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2">
+              <LocationFlag url={form.flagUrl} size="md" />
+              <span className="text-[11px] text-[var(--muted)]">Preview</span>
+            </div>
+          ) : null}
+          <p className="text-[11px] text-[var(--muted)]">
+            Optional — link to a PNG/SVG flag (e.g. from{' '}
+            <a href="https://flagcdn.com" target="_blank" rel="noreferrer" className="accent-text">
+              flagcdn.com
+            </a>
+            ).
+          </p>
+        </div>
         <p className="text-[11px] text-[var(--muted)]">
           Short codes are used in node badges and filters. Use lowercase with hyphens.
         </p>

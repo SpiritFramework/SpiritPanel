@@ -3,28 +3,28 @@ import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   HardDrive,
+  LayoutGrid,
+  List,
   MapPin,
-  Network,
   Plus,
   RefreshCw,
   Search,
-  Server,
-  Wrench,
 } from 'lucide-react';
 import { api, type AdminLocationSummary, type AdminNodeSummary } from '../../lib/api';
-import { AdminLayout, Button, FilterSelect, Page } from '../../components/Layout';
+import { AdminNodeTable } from '../../components/AdminNodeRow';
+import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/Layout';
 import { NodeFleetCard } from '../../components/admin/nodes/NodeFleetCard';
-import { NodeFleetSidebar } from '../../components/admin/nodes/NodeFleetSidebar';
+import { NodesFleetOverview } from '../../components/admin/nodes/NodesFleetOverview';
+import { NodesFleetStats } from '../../components/admin/nodes/NodesFleetStats';
 import {
   computeFleetStats,
   groupNodesByLocation,
   matchesFleetFilter,
   type NodeFleetFilter,
 } from '../../components/admin/nodes/node-fleet-utils';
-import { formatResourceAmount } from '../../lib/server-theme';
 import { useAuth } from '../../context/AuthContext';
 import { isFullPanelAdmin } from '../../lib/roles';
-import { AlertBanner, DsIcon, EmptyState, Skeleton } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton } from '../../components/ui';
 
 const FILTER_OPTIONS: { id: NodeFleetFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -33,6 +33,8 @@ const FILTER_OPTIONS: { id: NodeFleetFilter; label: string }[] = [
   { id: 'offline', label: 'Offline' },
 ];
 
+type NodesViewMode = 'table' | 'cards';
+
 export function AdminNodes() {
   const { user } = useAuth();
   const fullAdmin = isFullPanelAdmin(user);
@@ -40,6 +42,7 @@ export function AdminNodes() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<NodeFleetFilter>('all');
+  const [viewMode, setViewMode] = useState<NodesViewMode>('table');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -150,149 +153,52 @@ export function AdminNodes() {
   const hasActiveFilters =
     Boolean(debouncedSearch) || Boolean(locationFilter) || statusFilter !== 'all';
 
-  const memPct =
-    fleetStats.memoryLimit > 0
-      ? Math.round((fleetStats.allocatedMemory / fleetStats.memoryLimit) * 100)
-      : 0;
-  const heroTone =
-    fleetStats.offline > 0 ? 'warn' : onlinePercent < 60 && fleetStats.total > 0 ? 'bad' : 'good';
-  const healthTone = onlinePercent >= 85 ? 'good' : onlinePercent >= 60 ? 'warn' : 'bad';
+  function clearFilters() {
+    setSearch('');
+    setLocationFilter('');
+    setStatusFilter('all');
+  }
 
   return (
     <AdminLayout>
-      <Page className="ds-fleet-page">
-        <header className={`ds-fleet-hero ds-fleet-hero--${heroTone}`}>
-          <div className="ds-fleet-hero-glow" aria-hidden />
-          <div className="ds-fleet-hero-glow ds-fleet-hero-glow--right" aria-hidden />
-
-          <div className="ds-fleet-hero-inner">
-            <div className="ds-fleet-hero-copy">
-              <p className="ds-fleet-hero-eyebrow">
-                Infrastructure
-                <span aria-hidden>·</span>
-                Wings daemons
-              </p>
-              <h1 className="ds-fleet-hero-title">Node fleet</h1>
-              <p className="ds-fleet-hero-sub">
-                Reachability, capacity, and port inventory across every location.
-              </p>
-              <div className="ds-fleet-hero-actions">
-                {fullAdmin && (
-                <Link to="/admin/nodes/new" className="ds-btn ds-btn--primary ds-btn--sm">
-                  <Plus className="ds-icon ds-icon--sm" aria-hidden />
-                  Add node
-                </Link>
-                )}
-                <Link to="/admin/locations" className="ds-btn ds-btn--secondary ds-btn--sm">
-                  <MapPin className="ds-icon ds-icon--sm" aria-hidden />
-                  Locations
-                </Link>
-                <button
-                  type="button"
-                  className="ds-btn ds-btn--ghost ds-btn--sm"
-                  onClick={() => void refresh()}
-                  disabled={refreshing || nodes.loading}
-                  aria-label="Refresh nodes"
-                >
-                  <RefreshCw
-                    className={`ds-icon ds-icon--sm${refreshing ? ' animate-spin' : ''}`}
-                    aria-hidden
-                  />
-                  Refresh
-                </button>
-              </div>
-            </div>
-
-            <div className="ds-fleet-hero-pulse" aria-label={`Fleet online ${onlinePercent}%`}>
-              <div
-                className={`ds-fleet-health-ring ds-fleet-health-ring--${healthTone}`}
-                style={{ ['--fleet-health' as string]: `${onlinePercent}%` }}
-                aria-hidden
+      <Page>
+        <PageHeader
+          title="Nodes"
+          description="Wings daemons across your locations — reachability, capacity, and port inventory"
+          icon={<DsIcon icon={HardDrive} className="ds-icon--muted" />}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void refresh()}
+                disabled={refreshing || nodes.loading}
+                aria-label="Refresh nodes"
               >
-                <span className="ds-fleet-health-value">{onlinePercent}%</span>
-              </div>
-              <div>
-                <span className="ds-fleet-hero-pulse-label">Online</span>
-                <strong className="ds-fleet-hero-pulse-value">
-                  {fleetStats.online}/{fleetStats.total || '—'}
-                </strong>
-                <small>
-                  {fleetStats.offline > 0
-                    ? `${fleetStats.offline} unreachable`
-                    : fleetStats.maintenance > 0
-                      ? `${fleetStats.maintenance} in maintenance`
-                      : 'All reachable'}
-                </small>
-              </div>
+                <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+                Refresh
+              </Button>
+              <Link to="/admin/locations">
+                <Button type="button" variant="secondary" size="sm">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                  Locations
+                </Button>
+              </Link>
+              {fullAdmin ? (
+                <Link to="/admin/nodes/new">
+                  <Button size="sm">
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Add node
+                  </Button>
+                </Link>
+              ) : null}
             </div>
-          </div>
-
-          <div className="ds-fleet-kpis" aria-label="Fleet metrics">
-            <div className="ds-fleet-kpi">
-              <span className="ds-fleet-kpi-icon" aria-hidden>
-                <HardDrive className="ds-icon ds-icon--sm" />
-              </span>
-              <span className="ds-fleet-kpi-copy">
-                <span className="ds-fleet-kpi-label">Nodes</span>
-                <strong className="ds-fleet-kpi-value">{fleetStats.total}</strong>
-                <small className="ds-fleet-kpi-hint">{fleetStats.online} online</small>
-              </span>
-            </div>
-            <button
-              type="button"
-              className="ds-fleet-kpi"
-              onClick={() => setStatusFilter('offline')}
-            >
-              <span className="ds-fleet-kpi-icon ds-fleet-kpi-icon--warn" aria-hidden>
-                <AlertTriangle className="ds-icon ds-icon--sm" />
-              </span>
-              <span className="ds-fleet-kpi-copy">
-                <span className="ds-fleet-kpi-label">Offline</span>
-                <strong className="ds-fleet-kpi-value">{fleetStats.offline}</strong>
-                <small className="ds-fleet-kpi-hint">
-                  {fleetStats.maintenance} maintenance
-                </small>
-              </span>
-            </button>
-            <div className="ds-fleet-kpi">
-              <span className="ds-fleet-kpi-icon" aria-hidden>
-                <Server className="ds-icon ds-icon--sm" />
-              </span>
-              <span className="ds-fleet-kpi-copy">
-                <span className="ds-fleet-kpi-label">Servers</span>
-                <strong className="ds-fleet-kpi-value">{fleetStats.servers}</strong>
-                <small className="ds-fleet-kpi-hint">On this fleet</small>
-              </span>
-            </div>
-            <div className="ds-fleet-kpi">
-              <span className="ds-fleet-kpi-icon" aria-hidden>
-                <Network className="ds-icon ds-icon--sm" />
-              </span>
-              <span className="ds-fleet-kpi-copy">
-                <span className="ds-fleet-kpi-label">Ports</span>
-                <strong className="ds-fleet-kpi-value">{fleetStats.allocations}</strong>
-                <small className="ds-fleet-kpi-hint">Allocations</small>
-              </span>
-            </div>
-            <div className="ds-fleet-kpi">
-              <span className="ds-fleet-kpi-icon" aria-hidden>
-                <Wrench className="ds-icon ds-icon--sm" />
-              </span>
-              <span className="ds-fleet-kpi-copy">
-                <span className="ds-fleet-kpi-label">Memory</span>
-                <strong className="ds-fleet-kpi-value">
-                  {fleetStats.memoryLimit > 0 ? `${memPct}%` : '—'}
-                </strong>
-                <small className="ds-fleet-kpi-hint">
-                  {formatResourceAmount(fleetStats.allocatedMemory, 'MiB')} used
-                </small>
-              </span>
-            </div>
-          </div>
-        </header>
+          }
+        />
 
         {locations.error ? (
-          <AlertBanner tone="error">
+          <AlertBanner tone="error" className="mb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               <span>Couldn&apos;t load locations: {locations.error.message}</span>
@@ -301,7 +207,7 @@ export function AdminNodes() {
         ) : null}
 
         {nodes.error ? (
-          <AlertBanner tone="error">
+          <AlertBanner tone="error" className="mb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               <span>Couldn&apos;t load nodes: {nodes.error.message}</span>
@@ -310,136 +216,156 @@ export function AdminNodes() {
         ) : null}
 
         {fleetStats.offline > 0 && !nodes.error ? (
-          <div className="ds-fleet-banner ds-fleet-banner--warn">
-            <AlertTriangle className="ds-icon ds-icon--sm shrink-0" aria-hidden />
-            <p>
-              {fleetStats.offline} node{fleetStats.offline === 1 ? '' : 's'} unreachable
-              {fleetStats.maintenance > 0
-                ? ` · ${fleetStats.maintenance} in maintenance`
-                : ''}
-            </p>
-            <button
-              type="button"
-              className="ds-fleet-banner-link"
-              onClick={() => setStatusFilter('offline')}
-            >
-              Show offline
-            </button>
-          </div>
+          <AlertBanner tone="warning" className="mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {fleetStats.offline} node{fleetStats.offline === 1 ? '' : 's'} unreachable
+                {fleetStats.maintenance > 0 ? ` · ${fleetStats.maintenance} in maintenance` : ''}
+              </span>
+              <button
+                type="button"
+                className="text-xs font-medium underline underline-offset-2"
+                onClick={() => setStatusFilter('offline')}
+              >
+                Show offline
+              </button>
+            </div>
+          </AlertBanner>
         ) : null}
 
-        <div className="ds-fleet-layout">
-          <div className="ds-fleet-main">
-            <div className="ds-fleet-toolbar">
-              <div className="ds-fleet-search">
-                <Search className="ds-fleet-search-icon" aria-hidden />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search name, FQDN, or UUID…"
-                  className="ds-field ds-fleet-search-input"
-                  aria-label="Search nodes"
-                />
-              </div>
-              <FilterSelect
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                disabled={locations.loading}
-                className="ds-fleet-location-select"
-                aria-label="Filter by location"
-              >
-                <option value="">All locations</option>
-                {locationList.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.short}
-                  </option>
-                ))}
-              </FilterSelect>
-            </div>
+        <NodesFleetStats stats={fleetStats} onShowOffline={() => setStatusFilter('offline')} />
 
-            <div className="ds-fleet-filters" role="tablist" aria-label="Node status filters">
-              {FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={statusFilter === opt.id}
-                  className={`ds-fleet-filter${statusFilter === opt.id ? ' ds-fleet-filter--active' : ''}${
-                    opt.id === 'offline' && filterCounts.offline > 0 ? ' ds-fleet-filter--alert' : ''
-                  }`}
-                  onClick={() => setStatusFilter(opt.id)}
-                >
-                  {opt.label}
-                  <span className="ds-fleet-filter-count">{filterCounts[opt.id]}</span>
-                </button>
-              ))}
-            </div>
+        {!nodes.loading || allNodes.length > 0 ? (
+          <NodesFleetOverview
+            stats={fleetStats}
+            locationRows={locationRows}
+            onlinePercent={onlinePercent}
+          />
+        ) : null}
 
-            <div className="ds-fleet-results-meta">
-              <span>
-                Showing <strong>{filteredNodes.length}</strong>
-                {hasActiveFilters ? ` of ${allNodes.length}` : ''} nodes
-              </span>
-              {lastUpdated ? (
-                <span className="ds-text-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
-              ) : null}
-            </div>
-
-            {nodes.loading && allNodes.length === 0 ? (
-              <div className="ds-fleet-card-grid" aria-hidden>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="ds-fleet-card-skeleton" />
-                ))}
-              </div>
-            ) : filteredNodes.length === 0 ? (
-              <EmptyState
-                icon={<DsIcon icon={HardDrive} className="ds-icon--md" />}
-                title={hasActiveFilters ? 'No nodes match your filters' : 'No nodes registered'}
-                description={
-                  hasActiveFilters
-                    ? 'Try a different status, location, or search term.'
-                    : 'Add your first Wings node to start provisioning game servers.'
-                }
-                action={
-                  hasActiveFilters ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setSearch('');
-                        setLocationFilter('');
-                        setStatusFilter('all');
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  ) : fullAdmin ? (
-                    <Link to="/admin/nodes/new">
-                      <Button>
-                        <Plus className="h-4 w-4" />
-                        Add node
-                      </Button>
-                    </Link>
-                  ) : null
-                }
+        <Card title="All nodes">
+          <div className="ds-nodes-toolbar mb-3">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, FQDN, or UUID…"
+                className="ds-field ds-field--icon-left w-full"
+                aria-label="Search nodes"
               />
-            ) : (
-              <div className="ds-fleet-card-grid">
-                {filteredNodes.map((node) => (
-                  <NodeFleetCard key={node.id} node={node} />
-                ))}
-              </div>
-            )}
+            </div>
+            <FilterSelect
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              disabled={locations.loading}
+              aria-label="Filter by location"
+            >
+              <option value="">All locations</option>
+              {locationList.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.short}
+                </option>
+              ))}
+            </FilterSelect>
+            <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
+              <button
+                type="button"
+                className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
+                onClick={() => setViewMode('table')}
+                aria-pressed={viewMode === 'table'}
+              >
+                <List className="h-3.5 w-3.5" aria-hidden />
+                Table
+              </button>
+              <button
+                type="button"
+                className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                aria-pressed={viewMode === 'cards'}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                Cards
+              </button>
+            </div>
           </div>
 
-          {!nodes.loading || allNodes.length > 0 ? (
-            <NodeFleetSidebar
-              stats={fleetStats}
-              locationRows={locationRows}
-              onlinePercent={onlinePercent}
+          <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Node status filters">
+            {FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                role="tab"
+                aria-selected={statusFilter === opt.id}
+                className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}${
+                  opt.id === 'offline' && filterCounts.offline > 0 ? ' ds-nodes-status-pill--alert' : ''
+                }`}
+                onClick={() => setStatusFilter(opt.id)}
+              >
+                {opt.label}
+                <span className="ds-nodes-status-count">{filterCounts[opt.id]}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="ds-nodes-results-meta mb-3">
+            <span>
+              Showing <strong>{filteredNodes.length}</strong>
+              {hasActiveFilters ? ` of ${allNodes.length}` : ''} nodes
+            </span>
+            {lastUpdated ? (
+              <span className="ds-text-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
+            ) : null}
+          </div>
+
+          {nodes.loading && allNodes.length === 0 ? (
+            viewMode === 'table' ? (
+              <div className="space-y-2 py-1" aria-hidden>
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : (
+              <div className="ds-nodes-card-grid" aria-hidden>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="ds-nodes-card-skeleton" />
+                ))}
+              </div>
+            )
+          ) : filteredNodes.length === 0 ? (
+            <EmptyState
+              icon={<DsIcon icon={HardDrive} className="ds-icon--md" />}
+              title={hasActiveFilters ? 'No nodes match your filters' : 'No nodes registered'}
+              description={
+                hasActiveFilters
+                  ? 'Try a different status, location, or search term.'
+                  : 'Add your first Wings node to start provisioning game servers.'
+              }
+              action={
+                hasActiveFilters ? (
+                  <Button type="button" variant="secondary" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : fullAdmin ? (
+                  <Link to="/admin/nodes/new">
+                    <Button>
+                      <Plus className="h-4 w-4" />
+                      Add node
+                    </Button>
+                  </Link>
+                ) : null
+              }
             />
-          ) : null}
-        </div>
+          ) : viewMode === 'table' ? (
+            <AdminNodeTable nodes={filteredNodes} />
+          ) : (
+            <div className="ds-nodes-card-grid">
+              {filteredNodes.map((node) => (
+                <NodeFleetCard key={node.id} node={node} />
+              ))}
+            </div>
+          )}
+        </Card>
       </Page>
     </AdminLayout>
   );

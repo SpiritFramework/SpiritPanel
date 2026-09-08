@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { createReadStream } from 'node:fs';
 import { randomBytes, createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -12,18 +12,24 @@ import {
 import { AUTH_RATE_LIMIT, LOGIN_RATE_LIMIT, PASSWORD_RESET_LIMIT } from '../lib/rate-limits.js';
 import { requestIp } from '../lib/client-server.js';
 import { assertPasswordMeetsPolicy, getPasswordMinLength } from '../lib/password-policy.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireSession } from '../middleware/auth.js';
 import { clearSessionCookie, setSessionCookie } from '../lib/session-cookie.js';
 import { logAuthActivity } from '../lib/admin-activity.js';
 import {
   brandingAssetExists,
   resolveBrandingAssetPath,
 } from '../lib/branding-assets.js';
+import { buildWebManifest } from '../lib/web-manifest.js';
 import {
+  getBrandingSettings,
+  getDiscordAuthSettings,
+  getGeneralSettings,
   getMaintenanceSettings,
   getMinPasswordLength,
   getPublicPanelConfig,
   getRegistrationEnabled,
+  isValidBrandingAssetUrl,
+  type BrandingSettings,
 } from '../lib/panel-settings.js';
 import {
   isMailEnabled,
@@ -38,6 +44,16 @@ import { isSafeHttpUrl } from '../lib/safe-url.js';
 import { encryptSecret, decryptSecret } from '../lib/secret-crypto.js';
 import { validateGithubPat } from '../lib/github-auth.js';
 import {
+  buildDiscordAuthorizeUrl,
+  exchangeDiscordCode,
+  fetchDiscordIdentity,
+  isDiscordAuthReady,
+  signDiscordLinkIntent,
+  signDiscordOAuthState,
+  verifyDiscordLinkIntent,
+  verifyDiscordOAuthState,
+} from '../lib/discord-oauth.js';
+import {
   generateRecoveryCodes,
   generateTotpSecret,
   hashRecoveryCode,
@@ -47,7 +63,6 @@ import {
   verifyTotp,
   verifyTwoFactorChallenge,
 } from '../lib/totp.js';
-import { getGeneralSettings } from '../lib/panel-settings.js';
 
 const sshKeyName = z.string().min(1).max(64);
 
@@ -81,6 +96,14 @@ async function assertTurnstile(request: { ip: string }, token?: string) {
   if (!ok) {
     throw Object.assign(new Error('Security verification failed. Please try again.'), { statusCode: 403 });
   }
+}
+
+function panelRedirect(path: string): string {
+  return `${getConfig().panelUrl.replace(/\/$/, '')}${path}`;
+}
+
+function discordLoginErrorRedirect(code: string): string {
+  return panelRedirect(`/login?discord_error=${encodeURIComponent(code)}`);
 }
 
 function issueAuthSession(
@@ -134,7 +157,7 @@ export async function authRoutes(app: FastifyInstance) {
     const isEmail = identifier.includes('@');
 
     try {
-      assertLoginAllowed(identifier, request.ip);
+      await assertLoginAllowed(identifier, request.ip);
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode ?? 429;
       return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Too many attempts' });
@@ -147,17 +170,17 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     if (!user) {
-      recordLoginFailure(identifier, request.ip);
+      await recordLoginFailure(identifier, request.ip);
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
     const valid = await verifyPassword(body.password, user.passwordHash);
     if (!valid) {
-      recordLoginFailure(identifier, request.ip);
+      await recordLoginFailure(identifier, request.ip);
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
-    clearLoginFailures(identifier, request.ip);
+    await clearLoginFailures(identifier, request.ip);
 
     if (!user.enabled) {
       return reply.status(403).send({
@@ -202,7 +225,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const ip = requestIp(request);
     try {
-      assertLoginAllowed(`2fa:${userId}`, ip);
+      await assertLoginAllowed(`2fa:${userId}`, ip);
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode ?? 429;
       return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Too many attempts' });
@@ -221,11 +244,11 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     if (!verified) {
-      recordLoginFailure(`2fa:${userId}`, ip);
+      await recordLoginFailure(`2fa:${userId}`, ip);
       return reply.status(401).send({ error: 'Invalid authentication code' });
     }
 
-    clearLoginFailures(`2fa:${userId}`, ip);
+    await clearLoginFailures(`2fa:${userId}`, ip);
     await logAuthActivity(request, {
       event: 'auth.login',
       actorId: user.id,
@@ -234,6 +257,134 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     return issueAuthSession(reply, user);
+  });
+
+  app.get('/discord/start', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
+    const query = request.query as { intent?: string; linkToken?: string };
+    const intent = query.intent === 'link' ? 'link' : 'login';
+    const settings = await getDiscordAuthSettings();
+    if (!isDiscordAuthReady(settings)) {
+      if (intent === 'link') {
+        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=disabled'));
+      }
+      return reply.redirect(discordLoginErrorRedirect('disabled'));
+    }
+
+    let userId: string | undefined;
+    if (intent === 'link') {
+      await requireSession(request, reply);
+      if (reply.sent) return;
+      const linkUserId = query.linkToken ? verifyDiscordLinkIntent(query.linkToken) : null;
+      if (!linkUserId || linkUserId !== request.user!.id) {
+        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=reauth'));
+      }
+      userId = request.user!.id;
+    }
+
+    const state = signDiscordOAuthState({ intent, userId });
+    return reply.redirect(buildDiscordAuthorizeUrl(settings.clientId, state));
+  });
+
+  app.get('/discord/callback', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
+    const query = z
+      .object({
+        code: z.string().optional(),
+        state: z.string().optional(),
+        error: z.string().optional(),
+      })
+      .parse(request.query);
+
+    const state = query.state ? verifyDiscordOAuthState(query.state) : null;
+    const intent = state?.intent ?? 'login';
+
+    if (query.error || !query.code || !state) {
+      if (intent === 'link') {
+        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=denied'));
+      }
+      return reply.redirect(discordLoginErrorRedirect(query.error === 'access_denied' ? 'denied' : 'failed'));
+    }
+
+    const settings = await getDiscordAuthSettings();
+    if (!isDiscordAuthReady(settings)) {
+      return reply.redirect(
+        intent === 'link'
+          ? panelRedirect('/profile?tab=security&discord_error=disabled')
+          : discordLoginErrorRedirect('disabled'),
+      );
+    }
+
+    let identity;
+    try {
+      const accessToken = await exchangeDiscordCode(query.code, settings);
+      identity = accessToken ? await fetchDiscordIdentity(accessToken) : null;
+    } catch {
+      identity = null;
+    }
+    if (!identity) {
+      return reply.redirect(
+        intent === 'link'
+          ? panelRedirect('/profile?tab=security&discord_error=failed')
+          : discordLoginErrorRedirect('failed'),
+      );
+    }
+
+    if (intent === 'link') {
+      if (!state.userId) {
+        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=failed'));
+      }
+      const taken = await prisma.user.findFirst({
+        where: { discordId: identity.id, NOT: { id: state.userId } },
+        select: { id: true },
+      });
+      if (taken) {
+        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=taken'));
+      }
+      await prisma.user.update({
+        where: { id: state.userId },
+        data: {
+          discordId: identity.id,
+          discordUsername: identity.handle,
+          discordLinkedAt: new Date(),
+        },
+      });
+      await logAuthActivity(request, {
+        event: 'auth.discord.linked',
+        actorId: state.userId,
+        description: `Linked Discord @${identity.handle}`,
+        properties: { discordId: identity.id },
+      });
+      return reply.redirect(panelRedirect('/profile?tab=security&discord=linked'));
+    }
+
+    const user = await prisma.user.findUnique({ where: { discordId: identity.id } });
+    if (!user) {
+      return reply.redirect(discordLoginErrorRedirect('not_linked'));
+    }
+    if (!user.enabled) {
+      return reply.redirect(discordLoginErrorRedirect('suspended'));
+    }
+
+    const maintenance = await getMaintenanceSettings();
+    if (maintenance.enabled && !user.rootAdmin) {
+      const elevated = user.role === 'admin' || user.role === 'staff';
+      if (!elevated || !maintenance.allowAdminLogin) {
+        return reply.redirect(discordLoginErrorRedirect('maintenance'));
+      }
+    }
+
+    if (user.totpEnabled && user.totpSecret) {
+      const challenge = signTwoFactorChallenge(user.id);
+      return reply.redirect(panelRedirect(`/login#discord2fa=${encodeURIComponent(challenge)}`));
+    }
+
+    await logAuthActivity(request, {
+      event: 'auth.login',
+      actorId: user.id,
+      description: `${user.username} logged in with Discord`,
+      properties: { role: user.role, method: 'discord' },
+    });
+    issueAuthSession(reply, user);
+    return reply.redirect(panelRedirect(user.role === 'admin' || user.role === 'staff' ? '/admin' : '/servers'));
   });
 
   app.post('/register', { config: AUTH_RATE_LIMIT }, async (request, reply) => {
@@ -646,6 +797,87 @@ export async function authRoutes(app: FastifyInstance) {
     return { configured: false };
   });
 
+  app.get('/me/discord', { preHandler: requireAuth }, async (request) => {
+    const settings = await getDiscordAuthSettings();
+    const user = await prisma.user.findUnique({
+      where: { id: request.user!.id },
+      select: { discordId: true, discordUsername: true, discordLinkedAt: true, totpEnabled: true },
+    });
+    return {
+      enabled: isDiscordAuthReady(settings),
+      linked: Boolean(user?.discordId),
+      username: user?.discordUsername ?? null,
+      discordId: user?.discordId ?? null,
+      linkedAt: user?.discordLinkedAt ?? null,
+      twoFactorEnabled: Boolean(user?.totpEnabled),
+    };
+  });
+
+  app.post('/me/discord/prepare-link', { preHandler: requireAuth, config: AUTH_RATE_LIMIT }, async (request, reply) => {
+    const settings = await getDiscordAuthSettings();
+    if (!isDiscordAuthReady(settings)) {
+      return reply.status(400).send({ error: 'Discord login is not enabled on this panel.' });
+    }
+
+    const body = z
+      .object({
+        password: z.string().min(1),
+        code: z.string().min(4).max(20).optional(),
+      })
+      .parse(request.body);
+
+    const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
+    if (!user || !user.enabled) {
+      return reply.status(401).send({ error: 'Unauthorized' });
+    }
+
+    if (!(await verifyPassword(body.password, user.passwordHash))) {
+      return reply.status(403).send({ error: 'Incorrect password' });
+    }
+
+    if (user.totpEnabled && user.totpSecret) {
+      const code = body.code?.trim() ?? '';
+      if (!code) {
+        return reply.status(400).send({
+          error: 'Enter your two-factor authentication code to continue.',
+          code: '2fa_required',
+        });
+      }
+      let verified = verifyTotp(code, decryptSecret(user.totpSecret));
+      if (!verified) {
+        verified = await consumeRecoveryCode(user.id, user.totpRecoveryCodes, code);
+      }
+      if (!verified) {
+        return reply.status(403).send({ error: 'Invalid authentication code' });
+      }
+    }
+
+    return {
+      linkToken: signDiscordLinkIntent(user.id),
+      expiresInSeconds: 300,
+    };
+  });
+
+  app.delete('/me/discord', { preHandler: requireAuth }, async (request, reply) => {
+    const user = await prisma.user.findUnique({
+      where: { id: request.user!.id },
+      select: { discordId: true, discordUsername: true },
+    });
+    if (!user?.discordId) {
+      return reply.status(400).send({ error: 'Discord is not linked to this account.' });
+    }
+    await prisma.user.update({
+      where: { id: request.user!.id },
+      data: { discordId: null, discordUsername: null, discordLinkedAt: null },
+    });
+    await logAuthActivity(request, {
+      event: 'auth.discord.unlinked',
+      actorId: request.user!.id,
+      description: `Unlinked Discord${user.discordUsername ? ` @${user.discordUsername}` : ''}`,
+    });
+    return { linked: false };
+  });
+
   // ---- SSH keys ----
   app.get('/me/ssh-keys', { preHandler: requireAuth }, async (request) => {
     const keys = await prisma.userSshKey.findMany({
@@ -694,6 +926,46 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get('/branding', async () => getPublicPanelConfig());
+
+  // Served from the API so installed apps pick up the deploy's own branding.
+  // Manifests are fetched anonymously, so this must stay public.
+  app.get('/branding/manifest.webmanifest', async (_request, reply) => {
+    reply.type('application/manifest+json');
+    reply.header('Cache-Control', 'public, max-age=300');
+    return reply.send(await buildWebManifest());
+  });
+
+  /**
+   * Stable icon URLs that resolve to the branded asset server-side.
+   *
+   * `index.html` is a static file, so it cannot know the deploy's branding. If
+   * it pointed straight at the bundled icon, the browser would paint that first
+   * and only swap once React had fetched branding — a visible flash of the
+   * wrong icon on every load. Redirecting here means the correct icon is the
+   * only one ever painted.
+   */
+  function brandingIconRedirect(getUrl: (b: BrandingSettings) => string, fallback: string) {
+    return async (_request: FastifyRequest, reply: FastifyReply) => {
+      const branding = await getBrandingSettings();
+      const target = getUrl(branding).trim();
+      const safe = target && isValidBrandingAssetUrl(target) ? target : fallback;
+      // Short cache: repeat page loads should not hit the API for an icon, but
+      // a branding change still propagates quickly. Admins see it immediately
+      // anyway, because the app swaps in the asset URL after loading branding.
+      reply.header('Cache-Control', 'public, max-age=60');
+      return reply.redirect(safe, 302);
+    };
+  }
+
+  app.get(
+    '/branding/favicon',
+    brandingIconRedirect((b) => b.faviconUrl ?? '', '/icons/icon-32.png'),
+  );
+
+  app.get(
+    '/branding/app-icon',
+    brandingIconRedirect((b) => b.appIconUrl || b.faviconUrl || '', '/icons/apple-touch-icon.png'),
+  );
 
   app.get('/branding/assets/:filename', async (request, reply) => {
     const { filename } = request.params as { filename: string };

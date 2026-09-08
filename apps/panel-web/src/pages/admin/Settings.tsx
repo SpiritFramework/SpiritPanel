@@ -1,121 +1,80 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Globe,
-  Image as ImageIcon,
   KeyRound,
-  Lock,
   Mail,
   Send,
   Shield,
-  SlidersHorizontal,
   Sparkles,
   RefreshCw,
-  Store,
   LifeBuoy,
   Type,
   UserPlus,
   Wrench,
-  Palette,
+  RotateCcw,
+  Save,
+  Copy,
 } from 'lucide-react';
-import { api } from '../../lib/api';
+import { api, type BrandingAssetKind } from '../../lib/api';
+import { generateAppIcon as renderAppIcon } from '../../lib/app-icon';
 import { useBranding } from '../../context/BrandingContext';
 import {
-  applyAppearanceDataset,
-  DEFAULT_BRANDING_APPEARANCE,
   normalizeAppearance,
   type BrandingAppearance,
 } from '../../lib/branding-appearance';
-import { ACCENT_PALETTE_PRESETS, THEME_PALETTES, applySurfacePreset } from '../../lib/branding-theme-palettes';
 import {
   DEFAULT_GENERAL,
   DEFAULT_MAINTENANCE,
-  DEFAULT_MARKETPLACE,
-  DEFAULT_MINECRAFT_PLUGINS,
   DEFAULT_TICKETS,
   DEFAULT_SECURITY,
   type PanelGeneralSettings,
   type PanelMaintenanceSettings,
-  type PanelMarketplaceSettings,
-  type PanelMinecraftPluginsSettings,
   type PanelTicketsSettings,
   type PanelSecuritySettings,
 } from '../../lib/panel-settings';
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
+import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
+import { NodeOverviewSection } from '../../components/admin/node-detail/NodeDetailShell';
 import {
-  AdminDetailBody,
-  AdminDetailHero,
-  AdminDetailPage,
-  AdminDetailTabs,
-  AdminSaveBar,
-  AdminSettingsPanel,
-  AdminSidebarCard,
-} from '../../components/AdminDetailLayout';
-import { BrandingAssetField, ColorField } from '../../components/BrandingFields';
-import { BrandingColorPanel } from '../../components/BrandingColorPanel';
-import { BrandingAppearanceFields } from '../../components/BrandingAppearanceFields';
-import { BrandingPreview } from '../../components/BrandingPreview';
-import { AuthorAttribution } from '../../components/AuthorAttribution';
-import { PanelName } from '../../components/PanelName';
+  SettingsHeader,
+  isSettingsTab,
+  type SettingsTab,
+} from '../../components/admin/settings/SettingsHeader';
+import { SettingsSidebar } from '../../components/admin/settings/SettingsSidebar';
+import { SettingsAboutPanel } from '../../components/admin/settings/SettingsAboutPanel';
+import {
+  DEFAULT_BRANDING_FORM,
+  DEFAULT_SMTP_FORM,
+  type BrandingForm,
+  type SmtpForm,
+} from '../../components/admin/settings/settings-types';
+import { ColorField } from '../../components/BrandingFields';
+import { BrandingStudio } from '../../features/branding-studio';
 import { Checkbox } from '../../components/Checkbox';
+import { DiscordIcon } from '../../components/icons/DiscordIcon';
 import { EmailTemplatesPanel } from '../../components/admin/EmailTemplatesPanel';
 import {
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_TURNSTILE_FORM,
+  DEFAULT_DISCORD_AUTH_FORM,
   DEFAULT_CLOUDFLARE_DNS_FORM,
   type EmailTemplatesSettings,
   type TurnstileForm,
+  type DiscordAuthForm,
   type CloudflareDnsForm,
 } from '../../lib/email-templates';
 
-type Tab = 'branding' | 'general' | 'access' | 'maintenance' | 'email';
-
-interface SmtpForm {
-  enabled: boolean;
-  host: string;
-  port: number;
-  secure: boolean;
-  username: string;
-  password: string;
-  fromAddress: string;
-  fromName: string;
-}
-
-const DEFAULT_SMTP_FORM: SmtpForm = {
-  enabled: false,
-  host: '',
-  port: 587,
-  secure: false,
-  username: '',
-  password: '',
-  fromAddress: '',
-  fromName: 'Spirit-Panel',
-};
-
-interface BrandingForm extends BrandingAppearance {
-  panelName: string;
-  tagline: string;
-  accentColor: string;
-  secondaryColor: string;
-  logoUrl: string;
-  faviconUrl: string;
-  loginMessage: string;
-}
-
-const DEFAULT_BRANDING_FORM: BrandingForm = {
-  panelName: 'Spirit-Panel',
-  tagline: 'Game server panel',
-  accentColor: '#6366f1',
-  secondaryColor: '#8b5cf6',
-  logoUrl: '',
-  faviconUrl: '',
-  loginMessage: 'Sign in to manage your game servers',
-  ...DEFAULT_BRANDING_APPEARANCE,
-};
-
 export function AdminSettings() {
   const { refreshBranding } = useBranding();
-  const [tab, setTab] = useState<Tab>('branding');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tab: SettingsTab = isSettingsTab(tabParam) ? tabParam : 'branding';
+
+  function setTab(next: SettingsTab) {
+    setSearchParams({ tab: next }, { replace: true });
+  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -126,14 +85,16 @@ export function AdminSettings() {
   const [maintenance, setMaintenance] = useState<PanelMaintenanceSettings>(DEFAULT_MAINTENANCE);
   const [security, setSecurity] = useState<PanelSecuritySettings>(DEFAULT_SECURITY);
   const [registration, setRegistration] = useState(false);
-  const [marketplace, setMarketplace] = useState<PanelMarketplaceSettings>(DEFAULT_MARKETPLACE);
-  const [minecraftPlugins, setMinecraftPlugins] = useState<PanelMinecraftPluginsSettings>(DEFAULT_MINECRAFT_PLUGINS);
   const [tickets, setTickets] = useState<PanelTicketsSettings>(DEFAULT_TICKETS);
   const [smtp, setSmtp] = useState<SmtpForm>(DEFAULT_SMTP_FORM);
   const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplatesSettings>(DEFAULT_EMAIL_TEMPLATES);
   const [turnstile, setTurnstile] = useState<TurnstileForm>(DEFAULT_TURNSTILE_FORM);
   const [turnstileSecretSet, setTurnstileSecretSet] = useState(false);
+  const [discordAuth, setDiscordAuth] = useState<DiscordAuthForm>(DEFAULT_DISCORD_AUTH_FORM);
+  const [discordSecretSet, setDiscordSecretSet] = useState(false);
+  const [discordRedirectUri, setDiscordRedirectUri] = useState('');
+  const [copiedDiscordRedirect, setCopiedDiscordRedirect] = useState(false);
   const [cloudflareDns, setCloudflareDns] = useState<CloudflareDnsForm>(DEFAULT_CLOUDFLARE_DNS_FORM);
   const [cloudflareTokenSet, setCloudflareTokenSet] = useState(false);
   const [cfTestResult, setCfTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -160,6 +121,8 @@ export function AdminSettings() {
         secondaryColor: b.secondaryColor ?? DEFAULT_BRANDING_FORM.secondaryColor,
         logoUrl: b.logoUrl ?? '',
         faviconUrl: b.faviconUrl ?? '',
+        // Must round-trip, or saving branding would clear the generated icon.
+        appIconUrl: b.appIconUrl ?? '',
         loginMessage: b.loginMessage ?? DEFAULT_BRANDING_FORM.loginMessage,
         ...normalizeAppearance(b as Partial<BrandingAppearance>),
       };
@@ -167,11 +130,6 @@ export function AdminSettings() {
       const nextMaintenance = { ...DEFAULT_MAINTENANCE, ...(s.maintenance as PanelMaintenanceSettings | undefined) };
       const nextSecurity = { ...DEFAULT_SECURITY, ...(s.security as PanelSecuritySettings | undefined) };
       const nextRegistration = Boolean((s.registration_enabled as { enabled?: boolean } | undefined)?.enabled);
-      const nextMarketplace = { ...DEFAULT_MARKETPLACE, ...(s.marketplace as PanelMarketplaceSettings | undefined) };
-      const nextMinecraftPlugins = {
-        ...DEFAULT_MINECRAFT_PLUGINS,
-        ...(s.minecraft_plugins as PanelMinecraftPluginsSettings | undefined),
-      };
       const nextTickets = { ...DEFAULT_TICKETS, ...(s.tickets as PanelTicketsSettings | undefined) };
       const rawSmtp = (s.smtp ?? {}) as Partial<SmtpForm> & { passwordSet?: boolean };
       const nextSmtp: SmtpForm = {
@@ -197,6 +155,15 @@ export function AdminSettings() {
         siteKey: rawTurnstile.siteKey ?? '',
         secretKey: '',
       };
+      const rawDiscord = (s.discord_auth ?? {}) as Partial<DiscordAuthForm> & {
+        clientSecretSet?: boolean;
+        redirectUri?: string;
+      };
+      const nextDiscord: DiscordAuthForm = {
+        enabled: Boolean(rawDiscord.enabled),
+        clientId: rawDiscord.clientId ?? '',
+        clientSecret: '',
+      };
       const rawCf = (s.cloudflare_dns ?? {}) as Partial<CloudflareDnsForm> & {
         apiTokenSet?: boolean;
         reservedSlugs?: string[] | string;
@@ -219,14 +186,15 @@ export function AdminSettings() {
       setMaintenance(nextMaintenance);
       setSecurity(nextSecurity);
       setRegistration(nextRegistration);
-      setMarketplace(nextMarketplace);
-      setMinecraftPlugins(nextMinecraftPlugins);
       setTickets(nextTickets);
       setSmtp(nextSmtp);
       setSmtpPasswordSet(Boolean(rawSmtp.passwordSet));
       setEmailTemplates(nextEmailTemplates);
       setTurnstile(nextTurnstile);
       setTurnstileSecretSet(Boolean(rawTurnstile.secretKeySet));
+      setDiscordAuth(nextDiscord);
+      setDiscordSecretSet(Boolean(rawDiscord.clientSecretSet));
+      setDiscordRedirectUri(rawDiscord.redirectUri ?? '');
       setCloudflareDns(nextCloudflare);
       setCloudflareTokenSet(Boolean(rawCf.apiTokenSet));
       setInitial(JSON.stringify({
@@ -235,26 +203,15 @@ export function AdminSettings() {
         maintenance: nextMaintenance,
         security: nextSecurity,
         registration: nextRegistration,
-        marketplace: nextMarketplace,
-        minecraftPlugins: nextMinecraftPlugins,
         tickets: nextTickets,
         smtp: nextSmtp,
         emailTemplates: nextEmailTemplates,
         turnstile: nextTurnstile,
+        discordAuth: nextDiscord,
         cloudflareDns: nextCloudflare,
       }));
     }).finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    if (tab !== 'branding' || loading) return;
-    const root = document.documentElement;
-    const appearance = normalizeAppearance(branding);
-    applyAppearanceDataset(root, appearance);
-    root.style.setProperty('--accent', branding.accentColor);
-    root.style.setProperty('--accent-secondary', branding.secondaryColor || branding.accentColor);
-    applySurfacePreset(appearance.themePreset, root.dataset.theme === 'light' ? 'light' : 'dark');
-  }, [tab, branding, loading]);
 
   useEffect(() => {
     if (tab !== 'branding') {
@@ -264,8 +221,8 @@ export function AdminSettings() {
 
   const hasChanges = useMemo(() => {
     if (loading || !initial) return false;
-    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, marketplace, minecraftPlugins, tickets, smtp, emailTemplates, turnstile, cloudflareDns });
-  }, [branding, general, maintenance, security, registration, marketplace, minecraftPlugins, tickets, smtp, emailTemplates, turnstile, cloudflareDns, initial, loading]);
+    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns });
+  }, [branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading]);
 
   async function save() {
     setSaving(true);
@@ -287,6 +244,11 @@ export function AdminSettings() {
         siteKey: turnstile.siteKey,
       };
       if (turnstile.secretKey) turnstilePayload.secretKey = turnstile.secretKey;
+      const discordPayload: Record<string, unknown> = {
+        enabled: discordAuth.enabled,
+        clientId: discordAuth.clientId.trim(),
+      };
+      if (discordAuth.clientSecret) discordPayload.clientSecret = discordAuth.clientSecret;
       const cloudflarePayload: Record<string, unknown> = {
         enabled: cloudflareDns.enabled,
         zoneId: cloudflareDns.zoneId.trim(),
@@ -306,20 +268,21 @@ export function AdminSettings() {
         maintenance,
         security,
         registration_enabled: { enabled: registration },
-        marketplace,
-        minecraft_plugins: minecraftPlugins,
         tickets,
         smtp: smtpPayload,
         email_templates: emailTemplates,
         turnstile: turnstilePayload,
+        discord_auth: discordPayload,
         cloudflare_dns: cloudflarePayload,
       });
       await refreshBranding();
       if (smtp.password) setSmtpPasswordSet(true);
       if (turnstile.secretKey) setTurnstileSecretSet(true);
+      if (discordAuth.clientSecret) setDiscordSecretSet(true);
       if (cloudflareDns.apiToken) setCloudflareTokenSet(true);
       setSmtp((prev) => ({ ...prev, password: '' }));
       setTurnstile((prev) => ({ ...prev, secretKey: '' }));
+      setDiscordAuth((prev) => ({ ...prev, clientSecret: '' }));
       setCloudflareDns((prev) => ({ ...prev, apiToken: '' }));
       setInitial(JSON.stringify({
         branding,
@@ -327,12 +290,11 @@ export function AdminSettings() {
         maintenance,
         security,
         registration,
-        marketplace,
-        minecraftPlugins,
         tickets,
         smtp: { ...smtp, password: '' },
         emailTemplates,
         turnstile: { ...turnstile, secretKey: '' },
+        discordAuth: { ...discordAuth, clientSecret: '' },
         cloudflareDns: { ...cloudflareDns, apiToken: '' },
       }));
       setSaved(true);
@@ -352,12 +314,11 @@ export function AdminSettings() {
       maintenance: PanelMaintenanceSettings;
       security: PanelSecuritySettings;
       registration: boolean;
-      marketplace: PanelMarketplaceSettings;
-      minecraftPlugins: PanelMinecraftPluginsSettings;
       tickets: PanelTicketsSettings;
       smtp: SmtpForm;
       emailTemplates: EmailTemplatesSettings;
       turnstile: TurnstileForm;
+      discordAuth: DiscordAuthForm;
       cloudflareDns: CloudflareDnsForm;
     };
     setBranding(s.branding);
@@ -365,12 +326,11 @@ export function AdminSettings() {
     setMaintenance(s.maintenance);
     setSecurity(s.security);
     setRegistration(s.registration);
-    setMarketplace(s.marketplace);
-    setMinecraftPlugins(s.minecraftPlugins);
     setTickets(s.tickets);
     setSmtp(s.smtp);
     setEmailTemplates(s.emailTemplates);
     setTurnstile(s.turnstile);
+    setDiscordAuth(s.discordAuth);
     setCloudflareDns(s.cloudflareDns);
     setError('');
     setSaved(false);
@@ -419,265 +379,115 @@ export function AdminSettings() {
     }
   }
 
-  async function uploadAsset(kind: 'logo' | 'favicon', file: File) {
+  /** Asset endpoints all return the full branding record; mirror it into the form. */
+  async function syncAssetUrls(branding: Record<string, unknown>) {
+    const b = branding as unknown as BrandingForm;
+    setBranding((prev) => ({
+      ...prev,
+      logoUrl: b.logoUrl ?? prev.logoUrl,
+      faviconUrl: b.faviconUrl ?? prev.faviconUrl,
+      appIconUrl: b.appIconUrl ?? prev.appIconUrl,
+    }));
+    await refreshBranding();
+  }
+
+  async function uploadAsset(kind: BrandingAssetKind, file: File) {
     const data = await fileToBase64(file);
     const res = await api.admin.uploadBrandingAsset(kind, data, file.type);
-    const b = res.branding as unknown as BrandingForm;
-    setBranding((prev) => ({
-      ...prev,
-      logoUrl: b.logoUrl ?? prev.logoUrl,
-      faviconUrl: b.faviconUrl ?? prev.faviconUrl,
-    }));
-    await refreshBranding();
+    await syncAssetUrls(res.branding);
   }
 
-  async function applyAssetUrl(kind: 'logo' | 'favicon', url: string) {
+  async function applyAssetUrl(kind: BrandingAssetKind, url: string) {
     const res = await api.admin.setBrandingAssetUrl(kind, url);
-    const b = res.branding as unknown as BrandingForm;
-    setBranding((prev) => ({
-      ...prev,
-      logoUrl: b.logoUrl ?? prev.logoUrl,
-      faviconUrl: b.faviconUrl ?? prev.faviconUrl,
-    }));
-    await refreshBranding();
+    await syncAssetUrls(res.branding);
   }
 
-  async function removeAsset(kind: 'logo' | 'favicon') {
+  async function removeAsset(kind: BrandingAssetKind) {
     const res = await api.admin.deleteBrandingAsset(kind);
-    const b = res.branding as unknown as BrandingForm;
-    setBranding((prev) => ({
-      ...prev,
-      logoUrl: b.logoUrl ?? '',
-      faviconUrl: b.faviconUrl ?? '',
-    }));
-    await refreshBranding();
+    await syncAssetUrls(res.branding);
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'branding', label: 'Branding' },
-    { id: 'general', label: 'General' },
-    { id: 'access', label: 'Access' },
-    { id: 'email', label: 'Email' },
-    { id: 'maintenance', label: 'Maintenance' },
-  ];
+  async function storeAppIcon(src: string) {
+    const icon = await renderAppIcon(src, branding.accentColor, branding.secondaryColor);
+    const res = await api.admin.uploadBrandingAsset('appicon', icon.base64, 'image/png');
+    await syncAssetUrls(res.branding);
+  }
 
-  const accent = branding.accentColor || '#6366f1';
-  const secondary = branding.secondaryColor || accent;
+  /** Renders the square install icon from an existing branding image. */
+  async function generateAppIcon(source: 'logo' | 'favicon') {
+    const src = source === 'logo' ? branding.logoUrl : branding.faviconUrl;
+    if (!src) throw new Error(`Upload a ${source} first`);
+    await storeAppIcon(src);
+  }
+
+  /**
+   * Direct uploads go through the same padding step as generated icons, so the
+   * stored icon is always crop-safe for Android's circular mask and a
+   * predictable 512x512.
+   */
+  async function uploadAppIcon(file: File) {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      await storeAppIcon(objectUrl);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <AdminEditLoading />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
-      <AdminDetailPage breadcrumb={[{ label: 'Admin', to: '/admin' }, { label: 'Panel settings' }]}>
-        <AdminDetailHero
-          gradient={`linear-gradient(135deg, ${accent}, ${secondary})`}
-          icon={SlidersHorizontal}
-          title="Panel settings"
-          subtitle="Branding, access controls, email delivery, and panel behavior"
-          stats={[
-            { icon: UserPlus, label: 'Registration', value: registration ? 'Open' : 'Closed' },
-            {
-              icon: Store,
-              label: 'Marketplace',
-              value: marketplace.enabled
-                ? marketplace.allowGithubInstalls
-                  ? 'GitHub'
-                  : 'Off'
-                : 'Off',
-            },
-            {
-              icon: LifeBuoy,
-              label: 'Tickets',
-              value: tickets.enabled
-                ? tickets.discordWebhookEnabled
-                  ? 'On · Discord'
-                  : 'Enabled'
-                : 'Off',
-            },
-            { icon: Mail, label: 'Email', value: smtp.enabled ? 'Enabled' : 'Off' },
-            { icon: Wrench, label: 'Maintenance', value: maintenance.enabled ? 'On' : 'Off' },
-            { icon: KeyRound, label: 'Min password', value: `${security.minPasswordLength} chars` },
-          ]}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+        className="ds-set-page"
+      >
+        <SettingsHeader
+          activeTab={tab}
+          onTabChange={setTab}
+          registrationOpen={registration}
+          maintenanceOn={maintenance.enabled}
+          smtpEnabled={smtp.enabled}
+          turnstileOn={turnstile.enabled}
+          ticketsEnabled={tickets.enabled}
         />
 
-        <AdminDetailTabs tabs={tabs} active={tab} onChange={setTab} />
-
-        <AdminDetailBody>
-          {loading ? (
-            <p className="text-sm text-[var(--muted)]">Loading settings…</p>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void save();
-              }}
-              className="flex flex-col gap-4"
-            >
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-                <div className="space-y-4">
+        <div className={`ds-set-workspace${tab === 'about' || tab === 'branding' ? ' ds-set-workspace--full' : ''}`}>
+          <div className="ds-set-main">
                   {tab === 'branding' && (
-                    <>
-                      <AdminSettingsPanel title="Identity" description="Names and messaging shown across the panel" icon={Type}>
-                        <div className="grid w-full gap-4">
-                          <div>
-                            <Input label="Panel name" value={branding.panelName} onChange={(e) => setBranding({ ...branding, panelName: e.target.value })} />
-                            <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
-                              <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]">Preview</p>
-                              <PanelName name={branding.panelName || 'Panel name'} variant="sidebar" />
-                            </div>
-                          </div>
-                          <Input label="Sidebar tagline" value={branding.tagline} onChange={(e) => setBranding({ ...branding, tagline: e.target.value })} placeholder="Game server panel" />
-                          <Input label="Login message" value={branding.loginMessage} onChange={(e) => setBranding({ ...branding, loginMessage: e.target.value })} />
-                        </div>
-                      </AdminSettingsPanel>
-
-                      <AdminSettingsPanel title="Colors" description="Accent gradients, curated palettes, and contrast-aware picks" icon={Sparkles}>
-                        <BrandingColorPanel
-                          accentColor={branding.accentColor}
-                          secondaryColor={branding.secondaryColor}
-                          onAccentChange={(accentColor) => setBranding({ ...branding, accentColor })}
-                          onSecondaryChange={(secondaryColor) => setBranding({ ...branding, secondaryColor })}
-                          onApplyPair={(accentColor, secondaryColor) => setBranding({ ...branding, accentColor, secondaryColor })}
-                        />
-                      </AdminSettingsPanel>
-
-                      <AdminSettingsPanel title="Appearance" description="Color themes, animated backgrounds, and default light/dark mode" icon={Palette}>
-                        <BrandingAppearanceFields
-                          themePreset={branding.themePreset}
-                          defaultThemeMode={branding.defaultThemeMode}
-                          loginBackground={branding.loginBackground}
-                          panelBackground={branding.panelBackground}
-                          panelAmbient={branding.panelAmbient}
-                          serverCardStyle={branding.serverCardStyle}
-                          adminSidebarStyle={branding.adminSidebarStyle}
-                          clientSidebarStyle={branding.clientSidebarStyle}
-                          serverSidebarStyle={branding.serverSidebarStyle}
-                          accentColor={branding.accentColor}
-                          secondaryColor={branding.secondaryColor}
-                          onThemePresetChange={(themePreset) => {
-                            const next = { ...branding, themePreset };
-                            if (themePreset !== 'default') {
-                              const palette = THEME_PALETTES[themePreset];
-                              if (palette) {
-                                next.accentColor = palette.accent;
-                                const match = ACCENT_PALETTE_PRESETS.find(
-                                  (p) => p.primary.toLowerCase() === palette.accent.toLowerCase(),
-                                );
-                                next.secondaryColor = match?.secondary ?? palette.accent;
-                              }
-                            }
-                            setBranding(next);
-                          }}
-                          onDefaultThemeModeChange={(defaultThemeMode) => setBranding({ ...branding, defaultThemeMode })}
-                          onLoginBackgroundChange={(loginBackground) => setBranding({ ...branding, loginBackground })}
-                          onPanelBackgroundChange={(panelBackground) => setBranding({ ...branding, panelBackground })}
-                          onPanelAmbientChange={(panelAmbient) => setBranding({ ...branding, panelAmbient })}
-                          onServerCardStyleChange={(serverCardStyle) => setBranding({ ...branding, serverCardStyle })}
-                          onAdminSidebarStyleChange={(adminSidebarStyle) => setBranding({ ...branding, adminSidebarStyle })}
-                          onClientSidebarStyleChange={(clientSidebarStyle) => setBranding({ ...branding, clientSidebarStyle })}
-                          onServerSidebarStyleChange={(serverSidebarStyle) => setBranding({ ...branding, serverSidebarStyle })}
-                          surfaceRadius={branding.surfaceRadius}
-                          sidebarMaterial={branding.sidebarMaterial}
-                          contentDensity={branding.contentDensity}
-                          motionPreference={branding.motionPreference}
-                          serverListDefaultView={branding.serverListDefaultView}
-                          adminTabsStyle={branding.adminTabsStyle}
-                          loginAmbientLevel={branding.loginAmbientLevel}
-                          showHeroStripe={branding.showHeroStripe}
-                          onSurfaceRadiusChange={(surfaceRadius) => setBranding({ ...branding, surfaceRadius })}
-                          onSidebarMaterialChange={(sidebarMaterial) => setBranding({ ...branding, sidebarMaterial })}
-                          onContentDensityChange={(contentDensity) => setBranding({ ...branding, contentDensity })}
-                          onMotionPreferenceChange={(motionPreference) => setBranding({ ...branding, motionPreference })}
-                          onServerListDefaultViewChange={(serverListDefaultView) => setBranding({ ...branding, serverListDefaultView })}
-                          onAdminTabsStyleChange={(adminTabsStyle) => setBranding({ ...branding, adminTabsStyle })}
-                          onLoginAmbientLevelChange={(loginAmbientLevel) => setBranding({ ...branding, loginAmbientLevel })}
-                          onShowHeroStripeChange={(showHeroStripe) => setBranding({ ...branding, showHeroStripe })}
-                        />
-                      </AdminSettingsPanel>
-
-                      <AdminSettingsPanel title="Assets" description="Logo and favicon shown in the sidebar, login, and browser tab" icon={ImageIcon}>
-                        <div className="grid w-full gap-6">
-                          <BrandingAssetField
-                            kind="logo"
-                            label="Panel logo"
-                            hint="Shown in sidebar and login"
-                            url={branding.logoUrl}
-                            onUpload={(f) => uploadAsset('logo', f)}
-                            onApplyUrl={(u) => applyAssetUrl('logo', u)}
-                            onRemove={() => removeAsset('logo')}
-                            disabled={saving}
-                          />
-                          <BrandingAssetField
-                            kind="favicon"
-                            label="Favicon"
-                            hint="Browser tab icon"
-                            url={branding.faviconUrl}
-                            onUpload={(f) => uploadAsset('favicon', f)}
-                            onApplyUrl={(u) => applyAssetUrl('favicon', u)}
-                            onRemove={() => removeAsset('favicon')}
-                            disabled={saving}
-                          />
-                        </div>
-                      </AdminSettingsPanel>
-                    </>
+                    <BrandingStudio
+                      branding={branding}
+                      general={general}
+                      onBrandingChange={setBranding}
+                      onGeneralChange={setGeneral}
+                      onUploadAsset={uploadAsset}
+                      onApplyAssetUrl={applyAssetUrl}
+                      onRemoveAsset={removeAsset}
+                      onGenerateAppIcon={generateAppIcon}
+                      onUploadAppIcon={uploadAppIcon}
+                    />
                   )}
 
-                  {tab === 'general' && (
-                    <AdminSettingsPanel title="Company & support" description="Contact details shown to users on login and emails" icon={Globe}>
-                      <div className="grid w-full gap-4">
-                        <Input label="Company name" value={general.companyName} onChange={(e) => setGeneral({ ...general, companyName: e.target.value })} placeholder="Your hosting brand" />
-                        <Input label="Support email" type="email" value={general.supportEmail} onChange={(e) => setGeneral({ ...general, supportEmail: e.target.value })} placeholder="support@example.com" />
-                        <Input label="Support URL" value={general.supportUrl} onChange={(e) => setGeneral({ ...general, supportUrl: e.target.value })} placeholder="https://help.example.com" />
-                        <Textarea label="Login footer text" value={general.footerText} onChange={(e) => setGeneral({ ...general, footerText: e.target.value })} rows={2} placeholder="Optional text shown below the login form" />
-                      </div>
-                    </AdminSettingsPanel>
-                  )}
-
-                  {tab === 'access' && (
+                  {tab === 'features' && (
                     <>
-                      <AdminSettingsPanel title="Registration" description="Control whether visitors can create their own accounts" icon={UserPlus}>
+                      <NodeOverviewSection title="Registration" description="Control whether visitors can create their own accounts" icon={UserPlus}>
                         <Checkbox
                           label="Allow public registration"
                           description="Allow new users to sign up at /signup and show a link on the login page"
                           checked={registration}
                           onChange={setRegistration}
                         />
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel title="FiveM marketplace" description="Let users browse and install FiveM resources from GitHub" icon={Store}>
-                        <div className="space-y-3">
-                          <Checkbox
-                            label="Enable FiveM marketplace"
-                            description="When off, the marketplace tab is hidden from users and install APIs return forbidden."
-                            checked={marketplace.enabled}
-                            onChange={(enabled) => setMarketplace((m) => ({ ...m, enabled }))}
-                          />
-                          <Checkbox
-                            label="Allow GitHub installs"
-                            description="Discover tab with popular scripts, search, and custom install paths."
-                            checked={marketplace.allowGithubInstalls}
-                            disabled={!marketplace.enabled}
-                            onChange={(allowGithubInstalls) => setMarketplace((m) => ({ ...m, allowGithubInstalls }))}
-                          />
-                        </div>
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel title="Minecraft plugins" description="One-click Modrinth installs for Paper, Fabric, Forge, and other Minecraft platforms" icon={Store}>
-                        <div className="space-y-3">
-                          <Checkbox
-                            label="Enable Minecraft plugin store"
-                            description="When off, the Plugins tab is hidden on Minecraft servers."
-                            checked={minecraftPlugins.enabled}
-                            onChange={(enabled) => setMinecraftPlugins((m) => ({ ...m, enabled }))}
-                          />
-                          <Checkbox
-                            label="Allow Modrinth installs"
-                            description="Download plugins/mods/datapacks from Modrinth into the server filesystem."
-                            checked={minecraftPlugins.allowModrinthInstalls}
-                            disabled={!minecraftPlugins.enabled}
-                            onChange={(allowModrinthInstalls) =>
-                              setMinecraftPlugins((m) => ({ ...m, allowModrinthInstalls }))
-                            }
-                          />
-                        </div>
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel title="Support tickets" description="Let users open tickets for billing, account, and server help" icon={LifeBuoy}>
+                      </NodeOverviewSection>
+                      <NodeOverviewSection title="Support tickets" description="Let users open tickets for billing, account, and server help" icon={LifeBuoy}>
                         <div className="space-y-3">
                           <Checkbox
                             label="Enable support tickets"
@@ -744,21 +554,39 @@ export function AdminSettings() {
                             </div>
                           </div>
                         </div>
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel title="Security" description="Password requirements for new accounts" icon={KeyRound}>
-                        <div className="max-w-xs">
-                          <Input
-                            label="Minimum password length"
-                            type="number"
-                            min={8}
-                            max={128}
-                            value={String(security.minPasswordLength)}
-                            onChange={(e) => setSecurity({ ...security, minPasswordLength: Number(e.target.value) || 8 })}
+                      </NodeOverviewSection>
+                    </>
+                  )}
+
+                  {tab === 'security' && (
+                    <>
+                      <NodeOverviewSection title="Password policy" description="Account security defaults for registration and admin-created users" icon={KeyRound}>
+                        <div className="space-y-4">
+                          <div className="max-w-xs">
+                            <Input
+                              label="Minimum password length"
+                              type="number"
+                              min={8}
+                              max={128}
+                              value={String(security.minPasswordLength)}
+                              onChange={(e) => setSecurity({ ...security, minPasswordLength: Number(e.target.value) || 8 })}
+                            />
+                          </div>
+                          <Checkbox
+                            label="Block common weak passwords"
+                            description="Reject passwords that appear on common breach lists during registration and password changes"
+                            checked={security.blockWeakPasswords ?? true}
+                            onChange={(blockWeakPasswords) => setSecurity({ ...security, blockWeakPasswords })}
                           />
-                          <p className="mt-1 text-xs text-[var(--muted)]">Applies to registration and admin-created users</p>
+                          <Checkbox
+                            label="Allow admin server support access"
+                            description="Let panel staff open servers for support when permitted by your policy"
+                            checked={security.adminServerSupport ?? true}
+                            onChange={(adminServerSupport) => setSecurity({ ...security, adminServerSupport })}
+                          />
                         </div>
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel
+                      </NodeOverviewSection>
+                      <NodeOverviewSection
                         title="Cloudflare Turnstile"
                         description="Bot protection on login, registration, and password reset"
                         icon={Shield}
@@ -800,8 +628,76 @@ export function AdminSettings() {
                             . Use managed or non-interactive mode. Turnstile only activates when enabled and both keys are saved.
                           </p>
                         </div>
-                      </AdminSettingsPanel>
-                      <AdminSettingsPanel
+                      </NodeOverviewSection>
+                      <NodeOverviewSection
+                        title="Discord login"
+                        description="Let users link Discord in Security, then sign in with Discord or their password"
+                        icon={DiscordIcon}
+                      >
+                        <div className="space-y-4">
+                          <Checkbox
+                            label="Enable Discord login"
+                            description="Requires a Discord application client ID and secret. Users must still create a panel account and link Discord themselves."
+                            checked={discordAuth.enabled}
+                            onChange={(enabled) => setDiscordAuth({ ...discordAuth, enabled })}
+                          />
+                          <div className="grid w-full gap-4 sm:grid-cols-2">
+                            <Input
+                              label="Client ID"
+                              value={discordAuth.clientId}
+                              onChange={(e) => setDiscordAuth({ ...discordAuth, clientId: e.target.value })}
+                              placeholder="Application ID"
+                              autoComplete="off"
+                            />
+                            <Input
+                              label="Client secret"
+                              type="password"
+                              value={discordAuth.clientSecret}
+                              onChange={(e) => setDiscordAuth({ ...discordAuth, clientSecret: e.target.value })}
+                              placeholder={discordSecretSet ? '•••••••• (unchanged)' : 'Client secret'}
+                              autoComplete="new-password"
+                            />
+                          </div>
+                          {discordRedirectUri ? (
+                            <div className="max-w-xl">
+                              <label className="mb-1.5 block text-xs font-medium text-[var(--muted)]">Redirect URL</label>
+                              <div className="flex gap-2">
+                                <input
+                                  readOnly
+                                  value={discordRedirectUri}
+                                  className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 font-mono text-xs text-[var(--text)]"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    void navigator.clipboard.writeText(discordRedirectUri);
+                                    setCopiedDiscordRedirect(true);
+                                    setTimeout(() => setCopiedDiscordRedirect(false), 1500);
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                  {copiedDiscordRedirect ? 'Copied' : 'Copy'}
+                                </Button>
+                              </div>
+                              <p className="mt-1.5 text-xs text-[var(--muted)]">
+                                Paste this into the Discord app → OAuth2 → Redirects. Create an app at{' '}
+                                <a
+                                  href="https://discord.com/developers/applications"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="accent-text underline"
+                                >
+                                  Discord Developer Portal
+                                </a>
+                                .
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </NodeOverviewSection>
+                      <NodeOverviewSection
                         title="Cloudflare DNS (subdomains)"
                         description="Let users create one subdomain per server under your zone (DNS-only A/AAAA)"
                         icon={Globe}
@@ -888,13 +784,13 @@ export function AdminSettings() {
                             each node’s public IP if allocations use 0.0.0.0.
                           </p>
                         </div>
-                      </AdminSettingsPanel>
+                      </NodeOverviewSection>
                     </>
                   )}
 
                   {tab === 'email' && (
                     <>
-                      <AdminSettingsPanel title="SMTP delivery" description="Outbound mail for password resets and notifications" icon={Mail}>
+                      <NodeOverviewSection title="SMTP delivery" description="Outbound mail for password resets and notifications" icon={Mail}>
                         <div className="space-y-4">
                           <Checkbox
                             label="Enable email delivery"
@@ -928,9 +824,9 @@ export function AdminSettings() {
                             <Input label="From name" value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Spirit-Panel" />
                           </div>
                         </div>
-                      </AdminSettingsPanel>
+                      </NodeOverviewSection>
 
-                      <AdminSettingsPanel title="Send a test email" description="Confirm delivery using the values currently in the form" icon={Send}>
+                      <NodeOverviewSection title="Send a test email" description="Confirm delivery using the values currently in the form" icon={Send}>
                         <p className="mb-3 text-xs text-[var(--muted)]">
                           Save your changes first, then send a test to confirm delivery. Tests use the values currently in the form.
                         </p>
@@ -955,9 +851,9 @@ export function AdminSettings() {
                             {testResult.message}
                           </div>
                         )}
-                      </AdminSettingsPanel>
+                      </NodeOverviewSection>
 
-                      <AdminSettingsPanel
+                      <NodeOverviewSection
                         title="Email templates"
                         description="Customize subject, content, and preview how emails look to users"
                         icon={Type}
@@ -968,17 +864,17 @@ export function AdminSettings() {
                           </p>
                         )}
                         <EmailTemplatesPanel templates={emailTemplates} onChange={setEmailTemplates} />
-                      </AdminSettingsPanel>
+                      </NodeOverviewSection>
                     </>
                   )}
 
-                  {tab === 'maintenance' && (
+                  {tab === 'system' && (
                     <>
-                    <AdminSettingsPanel
+                    <NodeOverviewSection
                       title="Maintenance mode"
                       description="Temporarily block normal users while you work on the panel"
                       icon={Wrench}
-                      tone={maintenance.enabled ? 'danger' : 'default'}
+                      badge={maintenance.enabled ? 'Active' : undefined}
                     >
                       <div className="space-y-4">
                         <Checkbox
@@ -1006,9 +902,9 @@ export function AdminSettings() {
                           </div>
                         )}
                       </div>
-                    </AdminSettingsPanel>
+                    </NodeOverviewSection>
 
-                    <AdminSettingsPanel
+                    <NodeOverviewSection
                       title="Server status cache"
                       description="Clear in-memory Wings status and re-poll every server"
                       icon={RefreshCw}
@@ -1034,45 +930,54 @@ export function AdminSettings() {
                           {refreshStatesResult.message}
                         </div>
                       )}
-                    </AdminSettingsPanel>
+                    </NodeOverviewSection>
                     </>
                   )}
-                </div>
 
-                <div className="xl:sticky xl:top-0">
-                  <AdminSidebarCard title="Live preview">
-                    <BrandingPreview
-                      panelName={branding.panelName}
-                      tagline={branding.tagline}
-                      loginMessage={branding.loginMessage}
-                      logoUrl={branding.logoUrl}
-                      accentColor={branding.accentColor}
-                      secondaryColor={branding.secondaryColor}
-                      appearance={branding}
-                    />
-                    <div className="mt-3 space-y-1 text-[11px] text-[var(--muted)]">
-                      <p className="flex items-center gap-1"><Shield className="h-3 w-3" /> Registration {registration ? 'open' : 'closed'}</p>
-                      <p className="flex items-center gap-1"><Store className="h-3 w-3" /> Marketplace {marketplace.enabled ? 'enabled' : 'disabled'}</p>
-                      <p className="flex items-center gap-1"><Store className="h-3 w-3" /> MC plugins {minecraftPlugins.enabled ? 'enabled' : 'disabled'}</p>
-                      <p className="flex items-center gap-1"><LifeBuoy className="h-3 w-3" /> Tickets {tickets.enabled ? 'enabled' : 'disabled'}</p>
-                      <p className="flex items-center gap-1"><Lock className="h-3 w-3" /> Min password: {security.minPasswordLength} chars</p>
-                      <p className="flex items-center gap-1"><Shield className="h-3 w-3" /> Turnstile {turnstile.enabled ? 'on' : 'off'}</p>
-                    </div>
-                  </AdminSidebarCard>
+                  {tab === 'about' && <SettingsAboutPanel />}
+          </div>
 
-                  <div className="mt-4">
-                    <AdminSidebarCard title="About">
-                      <AuthorAttribution variant="settings" />
-                    </AdminSidebarCard>
-                  </div>
-                </div>
-              </div>
+          <SettingsSidebar
+            tab={tab}
+            registration={registration}
+            tickets={tickets}
+            security={security}
+            turnstile={turnstile}
+            smtpEnabled={smtp.enabled}
+            maintenanceOn={maintenance.enabled}
+          />
+        </div>
 
-              <AdminSaveBar hasChanges={hasChanges} saving={saving} error={error} saved={saved} onReset={resetForm} />
-            </form>
-          )}
-        </AdminDetailBody>
-      </AdminDetailPage>
+        <div
+          className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : saved ? ' ds-nd-st-savebar--saved' : ''}`}
+          role="status"
+        >
+          <div className="ds-nd-st-savebar-status">
+            {error ? (
+              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--error">{error}</span>
+            ) : saved ? (
+              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--success">Changes saved</span>
+            ) : hasChanges ? (
+              <span className="ds-nd-st-savebar-msg">
+                <span className="ds-nd-st-savebar-dot" aria-hidden />
+                Unsaved changes
+              </span>
+            ) : (
+              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--idle">All changes saved</span>
+            )}
+          </div>
+          <div className="ds-nd-st-savebar-actions">
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm} disabled={!hasChanges || saving}>
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              Reset
+            </Button>
+            <Button type="submit" size="sm" disabled={saving || !hasChanges}>
+              <Save className="h-3.5 w-3.5" aria-hidden />
+              {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        </div>
+      </form>
     </AdminLayout>
   );
 }

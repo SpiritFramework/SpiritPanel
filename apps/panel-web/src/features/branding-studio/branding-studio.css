@@ -1,0 +1,924 @@
+/* Branding studio — Admin → Settings → Branding */
+
+.ds-bstudio {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ds-bstudio-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius-lg, 1rem);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 50%),
+    color-mix(in srgb, var(--surface) 88%, var(--bg-elevated));
+}
+
+.ds-bstudio-kicker {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-bstudio-title {
+  margin: 0.35rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.ds-bstudio-sub {
+  margin: 0.4rem 0 0;
+  max-width: 42rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-bstudio-hero-swatch {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.ds-bstudio-hero-swatch > span {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.ds-bstudio-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 720px) {
+  .ds-bstudio-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.ds-bstudio-nav-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ds-bstudio-nav-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 35%, var(--surface));
+}
+
+.ds-bstudio-nav-btn.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 45%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ds-bstudio-nav-btn strong {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.ds-bstudio-nav-btn em {
+  display: block;
+  margin-top: 0.1rem;
+  font-style: normal;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.ds-bstudio-grid {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .ds-bstudio-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  }
+}
+
+.ds-bstudio-editor,
+.ds-bstudio-preview {
+  min-width: 0;
+}
+
+.ds-bstudio-panel {
+  border-radius: var(--radius-lg, 1rem);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  overflow: hidden;
+}
+
+.ds-bstudio-panel-head {
+  padding: 1rem 1.1rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-bstudio-panel-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-bstudio-panel-head p {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ds-bstudio-panel > :not(.ds-bstudio-panel-head) {
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.ds-bstudio-theme-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.ds-bstudio-theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+}
+
+.ds-bstudio-theme-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.ds-bstudio-theme-swatch {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 0.85fr;
+  height: 3.25rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ds-bstudio-theme-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 2.6rem;
+}
+
+.ds-bstudio-theme-meta strong {
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.ds-bstudio-theme-meta span {
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.ds-bstudio-theme-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.ds-bstudio-theme-actions button {
+  flex: 1;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ds-bstudio-theme-actions button:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 40%, var(--surface));
+}
+
+.ds-bstudio-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ds-bstudio-inline-preview {
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+}
+
+.ds-bstudio-inline-preview > p {
+  margin: 0 0 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-bstudio-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.ds-bstudio-assets {
+  display: grid;
+  gap: 1rem;
+}
+
+.ds-bstudio-asset-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: -0.35rem 0 0;
+  padding-top: 0 !important;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ds-bstudio-preview {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.ds-bstudio-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ds-bstudio-preview-tabs,
+.ds-bstudio-preview-modes {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+}
+
+.ds-bstudio-preview-tab,
+.ds-bstudio-preview-mode {
+  padding: 0.35rem 0.65rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ds-bstudio-preview-tab.is-active,
+.ds-bstudio-preview-mode.is-active {
+  background: color-mix(in srgb, var(--accent-muted) 55%, var(--surface));
+  color: var(--text);
+}
+
+.ds-bstudio-preview-root {
+  position: relative;
+  min-height: 22rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg, 1rem);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  isolation: isolate;
+}
+
+.ds-bstudio-mock-login {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22rem;
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+.ds-bstudio-mock-login__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 16rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.1rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, #fff 14%, var(--border));
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.ds-bstudio-mock-login__logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  object-fit: contain;
+  border-radius: 0.45rem;
+}
+
+.ds-bstudio-mock-login__mark {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ds-bstudio-mock-login__title {
+  font-size: 0.95rem !important;
+}
+
+.ds-bstudio-mock-login__tag,
+.ds-bstudio-mock-login__msg,
+.ds-bstudio-mock-login__foot {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.ds-bstudio-mock-login__field {
+  height: 1.7rem;
+  border-radius: 0.45rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.ds-bstudio-mock-login__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.85rem;
+  border-radius: 0.45rem;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.ds-bstudio-mock-app {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  min-height: 22rem;
+}
+
+.ds-bstudio-mock-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.75rem 0.55rem;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+.ds-bstudio-mock-sidebar--rail,
+.ds-bstudio-mock-sidebar--compact {
+  grid-column: auto;
+  width: auto;
+}
+
+.ds-bstudio-mock-sidebar--floating {
+  margin: 0.45rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.ds-bstudio-mock-sidebar--wide {
+  min-width: 8.5rem;
+}
+
+.ds-bstudio-mock-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-bstudio-mock-sidebar__brand img,
+.ds-bstudio-mock-sidebar__brand > span:first-child {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 0.35rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ds-bstudio-mock-sidebar__brand > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.ds-bstudio-mock-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ds-bstudio-mock-sidebar__nav > span {
+  display: block;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
+}
+
+.ds-bstudio-mock-sidebar__nav > span.is-active {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.ds-bstudio-mock-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  min-width: 0;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+}
+
+.ds-bstudio-mock-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ds-bstudio-mock-topbar__title {
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.ds-bstudio-mock-topbar__chip {
+  width: 3.5rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+}
+
+.ds-bstudio-mock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.4rem;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.ds-bstudio-mock-tabs {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.ds-bstudio-mock-tabs span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.65rem;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+
+.ds-bstudio-mock-tabs--segmented span {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.ds-bstudio-mock-tabs span.is-active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.ds-bstudio-mock-tabs--underline {
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-bstudio-mock-tabs--underline span {
+  border-radius: 0;
+  padding: 0.35rem 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+}
+
+.ds-bstudio-mock-tabs--underline span.is-active {
+  border-bottom-color: var(--accent);
+  background: transparent;
+}
+
+.ds-bstudio-mock-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ds-bstudio-mock-caption {
+  margin: 0;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.ds-bstudio-mock-console {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, #000 35%, var(--bg));
+  min-height: 10rem;
+}
+
+.ds-bstudio-mock-console > span {
+  display: block;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+
+.ds-bstudio-mock-console > span:nth-child(1) { width: 72%; }
+.ds-bstudio-mock-console > span:nth-child(2) { width: 54%; }
+.ds-bstudio-mock-console > span:nth-child(3) { width: 63%; }
+
+@media (max-width: 640px) {
+  .ds-bstudio-mock-app {
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+  }
+
+  .ds-bstudio-mock-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ds-bstudio-panel--layout {
+  padding: 0;
+}
+
+.ds-bstudio-panel--layout > :not(.ds-bstudio-panel-head) {
+  padding: 0 !important;
+}
+
+.ds-bstudio-panel--layout > .ds-blayout > .ds-bstudio-panel-head {
+  padding: 1rem 1.1rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-bstudio-mode-block {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.ds-bstudio-mode-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-bstudio-mode-hint {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ds-bstudio-mode-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ds-bstudio-mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.ds-bstudio-mode-card strong {
+  font-size: 0.75rem;
+}
+
+.ds-bstudio-mode-card span {
+  font-size: 0.65rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.ds-bstudio-mode-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 45%, var(--surface));
+}
+
+.ds-blayout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ds-blayout-subs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+}
+
+@media (min-width: 720px) {
+  .ds-blayout-subs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ds-blayout-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.65rem;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.ds-blayout-sub strong {
+  font-size: 0.75rem;
+}
+
+.ds-blayout-sub em {
+  font-style: normal;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.ds-blayout-sub.is-active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 40%, var(--surface));
+}
+
+.ds-blayout-body {
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.ds-blayout-block-head h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-blayout-block-head p {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ds-blayout-block-head--spaced {
+  margin-top: 1.25rem;
+}
+
+.ds-blayout-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ds-blayout-grid--bg {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.ds-blayout-grid--nav {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.ds-blayout-grid--cards {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+.ds-blayout-nav-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ds-blayout-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ds-blayout-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.ds-blayout-card.is-active {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.ds-blayout-card__preview {
+  height: 4.75rem;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.ds-blayout-card__preview .branding-sidebar-frame,
+.ds-blayout-card__preview .branding-mock-card,
+.ds-blayout-card-stage {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.ds-blayout-card-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem;
+  background: var(--bg);
+}
+
+.ds-blayout-card-stage .branding-mock-card {
+  max-width: 7.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 6px;
+}
+
+.ds-blayout-card__meta {
+  padding: 0.55rem 0.65rem 0.65rem;
+  border-top: 1px solid var(--border);
+}
+
+.ds-blayout-card__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.ds-blayout-card__meta strong {
+  font-size: 0.75rem;
+}
+
+.ds-blayout-card__meta em {
+  font-style: normal;
+  font-size: 0.58rem;
+  color: var(--muted);
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid var(--border);
+}
+
+.ds-blayout-card__meta > span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.ds-blayout-segments {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  margin-bottom: 0.85rem;
+}
+
+.ds-blayout-segment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 60%, transparent);
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.ds-blayout-segment.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 40%, var(--surface));
+}
+
+.ds-blayout-segment__preview {
+  margin-bottom: 0.25rem;
+}
+
+.ds-blayout-segment strong {
+  font-size: 0.74rem;
+}
+
+.ds-blayout-segment > span {
+  font-size: 0.62rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.ds-blayout-check {
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-blayout-check--hero {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+.ds-blayout-finish-grid {
+  display: grid;
+  gap: 1.1rem;
+}
+
+@media (min-width: 900px) {
+  .ds-blayout-finish-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

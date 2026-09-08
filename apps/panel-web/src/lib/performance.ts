@@ -55,9 +55,11 @@ export function initWebVitals(): void {
   if ('PerformanceObserver' in window) {
     try {
       const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry) => {
-          recordMetric('LCP', entry.startTime);
-        });
+        for (const entry of list.getEntries()) {
+          if (entry && typeof entry.startTime === 'number' && Number.isFinite(entry.startTime)) {
+            recordMetric('LCP', entry.startTime);
+          }
+        }
       });
       observer.observe({ entryTypes: ['largest-contentful-paint'] });
     } catch {
@@ -67,11 +69,12 @@ export function initWebVitals(): void {
     // First Input Delay
     try {
       const observer = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry: any) => {
-          if (entry.processingDuration) {
-            recordMetric('FID', entry.processingDuration);
+        for (const entry of list.getEntries()) {
+          const processingDuration = (entry as PerformanceEventTiming).processingStart - entry.startTime;
+          if (Number.isFinite(processingDuration) && processingDuration >= 0) {
+            recordMetric('FID', processingDuration);
           }
-        });
+        }
       });
       observer.observe({ entryTypes: ['first-input'] });
     } catch {
@@ -82,10 +85,13 @@ export function initWebVitals(): void {
     try {
       const observer = new PerformanceObserver((list) => {
         let clsValue = 0;
-        list.getEntries().forEach((entry) => {
-          clsValue += (entry as any).value;
-        });
-        recordMetric('CLS', clsValue);
+        for (const entry of list.getEntries()) {
+          const value = (entry as PerformanceEntry & { value?: number }).value;
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            clsValue += value;
+          }
+        }
+        if (clsValue > 0) recordMetric('CLS', clsValue);
       });
       observer.observe({ entryTypes: ['layout-shift'] });
     } catch {

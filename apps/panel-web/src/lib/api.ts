@@ -1,17 +1,43 @@
-import { ApiError, dispatchSessionExpired, sanitizeClientError } from './api-errors';
+import { ApiError, dispatchSessionExpired, sanitizeClientError, shouldTreat401AsSessionExpired } from './api-errors';
 import { sanitizeLinkHref } from './safe-url';
 
 const API = '/api';
 
+/** Uploadable branding assets. `appicon` is the square PWA/install icon. */
+export type BrandingAssetKind = 'logo' | 'favicon' | 'appicon';
+
 export { ApiError } from './api-errors';
 
 // Exponential backoff configuration for 429 (rate limit) responses
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1000; // 1 second
 const MAX_DELAY_MS = 15000; // 15 seconds
 
 // Request deduplication for GET requests to prevent duplicate API calls
 const pendingRequests = new Map<string, Promise<unknown>>();
+
+/** Shared cooldown after any 429 so parallel callers don't retry-storm the API. */
+let globalRateLimitUntil = 0;
+
+function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const date = Date.parse(header);
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  return null;
+}
+
+async function waitForGlobalRateLimit(): Promise<void> {
+  const waitMs = globalRateLimitUntil - Date.now();
+  if (waitMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+}
+
+function noteRateLimit(delayMs: number): void {
+  globalRateLimitUntil = Math.max(globalRateLimitUntil, Date.now() + delayMs);
+}
 
 function getRequestCacheKey(path: string, options: RequestInit): string | null {
   // Only cache GET requests (no method specified defaults to GET)
@@ -42,6 +68,9 @@ export interface User {
   suspended?: boolean;
   avatarUrl?: string | null;
   createdAt: string;
+  discordLinked?: boolean;
+  discordId?: string | null;
+  discordUsername?: string | null;
 }
 
 export interface AdminUserSummary extends User {
@@ -62,6 +91,7 @@ export interface AdminUserDetail extends AdminUserSummary {
     containerState?: string | null;
     node: string;
     egg: string;
+    eggLogoUrl?: string | null;
     address: string;
     createdAt: string;
   }>;
@@ -70,6 +100,8 @@ export interface AdminUserDetail extends AdminUserSummary {
     serverId: string;
     serverName: string;
     owner: string;
+    egg: string;
+    eggLogoUrl?: string | null;
   }>;
   recentActivity: Array<{
     id: string;
@@ -142,10 +174,26 @@ async function parseErrorBody(res: Response): Promise<string | undefined> {
   }
 }
 
-async function failRequest(res: Response): Promise<never> {
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const star = header.match(/filename\*=UTF-8''([^;\s]+)/i);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1]);
+    } catch {
+      // fall through
+    }
+  }
+  const quoted = header.match(/filename="([^"]+)"/i);
+  if (quoted?.[1]) return quoted[1];
+  const plain = header.match(/filename=([^;\s]+)/i);
+  return plain?.[1]?.replace(/"/g, '') ?? null;
+}
+
+async function failRequest(res: Response, path?: string): Promise<never> {
   const raw = await parseErrorBody(res);
   const message = sanitizeClientError(res.status, raw);
-  if (res.status === 401) {
+  if (res.status === 401 && (!path || shouldTreat401AsSessionExpired(path))) {
     dispatchSessionExpired();
   }
   throw new ApiError(message, res.status);
@@ -161,6 +209,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const executeRequest = async (): Promise<T> => {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      await waitForGlobalRateLimit();
+
       let res: Response;
       try {
         res = await fetch(`${API}${path}`, {
@@ -175,14 +225,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       // Handle 429 (rate limit) with exponential backoff — skip for bootstrap auth calls
       const isBootstrapAuth = path === '/auth/me' || path === '/auth/branding';
       if (res.status === 429 && attempt < MAX_RETRIES && !isBootstrapAuth) {
-        const delay = calculateBackoffDelay(attempt);
-        console.warn(`Rate limited (429). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        const retryAfterMs = parseRetryAfterMs(res.headers.get('Retry-After'));
+        const delay = retryAfterMs ?? calculateBackoffDelay(attempt);
+        noteRateLimit(delay);
+        if (import.meta.env.DEV) {
+          console.warn(
+            `Rate limited (429). Retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+          );
+        }
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
 
       if (!res.ok) {
-        await failRequest(res);
+        await failRequest(res, path);
       }
 
       if (res.status === 204 || res.status === 202) return {} as T;
@@ -221,7 +277,7 @@ async function requestText(path: string, options: RequestInit = {}): Promise<str
     headers: { ...requestHeaders(options), ...options.headers },
   });
   if (!res.ok) {
-    await failRequest(res);
+    await failRequest(res, path);
   }
   return res.text();
 }
@@ -290,6 +346,21 @@ export const api = {
 
   sshKeys: () => request<SshKeySummary[]>('/auth/me/ssh-keys'),
   githubPatStatus: () => request<{ configured: boolean }>('/auth/me/github-pat'),
+  discordStatus: () =>
+    request<{
+      enabled: boolean;
+      linked: boolean;
+      username: string | null;
+      discordId: string | null;
+      linkedAt: string | null;
+      twoFactorEnabled: boolean;
+    }>('/auth/me/discord'),
+  prepareDiscordLink: (password: string, code?: string) =>
+    request<{ linkToken: string; expiresInSeconds: number }>('/auth/me/discord/prepare-link', {
+      method: 'POST',
+      body: JSON.stringify({ password, code }),
+    }),
+  unlinkDiscord: () => request<{ linked: boolean }>('/auth/me/discord', { method: 'DELETE' }),
   saveGithubPat: (token: string) =>
     request<{ configured: boolean; login: string }>('/auth/me/github-pat', {
       method: 'PUT',
@@ -359,6 +430,12 @@ export const api = {
       return request<AdminUserSummary[]>(`/admin/users${q ? `?${q}` : ''}`);
     },
     user: (id: string) => request<AdminUserDetail>(`/admin/users/${id}`),
+    userActivity: (id: string, options?: { limit?: number; cursor?: string | null }) => {
+      const params = new URLSearchParams();
+      params.set('limit', String(options?.limit ?? 20));
+      if (options?.cursor) params.set('cursor', options.cursor);
+      return request<ActivityPageResponse>(`/admin/users/${id}/activity?${params}`);
+    },
     createUser: (data: CreateAdminUserInput) =>
       request<User>('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     updateUser: (id: string, data: UpdateAdminUserInput) =>
@@ -379,6 +456,7 @@ export const api = {
       request<AdminNodeSummary>(`/admin/nodes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     rotateNodeToken: (id: string) => request(`/admin/nodes/${id}/rotate-token`, { method: 'POST' }),
     nodeDiagnostics: (id: string) => request<NodeDiagnostics>(`/admin/nodes/${id}/diagnostics`),
+    featherWingsRelease: () => request<FeatherWingsReleaseInfo>('/admin/featherwings/release'),
     nodeStats: (id: string, range = '24h') =>
       request<NodeStatsResponse>(`/admin/nodes/${id}/stats?range=${encodeURIComponent(range)}`),
     nodeConfig: (id: string) =>
@@ -392,7 +470,7 @@ export const api = {
       return request<AdminLocationSummary[]>(`/admin/locations${qs ? `?${qs}` : ''}`);
     },
     location: (id: string) => request<AdminLocationDetail>(`/admin/locations/${id}`),
-    createLocation: (data: { short: string; long: string }) =>
+    createLocation: (data: { short: string; long: string; flagUrl?: string | null }) =>
       request('/admin/locations', { method: 'POST', body: JSON.stringify(data) }),
     updateLocation: (id: string, data: UpdateAdminLocationInput) =>
       request<AdminLocationSummary>(`/admin/locations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -540,6 +618,37 @@ export const api = {
     settings: () => request<Record<string, unknown>>('/admin/settings'),
     updateSettings: (data: Record<string, unknown>) =>
       request('/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+    plugins: () => request<{ plugins: AdminPanelPlugin[] }>('/admin/plugins'),
+    plugin: (id: string) => request<{ plugin: AdminPanelPlugin }>(`/admin/plugins/${id}`),
+    updatePlugin: (id: string, data: { enabled?: boolean; settings?: Record<string, unknown> }) =>
+      request<{ plugin: AdminPanelPlugin }>(`/admin/plugins/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    fivemCatalog: (params?: { q?: string; category?: string; includeDisabled?: boolean }) => {
+      const qs = new URLSearchParams();
+      if (params?.q) qs.set('q', params.q);
+      if (params?.category) qs.set('category', params.category);
+      if (params?.includeDisabled) qs.set('includeDisabled', 'true');
+      const q = qs.toString();
+      return request<{ plugins: MarketplaceCatalogPlugin[] }>(
+        `/admin/plugins/fivem-marketplace/catalog${q ? `?${q}` : ''}`,
+      );
+    },
+    createFivemCatalogEntry: (data: FivemCatalogEntryInput) =>
+      request<{ plugin: MarketplaceCatalogPlugin }>('/admin/plugins/fivem-marketplace/catalog', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateFivemCatalogEntry: (pluginId: string, data: Partial<FivemCatalogEntryInput>) =>
+      request<{ plugin: MarketplaceCatalogPlugin }>(`/admin/plugins/fivem-marketplace/catalog/${pluginId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    deleteFivemCatalogEntry: (pluginId: string) =>
+      request<{ success: boolean }>(`/admin/plugins/fivem-marketplace/catalog/${pluginId}`, {
+        method: 'DELETE',
+      }),
     testSmtp: (to: string, smtp?: Record<string, unknown>) =>
       request<{ success: boolean }>('/admin/settings/smtp/test', {
         method: 'POST',
@@ -565,17 +674,17 @@ export const api = {
         serversUpdated: number;
         pollFailures: number;
       }>('/admin/system/refresh-server-states', { method: 'POST' }),
-    uploadBrandingAsset: (kind: 'logo' | 'favicon', data: string, mimeType: string) =>
+    uploadBrandingAsset: (kind: BrandingAssetKind, data: string, mimeType: string) =>
       request<{ url: string; branding: Record<string, unknown> }>('/admin/settings/branding-asset', {
         method: 'POST',
         body: JSON.stringify({ kind, data, mimeType }),
       }),
-    setBrandingAssetUrl: (kind: 'logo' | 'favicon', url: string) =>
+    setBrandingAssetUrl: (kind: BrandingAssetKind, url: string) =>
       request<{ branding: Record<string, unknown> }>('/admin/settings/branding-asset-url', {
         method: 'POST',
         body: JSON.stringify({ kind, url }),
       }),
-    deleteBrandingAsset: (kind: 'logo' | 'favicon') =>
+    deleteBrandingAsset: (kind: BrandingAssetKind) =>
       request<{ branding: Record<string, unknown> }>(`/admin/settings/branding-asset/${kind}`, {
         method: 'DELETE',
       }),
@@ -652,7 +761,7 @@ export const api = {
           credentials: 'include',
           body: form,
         });
-        if (!res.ok) await failRequest(res);
+        if (!res.ok) await failRequest(res, `/admin/tickets/${id}/messages`);
         return res.json() as Promise<TicketDetail>;
       }
       return request<TicketDetail>(`/admin/tickets/${id}/messages`, {
@@ -679,7 +788,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ wipeFiles }),
       }),
-    ping: (id: string) => request<{ ping: number | null; reachable: boolean }>(`/client/servers/${id}/ping`),
+    ping: (id: string) =>
+      request<{
+        host: string;
+        port: number;
+        probeUrl: string;
+        method: 'browser';
+      }>(`/client/servers/${id}/ping`),
     playerCount: (id: string) => request<ServerPlayerCountResponse>(`/client/servers/${id}/players`),
     websocket: (id: string) => request<{ token: string; socket: string }>(`/client/servers/${id}/websocket`),
     files: (id: string, directory = '/') =>
@@ -785,13 +900,20 @@ export const api = {
         limit: number;
         used: number;
         canCreate: boolean;
+        manager?: DatabaseManagerMeta;
       }>(`/client/servers/${serverId}/databases`);
       return {
         items: res.databases,
         limit: res.limit,
         used: res.used,
         canCreate: res.canCreate,
-      } satisfies ServerResourceQuotaResponse<ServerDatabaseSummary>;
+        manager: res.manager ?? {
+          enabled: false,
+          allowSqlConsole: false,
+          allowDataEdits: false,
+          canEdit: false,
+        },
+      } satisfies ServerResourceQuotaResponse<ServerDatabaseSummary> & { manager: DatabaseManagerMeta };
     },
     createDatabase: (serverId: string, data: { name: string; remote?: string }) =>
       request<ServerDatabaseSummary>(`/client/servers/${serverId}/databases`, {
@@ -799,6 +921,65 @@ export const api = {
         body: JSON.stringify(data),
       }),
     deleteDatabase: (id: string) => request<{ deleted: boolean }>(`/client/databases/${id}`, { method: 'DELETE' }),
+    databaseManager: (serverId: string, databaseId: string) =>
+      request<DatabaseManagerSchemaResponse>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager`,
+      ),
+    databaseManagerTable: (
+      serverId: string,
+      databaseId: string,
+      table: string,
+      params?: { page?: number; pageSize?: number },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.pageSize) q.set('pageSize', String(params.pageSize));
+      const qs = q.toString();
+      return request<DatabaseManagerTableResponse>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/tables/${encodeURIComponent(table)}${qs ? `?${qs}` : ''}`,
+      );
+    },
+    databaseManagerQuery: (serverId: string, databaseId: string, sql: string) =>
+      request<DatabaseManagerQueryResponse>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/query`,
+        { method: 'POST', body: JSON.stringify({ sql }) },
+      ),
+    databaseManagerScript: (serverId: string, databaseId: string, sql: string, fileName?: string) =>
+      request<DatabaseManagerScriptResponse>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/script`,
+        { method: 'POST', body: JSON.stringify({ sql, fileName }) },
+      ),
+    databaseManagerInsertRow: (
+      serverId: string,
+      databaseId: string,
+      table: string,
+      values: Record<string, string | number | boolean | null>,
+    ) =>
+      request<{ affectedRows: number; insertId: string | null }>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/tables/${encodeURIComponent(table)}/rows`,
+        { method: 'POST', body: JSON.stringify({ values }) },
+      ),
+    databaseManagerUpdateRow: (
+      serverId: string,
+      databaseId: string,
+      table: string,
+      primaryKey: Record<string, string | number | boolean | null>,
+      values: Record<string, string | number | boolean | null>,
+    ) =>
+      request<{ affectedRows: number }>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/tables/${encodeURIComponent(table)}/rows`,
+        { method: 'PATCH', body: JSON.stringify({ primaryKey, values }) },
+      ),
+    databaseManagerDeleteRow: (
+      serverId: string,
+      databaseId: string,
+      table: string,
+      primaryKey: Record<string, string | number | boolean | null>,
+    ) =>
+      request<{ affectedRows: number }>(
+        `/client/servers/${serverId}/databases/${databaseId}/manager/tables/${encodeURIComponent(table)}/rows`,
+        { method: 'DELETE', body: JSON.stringify({ primaryKey }) },
+      ),
     deleteFiles: (serverId: string, root: string, files: string[]) =>
       request(`/client/servers/${serverId}/files/delete`, {
         method: 'POST',
@@ -842,11 +1023,9 @@ export const api = {
     downloadFileUrl: (serverId: string, file: string) =>
       `${API}/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`,
     downloadFile: async (serverId: string, file: string) => {
-      const res = await fetch(
-        `${API}/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`,
-        { credentials: 'include' },
-      );
-      if (!res.ok) await failRequest(res);
+      const downloadPath = `/client/servers/${serverId}/files/download?file=${encodeURIComponent(file)}`;
+      const res = await fetch(`${API}${downloadPath}`, { credentials: 'include' });
+      if (!res.ok) await failRequest(res, downloadPath);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -860,15 +1039,13 @@ export const api = {
     uploadFiles: async (serverId: string, directory: string, files: File[]) => {
       const form = new FormData();
       for (const f of files) form.append('files', f, f.name);
-      const res = await fetch(
-        `${API}/client/servers/${serverId}/files/upload?directory=${encodeURIComponent(directory)}`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          body: form,
-        },
-      );
-      if (!res.ok) await failRequest(res);
+      const uploadPath = `/client/servers/${serverId}/files/upload?directory=${encodeURIComponent(directory)}`;
+      const res = await fetch(`${API}${uploadPath}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      if (!res.ok) await failRequest(res, uploadPath);
       return res.json() as Promise<{ success: boolean; uploaded: number }>;
     },
     updateSubuser: (serverId: string, subuserId: string, permissions: string[]) =>
@@ -906,10 +1083,18 @@ export const api = {
         body: JSON.stringify({ locked }),
       }),
     downloadBackup: async (id: string) => {
-      const { url } = await request<{ url: string }>(`/client/backups/${id}/download`);
-      const safe = sanitizeLinkHref(url);
-      if (!safe) throw new ApiError('Invalid download URL', 400);
-      window.open(safe, '_blank', 'noopener,noreferrer');
+      const downloadPath = `/client/backups/${id}/download`;
+      const res = await fetch(`${API}${downloadPath}`, { credentials: 'include' });
+      if (!res.ok) await failRequest(res, downloadPath);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filenameFromContentDisposition(res.headers.get('content-disposition')) ?? 'backup.tar.gz';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     },
     schedules: (serverId: string) => request<ServerScheduleSummary[]>(`/client/servers/${serverId}/schedules`),
     createSchedule: (
@@ -942,6 +1127,8 @@ export const api = {
     executeSchedule: (id: string) =>
       request<{ executed: boolean }>(`/client/schedules/${id}/execute`, { method: 'POST' }),
     deleteSchedule: (id: string) => request<{ deleted: boolean }>(`/client/schedules/${id}`, { method: 'DELETE' }),
+    panelPlugins: () =>
+      request<{ plugins: ClientPanelPlugin[] }>('/client/plugins'),
     marketplace: (serverId: string) =>
       request<MarketplacePageResponse>(`/client/servers/${serverId}/marketplace`),
     marketplaceLayout: (serverId: string) =>
@@ -956,14 +1143,34 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ pluginId }),
       }),
+    marketplaceInstall: (serverId: string, pluginId: string) =>
+      request(`/client/servers/${serverId}/marketplace/install`, {
+        method: 'POST',
+        body: JSON.stringify({ pluginId }),
+      }),
+    marketplaceCatalog: (serverId: string, params?: { q?: string; category?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.q) qs.set('q', params.q);
+      if (params?.category) qs.set('category', params.category);
+      const q = qs.toString();
+      return request<{ plugins: MarketplaceCatalogPlugin[] }>(
+        `/client/servers/${serverId}/marketplace/catalog${q ? `?${q}` : ''}`,
+      );
+    },
+    marketplaceCatalogDetail: (serverId: string, pluginId: string) =>
+      request<MarketplaceCatalogDetailResponse>(
+        `/client/servers/${serverId}/marketplace/catalog/${encodeURIComponent(pluginId)}`,
+      ),
     marketplaceGithubResolve: (serverId: string, url: string) =>
       request<GithubRepoResolved>(
         `/client/servers/${serverId}/marketplace/github/resolve?${new URLSearchParams({ url })}`,
       ),
-    marketplaceGithubSearch: (serverId: string, q: string, page = 1) =>
-      request<GithubSearchPage>(
-        `/client/servers/${serverId}/marketplace/github/search?${new URLSearchParams({ q, page: String(page) })}`,
-      ),
+    marketplaceGithubSearch: (serverId: string, q: string, page = 1, sort: GithubSearchSortId = 'best') => {
+      const params = new URLSearchParams({ q, page: String(page), sort });
+      return request<GithubSearchPage>(
+        `/client/servers/${serverId}/marketplace/github/search?${params.toString()}`,
+      );
+    },
     marketplaceGithubFeatured: (serverId: string) =>
       request<{ featured: GithubFeaturedScript[] }>(
         `/client/servers/${serverId}/marketplace/github/featured`,
@@ -1059,7 +1266,7 @@ export const api = {
           credentials: 'include',
           body: form,
         });
-        if (!res.ok) await failRequest(res);
+        if (!res.ok) await failRequest(res, `/client/tickets/${id}/messages`);
         return res.json() as Promise<TicketDetail>;
       }
       return request<TicketDetail>(`/client/tickets/${id}/messages`, {
@@ -1079,6 +1286,7 @@ export interface AdminLocationSummary {
   uuid: string;
   short: string;
   long: string;
+  flagUrl: string | null;
   createdAt: string;
   updatedAt: string;
   _count: { nodes: number };
@@ -1089,6 +1297,7 @@ export interface AdminLocationDetail {
   uuid: string;
   short: string;
   long: string;
+  flagUrl: string | null;
   createdAt: string;
   updatedAt: string;
   nodeCount: number;
@@ -1106,6 +1315,7 @@ export interface AdminLocationDetail {
 export interface UpdateAdminLocationInput {
   short?: string;
   long?: string;
+  flagUrl?: string | null;
 }
 
 export interface AdminNestSummary {
@@ -1298,9 +1508,17 @@ export interface AdminNodeSummary {
   online?: boolean;
   wingsVersion?: string | null;
   error?: string | null;
-  location: { id: string; short: string; long: string };
+  location: { id: string; short: string; long: string; flagUrl: string | null };
   _count: { servers: number; allocations: number };
   capacity?: NodeCapacityStats;
+}
+
+export interface FeatherWingsReleaseInfo {
+  latestVersion: string;
+  tagName: string;
+  releaseUrl: string;
+  publishedAt: string | null;
+  htmlUrl: string;
 }
 
 export interface NodeDiagnostics {
@@ -1496,9 +1714,10 @@ export interface AdminServerSummary {
   cpu: number;
   createdAt: string;
   owner: { id: string; username: string; email: string; avatarUrl?: string | null };
-  node: { id: string; name: string; fqdn?: string; location: { short: string } };
+  node: { id: string; name: string; fqdn?: string; location: { short: string; flagUrl?: string | null } };
   egg: { id: string; name: string; logoUrl?: string | null };
   defaultAllocation: { ip: string; port: number };
+  nodeReachable?: boolean;
 }
 
 export interface AdminServerDetail extends Omit<AdminServerSummary, 'node' | 'egg'> {
@@ -1512,8 +1731,10 @@ export interface AdminServerDetail extends Omit<AdminServerSummary, 'node' | 'eg
   startup: string;
   subuserCount: number;
   egg: { id: string; name: string; logoUrl?: string | null; nest: { name: string } };
-  node: { id: string; name: string; fqdn: string; location: { short: string } };
+  node: { id: string; name: string; fqdn: string; location: { short: string; flagUrl?: string | null } };
   recentActivity: ActivityLogEntry[];
+  nodeOnline?: boolean;
+  nodeReachabilityError?: string | null;
 }
 
 export interface UpdateAdminServerInput {
@@ -1567,8 +1788,9 @@ export interface ServerSummary {
   cpu?: number;
   image?: string;
   egg: { name: string; logoUrl?: string | null; dockerImages?: Record<string, string>; features?: string[] };
-  node: { name: string; fqdn?: string };
+  node: { name: string; fqdn?: string; location?: { short: string; flagUrl?: string | null } };
   defaultAllocation: { ip: string; port: number; alias?: string | null };
+  nodeReachable?: boolean;
 }
 
 export interface ServerResourceQuotaResponse<T> {
@@ -1603,6 +1825,71 @@ export interface ServerDatabaseSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface DatabaseManagerMeta {
+  enabled: boolean;
+  allowSqlConsole: boolean;
+  allowDataEdits: boolean;
+  /** True when panel allows writes and this user has database.update. */
+  canEdit: boolean;
+}
+
+export interface DatabaseManagerTableSummary {
+  name: string;
+  type: string;
+  engine: string | null;
+  approxRows: number | null;
+  dataLength: number | null;
+  indexLength: number | null;
+}
+
+export interface DatabaseManagerSchemaResponse {
+  capabilities: { allowSqlConsole: boolean; allowDataEdits: boolean; canEdit?: boolean };
+  tables: DatabaseManagerTableSummary[];
+}
+
+export interface DatabaseManagerTableResponse {
+  table: string;
+  columns: Array<{
+    field: string;
+    type: string;
+    null: string;
+    key: string;
+    default: unknown;
+    extra: string;
+    comment: string;
+  }>;
+  primaryKey?: string[];
+  page: number;
+  pageSize: number;
+  total: number;
+  rows: Record<string, unknown>[];
+}
+
+export type DatabaseManagerQueryResponse =
+  | {
+      kind: 'rows';
+      verb: string;
+      columns: string[];
+      rows: Record<string, unknown>[];
+      rowCount: number;
+      truncated: boolean;
+    }
+  | {
+      kind: 'result';
+      verb: string;
+      affectedRows: number;
+      insertId: string | null;
+      warningStatus: number;
+    };
+
+export type DatabaseManagerScriptResponse = {
+  kind: 'script';
+  statements: number;
+  affectedRows: number;
+  results: Array<{ index: number; verb: string; affectedRows: number }>;
+  truncatedResults: boolean;
+};
 
 export interface DatabaseHostSummary {
   id: string;
@@ -1656,6 +1943,7 @@ export interface ActivityLogEntry {
   timestamp: string;
   actor: { username: string; email: string; role?: string } | null;
   server?: { id: string; name: string; uuid?: string } | null;
+  properties?: Record<string, unknown> | null;
 }
 
 export interface ActivityPageResponse {
@@ -1777,6 +2065,7 @@ export interface ServerAccessFlags {
   canUpdateStartup: boolean;
   canReadDatabases: boolean;
   canCreateDatabases: boolean;
+  canUpdateDatabases: boolean;
   canDeleteDatabases: boolean;
   canViewDatabasePassword: boolean;
   canManageSubusers: boolean;
@@ -1870,6 +2159,7 @@ export interface FivemServerLayout {
 export interface GithubRepoResolved {
   owner: string;
   repo: string;
+  ownerAvatarUrl?: string | null;
   name: string;
   description: string;
   defaultBranch: string;
@@ -1914,11 +2204,15 @@ export interface GithubSearchPage {
   perPage: number;
   totalCount: number;
   totalPages: number;
+  sort?: GithubSearchSortId;
 }
+
+export type GithubSearchSortId = 'best' | 'stars' | 'forks' | 'updated' | 'pushed';
 
 export interface GithubSearchResult {
   owner: string;
   repo: string;
+  ownerAvatarUrl?: string | null;
   name: string;
   description: string;
   stars: number;
@@ -1947,8 +2241,112 @@ export interface GithubFeaturedScript extends GithubSearchResult {
 
 export interface MarketplacePageResponse {
   isFiveM: boolean;
+  layout?: FivemServerLayout;
+  stats?: {
+    installedCount: number;
+    catalogCount: number;
+    catalogInstalledCount: number;
+    githubInstalledCount: number;
+  };
+  features?: {
+    catalog: boolean;
+    github: boolean;
+  };
+  featuredCatalog?: MarketplaceCatalogPlugin[];
   allowGithubInstalls: boolean;
+  allowCatalogInstalls?: boolean;
+  catalog?: MarketplaceCatalogPlugin[];
   installed: MarketplaceInstallEntry[];
+}
+
+export interface MarketplaceCatalogPlugin {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  githubOwner: string;
+  githubRepo: string;
+  githubRef: string;
+  installPath: string;
+  cfgResource: string;
+  cfgAction?: 'ensure' | 'start';
+  cfgFile?: string;
+  dependencies: string[];
+  featured: boolean;
+  enabled: boolean;
+  sortOrder: number;
+  iconUrl: string | null;
+  githubUrl: string;
+  installed?: boolean;
+}
+
+export interface MarketplaceCatalogDetailResponse {
+  plugin: MarketplaceCatalogPlugin;
+  github: GithubRepoResolved | null;
+}
+
+export interface FivemCatalogEntryInput {
+  slug: string;
+  name: string;
+  description: string;
+  category: 'library' | 'script' | 'map' | 'vehicle' | 'other';
+  tags?: string[];
+  githubOwner: string;
+  githubRepo: string;
+  githubRef?: string;
+  githubAsset?: string | null;
+  installPath: string;
+  cfgResource: string;
+  cfgAction?: 'ensure' | 'start';
+  cfgFile?: string;
+  dependencies?: string[];
+  featured?: boolean;
+  enabled?: boolean;
+  sortOrder?: number;
+  iconUrl?: string | null;
+}
+
+export interface AdminPanelPlugin {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string | null;
+  builtIn: boolean;
+  enabled: boolean;
+  settings: Record<string, unknown>;
+  manifest: {
+    id: string;
+    name: string;
+    description: string;
+    version: string;
+    builtIn: boolean;
+    adminPath?: string;
+    serverNav?: {
+      routeSegment: string;
+      label: string;
+      description?: string;
+      icon: string;
+    };
+  };
+  stats?: { catalogCount?: number };
+}
+
+export interface ClientPanelPlugin {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  serverNav: {
+    routeSegment: string;
+    label: string;
+    description?: string;
+    icon: string;
+    accessKey: string;
+    eggFeatures?: string[];
+  } | null;
 }
 
 export interface MinecraftPluginInstallEntry {
@@ -2095,6 +2493,7 @@ export interface ServerBackupSummary {
   isSuccessful: boolean;
   isLocked: boolean;
   bytes: string | number;
+  disk?: 'wings' | 'pbs';
   completedAt: string | null;
   createdAt: string;
 }

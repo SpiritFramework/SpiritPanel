@@ -1,6 +1,8 @@
 import { Readable, Transform } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import type { Node } from '@prisma/client';
+import { resolveWingsBaseUrl, resolveWingsConnectBases } from '../lib/wings-base-url.js';
+import { wingsFetch } from '../lib/wings-fetch.js';
 
 export interface FeatherWingsFileEntry {
   name: string;
@@ -35,8 +37,7 @@ export class WingsClient {
   constructor(private node: Node) {}
 
   private baseUrl(): string {
-    const scheme = this.node.scheme || 'https';
-    return `${scheme}://${this.node.fqdn}:${this.node.daemonListen}`;
+    return resolveWingsBaseUrl(this.node);
   }
 
   /** FeatherWings compares the bearer value to `token` in config.yml (not token_id.token). */
@@ -56,7 +57,7 @@ export class WingsClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method,
         headers: this.headers(),
         body: body ? JSON.stringify(body) : undefined,
@@ -120,7 +121,7 @@ export class WingsClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method: 'GET',
         headers: {
           Authorization: this.authHeader(),
@@ -244,7 +245,7 @@ export class WingsClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method: 'POST',
         headers: {
           Authorization: this.authHeader(),
@@ -309,7 +310,7 @@ export class WingsClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method: 'GET',
         headers: {
           Authorization: this.authHeader(),
@@ -334,7 +335,7 @@ export class WingsClient {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const view = new Uint8Array(data);
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method: 'POST',
         headers: {
           Authorization: this.authHeader(),
@@ -408,7 +409,7 @@ export class WingsClient {
     const body = source.pipe(limited);
 
     try {
-      const res = await fetch(`${this.baseUrl()}${path}`, {
+      const res = await wingsFetch(`${this.baseUrl()}${path}`, {
         method: 'POST',
         headers: {
           Authorization: this.authHeader(),
@@ -455,6 +456,30 @@ export class WingsClient {
     });
   }
 
+  /** Read which backup adapter this node uses by default (wings local tar.gz or PBS). */
+  getBackupDestinations() {
+    return this.request<{ default_adapter: string; pbs?: { enabled: boolean } }>(
+      'GET',
+      '/api/system/backups',
+    );
+  }
+
+  async resolveBackupAdapter(): Promise<'wings' | 'pbs'> {
+    try {
+      const info = await this.getBackupDestinations();
+      return info.default_adapter === 'pbs' ? 'pbs' : 'wings';
+    } catch {
+      return 'wings';
+    }
+  }
+
+  /** List local tar.gz backups present on the daemon for a server. */
+  listServerBackups(uuid: string) {
+    return this.request<{
+      data: Array<{ uuid: string; name: string; size: number; path: string }>;
+    }>('GET', `/api/servers/${uuid}/backup`);
+  }
+
   deleteBackup(uuid: string, backupUuid: string) {
     return this.request('DELETE', `/api/servers/${uuid}/backup/${backupUuid}`);
   }
@@ -473,19 +498,151 @@ export class WingsClient {
   }
 
   /** Build a signed, browser-usable URL to download a backup straight from the daemon. */
-  backupDownloadUrl(uuid: string, backupUuid: string, signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string): string {
+  backupDownloadUrl(
+    uuid: string,
+    backupUuid: string,
+    userUuid: string,
+    signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string,
+  ): string {
     const token = signToken(
-      {
-        server_uuid: uuid,
-        backup_uuid: backupUuid,
-        // One-time key — must be unique per download or Wings rejects repeats for ~60m.
-        unique_id: randomUUID(),
-        scope: 'backup-download',
-      },
+      this.backupDownloadClaims(uuid, backupUuid, userUuid),
       '5m',
       this.node.daemonTokenSecret,
     );
     return `${this.baseUrl()}/download/backup?token=${encodeURIComponent(token)}`;
+  }
+
+  /** Fetch backup archive bytes from FeatherWings (panel-side; not exposed to the browser). */
+  async downloadBackup(
+    uuid: string,
+    backupUuid: string,
+    userUuid: string,
+    signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string,
+    timeoutMs = 600_000,
+  ): Promise<Response> {
+    const authPath = `/api/servers/${uuid}/backup/${backupUuid}/download`;
+    let authFailure: WingsError | undefined;
+
+    for (const base of resolveWingsConnectBases(this.node)) {
+      try {
+        const authRes = await this.fetchBinaryAt(base, 'GET', authPath, timeoutMs);
+        if (authRes.ok) return authRes;
+        const authText = await authRes.text();
+        authFailure = new WingsError(
+          `FeatherWings GET ${authPath} failed (${authRes.status}): ${authText || authRes.statusText}`,
+          authRes.status,
+        );
+        if (authRes.status >= 500) break;
+        continue;
+      } catch (e) {
+        if (e instanceof WingsError) {
+          authFailure = e;
+          if (e.isConnectionError) continue;
+        }
+        throw e instanceof WingsError ? e : this.toWingsError(e, 'GET', authPath, timeoutMs);
+      }
+    }
+
+    let tokenFailure: WingsError | undefined;
+    for (const base of resolveWingsConnectBases(this.node)) {
+      try {
+        return await this.downloadBackupViaTokenAt(base, uuid, backupUuid, userUuid, signToken, timeoutMs);
+      } catch (e) {
+        if (e instanceof WingsError) {
+          tokenFailure = e;
+          if (e.isConnectionError || e.status === 404) continue;
+        }
+        throw e instanceof WingsError ? e : this.toWingsError(e, 'GET', '/download/backup', timeoutMs);
+      }
+    }
+
+    throw tokenFailure ?? authFailure ?? new WingsError('FeatherWings backup download failed', 404);
+  }
+
+  private async fetchBinaryAt(
+    base: string,
+    method: string,
+    path: string,
+    timeoutMs: number,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await wingsFetch(`${base}${path}`, {
+        method,
+        headers: {
+          Authorization: this.authHeader(),
+          Accept: 'application/octet-stream, */*',
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async fetchBinary(method: string, path: string, timeoutMs: number): Promise<Response> {
+    return this.fetchBinaryAt(this.baseUrl(), method, path, timeoutMs);
+  }
+
+  private backupDownloadClaims(serverUuid: string, backupUuid: string, userUuid: string) {
+    return {
+      jti: randomUUID(),
+      user_uuid: userUuid,
+      server_uuid: serverUuid,
+      backup_uuid: backupUuid,
+      // One-time key — must be unique per download or Wings rejects repeats for ~60m.
+      unique_id: randomUUID(),
+      scope: 'backup-download',
+    };
+  }
+
+  private async downloadBackupViaTokenAt(
+    base: string,
+    uuid: string,
+    backupUuid: string,
+    userUuid: string,
+    signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string,
+    timeoutMs: number,
+  ): Promise<Response> {
+    const token = signToken(
+      this.backupDownloadClaims(uuid, backupUuid, userUuid),
+      '5m',
+      this.node.daemonTokenSecret,
+    );
+    const url = `${base}/download/backup?token=${encodeURIComponent(token)}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await wingsFetch(url, {
+        method: 'GET',
+        headers: { Accept: 'application/octet-stream, */*' },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new WingsError(
+          `FeatherWings backup download failed (${res.status}): ${text || res.statusText}`,
+          res.status,
+        );
+      }
+      return res;
+    } catch (e) {
+      if (e instanceof WingsError) throw e;
+      throw this.toWingsError(e, 'GET', '/download/backup', timeoutMs);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private async downloadBackupViaToken(
+    uuid: string,
+    backupUuid: string,
+    userUuid: string,
+    signToken: (claims: Record<string, unknown>, expiresIn: string, secret: string) => string,
+    timeoutMs: number,
+  ): Promise<Response> {
+    return this.downloadBackupViaTokenAt(this.baseUrl(), uuid, backupUuid, userUuid, signToken, timeoutMs);
   }
 
   /** FeatherWings exposes live state on GET /api/servers/{uuid} (not /resources). */

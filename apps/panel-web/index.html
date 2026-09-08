@@ -7,6 +7,19 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Spirit-Panel · SpiritFramework</title>
+
+    <!-- Installable app. The manifest comes from the API so it carries the
+         deploy's own branding (name, colours, icon) rather than defaults. -->
+    <link rel="manifest" href="/api/auth/branding/manifest.webmanifest" />
+    <meta name="theme-color" content="#050810" />
+    <!-- Resolved by the API to the branded asset (or the bundled default), so
+         the browser never paints the wrong icon first. -->
+    <link rel="icon" href="/api/auth/branding/favicon" />
+    <link rel="apple-touch-icon" href="/api/auth/branding/app-icon" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Spirit-Panel" />
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -6,11 +6,12 @@ export const API_SECURITY_HEADERS: Record<string, string> = {
   'Cross-Origin-Resource-Policy': 'same-site',
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
   'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0',
+  Pragma: 'no-cache',
+  Expires: '0',
 };
+
+export const HSTS_HEADER = 'max-age=31536000; includeSubDomains; preload';
 
 export const PANEL_CSP =
   "default-src 'self'; " +

@@ -1,30 +1,24 @@
-import { useCallback, useState } from 'react';
-import { Activity, LayoutDashboard, RefreshCw, ShieldAlert, Trash2, Users } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, type ActivityLogEntry } from '../../lib/api';
 import { type ActivityEntry } from '../../lib/activity';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { isFullPanelAdmin } from '../../lib/roles';
-import { AdminLayout, Button } from '../../components/Layout';
-import { ActivityFeed } from '../../components/ActivityFeed';
+import { AdminLayout } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { NodeOverviewSection } from '../../components/admin/node-detail/NodeDetailShell';
+import { ScrollText } from 'lucide-react';
 import {
-  AdminDetailBody,
-  AdminDetailHero,
-  AdminDetailPage,
-  AdminDetailTabs,
-} from '../../components/AdminDetailLayout';
-
-type ActivityScope = 'panel' | 'auth' | 'admin';
-
-const SCOPES: { id: ActivityScope; label: string; description: string; icon: typeof Activity }[] = [
-  { id: 'panel', label: 'All panel', description: 'Everything across the panel', icon: LayoutDashboard },
-  { id: 'auth', label: 'Auth & signups', description: 'Logins and registrations', icon: Users },
-  { id: 'admin', label: 'Admin actions', description: 'Staff changes and provisioning', icon: ShieldAlert },
-];
-
-const ACTIVITY_GRADIENT =
-  'linear-gradient(135deg, color-mix(in srgb, var(--accent) 70%, #1e3a8a) 0%, #0f172a 55%, #020617 100%)';
+  AdminActivityHeader,
+  ACTIVITY_SCOPES,
+  isActivityScope,
+  type ActivityScope,
+} from '../../components/admin/activity/AdminActivityHeader';
+import { AdminActivitySidebar } from '../../components/admin/activity/AdminActivitySidebar';
+import { AdminActivityStatsRow } from '../../components/admin/activity/AdminActivityStatsRow';
+import { PanelActivityFeedPanel } from '../../components/admin/activity/PanelActivityFeedPanel';
+import { groupPanelActivityByCategory } from '../../components/admin/activity/panel-activity-utils';
 
 function mapActivityEntry(row: ActivityLogEntry): ActivityEntry {
   return {
@@ -42,12 +36,26 @@ export function AdminActivity() {
   const { user } = useAuth();
   const toast = useToast();
   const canClear = isFullPanelAdmin(user);
-  const [scope, setScope] = useState<ActivityScope>('panel');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const scopeParam = searchParams.get('scope');
+  const scope: ActivityScope = isActivityScope(scopeParam) ? scopeParam : 'panel';
+
+  function setScope(next: ActivityScope) {
+    setSearchParams({ scope: next }, { replace: true });
+  }
+
   const [refreshToken, setRefreshToken] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [clearError, setClearError] = useState('');
-  const [totals, setTotals] = useState({ total: 0, loaded: 0, filtered: 0 });
+  const [totals, setTotals] = useState({
+    total: 0,
+    loaded: 0,
+    filtered: 0,
+    hasActiveFilters: false,
+  });
+  const [loadedEntries, setLoadedEntries] = useState<ActivityEntry[]>([]);
 
   const fetchPage = useCallback(
     async (cursor: string | null, limit: number) => {
@@ -62,7 +70,8 @@ export function AdminActivity() {
     [scope],
   );
 
-  const activeScope = SCOPES.find((s) => s.id === scope) ?? SCOPES[0];
+  const activeScope = ACTIVITY_SCOPES.find((s) => s.id === scope) ?? ACTIVITY_SCOPES[0];
+  const categoryRows = useMemo(() => groupPanelActivityByCategory(loadedEntries), [loadedEntries]);
 
   async function clearActivity() {
     if (!canClear) return;
@@ -84,70 +93,65 @@ export function AdminActivity() {
     }
   }
 
+  function handleRefresh() {
+    setRefreshing(true);
+    setRefreshToken((n) => n + 1);
+    window.setTimeout(() => setRefreshing(false), 400);
+  }
+
   return (
     <AdminLayout>
-      <AdminDetailPage breadcrumb={[{ label: 'Admin', to: '/admin' }, { label: 'Activity' }]}>
-        <AdminDetailHero
-          gradient={ACTIVITY_GRADIENT}
-          icon={Activity}
-          title="System activity"
-          subtitle={`${activeScope.description}. Events older than 30 days are removed automatically.`}
-          stats={[
-            { icon: LayoutDashboard, label: 'Scope', value: activeScope.label },
-            { icon: Activity, label: 'Total', value: String(totals.total) },
-            { icon: Users, label: 'Loaded', value: String(totals.loaded) },
-            { icon: ShieldAlert, label: 'Showing', value: String(totals.filtered) },
-          ]}
-          actions={
-            <>
-              {canClear ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="border border-white/15 bg-black/20 text-white hover:bg-black/30"
-                  disabled={clearing}
-                  onClick={() => {
-                    setClearError('');
-                    setClearOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear scope
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                className="border border-white/15 bg-black/20 text-white hover:bg-black/30"
-                onClick={() => setRefreshToken((n) => n + 1)}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Refresh
-              </Button>
-            </>
-          }
+      <div className="ds-ad-act-page">
+        <AdminActivityHeader
+          activeScope={scope}
+          onScopeChange={setScope}
+          total={totals.total}
+          loaded={totals.loaded}
+          filtered={totals.filtered}
+          refreshing={refreshing}
+          canClear={canClear}
+          clearing={clearing}
+          onRefresh={handleRefresh}
+          onClear={() => {
+            setClearError('');
+            setClearOpen(true);
+          }}
         />
 
-        <AdminDetailTabs
-          tabs={SCOPES.map((s) => ({ id: s.id, label: s.label }))}
-          active={scope}
-          onChange={setScope}
+        <AdminActivityStatsRow
+          total={totals.total}
+          loaded={totals.loaded}
+          filtered={totals.filtered}
+          hasActiveFilters={totals.hasActiveFilters}
+          scopeLabel={activeScope.label}
         />
 
-        <AdminDetailBody>
-          <ActivityFeed
-            refreshKey={`${scope}-${refreshToken}`}
-            fetchPage={fetchPage}
-            layout="full"
-            search
-            adminCategories
-            showEventKey
-            onTotalsChange={setTotals}
-            emptyTitle="No panel activity yet"
-            emptyDescription="Logins, registrations, and admin actions will appear here."
+        <div className="ds-ad-act-workspace">
+          <div className="ds-ad-act-main">
+            <NodeOverviewSection
+              icon={ScrollText}
+              title="Activity log"
+              description={`${activeScope.description}. Search events below.`}
+            >
+              <PanelActivityFeedPanel
+                refreshKey={`${scope}-${refreshToken}`}
+                fetchPage={fetchPage}
+                onTotalsChange={setTotals}
+                onLoadedEntriesChange={setLoadedEntries}
+                emptyTitle="No panel activity yet"
+                emptyDescription="Logins, registrations, and admin actions will appear here."
+              />
+            </NodeOverviewSection>
+          </div>
+
+          <AdminActivitySidebar
+            scope={scope}
+            total={totals.total}
+            loaded={totals.loaded}
+            categoryRows={categoryRows}
           />
-        </AdminDetailBody>
-      </AdminDetailPage>
+        </div>
+      </div>
 
       <ConfirmModal
         open={clearOpen}

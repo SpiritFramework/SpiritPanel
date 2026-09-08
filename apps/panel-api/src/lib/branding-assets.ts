@@ -12,14 +12,21 @@ const MIME_EXT: Record<string, string> = {
   'image/vnd.microsoft.icon': 'ico',
 };
 
-const ALLOWED_MIMES: Record<'logo' | 'favicon', Set<string>> = {
+/** `appicon` is the square PWA icon, rendered in the browser from the logo or favicon. */
+export type BrandingAssetKind = 'logo' | 'favicon' | 'appicon';
+
+const ALLOWED_MIMES: Record<BrandingAssetKind, Set<string>> = {
   logo: new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']),
   favicon: new Set(['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/webp']),
+  // Canvas only outputs PNG here, and the manifest needs a predictable type.
+  appicon: new Set(['image/png']),
 };
 
-const MAX_BYTES: Record<'logo' | 'favicon', number> = {
+const MAX_BYTES: Record<BrandingAssetKind, number> = {
   logo: 512 * 1024,
   favicon: 256 * 1024,
+  // A 512x512 PNG, so it needs more headroom than the favicon.
+  appicon: 1024 * 1024,
 };
 
 export const BRANDING_ASSET_PREFIX = '/api/auth/branding/assets';
@@ -29,7 +36,7 @@ async function ensureDir() {
 }
 
 export async function saveBrandingAsset(
-  kind: 'logo' | 'favicon',
+  kind: BrandingAssetKind,
   buffer: Buffer,
   mimeType: string,
 ): Promise<string> {
@@ -56,10 +63,12 @@ export async function saveBrandingAsset(
     }
   }
 
-  return `${BRANDING_ASSET_PREFIX}/${filename}`;
+  // Assets reuse a fixed filename per kind, so without a version query a
+  // re-upload would keep serving the previously cached image.
+  return `${BRANDING_ASSET_PREFIX}/${filename}?v=${Date.now()}`;
 }
 
-export async function deleteBrandingAsset(kind: 'logo' | 'favicon') {
+export async function deleteBrandingAsset(kind: BrandingAssetKind) {
   await ensureDir();
   for (const ext of new Set(Object.values(MIME_EXT))) {
     try {
@@ -71,7 +80,7 @@ export async function deleteBrandingAsset(kind: 'logo' | 'favicon') {
 }
 
 export function resolveBrandingAssetPath(filename: string): string | null {
-  if (!/^(logo|favicon)\.[a-z0-9]+$/i.test(filename)) return null;
+  if (!/^(logo|favicon|appicon)\.[a-z0-9]+$/i.test(filename)) return null;
   return join(BRANDING_DIR, filename);
 }
 

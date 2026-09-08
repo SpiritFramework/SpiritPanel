@@ -248,6 +248,16 @@ async function syncPrimaryAlias(serverId: string) {
   });
 }
 
+async function resetServerDomainPreferences(serverId: string) {
+  await prisma.server
+    .update({
+      where: { id: serverId },
+      data: { preferSubdomain: false },
+    })
+    .catch(() => undefined);
+  await syncPrimaryAlias(serverId);
+}
+
 export async function createOrReplaceServerDomain(input: {
   serverId: string;
   slug: string;
@@ -372,11 +382,7 @@ export async function deleteServerDomain(serverId: string) {
   await deleteDomainDnsRecords(server.domain);
 
   await prisma.serverDomain.delete({ where: { id: server.domain.id } });
-  await prisma.server.update({
-    where: { id: serverId },
-    data: { preferSubdomain: false },
-  });
-  await syncPrimaryAlias(serverId);
+  await resetServerDomainPreferences(serverId);
   return { deleted: true as const };
 }
 
@@ -386,6 +392,7 @@ export async function cleanupServerDomainBestEffort(serverId: string) {
   if (!domain) return;
   await deleteDomainDnsRecords(domain);
   await prisma.serverDomain.delete({ where: { id: domain.id } }).catch(() => undefined);
+  await resetServerDomainPreferences(serverId);
 }
 
 export async function retargetServerDomainIfNeeded(serverId: string) {

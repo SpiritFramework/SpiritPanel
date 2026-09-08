@@ -17,8 +17,7 @@ import { signWingsJwt } from '../lib/auth.js';
 import { getConfig } from '../lib/env.js';
 import { buildWingsWebsocketUrl, describeConsoleAccess } from '../lib/wings-socket.js';
 import { formatAllocationAddress, formatSftpUsername, resolveAllocationHost } from '@spirit/shared';
-import { measureTcpPing } from '../lib/tcp-ping.js';
-import { isMarketplaceEnabled, isMinecraftPluginsEnabled } from '../lib/panel-settings.js';
+import { isFivemMarketplaceActive, isMinecraftPluginsActive } from '../plugins/manager.js';
 import { isMailEnabled, sendSubuserAddedEmail } from '../lib/mailer.js';
 import {
   API_KEY_TYPE_ACCOUNT,
@@ -27,7 +26,7 @@ import {
   listApiKeysForUser,
 } from '../lib/api-keys.js';
 import { serverInclude } from '../services/server-helpers.js';
-import { powerServer, reinstallServerOnWings, syncServerToWings, isServerInstalling, clearStuckServerPowerState } from '../services/server-lifecycle.js';
+import { powerServer, reinstallServerOnWings, syncServerToWings, clearStuckServerPowerState } from '../services/server-lifecycle.js';
 import {
   autoAssignAllocation,
   listServerAllocations,
@@ -47,8 +46,8 @@ import { getServerStats, recordStatSnapshotFromPayload } from '../services/serve
 import { paginateActivityLogs, deleteServerActivityLogs } from '../services/activity.js';
 import { queryServerPlayerCount } from '../services/game-query.js';
 import { reconcilePanelFieldsForContainerState } from '../lib/container-state.js';
-import { enrichServerRefsWithLiveState, resolveServerContainerState } from '../services/server-runtime-status.js';
-import { stripServerNodeSecrets } from '../lib/node-health.js';
+import { enrichServerRefsWithLiveState, resolveServerContainerStateForClient } from '../services/server-runtime-status.js';
+import { stripServerNodeSecrets, probeNodesReachability, probeNodeHealth } from '../lib/node-health.js';
 import { assertSafeFileName, assertSafeServerPath, isPathInside, UnsafeFilePathError } from '../lib/file-paths.js';
 import { redactedCommandProperties } from '../lib/activity-sanitize.js';
 import { API_KEY_CREATION_LIMIT, EXPENSIVE_ROUTE_RATE_LIMIT, UPLOAD_RATE_LIMIT } from '../lib/rate-limits.js';
@@ -94,18 +93,15 @@ export async function clientRoutes(app: FastifyInstance) {
     const refresh = parseRefreshQuery(request.query as Record<string, unknown>);
     const include = {
       egg: { select: { name: true, logoUrl: true } },
-      node: { select: { name: true, fqdn: true } },
+      node: { select: { name: true, fqdn: true, location: { select: { short: true, flagUrl: true } } } },
       defaultAllocation: true,
     };
-    const owned = await prisma.server.findMany({
-      where: { ownerId: userId },
+    const all = await prisma.server.findMany({
+      where: {
+        OR: [{ ownerId: userId }, { subusers: { some: { userId } } }],
+      },
       include,
     });
-    const subuser = await prisma.server.findMany({
-      where: { subusers: { some: { userId } } },
-      include,
-    });
-    const all = [...owned, ...subuser.filter((s) => !owned.find((o) => o.id === s.id))];
     const enriched = await enrichServerRefsWithLiveState(
       all.map((server) => ({
         id: server.id,
@@ -116,9 +112,11 @@ export async function clientRoutes(app: FastifyInstance) {
       { refresh },
     );
     const stateById = new Map(enriched.map((row) => [row.id, row.containerState]));
+    const nodeReachability = await probeNodesReachability(all.map((s) => s.nodeId));
     return all.map(({ memory, disk, cpu, uuid, containerState, status, installStatus, ...rest }) => {
       const liveState = stateById.get(rest.id) ?? containerState;
       const reconciled = reconcilePanelFieldsForContainerState(liveState ?? 'offline');
+      const nodeProbe = nodeReachability.get(rest.nodeId);
       return {
         ...rest,
         uuid,
@@ -128,6 +126,7 @@ export async function clientRoutes(app: FastifyInstance) {
         containerState: liveState,
         status: reconciled.status ?? status,
         installStatus: reconciled.installStatus ?? installStatus,
+        nodeReachable: nodeProbe?.online ?? true,
       };
     });
   });
@@ -140,25 +139,27 @@ export async function clientRoutes(app: FastifyInstance) {
     if (!server) return reply.status(404).send({ error: 'Not found' });
 
     const node = await prisma.node.findUniqueOrThrow({ where: { id: server.nodeId } });
-    const containerState = await resolveServerContainerState(
+    const nodeProbe = await probeNodeHealth(node);
+    const containerState = await resolveServerContainerStateForClient(
       {
         id: server.id,
         uuid: server.uuid,
         containerState: server.containerState,
         node,
       },
-      { refresh: true },
+      nodeProbe.online,
     );
 
     const reconciled = reconcilePanelFieldsForContainerState(containerState ?? server.containerState);
-    const marketplaceEnabled = (await isMarketplaceEnabled()) && server.fivemMarketplaceAccess;
-    const minecraftPluginsEnabled = (await isMinecraftPluginsEnabled()) && server.minecraftPluginsAccess;
+    const marketplaceEnabled = (await isFivemMarketplaceActive()) && server.fivemMarketplaceAccess;
+    const minecraftPluginsEnabled = (await isMinecraftPluginsActive()) && server.minecraftPluginsAccess;
 
     return stripServerNodeSecrets({
       ...server,
       containerState,
       status: reconciled.status ?? server.status,
       installStatus: reconciled.installStatus ?? server.installStatus,
+      nodeReachable: nodeProbe.online,
       marketplaceEnabled,
       minecraftPluginsEnabled,
       variables: server.variables
@@ -303,16 +304,17 @@ export async function clientRoutes(app: FastifyInstance) {
     const server = await getAccessibleServer(id, request.user!.id);
     if (!server) return reply.status(404).send({ error: 'Not found' });
 
-    if (action === 'start' && isServerInstalling(server)) {
-      return reply.status(409).send({
-        error: 'This server is still installing. Wait for installation to finish — it will start automatically if configured.',
-        code: 'server_installing',
-      });
-    }
-
     try {
       await powerServer(server.uuid, action);
     } catch (err) {
+      const code = (err as { code?: string }).code;
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      if (code === 'server_installing' || statusCode === 409) {
+        return reply.status(409).send({
+          error: err instanceof Error ? err.message : 'Server is still installing',
+          code: 'server_installing',
+        });
+      }
       return sendClientError(reply, 502, 'power', request.log, err, 'Server power failed');
     }
     await logServerActivity(request, {
@@ -421,8 +423,21 @@ export async function clientRoutes(app: FastifyInstance) {
       },
       { fqdn: server.node.fqdn },
     );
-    const ping = await measureTcpPing(host, server.defaultAllocation.port);
-    return { ping, reachable: ping != null };
+    const port = server.defaultAllocation.port;
+    const node = server.node;
+    const scheme = node.scheme === 'https' ? 'https' : 'http';
+    // Probe the node edge from the user's browser (same location as the game host).
+    // Behind a reverse proxy, public HTTPS/HTTP is on standard ports — not daemonListen.
+    const probeUrl = node.behindProxy
+      ? `${scheme}://${node.fqdn}/`
+      : `${scheme}://${node.fqdn}:${node.daemonListen}/`;
+
+    return {
+      host,
+      port,
+      probeUrl,
+      method: 'browser' as const,
+    };
   });
 
   app.get('/servers/:id/players', async (request, reply) => {

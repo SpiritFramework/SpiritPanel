@@ -1,0 +1,293 @@
+/* My Servers — fleet header (branding tokens only) */
+
+.ds-servers-fleet {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-xl, 0.9rem);
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--accent) 7%, transparent) 0%,
+      transparent 42%
+    ),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.ds-servers-fleet .ds-hero-stripe {
+  border-radius: 0;
+}
+
+.ds-servers-fleet-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  padding: 1.1rem 1.15rem 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-top {
+    padding: 1.2rem 1.35rem 1rem;
+  }
+}
+
+.ds-servers-fleet-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.ds-servers-fleet-mark {
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ds-servers-fleet-mark img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  padding: 0.35rem;
+}
+
+.ds-servers-fleet-mark-fallback {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ds-servers-fleet-copy {
+  min-width: 0;
+}
+
+.ds-servers-fleet-greeting {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.ds-servers-fleet-title {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-title {
+    font-size: 1.5rem;
+  }
+}
+
+.ds-servers-fleet-brand {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.ds-servers-fleet-tagline {
+  color: var(--muted);
+}
+
+.ds-servers-fleet-summary {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-servers-fleet-summary-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ds-servers-fleet-aside {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-aside {
+    width: auto;
+    justify-content: flex-end;
+  }
+}
+
+.ds-servers-fleet-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 35%, transparent);
+  padding: 0.85rem 1.15rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-tools {
+    padding-left: 1.35rem;
+    padding-right: 1.35rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ds-servers-fleet-tools {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+}
+
+.ds-servers-fleet-pills {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.1rem;
+}
+
+.ds-servers-fleet-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.ds-servers-fleet-pills .ds-filter-pill {
+  flex-shrink: 0;
+}
+
+.ds-servers-fleet-controls {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+@media (min-width: 1024px) {
+  .ds-servers-fleet-controls {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+  }
+}
+
+.ds-servers-fleet-search {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 12rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-search {
+    max-width: 18rem;
+  }
+}
+
+.ds-servers-fleet-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.2rem;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  color: var(--muted);
+  transform: translateY(-50%);
+}
+
+.ds-servers-fleet-search-clear:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.ds-servers-fleet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.95rem;
+}
+
+.ds-servers-fleet-meta-text {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ds-servers-fleet-meta-text strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
+@media (max-width: 639px) {
+  .ds-servers-fleet-tools {
+    padding: 0.7rem 0.85rem 0.85rem;
+    gap: 0.6rem;
+  }
+
+  .ds-servers-fleet-controls {
+    width: 100%;
+  }
+
+  .ds-servers-fleet-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .ds-servers-fleet-top {
+    padding: 0.9rem 0.9rem 0.75rem;
+  }
+
+  .ds-servers-fleet-title {
+    font-size: 1.2rem;
+  }
+}
+
+.ds-servers-fleet-grid {
+  display: grid;
+  grid-auto-rows: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-fleet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .ds-servers-fleet-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -62,6 +62,23 @@ export function isServerInstalling(
   return server.status === 'installing' || server.installStatus === 'installing';
 }
 
+/** Block Start in the UI only when install flags look real — not stale DB after a Wings restart. */
+export function shouldBlockStartForInstall(
+  server: { status?: string; installStatus?: string; containerState?: string | null },
+  live?: { runtimeState?: string; installPhase?: InstallPhase },
+): boolean {
+  const persisted = normalizeRuntimeState(server.containerState ?? '');
+  if (persisted === 'running' || persisted === 'starting') return false;
+
+  if (live?.runtimeState) {
+    const rt = normalizeRuntimeState(live.runtimeState);
+    if (isServerRunning(rt) || rt === 'starting') return false;
+  }
+  if (live?.installPhase === 'completed') return false;
+
+  return isServerInstalling(server);
+}
+
 export interface ConsoleStatusSummary {
   label: string;
   hint?: string;
@@ -79,7 +96,16 @@ export function getConsoleStatusSummary(
     return { label: 'Suspended', tone: 'warning' };
   }
 
-  if (isServerInstalling(server)) {
+  const persistedContainer = normalizeRuntimeState(server.containerState ?? '');
+  const liveRuntime = normalizeRuntimeState(runtimeState);
+  const staleInstallFlags =
+    isServerInstalling(server) &&
+    !isServerRunning(persistedContainer) &&
+    persistedContainer !== 'installing' &&
+    !isServerRunning(liveRuntime) &&
+    liveRuntime !== 'installing';
+
+  if (staleInstallFlags) {
     const hint =
       connectionStatus === 'connected'
         ? 'Watching install output'
@@ -100,8 +126,16 @@ export function getConsoleStatusSummary(
   if (connectionStatus === 'connecting') {
     return { label, hint: 'Connecting…', tone };
   }
-  if (connectionStatus === 'disconnected' && tone === 'muted') {
-    return { label, hint: 'Console offline', tone };
+  if (connectionStatus === 'disconnected') {
+    const persistedRunning =
+      tone === 'success' || normalizeRuntimeState(runtimeState) === 'running';
+    if (persistedRunning) {
+      return { label, hint: 'Console reconnecting…', tone };
+    }
+    if (tone === 'muted') {
+      return { label, hint: 'Console offline', tone };
+    }
+    return { label, hint: 'Console disconnected', tone };
   }
   if (connectionStatus === 'connected' && tone === 'success') {
     return { label, tone, pulse: true };
@@ -208,13 +242,13 @@ export function mergePanelAndRuntimeStatus(
     installStatus,
   });
 
-  if (installStatus === 'installing' || panelStatus === 'installing' || effective === 'installing') {
-    return { label: 'Installing', tone: 'info' };
-  }
-
-  // Active runtime states (running, crashed, stopping, etc.)
+  // Live runtime wins over stale DB "installing" (common after Wings restart).
   if (effective && !isInactiveRuntimeState(effective) && effective !== 'installing') {
     return { label: formatRuntimeStateLabel(effective), tone: runtimeStateTone(effective) };
+  }
+
+  if (installStatus === 'installing' || panelStatus === 'installing' || effective === 'installing') {
+    return { label: 'Installing', tone: 'info' };
   }
 
   // Stale install-failed DB flags on an otherwise healthy server → Offline, not Install failed.

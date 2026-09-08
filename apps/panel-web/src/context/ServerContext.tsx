@@ -4,7 +4,7 @@ import { useServerRouteId } from '../hooks/useServerRouteId';
 
 interface ServerContextValue {
   server: ServerDetail;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<ServerDetail | null>;
   power: (action: 'start' | 'stop' | 'restart' | 'kill') => Promise<void>;
   loadError: string | null;
 }
@@ -25,11 +25,12 @@ export function ServerProvider({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (!resolvedId) return;
+  const refresh = useCallback(async (): Promise<ServerDetail | null> => {
+    if (!resolvedId) return null;
     const data = await api.client.server(resolvedId);
     setServer(data);
     setLoadError(null);
+    return data;
   }, [resolvedId]);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function ServerProvider({
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
     if (!resolvedId) return;
+    await refresh();
     await api.client.power(resolvedId, action);
     await refresh();
   }
@@ -79,7 +81,7 @@ export function StaticServerProvider({
   children,
 }: {
   server: ServerDetail;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<ServerDetail | null>;
   power: (action: 'start' | 'stop' | 'restart' | 'kill') => Promise<void>;
   children: ReactNode;
 }) {

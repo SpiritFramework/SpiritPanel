@@ -2,6 +2,7 @@ import type { MarketplaceGithubInstall } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { wingsForNode } from './wings-client.js';
 import { resolveGithubRelease } from './github-release.js';
+import { canonicalGithubRepo } from './github-repo.js';
 import {
   assertFiveMServerAccess,
   deployGithubArchive,
@@ -111,8 +112,11 @@ export async function installGithubResource(
   }
   if (check.error === 'forbidden') throw Object.assign(new Error('Permission denied'), { statusCode: 403 });
 
-  const githubOwner = assertSafeGithubName(config.githubOwner, 'GitHub owner');
-  const githubRepo = assertSafeGithubName(config.githubRepo, 'GitHub repository');
+  const githubOwnerInput = assertSafeGithubName(config.githubOwner, 'GitHub owner');
+  const githubRepoInput = assertSafeGithubName(config.githubRepo, 'GitHub repository');
+  const canonical = await canonicalGithubRepo(githubOwnerInput, githubRepoInput, { userId });
+  const githubOwner = canonical.owner;
+  const githubRepo = canonical.repo;
   const safeConfig = { ...config, githubOwner, githubRepo };
 
   const wings = wingsForNode(check.server!.node);
@@ -229,21 +233,22 @@ export async function updateGithubResource(serverId: string, installId: string, 
   if (!install) throw Object.assign(new Error('Not installed'), { statusCode: 404 });
 
   const wings = wingsForNode(check.server!.node);
+  const canonical = await canonicalGithubRepo(install.githubOwner, install.githubRepo, { userId });
   const release = await resolveGithubRelease(
-    install.githubOwner,
-    install.githubRepo,
+    canonical.owner,
+    canonical.repo,
     install.githubRef,
     install.githubAsset,
     { userId },
   );
 
-  const slug = `${install.githubOwner}-${install.githubRepo}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  const slug = `${canonical.owner}-${canonical.repo}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
   await deployGithubArchive(wings, check.server!.uuid, {
     slug,
     installPath: install.installPath,
-    owner: install.githubOwner,
-    repo: install.githubRepo,
+    owner: canonical.owner,
+    repo: canonical.repo,
     release,
   }, { userId });
 

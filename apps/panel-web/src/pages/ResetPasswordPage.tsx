@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { useBranding } from '../context/BrandingContext';
-import { AuthCard, AuthError, AuthField, AuthLayout } from '../components/AuthLayout';
+import { AuthError, AuthField, AuthFooter, AuthHeader, AuthLayout, AuthShell } from '../components/AuthLayout';
 import { Button } from '../components/Layout';
 import { Spinner } from '../components/ui';
 
@@ -49,25 +49,22 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout branding={branding}>
-      <AuthCard>
-        <div className="mb-6 flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl accent-bg text-white shadow-lg">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 pt-0.5">
-            <h2 className="text-lg font-semibold tracking-tight">Set a new password</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">Choose a strong password you don&apos;t use elsewhere.</p>
-          </div>
-        </div>
+      <AuthShell>
+        <AuthHeader
+          eyebrow="Account recovery"
+          title="Set a new password"
+          description="Choose a strong password you don't use elsewhere."
+          icon={ShieldCheck}
+        />
 
         {done ? (
-          <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-bg)] px-4 py-4 text-sm" style={{ color: 'var(--success-fg)' }}>
+          <div className="ds-auth-alert ds-auth-alert--success">
             <CheckCircle2 className="mb-2 h-5 w-5" />
             <p className="font-medium">Password updated</p>
             <p className="mt-1 text-xs opacity-90">Redirecting you to sign in…</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="ds-auth-form">
             <AuthField
               label="New password"
               icon={Lock}
@@ -76,9 +73,14 @@ export function ResetPasswordPage() {
               onChange={setPassword}
               required
               autoComplete="new-password"
-              placeholder="At least 8 characters"
+              placeholder={`At least ${minLen} characters`}
               trailing={
-                <button type="button" className="auth-field-toggle" onClick={() => setShow((v) => !v)} aria-label="Toggle password">
+                <button
+                  type="button"
+                  className="ds-auth-input-toggle"
+                  onClick={() => setShow((v) => !v)}
+                  aria-label="Toggle password visibility"
+                >
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               }
@@ -94,18 +96,18 @@ export function ResetPasswordPage() {
               placeholder="Re-enter your password"
             />
             {error && <AuthError message={error} />}
-            <Button type="submit" disabled={loading} className="w-full rounded-xl py-2.5 text-sm font-semibold">
+            <Button type="submit" disabled={loading} variant="primary" className="ds-auth-submit">
               {loading ? <Spinner className="h-4 w-4" /> : 'Reset password'}
             </Button>
           </form>
         )}
 
-        <p className="mt-5 text-center text-sm text-[var(--muted)]">
-          <Link to="/login" className="font-medium accent-text transition hover:underline">
+        <AuthFooter>
+          <Link to="/login" className="ds-auth-link">
             Back to sign in
           </Link>
-        </p>
-      </AuthCard>
+        </AuthFooter>
+      </AuthShell>
     </AuthLayout>
   );
 }

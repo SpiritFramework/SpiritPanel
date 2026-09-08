@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseContainerStatusBody } from './lib/container-state.js';
+import { parseContainerStatusBody, inferContainerStateFromTransition, resolveContainerStateFromWebhook } from './lib/container-state.js';
 import { normalizeWingsLogLines } from './lib/wings-logs.js';
 import { parseEggJson, parseSftpUsername, generateDaemonToken } from '@spirit/shared';
 import { buildServerConfiguration, generateUuidShort } from './services/server-configuration.js';
@@ -60,6 +60,34 @@ describe('container status parsing', () => {
   it('rejects invalid states', () => {
     assert.equal(parseContainerStatusBody({ state: 'unknown' }), null);
     assert.equal(parseContainerStatusBody({}), null);
+  });
+
+  it('infers crashed when running transitions to offline', () => {
+    assert.equal(
+      resolveContainerStateFromWebhook({ data: { previous_state: 'running', new_state: 'offline' } }),
+      'crashed',
+    );
+  });
+
+  it('infers crashed when starting transitions to offline', () => {
+    assert.equal(
+      inferContainerStateFromTransition('starting', 'offline'),
+      'crashed',
+    );
+  });
+
+  it('keeps offline when already offline', () => {
+    assert.equal(
+      inferContainerStateFromTransition('offline', 'offline'),
+      'offline',
+    );
+  });
+
+  it('passes through running unchanged', () => {
+    assert.equal(
+      resolveContainerStateFromWebhook({ data: { previous_state: 'starting', new_state: 'running' } }),
+      'running',
+    );
   });
 });
 

@@ -1,5 +1,7 @@
 # Panel API Container State Handling Analysis
 
+> **Status: reference snapshot, not a maintained guide.** Written August 2026 against the panel API of that time. The described behaviour still holds, but **line numbers have drifted** â€” `POST /servers/:uuid/container/status` has moved from line 208 to line 271 of `remote.ts` since this was written. Treat file paths as accurate and line references as approximate; search for the handler name rather than jumping to a line.
+
 ## Overview
 Complete analysis of how the Spirit Panel API receives, tracks, and handles container state updates from FeatherWings.
 
@@ -7,7 +9,7 @@ Complete analysis of how the Spirit Panel API receives, tracks, and handles cont
 
 ## 1. PRIMARY ENDPOINT: POST /servers/{uuid}/container/status
 
-**File:** [apps/panel-api/src/routes/remote.ts](apps/panel-api/src/routes/remote.ts#L208)
+**File:** [apps/panel-api/src/routes/remote.ts](../apps/panel-api/src/routes/remote.ts#L208)
 
 ### Endpoint Handler (Lines 208-225)
 ```typescript
@@ -42,7 +44,7 @@ The endpoint expects one of these two formats:
 
 ## 2. STATE VALIDATION AND PARSING
 
-**File:** [apps/panel-api/src/lib/container-state.ts](apps/panel-api/src/lib/container-state.ts#L1)
+**File:** [apps/panel-api/src/lib/container-state.ts](../apps/panel-api/src/lib/container-state.ts#L1)
 
 ### Valid Container States (Lines 3-14)
 ```typescript
@@ -69,7 +71,7 @@ export function normalizeContainerState(raw: string): string {
 ```
 - Converts to lowercase
 - Replaces whitespace with underscores
-- Example: `"Install Failed"` → `"install_failed"`
+- Example: `"Install Failed"` â†’ `"install_failed"`
 
 ### Body Parsing Function (Lines 23-37)
 ```typescript
@@ -90,7 +92,7 @@ export function parseContainerStatusBody(body: unknown): string | null {
 ```
 
 **Logic:**
-1. Priority: `data.new_state` → fallback to `state` field
+1. Priority: `data.new_state` â†’ fallback to `state` field
 2. Normalizes the raw value
 3. Validates against CONTAINER_STATES set
 4. Returns normalized state or `null` if invalid
@@ -99,7 +101,7 @@ export function parseContainerStatusBody(body: unknown): string | null {
 
 ## 3. STATE PERSISTENCE AND TRANSITION LOGIC
 
-**File:** [apps/panel-api/src/lib/container-state.ts](apps/panel-api/src/lib/container-state.ts#L61)
+**File:** [apps/panel-api/src/lib/container-state.ts](../apps/panel-api/src/lib/container-state.ts#L61)
 
 ### Primary State Update Function (Lines 61-92)
 ```typescript
@@ -165,11 +167,11 @@ export function setContainerStatus(uuid: string, state: string) { ... }
 
 ## 4. LIVE STATE RESOLUTION (Polling from FeatherWings)
 
-**File:** [apps/panel-api/src/services/server-runtime-status.ts](apps/panel-api/src/services/server-runtime-status.ts)
+**File:** [apps/panel-api/src/services/server-runtime-status.ts](../apps/panel-api/src/services/server-runtime-status.ts)
 
 ### Resolution Priority Chain (Lines 24-69)
 ```typescript
-// Resolution priority: Cached → Polled from Wings → DB-persisted
+// Resolution priority: Cached â†’ Polled from Wings â†’ DB-persisted
 export async function resolveServerContainerState(
   server: ServerRuntimeRecord,
   opts?: { refresh?: boolean },
@@ -195,7 +197,7 @@ export async function resolveServerContainerState(
 
 ### State Inference from Wings Resources (Lines 74-113)
 
-**File:** [apps/panel-api/src/lib/wings-resources.ts](apps/panel-api/src/lib/wings-resources.ts#L74)
+**File:** [apps/panel-api/src/lib/wings-resources.ts](../apps/panel-api/src/lib/wings-resources.ts#L74)
 
 ```typescript
 export function inferStateFromWingsResources(raw: unknown): string {
@@ -203,7 +205,7 @@ export function inferStateFromWingsResources(raw: unknown): string {
   const explicit = normalizeWingsState(resources.state);
   const active = statsIndicateRunning(resources);
 
-  // Stale nested "starting" while the container is clearly up → running
+  // Stale nested "starting" while the container is clearly up â†’ running
   if (explicit === 'starting' && active) return 'running';
   if (explicit) return explicit;
   if (active) return 'running';
@@ -220,16 +222,16 @@ function statsIndicateRunning(resources: WingsResourcesSnapshot): boolean {
 ```
 
 **Inference Logic:**
-1. If Wings reports explicit state (`'starting'`, `'running'`, etc.) → use it
-2. BUT if state is `'starting'` AND resource stats show active usage → upgrade to `'running'`
-3. If no explicit state but stats show activity → infer `'running'`
-4. Otherwise → `'offline'`
+1. If Wings reports explicit state (`'starting'`, `'running'`, etc.) â†’ use it
+2. BUT if state is `'starting'` AND resource stats show active usage â†’ upgrade to `'running'`
+3. If no explicit state but stats show activity â†’ infer `'running'`
+4. Otherwise â†’ `'offline'`
 
 ---
 
 ## 5. API RESPONSES WITH RECONCILED STATE
 
-**File:** [apps/panel-api/src/routes/client.ts](apps/panel-api/src/routes/client.ts#L95)
+**File:** [apps/panel-api/src/routes/client.ts](../apps/panel-api/src/routes/client.ts#L95)
 
 ### Live State Enrichment Example (Lines 95-115)
 ```typescript
@@ -283,7 +285,7 @@ export function reconcilePanelFieldsForContainerState(
 
 ## 6. STATE SENT TO FEATHERWINGS (Configuration Sync)
 
-**File:** [apps/panel-api/src/services/server-lifecycle.ts](apps/panel-api/src/services/server-lifecycle.ts#L202)
+**File:** [apps/panel-api/src/services/server-lifecycle.ts](../apps/panel-api/src/services/server-lifecycle.ts#L202)
 
 ### Configuration Sync Endpoint
 ```typescript
@@ -312,7 +314,7 @@ Configuration sent via `POST /api/servers/{uuid}/sync`:
 
 ## 7. INSTALLATION COMPLETION CALLBACK
 
-**File:** [apps/panel-api/src/routes/remote.ts](apps/panel-api/src/routes/remote.ts#L143)
+**File:** [apps/panel-api/src/routes/remote.ts](../apps/panel-api/src/routes/remote.ts#L143)
 
 ### POST /servers/{uuid}/install Handler (Lines 143-189)
 ```typescript
@@ -343,7 +345,7 @@ app.post('/servers/:uuid/install', async (request, reply) => {
 
 ## 8. DATABASE SCHEMA
 
-**File:** [apps/panel-api/prisma/schema.prisma](apps/panel-api/prisma/schema.prisma#L202)
+**File:** [apps/panel-api/prisma/schema.prisma](../apps/panel-api/prisma/schema.prisma#L202)
 
 ```prisma
 enum ServerStatus {
@@ -379,7 +381,7 @@ model Server {
 
 ## 9. POTENTIAL BUGS IDENTIFIED
 
-### ⚠️ No Direct Validation on Database
+### âš ï¸ No Direct Validation on Database
 
 **Issue:** The `containerState` field is a String in the database, not an enum. While the API validates incoming state values via `parseContainerStatusBody()`, there's nothing preventing:
 1. Direct database updates with invalid states
@@ -391,19 +393,19 @@ model Server {
 - Add a constraint/trigger at the database level
 - Add defensive validation when reading from DB
 
-### ⚠️ State Inference Can Upgrade "starting" → "running"
+### âš ï¸ State Inference Can Upgrade "starting" â†’ "running"
 
-**Location:** [apps/panel-api/src/lib/wings-resources.ts](apps/panel-api/src/lib/wings-resources.ts#L89)
+**Location:** [apps/panel-api/src/lib/wings-resources.ts](../apps/panel-api/src/lib/wings-resources.ts#L89)
 
 ```typescript
 if (explicit === 'starting' && active) return 'running';
 ```
 
-This is actually a **feature**, not a bug—it prevents showing stale "starting" state when the container is already actively running. However, it does mean the state returned from Wings might be transformed.
+This is actually a **feature**, not a bugâ€”it prevents showing stale "starting" state when the container is already actively running. However, it does mean the state returned from Wings might be transformed.
 
-### ⚠️ Silent Fallbacks in State Resolution
+### âš ï¸ Silent Fallbacks in State Resolution
 
-**Location:** [apps/panel-api/src/services/server-runtime-status.ts](apps/panel-api/src/services/server-runtime-status.ts#L59)
+**Location:** [apps/panel-api/src/services/server-runtime-status.ts](../apps/panel-api/src/services/server-runtime-status.ts#L59)
 
 ```typescript
 const resolved = fromWings ?? cached ?? server.containerState;
@@ -411,9 +413,9 @@ const resolved = fromWings ?? cached ?? server.containerState;
 
 If Wings is unreachable, it silently falls back to cache or DB without logging. This could mask ongoing node connectivity issues.
 
-### ⚠️ Cache TTL is Long (1 hour)
+### âš ï¸ Cache TTL is Long (1 hour)
 
-**Location:** [apps/panel-api/src/lib/container-state.ts](apps/panel-api/src/lib/container-state.ts#L18)
+**Location:** [apps/panel-api/src/lib/container-state.ts](../apps/panel-api/src/lib/container-state.ts#L18)
 
 ```typescript
 const TTL_MS = 60 * 60 * 1000;  // 1 hour
@@ -423,9 +425,9 @@ If Wings reports a state but later the container crashes, it could take up to 1 
 
 **Workaround:** Use `{ refresh: true }` in API calls to always poll Wings.
 
-### ✅ Missing States Handled Gracefully
+### âœ… Missing States Handled Gracefully
 
-If a containerState like `'update_failed'`, `'backup_failed'`, or `'crashed'` is received, it's validated and stored but doesn't trigger any panel status/installStatus updates. This is intentional—only certain states drive UI/workflow changes.
+If a containerState like `'update_failed'`, `'backup_failed'`, or `'crashed'` is received, it's validated and stored but doesn't trigger any panel status/installStatus updates. This is intentionalâ€”only certain states drive UI/workflow changes.
 
 ---
 
@@ -433,53 +435,53 @@ If a containerState like `'update_failed'`, `'backup_failed'`, or `'crashed'` is
 
 ```
 FeatherWings                    Panel API                       Database
-────────────                    ─────────                       ────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€                    â”€â”€â”€â”€â”€â”€â”€â”€â”€                       â”€â”€â”€â”€â”€â”€â”€â”€
 
 Server runs, state changes
-        │
-        ├─ POST /api/remote/servers/{uuid}/container/status
-        │                               │
-        │                        parseContainerStatusBody()
-        │                           (validate state)
-        │                               │
-        │                        applyContainerStatusUpdate()
-        │                               ├─→ setContainerStatus() [cache 1h]
-        │                               └─→ Update server record
-        │                                   ├─ containerState = state
-        │                                   ├─ status = mapped value
-        │                                   ├─ installStatus = mapped
-        │                                   └─ suspended = if suspended
-        │                                       │
-        │                                       └─→ MySQL: servers table
+        â”‚
+        â”œâ”€ POST /api/remote/servers/{uuid}/container/status
+        â”‚                               â”‚
+        â”‚                        parseContainerStatusBody()
+        â”‚                           (validate state)
+        â”‚                               â”‚
+        â”‚                        applyContainerStatusUpdate()
+        â”‚                               â”œâ”€â†’ setContainerStatus() [cache 1h]
+        â”‚                               â””â”€â†’ Update server record
+        â”‚                                   â”œâ”€ containerState = state
+        â”‚                                   â”œâ”€ status = mapped value
+        â”‚                                   â”œâ”€ installStatus = mapped
+        â”‚                                   â””â”€ suspended = if suspended
+        â”‚                                       â”‚
+        â”‚                                       â””â”€â†’ MySQL: servers table
 
 
 Panel Client                    Panel API                       FeatherWings
-────────────                    ─────────                       ────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€                    â”€â”€â”€â”€â”€â”€â”€â”€â”€                       â”€â”€â”€â”€â”€â”€â”€â”€
 
 GET /servers
-        │
-        ├─→ enrichServerRefsWithLiveState(refresh: true)
-        │       │
-        │       ├─→ resolveServerContainerState()
-        │       │       ├─→ Check cache [getContainerStatus()]
-        │       │       ├─→ Poll Wings [fetchLiveContainerState()]
-        │       │       │       └─→ GET /api/servers/{uuid}
-        │       │       │           GET /api/resources/{uuid} (legacy)
-        │       │       │               inferStateFromWingsResources()
-        │       │       └─→ Fall back to DB [server.containerState]
-        │       │
-        │       └─→ persistContainerStateIfChanged() (if new from Wings)
-        │
-        ├─→ reconcilePanelFieldsForContainerState()
-        │
-        └─→ Response with live state + reconciled status/installStatus
+        â”‚
+        â”œâ”€â†’ enrichServerRefsWithLiveState(refresh: true)
+        â”‚       â”‚
+        â”‚       â”œâ”€â†’ resolveServerContainerState()
+        â”‚       â”‚       â”œâ”€â†’ Check cache [getContainerStatus()]
+        â”‚       â”‚       â”œâ”€â†’ Poll Wings [fetchLiveContainerState()]
+        â”‚       â”‚       â”‚       â””â”€â†’ GET /api/servers/{uuid}
+        â”‚       â”‚       â”‚           GET /api/resources/{uuid} (legacy)
+        â”‚       â”‚       â”‚               inferStateFromWingsResources()
+        â”‚       â”‚       â””â”€â†’ Fall back to DB [server.containerState]
+        â”‚       â”‚
+        â”‚       â””â”€â†’ persistContainerStateIfChanged() (if new from Wings)
+        â”‚
+        â”œâ”€â†’ reconcilePanelFieldsForContainerState()
+        â”‚
+        â””â”€â†’ Response with live state + reconciled status/installStatus
 ```
 
 ---
 
 ## 11. TEST COVERAGE
 
-**File:** [apps/panel-api/src/remote-api.test.ts](apps/panel-api/src/remote-api.test.ts#L50)
+**File:** [apps/panel-api/src/remote-api.test.ts](../apps/panel-api/src/remote-api.test.ts#L50)
 
 ```typescript
 describe('container status parsing', () => {
@@ -504,33 +506,33 @@ describe('container status parsing', () => {
 
 | File | Purpose |
 |------|---------|
-| [apps/panel-api/src/routes/remote.ts](apps/panel-api/src/routes/remote.ts) | Remote API endpoints (Wings ↔ Panel) |
-| [apps/panel-api/src/routes/client.ts](apps/panel-api/src/routes/client.ts) | Client API endpoints (Web UI ↔ Panel) |
-| [apps/panel-api/src/lib/container-state.ts](apps/panel-api/src/lib/container-state.ts) | State validation and caching |
-| [apps/panel-api/src/services/server-runtime-status.ts](apps/panel-api/src/services/server-runtime-status.ts) | Live state polling and enrichment |
-| [apps/panel-api/src/lib/wings-resources.ts](apps/panel-api/src/lib/wings-resources.ts) | State inference from Wings API responses |
-| [apps/panel-api/src/services/server-configuration.ts](apps/panel-api/src/services/server-configuration.ts) | Config sent TO Wings (no state) |
-| [apps/panel-api/src/services/server-lifecycle.ts](apps/panel-api/src/services/server-lifecycle.ts) | Server lifecycle operations |
-| [apps/panel-api/src/services/wings-client.ts](apps/panel-api/src/services/wings-client.ts) | HTTP client for Wings API |
+| [apps/panel-api/src/routes/remote.ts](../apps/panel-api/src/routes/remote.ts) | Remote API endpoints (Wings â†” Panel) |
+| [apps/panel-api/src/routes/client.ts](../apps/panel-api/src/routes/client.ts) | Client API endpoints (Web UI â†” Panel) |
+| [apps/panel-api/src/lib/container-state.ts](../apps/panel-api/src/lib/container-state.ts) | State validation and caching |
+| [apps/panel-api/src/services/server-runtime-status.ts](../apps/panel-api/src/services/server-runtime-status.ts) | Live state polling and enrichment |
+| [apps/panel-api/src/lib/wings-resources.ts](../apps/panel-api/src/lib/wings-resources.ts) | State inference from Wings API responses |
+| [apps/panel-api/src/services/server-configuration.ts](../apps/panel-api/src/services/server-configuration.ts) | Config sent TO Wings (no state) |
+| [apps/panel-api/src/services/server-lifecycle.ts](../apps/panel-api/src/services/server-lifecycle.ts) | Server lifecycle operations |
+| [apps/panel-api/src/services/wings-client.ts](../apps/panel-api/src/services/wings-client.ts) | HTTP client for Wings API |
 
 ---
 
 ## Summary
 
-✅ **State Reception:** Wings sends container state via `POST /api/remote/servers/{uuid}/container/status`
+âœ… **State Reception:** Wings sends container state via `POST /api/remote/servers/{uuid}/container/status`
 
-✅ **Validation:** States are validated against 11 valid values before persistence
+âœ… **Validation:** States are validated against 11 valid values before persistence
 
-✅ **Persistence:** States update `containerState` field + drive derived `status`/`installStatus`
+âœ… **Persistence:** States update `containerState` field + drive derived `status`/`installStatus`
 
-✅ **Caching:** 1-hour in-memory cache to reduce polling load
+âœ… **Caching:** 1-hour in-memory cache to reduce polling load
 
-✅ **Resolution:** Always prefers live Wings data over cache/DB
+âœ… **Resolution:** Always prefers live Wings data over cache/DB
 
-✅ **Direction:** State flows FROM Wings TO Panel ONLY (panel never sends state back)
+âœ… **Direction:** State flows FROM Wings TO Panel ONLY (panel never sends state back)
 
-⚠️ **Database:** `containerState` is String, not enum—vulnerable to corruption
+âš ï¸ **Database:** `containerState` is String, not enumâ€”vulnerable to corruption
 
-⚠️ **Inferred State:** "starting" auto-upgraded to "running" based on resource stats
+âš ï¸ **Inferred State:** "starting" auto-upgraded to "running" based on resource stats
 
-⚠️ **Cache TTL:** 1 hour could mask recent crashes without explicit refresh
+âš ï¸ **Cache TTL:** 1 hour could mask recent crashes without explicit refresh

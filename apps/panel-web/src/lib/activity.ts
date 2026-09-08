@@ -17,6 +17,7 @@ import {
   Server,
   Settings,
   Shield,
+  Skull,
   Square,
   Terminal,
   Trash2,
@@ -31,6 +32,8 @@ import type { LucideIcon } from 'lucide-react';
 const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   // Auth
   'auth.login': { label: 'User login', icon: LogIn, color: 'text-green-400 bg-green-500/15' },
+  'auth.discord.linked': { label: 'Discord linked', icon: UserPlus, color: 'text-indigo-400 bg-indigo-500/15' },
+  'auth.discord.unlinked': { label: 'Discord unlinked', icon: UserMinus, color: 'text-amber-400 bg-amber-500/15' },
   'auth.register': { label: 'New signup', icon: UserPlus, color: 'text-blue-400 bg-blue-500/15' },
   'auth.profile.updated': { label: 'Profile updated', icon: Settings, color: 'text-indigo-400 bg-indigo-500/15' },
 
@@ -57,6 +60,9 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'admin.node.updated': { label: 'Node updated', icon: HardDrive, color: 'text-blue-400 bg-blue-500/15' },
   'admin.node.deleted': { label: 'Node deleted', icon: HardDrive, color: 'text-red-400 bg-red-500/15' },
   'admin.node.token_rotated': { label: 'Node token rotated', icon: Shield, color: 'text-amber-400 bg-amber-500/15' },
+  'admin.node.config_downloaded': { label: 'Wings config downloaded', icon: Download, color: 'text-sky-400 bg-sky-500/15' },
+  'admin.allocation.bulk_deleted': { label: 'Allocations removed', icon: Network, color: 'text-orange-400 bg-orange-500/15' },
+  'admin.allocation.updated': { label: 'Allocation updated', icon: Network, color: 'text-blue-400 bg-blue-500/15' },
   'admin.location.created': { label: 'Location created', icon: MapPin, color: 'text-green-400 bg-green-500/15' },
   'admin.location.updated': { label: 'Location updated', icon: MapPin, color: 'text-blue-400 bg-blue-500/15' },
   'admin.location.deleted': { label: 'Location deleted', icon: MapPin, color: 'text-red-400 bg-red-500/15' },
@@ -76,6 +82,7 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'server.power.stop': { label: 'Server stopped', icon: Square, color: 'text-red-400 bg-red-500/15' },
   'server.power.restart': { label: 'Server restarted', icon: RotateCw, color: 'text-blue-400 bg-blue-500/15' },
   'server.power.kill': { label: 'Server killed', icon: Square, color: 'text-red-400 bg-red-500/15' },
+  'server:crashed': { label: 'Server crashed', icon: Skull, color: 'text-red-400 bg-red-500/15' },
   'server.command': { label: 'Console command', icon: Terminal, color: 'text-purple-400 bg-purple-500/15' },
   'server.file.write': { label: 'File edited', icon: FilePen, color: 'text-amber-400 bg-amber-500/15' },
   'server.file.delete': { label: 'Files deleted', icon: Trash2, color: 'text-red-400 bg-red-500/15' },
@@ -99,6 +106,7 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'server.database.created': { label: 'Database created', icon: Database, color: 'text-green-400 bg-green-500/15' },
   'server.database.deleted': { label: 'Database deleted', icon: Database, color: 'text-red-400 bg-red-500/15' },
   'server.backup.created': { label: 'Backup started', icon: Archive, color: 'text-purple-400 bg-purple-500/15' },
+  'server.backup.download': { label: 'Backup downloaded', icon: Download, color: 'text-purple-400 bg-purple-500/15' },
   'server.backup.restore': { label: 'Backup restored', icon: RotateCw, color: 'text-violet-400 bg-violet-500/15' },
   'server.backup.deleted': { label: 'Backup deleted', icon: Trash2, color: 'text-orange-400 bg-orange-500/15' },
   'server.schedule.created': { label: 'Schedule created', icon: CalendarClock, color: 'text-green-400 bg-green-500/15' },
@@ -245,6 +253,15 @@ export interface ActivityEntry {
   timestamp: string;
   actor: { username: string; email: string; role?: string } | null;
   server?: { id: string; name: string } | null;
+  properties?: Record<string, unknown> | null;
+}
+
+/** Paginated activity feed page (shared by server / user / panel feeds). */
+export interface ActivityPageResult {
+  items: ActivityEntry[];
+  total: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 export function getActivityCategory(event: string): 'auth' | 'admin' | 'server' {

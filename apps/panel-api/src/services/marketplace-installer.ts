@@ -6,6 +6,7 @@ import {
   assertSafeCfgResource,
 } from '../lib/marketplace-safety.js';
 import { wingsForNode, type WingsClient } from './wings-client.js';
+import { canonicalGithubRepo } from './github-repo.js';
 import { downloadGithubArchive, resolveGithubRelease } from './github-release.js';
 import type { GithubAuthContext } from '../lib/github-auth.js';
 import { serverInclude } from './server-helpers.js';
@@ -245,21 +246,6 @@ export async function deployGithubArchive(
   }
 }
 
-async function deployPluginFiles(
-  wings: WingsClient,
-  serverUuid: string,
-  plugin: MarketplacePlugin,
-  release: Awaited<ReturnType<typeof resolveGithubRelease>>,
-  ctx?: GithubAuthContext,
-) {
-  await deployGithubArchive(wings, serverUuid, {
-    slug: plugin.slug,
-    installPath: plugin.installPath,
-    owner: plugin.githubOwner,
-    repo: plugin.githubRepo,
-    release,
-  }, ctx);
-}
 
 async function loadPluginMap() {
   const plugins = await prisma.marketplacePlugin.findMany({ where: { enabled: true } });
@@ -290,15 +276,22 @@ async function installSinglePlugin(
   }
 
   const wings = wingsForNode(server.node);
+  const canonical = await canonicalGithubRepo(plugin.githubOwner, plugin.githubRepo, { userId });
   const release = await resolveGithubRelease(
-    plugin.githubOwner,
-    plugin.githubRepo,
+    canonical.owner,
+    canonical.repo,
     plugin.githubRef,
     plugin.githubAsset,
     { userId },
   );
 
-  await deployPluginFiles(wings, server.uuid, plugin, release, { userId });
+  await deployGithubArchive(wings, server.uuid, {
+    slug: plugin.slug,
+    installPath: plugin.installPath,
+    owner: canonical.owner,
+    repo: canonical.repo,
+    release,
+  }, { userId });
 
   const line = cfgLineFor(plugin);
   const cfgFile = normalizePath(plugin.cfgFile);

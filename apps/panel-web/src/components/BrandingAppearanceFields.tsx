@@ -301,6 +301,7 @@ export function BrandingAppearanceFields({
   onAdminTabsStyleChange,
   onLoginAmbientLevelChange,
   onShowHeroStripeChange,
+  hideThemePreset = false,
 }: {
   themePreset: ThemePreset;
   defaultThemeMode: DefaultThemeMode;
@@ -321,6 +322,7 @@ export function BrandingAppearanceFields({
   showHeroStripe: boolean;
   accentColor: string;
   secondaryColor: string;
+  hideThemePreset?: boolean;
   onThemePresetChange: (value: ThemePreset) => void;
   onDefaultThemeModeChange: (value: DefaultThemeMode) => void;
   onLoginBackgroundChange: (value: LoginBackground) => void;
@@ -343,41 +345,43 @@ export function BrandingAppearanceFields({
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="mb-2 text-sm font-medium text-[var(--text)]">Color theme</p>
-        <p className="mb-3 text-xs text-[var(--muted)]">
-          Surface palette applied across the panel. Accent colors above still control buttons and highlights.
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {THEME_PRESET_OPTIONS.map((opt) => (
-            <OptionCard
-              key={opt.id}
-              active={themePreset === opt.id}
-              onClick={() => onThemePresetChange(opt.id)}
-              label={opt.label}
-              description={opt.description}
-              preview={
-                <div className="flex h-full flex-col">
-                  <div
-                    className="h-12 w-full"
-                    style={{
-                      background:
-                        opt.id === 'default'
-                          ? `linear-gradient(135deg, ${opt.swatch[1]}, ${opt.swatch[0]})`
-                          : `linear-gradient(160deg, ${opt.swatch[2]} 0%, ${opt.swatch[0]} 55%, ${opt.swatch[1]}33 100%)`,
-                    }}
-                  />
-                  <div className="flex flex-1 items-end gap-1 p-2">
-                    {opt.swatch.map((color) => (
-                      <span key={color} className="h-4 flex-1 rounded-sm ring-1 ring-black/10" style={{ background: color }} />
-                    ))}
+      {!hideThemePreset ? (
+        <div>
+          <p className="mb-2 text-sm font-medium text-[var(--text)]">Color theme</p>
+          <p className="mb-3 text-xs text-[var(--muted)]">
+            Surface palette applied across the panel. Accent colors above still control buttons and highlights.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {THEME_PRESET_OPTIONS.map((opt) => (
+              <OptionCard
+                key={opt.id}
+                active={themePreset === opt.id}
+                onClick={() => onThemePresetChange(opt.id)}
+                label={opt.label}
+                description={opt.description}
+                preview={
+                  <div className="flex h-full flex-col">
+                    <div
+                      className="h-12 w-full"
+                      style={{
+                        background:
+                          opt.id === 'default'
+                            ? `linear-gradient(135deg, ${opt.swatch[1]}, ${opt.swatch[0]})`
+                            : `linear-gradient(160deg, ${opt.swatch[2]} 0%, ${opt.swatch[0]} 55%, ${opt.swatch[1]}33 100%)`,
+                      }}
+                    />
+                    <div className="flex flex-1 items-end gap-1 p-2">
+                      {opt.swatch.map((color) => (
+                        <span key={color} className="h-4 flex-1 rounded-sm ring-1 ring-black/10" style={{ background: color }} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              }
-            />
-          ))}
+                }
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div>
         <p className="mb-2 text-sm font-medium text-[var(--text)]">Default light / dark mode</p>

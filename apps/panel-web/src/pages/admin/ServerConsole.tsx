@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, type AdminServerDetail } from '../../lib/api';
+import { api, type AdminServerDetail, type ServerDetail } from '../../lib/api';
 import { adminServerToClientDetail } from '../../lib/server-access';
 import { AdminSupportProvider } from '../../context/AdminSupportContext';
 import { StaticServerProvider } from '../../context/ServerContext';
@@ -17,9 +17,10 @@ export function AdminServerConsolePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<ServerDetail | null> => {
     const data = await api.admin.server(serverId);
     setDetail(data);
+    return adminServerToClientDetail(data);
   }, [serverId]);
 
   useEffect(() => {

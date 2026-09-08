@@ -179,6 +179,13 @@ export async function releaseServerAllocations(serverId: string, primaryAllocati
     },
     data: { assigned: false, serverId: null },
   });
+  // Subdomain FQDN is mirrored on the primary allocation; clear it when the server is removed.
+  await prisma.allocation
+    .update({
+      where: { id: primaryAllocationId },
+      data: { alias: null },
+    })
+    .catch(() => undefined);
 }
 
 export function validateAllocationPorts(ports: number[]) {

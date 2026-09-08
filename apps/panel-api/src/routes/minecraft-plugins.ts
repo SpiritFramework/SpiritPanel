@@ -5,8 +5,8 @@ import { requireAuth, requireSession } from '../middleware/auth.js';
 import { logServerActivity } from '../lib/client-server.js';
 import {
   isMinecraftModrinthInstallsAllowed,
-  isMinecraftPluginsEnabled,
-} from '../lib/panel-settings.js';
+  isMinecraftPluginsActive,
+} from '../plugins/manager.js';
 import { EXPENSIVE_ROUTE_RATE_LIMIT } from '../lib/rate-limits.js';
 import { sendClientError } from '../lib/safe-errors.js';
 import {
@@ -42,7 +42,7 @@ function pluginsError(
 }
 
 async function assertFeatureEnabled() {
-  if (!(await isMinecraftPluginsEnabled())) {
+  if (!(await isMinecraftPluginsActive())) {
     throw Object.assign(new Error('Minecraft plugins are disabled on this panel'), { statusCode: 403 });
   }
 }

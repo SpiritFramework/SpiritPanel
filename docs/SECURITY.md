@@ -144,6 +144,7 @@ This applies to list, read, write, upload, delete, rename, and related file oper
 | Surface | Policy |
 |---------|--------|
 | **Logo / favicon upload** | SVG **not** accepted. Allowed: PNG, JPEG, WebP, ICO. MIME type and size limits enforced. |
+| **App icon upload** | Re-rendered in the browser to a 512×512 PNG before upload, so the stored file is always a canvas-encoded PNG rather than the original bytes. Server accepts PNG only, max 1 MB. |
 | **Branding asset serve** | `.svg` files under branding assets return 404 even if present on disk. |
 | **Egg logo URL** | Admin-configured **external** HTTPS URL, rendered with `<img>` (not inline SVG). Hosters should trust URLs they set. |
 
@@ -165,7 +166,7 @@ Database passwords and host credentials are encrypted at rest when `APP_KEY` is 
 - Node daemon tokens are rotatable from **Admin → Nodes**
 - Panel → Wings and Wings → panel trust boundaries assume TLS on `API_URL`
 
-Operators must secure Wings nodes separately (firewall 8080/2022, TLS for WSS/SFTP as needed). See [docs/PRODUCTION.md](docs/PRODUCTION.md).
+Operators must secure Wings nodes separately (firewall 8080/2022, TLS for WSS/SFTP as needed). See [PRODUCTION.md](PRODUCTION.md).
 
 ---
 
@@ -194,6 +195,7 @@ Force users to sign in again after deploys that change session or cookie behavio
 
 - Session verification uses **`jsonwebtoken`** with explicit **`crit`** header validation (`apps/panel-api/src/lib/jwt-crit.ts`).
 - Keep dependencies updated (`pnpm install`, review Dependabot alerts).
+- Audit with `pnpm --filter @spirit/panel-api audit:security` (fails at moderate severity and above).
 - Run production installs with `pnpm install` on the server; avoid copying unverified `node_modules` trees.
 
 ---
@@ -204,7 +206,7 @@ The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are
 
 | Layer | Mitigation |
 |-------|------------|
-| **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled. Delivered via **Nginx/Vite headers** (not `<meta>`). |
+| **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled, with `manifest-src 'self'` and `worker-src 'self'` for the installable app. Delivered via **Nginx/Vite headers** (not `<meta>`). |
 | **Strict-Transport-Security** | Nginx (`deploy/nginx/spirit-panel.conf`) and API responses (`security-headers.ts`): `max-age=31536000; includeSubDomains; preload`. |
 | **URL sinks** | Avatar, logo, egg icon, support, markdown, and console link URLs are validated client-side (`sanitizeImageSrc` / `sanitizeLinkHref`) and server-side (`safe-url.ts`) — only `http:`/`https:` or same-origin asset paths. |
 | **Branding uploads** | SVG blocked; MIME allowlist on upload. |
@@ -215,6 +217,31 @@ The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are
 A compromised admin account can still change panel settings and email HTML — treat admin access as trusted. XSS from **untrusted** users should not execute script in the panel origin with these controls in place.
 
 Residual risk: a future code path that injects unsanitized HTML or loosens CSP would re-open XSS. Review UI changes that render HTML or accept URLs.
+
+### Header delivery caveat (nginx)
+
+A `location` block that declares **any** `add_header` stops inheriting the server-level ones — nginx does not merge them. The shipped config sets `Cache-Control` on `/sw.js`, `/index.html`, `/assets/`, and `/icons/`, so those blocks re-declare the security headers they need. The `= /index.html` block is the one that matters: every SPA route is served through it, so if it loses its `Content-Security-Policy` line your CSP is effectively off for the whole UI while still appearing correct in the config file.
+
+Verify after any nginx edit:
+
+```bash
+curl -sI https://panel.example.com/ | grep -i content-security-policy
+```
+
+---
+
+## Service worker
+
+The panel registers a service worker at `/sw.js` to keep the app shell loading on unreliable connections.
+
+| Property | Behavior |
+|----------|----------|
+| **Scope** | Site root. A worker cannot claim a scope above its own path, so it must stay at `/sw.js`. |
+| **What is cached** | Static shell only — `index.html`, hashed `/assets/`, icons. |
+| **What is never cached** | `/api/*`, `/wings/*`, and `/health*`. Non-`GET` and cross-origin requests are ignored entirely, so session-scoped and live server data never lands in the cache. |
+| **Rollout** | Cache names are versioned from the release the app registers with, and older `spirit-*` caches are deleted on activation. `sw.js` and `index.html` are served `no-cache`, so a new release is picked up on next load rather than pinned by a stale worker. |
+
+Because responses to authenticated API calls are never stored, a shared machine does not retain another user's panel data in the cache storage.
 
 ---
 
@@ -230,4 +257,4 @@ Residual risk: a future code path that injects unsanitized HTML or loosens CSP w
 
 ## License
 
-Spirit-Panel is licensed under the **GNU Affero General Public License v3.0** ([LICENSE](LICENSE)). Network use of modified versions may require source availability to users under AGPL terms.
+Spirit-Panel is licensed under the **GNU Affero General Public License v3.0** ([LICENSE](../LICENSE)). Network use of modified versions may require source availability to users under AGPL terms.

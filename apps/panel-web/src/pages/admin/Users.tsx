@@ -1,150 +1,115 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Shield, User, Users } from 'lucide-react';
-import { api, type AdminUserSummary } from '../../lib/api';
-import { useAuth } from '../../context/AuthContext';
-import { isFullPanelAdmin } from '../../lib/roles';
-import { useAsyncData } from '../../hooks/useAsyncData';
-import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/Layout';
+import { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { AdminLayout, Page } from '../../components/Layout';
 import { CreateUserModal } from '../../components/CreateUserModal';
-import { AdminUserTable } from '../../components/AdminUserRow';
-import { DsIcon, EmptyState, PageHeader, Skeleton, StatCard } from '../../components/ui';
-
-type RoleFilter = 'all' | 'admin' | 'staff' | 'user';
-type StatusFilter = 'all' | 'active' | 'suspended';
+import { UsersFleetOverview } from '../../components/admin/users/UsersFleetOverview';
+import { UsersFleetStats } from '../../components/admin/users/UsersFleetStats';
+import { UsersHeader } from '../../components/admin/users/UsersHeader';
+import { UsersListPanel } from '../../components/admin/users/UsersListPanel';
+import { useAuth } from '../../context/AuthContext';
+import { useAdminUsers } from '../../hooks/useAdminUsers';
+import { isFullPanelAdmin } from '../../lib/roles';
+import { AlertBanner } from '../../components/ui';
 
 export function AdminUsers() {
   const { user: currentUser } = useAuth();
   const fullAdmin = isFullPanelAdmin(currentUser);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  const queryKey = `admin-users|${debouncedSearch}|${roleFilter}|${statusFilter}`;
-
-  const fetchUsers = useCallback(
-    () =>
-      api.admin.users({
-        search: debouncedSearch || undefined,
-        role: roleFilter === 'all' ? undefined : roleFilter,
-        suspended:
-          statusFilter === 'all' ? undefined : statusFilter === 'suspended' ? 'true' : 'false',
-      }),
-    [debouncedSearch, roleFilter, statusFilter],
-  );
-
-  const { data: users, loading, refetch } = useAsyncData<AdminUserSummary[]>(queryKey, fetchUsers, [
-    debouncedSearch,
-    roleFilter,
+  const {
+    search,
+    setSearch,
     statusFilter,
-  ]);
-
-  const list = users ?? [];
-
-  const stats = useMemo(
-    () => ({
-      total: list.length,
-      admins: list.filter((u) => u.role === 'admin').length,
-      staff: list.filter((u) => u.role === 'staff').length,
-      active: list.filter((u) => !u.suspended).length,
-      suspended: list.filter((u) => u.suspended).length,
-    }),
-    [list],
-  );
+    setStatusFilter,
+    viewMode,
+    setViewMode,
+    lastUpdated,
+    refreshing,
+    loading,
+    error,
+    allUsers,
+    filteredUsers,
+    fleetStats,
+    roleRows,
+    filterCounts,
+    activePercent,
+    hasActiveFilters,
+    clearFilters,
+    refresh,
+    reload,
+  } = useAdminUsers();
 
   return (
     <AdminLayout>
-      <Page>
-        <PageHeader
-          title="Users"
-          description="Manage panel accounts, roles, and access"
-          icon={<DsIcon icon={Users} className="ds-icon--muted" />}
-          action={
-            fullAdmin ? (
-              <Button onClick={() => setShowCreate(true)}>
-                <DsIcon icon={Plus} />
-                Create user
-              </Button>
-            ) : undefined
-          }
+      <Page className="ds-usr-page">
+        <UsersHeader
+          stats={fleetStats}
+          refreshing={refreshing}
+          fullAdmin={fullAdmin}
+          onRefresh={() => void refresh()}
+          onCreate={() => setShowCreate(true)}
         />
 
-        <div className="ds-grid-stats mb-4">
-          <StatCard label="Showing" value={stats.total} icon={<DsIcon icon={Users} />} />
-          <StatCard label="Admins" value={stats.admins} icon={<DsIcon icon={Shield} />} />
-          <StatCard label="Active" value={stats.active} icon={<DsIcon icon={User} />} tone="success" />
-          <StatCard
-            label="Suspended"
-            value={stats.suspended}
-            icon={<DsIcon icon={User} />}
-            tone={stats.suspended > 0 ? 'warning' : 'neutral'}
-          />
-        </div>
-
-        <Card title="All users">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <div className="relative min-w-0 w-full flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, email, username, UUID, or user ID…"
-                className="ds-field ds-field--icon-left"
-              />
+        {error ? (
+          <AlertBanner tone="error" className="mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Couldn&apos;t load users: {error.message}</span>
             </div>
-            <FilterSelect value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}>
-              <option value="all">All roles</option>
-              <option value="admin">Admins</option>
-              <option value="staff">Staff</option>
-              <option value="user">Users</option>
-            </FilterSelect>
-            <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
-              <option value="all">All accounts</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-            </FilterSelect>
-          </div>
+          </AlertBanner>
+        ) : null}
 
-          {loading ? (
-            <div className="space-y-2 py-1" aria-hidden>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-lg" />
-              ))}
+        {fleetStats.suspended > 0 && !error ? (
+          <AlertBanner tone="warning" className="mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {fleetStats.suspended} account{fleetStats.suspended === 1 ? '' : 's'} suspended
+              </span>
+              <button
+                type="button"
+                className="text-xs font-medium underline underline-offset-2"
+                onClick={() => setStatusFilter('suspended')}
+              >
+                Show suspended
+              </button>
             </div>
-          ) : list.length === 0 ? (
-            <EmptyState
-              icon={<DsIcon icon={Users} className="ds-icon--md" />}
-              title="No users match your filters"
-              description="Try a broader search, or create a new account to get started."
-              action={
-                fullAdmin ? (
-                  <Button variant="secondary" onClick={() => setShowCreate(true)}>
-                    <DsIcon icon={Plus} />
-                    Create user
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : (
-            <AdminUserTable users={list} currentUserId={currentUser?.id} />
-          )}
-        </Card>
+          </AlertBanner>
+        ) : null}
 
-        {fullAdmin && showCreate && (
+        <UsersFleetStats stats={fleetStats} onShowSuspended={() => setStatusFilter('suspended')} />
+
+        {!loading || allUsers.length > 0 ? (
+          <UsersFleetOverview stats={fleetStats} roleRows={roleRows} activePercent={activePercent} />
+        ) : null}
+
+        <UsersListPanel
+          users={filteredUsers}
+          allCount={allUsers.length}
+          loading={loading}
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          filterCounts={filterCounts}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilters}
+          lastUpdated={lastUpdated}
+          currentUserId={currentUser?.id}
+          fullAdmin={fullAdmin}
+          onCreate={() => setShowCreate(true)}
+        />
+
+        {fullAdmin && showCreate ? (
           <CreateUserModal
             onClose={() => setShowCreate(false)}
             onCreated={() => {
               setShowCreate(false);
-              void refetch();
+              void reload();
             }}
           />
-        )}
+        ) : null}
       </Page>
     </AdminLayout>
   );

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getServerDisplayStatus, mergePanelAndRuntimeStatus } from './server-runtime.js';
+import { getServerDisplayStatus, mergePanelAndRuntimeStatus, shouldBlockStartForInstall } from './server-runtime.js';
 
 describe('mergePanelAndRuntimeStatus', () => {
   it('shows Offline not Install failed for normal + stale install flags', () => {
@@ -32,6 +32,12 @@ describe('mergePanelAndRuntimeStatus', () => {
     assert.equal(result.tone, 'success');
   });
 
+  it('prefers live Running over stale DB installing flags', () => {
+    const result = mergePanelAndRuntimeStatus('installing', 'installing', null, false, 'running');
+    assert.equal(result.label, 'Running');
+    assert.equal(result.tone, 'success');
+  });
+
   it('shows Offline for installed server that is stopped', () => {
     const result = mergePanelAndRuntimeStatus('normal', 'installed', null, false, 'offline');
     assert.equal(result.label, 'Offline');
@@ -47,6 +53,12 @@ describe('mergePanelAndRuntimeStatus', () => {
     const result = mergePanelAndRuntimeStatus('normal', 'failed', 'running', true, 'install_failed');
     assert.equal(result.label, 'Running');
   });
+
+  it('shows Crashed when container state is crashed', () => {
+    const result = mergePanelAndRuntimeStatus('normal', 'installed', null, false, 'crashed');
+    assert.equal(result.label, 'Crashed');
+    assert.equal(result.tone, 'danger');
+  });
 });
 
 describe('getServerDisplayStatus', () => {
@@ -56,5 +68,35 @@ describe('getServerDisplayStatus', () => {
       { runtimeState: 'running', wsConnected: true },
     );
     assert.equal(display.label, 'Running');
+  });
+});
+
+describe('shouldBlockStartForInstall', () => {
+  it('does not block when Wings container is already running', () => {
+    assert.equal(
+      shouldBlockStartForInstall(
+        { status: 'installing', installStatus: 'installing', containerState: 'running' },
+      ),
+      false,
+    );
+  });
+
+  it('does not block when live runtime is running', () => {
+    assert.equal(
+      shouldBlockStartForInstall(
+        { status: 'installing', installStatus: 'installing', containerState: 'offline' },
+        { runtimeState: 'running' },
+      ),
+      false,
+    );
+  });
+
+  it('blocks when install flags match an offline container', () => {
+    assert.equal(
+      shouldBlockStartForInstall(
+        { status: 'installing', installStatus: 'installing', containerState: 'offline' },
+      ),
+      true,
+    );
   });
 });

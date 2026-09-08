@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, LifeBuoy, Lock } from 'lucide-react';
+import { ArrowLeft, Lock, XCircle } from 'lucide-react';
 import { api, type TicketDetail } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
@@ -104,7 +104,7 @@ export function TicketDetailPage() {
     );
   }
 
-  const closed = ticket.status === 'closed';
+  const closed = ticket.status === 'closed' || ticket.status === 'resolved';
 
   return (
     <ClientLayout fillHeight>
@@ -119,10 +119,14 @@ export function TicketDetailPage() {
         onSendReply={(payload) => void sendReply(payload)}
         sending={sending}
         closed={closed}
+        replyPlaceholder="Write a reply for support…"
         closedMessage={
           <>
             <Lock className="h-4 w-4 shrink-0" />
-            <span>This ticket is closed. You can read the history but cannot send new messages.</span>
+            <span>
+              This ticket is {ticket.status === 'resolved' ? 'resolved' : 'closed'}. You can read the history but
+              cannot send new messages.
+            </span>
           </>
         }
         sidebar={
@@ -133,10 +137,15 @@ export function TicketDetailPage() {
             />
 
             {!closed ? (
-              <Button variant="secondary" className="w-full" onClick={() => void closeTicket()} disabled={closing}>
-                <LifeBuoy className="h-4 w-4" />
-                {closing ? 'Closing…' : 'Close ticket'}
-              </Button>
+              <div className="ticket-page__sidebar-actions">
+                <p className="ticket-page__sidebar-hint">
+                  Done with this issue? Closing stops further replies but keeps the thread for your records.
+                </p>
+                <Button variant="secondary" className="w-full" onClick={() => void closeTicket()} disabled={closing}>
+                  <XCircle className="h-4 w-4" />
+                  {closing ? 'Closing…' : 'Close ticket'}
+                </Button>
+              </div>
             ) : null}
           </>
         }

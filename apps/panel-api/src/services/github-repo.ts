@@ -66,6 +66,44 @@ function applyRepoAlias(owner: string, repo: string): ParsedGithubRepo {
   return alias ?? { owner, repo };
 }
 
+/** Resolve owner/repo through rename aliases and GitHub canonical casing. */
+export async function canonicalGithubRepo(
+  owner: string,
+  repo: string,
+  ctx?: GithubAuthContext,
+): Promise<ParsedGithubRepo> {
+  const aliased = applyRepoAlias(owner.trim(), repo.trim());
+  const attempts: ParsedGithubRepo[] = [
+    aliased,
+    { owner: aliased.owner.toLowerCase(), repo: aliased.repo },
+    { owner: aliased.owner, repo: aliased.repo.toLowerCase() },
+    { owner: aliased.owner.toLowerCase(), repo: aliased.repo.toLowerCase() },
+  ];
+
+  const seen = new Set<string>();
+  let lastError: unknown;
+
+  for (const attempt of attempts) {
+    const key = `${attempt.owner}/${attempt.repo}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    try {
+      const data = await githubFetch<{ full_name: string }>(`/repos/${attempt.owner}/${attempt.repo}`, ctx);
+      const [canonicalOwner, canonicalRepo] = data.full_name.split('/');
+      if (!canonicalOwner || !canonicalRepo) {
+        throw githubHttpError(404, '');
+      }
+      return { owner: canonicalOwner, repo: canonicalRepo };
+    } catch (err) {
+      lastError = err;
+      if (httpStatusFromUnknown(err, 0) !== 404) throw err;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : githubHttpError(404, '');
+}
+
 /** Parse owner/repo, full URLs, or github.com links. */
 export function parseGithubRepoInput(input: string): ParsedGithubRepo {
   const trimmed = input.trim();
@@ -135,6 +173,10 @@ interface GithubRepoResponse {
   pushed_at?: string;
   html_url: string;
   private: boolean;
+  owner?: {
+    login?: string;
+    avatar_url?: string;
+  };
 }
 
 interface GithubReadmeResponse {
@@ -151,6 +193,7 @@ interface GithubReleaseListItem {
 export interface GithubRepoResolved {
   owner: string;
   repo: string;
+  ownerAvatarUrl: string | null;
   name: string;
   description: string;
   defaultBranch: string;
@@ -200,7 +243,8 @@ async function fetchRepoReadme(owner: string, repo: string, ctx?: GithubAuthCont
 }
 
 export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext): Promise<GithubRepoResolved> {
-  const { owner, repo } = parseGithubRepoInput(input);
+  const parsed = parseGithubRepoInput(input);
+  const { owner, repo } = await canonicalGithubRepo(parsed.owner, parsed.repo, ctx);
   // Public repos share one cache — avoids per-user GitHub stampedes.
   const cacheKey = `public:${owner.toLowerCase()}/${repo.toLowerCase()}`;
   const cached = resolveCache.get(cacheKey);
@@ -229,6 +273,7 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
     return {
       owner: repoOwner,
       repo: repoName,
+      ownerAvatarUrl: data.owner?.avatar_url?.trim() || null,
       name: data.name,
       description: data.description ?? '',
       defaultBranch: data.default_branch,
@@ -259,30 +304,16 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
     };
   }
 
-  try {
-    const resolved = await loadRepo(owner, repo);
-    purgeMap(resolveCache);
-    resolveCache.set(cacheKey, { value: resolved, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
-    return resolved;
-  } catch (err) {
-    const status = httpStatusFromUnknown(err, 0);
-    if (status === 404) {
-      try {
-        const resolved = await loadRepo(owner.toLowerCase(), repo);
-        purgeMap(resolveCache);
-        resolveCache.set(cacheKey, { value: resolved, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
-        return resolved;
-      } catch {
-        // fall through
-      }
-    }
-    throw err;
-  }
+  const resolved = await loadRepo(owner, repo);
+  purgeMap(resolveCache);
+  resolveCache.set(cacheKey, { value: resolved, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
+  return resolved;
 }
 
 export interface GithubSearchResult {
   owner: string;
   repo: string;
+  ownerAvatarUrl: string | null;
   name: string;
   description: string;
   stars: number;
@@ -305,13 +336,19 @@ interface GithubSearchApiItem {
   pushed_at?: string;
   topics?: string[];
   html_url: string;
+  owner?: {
+    login?: string;
+    avatar_url?: string;
+  };
 }
 
 function mapSearchItem(item: GithubSearchApiItem): GithubSearchResult {
   const [owner, repo] = item.full_name.split('/');
+  const aliased = applyRepoAlias(owner!, repo!);
   return {
-    owner: owner!,
-    repo: repo!,
+    owner: aliased.owner,
+    repo: aliased.repo,
+    ownerAvatarUrl: item.owner?.avatar_url?.trim() || null,
     name: item.name,
     description: item.description ?? '',
     stars: item.stargazers_count,
@@ -320,7 +357,7 @@ function mapSearchItem(item: GithubSearchApiItem): GithubSearchResult {
     updatedAt: item.updated_at,
     pushedAt: item.pushed_at ?? null,
     topics: item.topics ?? [],
-    githubUrl: item.html_url,
+    githubUrl: `https://github.com/${aliased.owner}/${aliased.repo}`,
   };
 }
 
@@ -428,6 +465,7 @@ function featuredToApiItem(item: GithubSearchResult): GithubSearchApiItem {
     pushed_at: item.pushedAt ?? undefined,
     topics: item.topics,
     html_url: item.githubUrl,
+    owner: item.ownerAvatarUrl ? { login: item.owner, avatar_url: item.ownerAvatarUrl } : { login: item.owner },
   };
 }
 
@@ -451,24 +489,81 @@ async function featuredMatchesForQuery(query: string, ctx?: GithubAuthContext): 
   }
 }
 
+export type GithubSearchSort = 'best' | 'stars' | 'forks' | 'updated' | 'pushed';
+
+const GITHUB_SEARCH_SORTS: GithubSearchSort[] = ['best', 'stars', 'forks', 'updated', 'pushed'];
+
+export function parseGithubSearchSort(value: unknown): GithubSearchSort {
+  if (typeof value === 'string' && GITHUB_SEARCH_SORTS.includes(value as GithubSearchSort)) {
+    return value as GithubSearchSort;
+  }
+  return 'best';
+}
+
+function githubApiSortParams(sort: GithubSearchSort): { sort?: string; order?: string } {
+  switch (sort) {
+    case 'stars':
+      return { sort: 'stars', order: 'desc' };
+    case 'forks':
+      return { sort: 'forks', order: 'desc' };
+    case 'updated':
+      return { sort: 'updated', order: 'desc' };
+    default:
+      return {};
+  }
+}
+
+function sortSearchApiItems(items: GithubSearchApiItem[], sort: GithubSearchSort): GithubSearchApiItem[] {
+  const arr = [...items];
+  switch (sort) {
+    case 'stars':
+      return arr.sort((a, b) => b.stargazers_count - a.stargazers_count);
+    case 'forks':
+      return arr.sort((a, b) => (b.forks_count ?? 0) - (a.forks_count ?? 0));
+    case 'updated':
+      return arr.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    case 'pushed':
+      return arr.sort((a, b) => {
+        const bTime = new Date(b.pushed_at ?? b.updated_at).getTime();
+        const aTime = new Date(a.pushed_at ?? a.updated_at).getTime();
+        return bTime - aTime;
+      });
+    default:
+      return arr;
+  }
+}
+
+function orderBestMatchItems(
+  items: GithubSearchApiItem[],
+  featured: GithubSearchApiItem[],
+): GithubSearchApiItem[] {
+  const featuredNames = new Set(featured.map((item) => item.full_name));
+  const featuredItems = items.filter((item) => featuredNames.has(item.full_name));
+  const rest = items.filter((item) => !featuredNames.has(item.full_name));
+  return [...featuredItems, ...rest];
+}
+
 export interface GithubSearchPage {
   results: GithubSearchResult[];
   page: number;
   perPage: number;
   totalCount: number;
   totalPages: number;
+  sort: GithubSearchSort;
 }
 
 export async function searchGithubRepos(
   query: string,
   page = 1,
   ctx?: GithubAuthContext,
+  sortInput: unknown = 'best',
 ): Promise<GithubSearchPage> {
   const q = query.trim();
+  const sort = parseGithubSearchSort(sortInput);
   const perPage = 12;
   const safePage = Math.max(1, Math.min(page, 10));
   const scope = ctx?.userId ?? 'panel';
-  const cacheKey = `v4:${scope}:${safePage}:${q.toLowerCase()}`;
+  const cacheKey = `v5:${scope}:${sort}:${safePage}:${q.toLowerCase()}`;
   const cached = searchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     const totalCount = cached.totalCount ?? cached.value.length;
@@ -478,14 +573,17 @@ export async function searchGithubRepos(
       perPage,
       totalCount,
       totalPages: cached.totalPages ?? Math.max(1, Math.ceil(totalCount / perPage)),
+      sort,
     };
   }
 
   async function runSearch(searchQuery: string, githubPage: number) {
-    return githubFetch<{ items: GithubSearchApiItem[]; total_count: number }>(
-      `/search/repositories?q=${encodeURIComponent(searchQuery)}&sort=stars&per_page=100&page=${githubPage}`,
-      ctx,
-    );
+    const sortParams = githubApiSortParams(sort);
+    let path = `/search/repositories?q=${encodeURIComponent(searchQuery)}&per_page=100&page=${githubPage}`;
+    if (sortParams.sort) {
+      path += `&sort=${sortParams.sort}&order=${sortParams.order ?? 'desc'}`;
+    }
+    return githubFetch<{ items: GithubSearchApiItem[]; total_count: number }>(path, ctx);
   }
 
   const queries = buildFivemSearchQueries(q);
@@ -543,8 +641,13 @@ export async function searchGithubRepos(
     });
   }
 
+  const ordered =
+    sort === 'best'
+      ? orderBestMatchItems(accumulated, featuredHits)
+      : sortSearchApiItems(accumulated, sort);
+
   const skip = (safePage - 1) * perPage;
-  const pageItems = accumulated.slice(skip, skip + perPage);
+  const pageItems = ordered.slice(skip, skip + perPage);
 
   let totalPages = Math.max(1, Math.ceil(accumulated.length / perPage));
   if (totalCountEstimate < accumulated.length) {
@@ -570,5 +673,6 @@ export async function searchGithubRepos(
     perPage,
     totalCount: totalCountEstimate,
     totalPages,
+    sort,
   };
 }

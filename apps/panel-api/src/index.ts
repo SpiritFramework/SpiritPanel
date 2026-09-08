@@ -31,15 +31,21 @@ import { marketplaceRoutes, adminMarketplaceRoutes } from './routes/marketplace.
 import { minecraftPluginRoutes } from './routes/minecraft-plugins.js';
 
 import { clientTicketRoutes, adminTicketRoutes } from './routes/tickets.js';
+import { clientPluginRoutes, adminPluginRoutes } from './routes/plugins.js';
+import { databaseManagerRoutes } from './plugins/database-manager/index.js';
+import { ensureBuiltinPlugins } from './plugins/manager.js';
 
 import { requireAdmin } from './middleware/auth.js';
 
 import { startScheduleWorker, stopScheduleWorker } from './workers/schedule.js';
 import { startStatsCollector, stopStatsCollector } from './workers/stats-collector.js';
+import { startNodeHealthWorker, stopNodeHealthWorker } from './workers/node-health.js';
 import { pingRedis, closeSharedRedis } from './lib/redis.js';
 import { GLOBAL_RATE_LIMIT } from './lib/rate-limits.js';
 import { MAX_UPLOAD_FILE_BYTES } from './lib/upload-concurrency.js';
-import { API_SECURITY_HEADERS } from './lib/security-headers.js';
+import { API_SECURITY_HEADERS, HSTS_HEADER } from './lib/security-headers.js';
+import { ZodError } from 'zod';
+import type { FastifyError } from 'fastify';
 
 
 
@@ -64,6 +70,9 @@ const app = Fastify({
 app.addHook('onSend', async (_request, reply, payload) => {
   for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) {
     reply.header(name, value);
+  }
+  if (config.isProduction) {
+    reply.header('Strict-Transport-Security', HSTS_HEADER);
   }
   return payload;
 });
@@ -128,19 +137,28 @@ app.addHook('onRequest', async (request, reply) => {
 // Global error handler to prevent information leakage
 app.setErrorHandler(async (error, request, reply) => {
   app.log.error({ err: error, requestId: request.id }, 'Request error');
-  
-  // In production, sanitize error messages
+
   const isProduction = getConfig().isProduction;
-  const statusCode = error instanceof Error && 'statusCode' in error ? (error as any).statusCode : 500;
+
+  if (error instanceof ZodError) {
+    return reply.status(422).send({
+      error: 'Validation failed',
+      ...(isProduction ? {} : { issues: error.issues }),
+      requestId: request.id,
+    });
+  }
+
+  const statusCode =
+    typeof (error as FastifyError).statusCode === 'number' ? (error as FastifyError).statusCode! : 500;
   const message = error instanceof Error ? error.message : 'An error occurred';
-  
-  if (isProduction && statusCode === 500) {
+
+  if (isProduction && statusCode >= 500) {
     return reply.status(statusCode).send({
       error: 'Internal server error',
       requestId: request.id,
     });
   }
-  
+
   return reply.status(statusCode).send({
     error: message,
     requestId: request.id,
@@ -199,9 +217,15 @@ await app.register(adminBackupRoutes, { prefix: '/api/admin' });
 
 await app.register(databaseRoutes, { prefix: '/api/client' });
 
+await app.register(databaseManagerRoutes, { prefix: '/api/client' });
+
 await app.register(marketplaceRoutes, { prefix: '/api/client' });
 
 await app.register(minecraftPluginRoutes, { prefix: '/api/client' });
+
+await app.register(clientPluginRoutes, { prefix: '/api/client' });
+
+await app.register(adminPluginRoutes, { prefix: '/api/admin' });
 
 await app.register(clientTicketRoutes, { prefix: '/api/client' });
 
@@ -221,6 +245,7 @@ await app.register(adminTicketRoutes, { prefix: '/api/admin' });
 
 async function shutdown() {
   app.log.info('Shutting down...');
+  stopNodeHealthWorker();
   stopStatsCollector();
   await stopScheduleWorker();
   await closeSharedRedis();
@@ -243,9 +268,14 @@ try {
 
   app.log.info('Database connection verified');
 
+  await ensureBuiltinPlugins();
+  app.log.info('Panel plugins initialized');
+
   startScheduleWorker();
 
   startStatsCollector();
+
+  startNodeHealthWorker();
 
 
 

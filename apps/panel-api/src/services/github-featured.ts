@@ -24,7 +24,7 @@ export const FEATURED_FIVEM_REPOS: FeaturedRepo[] = [
   { owner: 'overextended', repo: 'ox_target', category: 'script', blurb: 'Third-eye targeting' },
   { owner: 'overextended', repo: 'ox_doorlock', category: 'script', blurb: 'Door locks & access' },
   { owner: 'overextended', repo: 'ox_fuel', category: 'script', blurb: 'Fuel stations script' },
-  { owner: 'CommunityOx', repo: 'ox_banking', category: 'script', blurb: 'Banking UI & accounts' },
+  { owner: 'overextended', repo: 'ox_banking', category: 'script', blurb: 'Banking UI & accounts' },
   { owner: 'Project-Sloth', repo: 'ps-dispatch', category: 'script', blurb: 'Police dispatch UI' },
   { owner: 'Project-Sloth', repo: 'ps-mdt', category: 'script', blurb: 'Police MDT tablet' },
   { owner: 'Project-Sloth', repo: 'ps-housing', category: 'script', blurb: 'Player housing system' },
@@ -80,6 +80,7 @@ function fallbackFeatured(entry: FeaturedRepo): FeaturedItem {
   return {
     owner: entry.owner,
     repo: entry.repo,
+    ownerAvatarUrl: null,
     name: entry.repo,
     description: entry.blurb ?? '',
     stars: 0,
@@ -138,11 +139,13 @@ async function fetchFeaturedFromGithub(ctx?: GithubAuthContext): Promise<Feature
         pushed_at?: string;
         topics?: string[];
         html_url: string;
+        owner?: { avatar_url?: string };
       };
 
       return {
         owner: entry.owner,
         repo: entry.repo,
+        ownerAvatarUrl: data.owner?.avatar_url?.trim() || null,
         name: data.name,
         description: data.description ?? entry.blurb ?? '',
         stars: data.stargazers_count,

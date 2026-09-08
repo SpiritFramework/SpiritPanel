@@ -34,7 +34,6 @@ import {
   clearConsoleLines,
   consoleLinesToText,
   getConsoleLines,
-  getVisibleConsoleLines,
   type ConsoleLine,
 } from '../lib/console-buffer';
 import { normalizeRuntimeState, type InstallPhase } from '../lib/server-runtime';
@@ -57,7 +56,6 @@ interface ServerLiveContextValue {
   runtimeState: string;
   installPhase: InstallPhase;
   consoleLines: ConsoleLine[];
-  consoleLineCount: number;
   liveStats: StatPoint;
   uptimeMs: number | null;
   followScroll: boolean;
@@ -98,7 +96,6 @@ export function ServerLiveProvider({
   );
   const [installPhase, setInstallPhase] = useState<InstallPhase>('idle');
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([]);
-  const [consoleLineCount, setConsoleLineCount] = useState(0);
   const [liveStats, setLiveStats] = useState<StatPoint>(() => emptyStats('offline'));
   const [uptimeMs, setUptimeMs] = useState<number | null>(null);
   const [followScroll, setFollowScroll] = useState(true);
@@ -116,8 +113,7 @@ export function ServerLiveProvider({
   const flushConsole = useCallback(() => {
     if (!id) return;
     flushTimer.current = null;
-    setConsoleLines(getVisibleConsoleLines(id));
-    setConsoleLineCount(getConsoleLines(id).length);
+    setConsoleLines([...getConsoleLines(id)]);
   }, [id]);
 
   const scheduleConsoleFlush = useCallback(() => {
@@ -198,7 +194,6 @@ export function ServerLiveProvider({
           statsTimer.current = null;
         }
         setConnectionStatus('disconnected');
-        handleRuntimeState('offline');
         reconnectTimer.current = window.setTimeout(() => {
           connect();
         }, 4000);
@@ -211,6 +206,7 @@ export function ServerLiveProvider({
 
           if (event === 'auth success') {
             setConnectionStatus('connected');
+            refresh().catch(() => {});
             requestWingsLogs(ws);
             requestWingsStats(ws);
             if (statsTimer.current) window.clearInterval(statsTimer.current);
@@ -321,7 +317,6 @@ export function ServerLiveProvider({
     if (!id) return;
     clearConsoleLines(id);
     setConsoleLines([]);
-    setConsoleLineCount(0);
     installLogsHydrated.current = false;
     connect();
 
@@ -357,11 +352,37 @@ export function ServerLiveProvider({
     // Never let a stale DB "stopping/starting" clobber live WS truth (e.g. already offline).
     if (transitional && liveSettled) return;
 
+    const activePersisted =
+      persisted === 'running' ||
+      persisted === 'starting' ||
+      persisted === 'installing' ||
+      persisted === 'stopping' ||
+      persisted === 'crashed';
+
+    if (activePersisted && (current === 'offline' || current === 'stopped' || persisted !== current)) {
+      runtimeRef.current = persisted;
+      setRuntimeState(persisted);
+      return;
+    }
+
     if (persisted !== 'offline' || !current) {
       runtimeRef.current = persisted;
       setRuntimeState(persisted);
     }
-  }, [server.containerState]);
+  }, [server.containerState, server.status, server.installStatus]);
+
+  useEffect(() => {
+    if (!id) return;
+    const needsRefresh = connectionStatus !== 'connected' || server.nodeReachable === false;
+
+    if (!needsRefresh) return;
+
+    const timer = window.setInterval(() => {
+      refresh().catch(() => {});
+    }, 5_000);
+
+    return () => window.clearInterval(timer);
+  }, [connectionStatus, id, refresh, server.nodeReachable]);
 
   useEffect(() => {
     if (!id) return;
@@ -394,7 +415,6 @@ export function ServerLiveProvider({
     if (!id) return;
     clearConsoleLines(id);
     setConsoleLines([]);
-    setConsoleLineCount(0);
   }, [id]);
 
   const downloadConsole = useCallback(() => {
@@ -430,7 +450,6 @@ export function ServerLiveProvider({
       runtimeState,
       installPhase,
       consoleLines,
-      consoleLineCount,
       liveStats,
       uptimeMs,
       followScroll,
@@ -444,7 +463,6 @@ export function ServerLiveProvider({
       clearConsole,
       connect,
       connectionStatus,
-      consoleLineCount,
       consoleLines,
       downloadConsole,
       followScroll,

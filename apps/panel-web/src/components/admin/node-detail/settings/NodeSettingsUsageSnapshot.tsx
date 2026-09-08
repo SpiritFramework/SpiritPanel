@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Activity, HardDrive, MemoryStick } from 'lucide-react';
+import { HardDrive, MemoryStick } from 'lucide-react';
 import type { NodeCapacityStats, NodeLiveUsageSummary } from '../../../../lib/api';
 import { formatFreeLabel, usageTone } from '../../../../lib/node-capacity';
 import { formatBytes } from '../../../../lib/stats';
@@ -19,10 +19,12 @@ function fillClass(tone: 'success' | 'warning' | 'danger') {
 
 export function NodeSettingsUsageSnapshot({
   capacity,
-  liveUsage,
+  liveUsage = null,
+  showLive = false,
 }: {
   capacity: NodeCapacityStats;
-  liveUsage: NodeLiveUsageSummary | null;
+  liveUsage?: NodeLiveUsageSummary | null;
+  showLive?: boolean;
 }) {
   const liveMemMiB = liveUsage ? liveUsage.liveMemoryBytes / (1024 * 1024) : 0;
   const liveDiskMiB = liveUsage ? liveUsage.liveDiskBytes / (1024 * 1024) : 0;
@@ -33,63 +35,47 @@ export function NodeSettingsUsageSnapshot({
       liveUsage.liveMemoryBytes > 0 ||
       liveUsage.liveDiskBytes > 0);
 
-  const liveReporting =
-    liveUsage && liveUsage.liveServerCount > 0
-      ? `${liveUsage.liveServerCount}/${liveUsage.serverCount} reporting`
-      : null;
-
   return (
-    <div className="ds-nd-st-usage">
-      <header className="ds-nd-st-usage-head">
-        <div>
-          <p className="ds-nd-st-usage-eyebrow">At a glance</p>
-          <h4 className="ds-nd-st-usage-title">Current usage</h4>
-        </div>
-        {liveReporting ? (
-          <span className="ds-nd-st-usage-live-badge">
-            <Activity className="ds-icon ds-icon--sm" aria-hidden />
-            {liveReporting}
-          </span>
-        ) : null}
-      </header>
-
+    <div className={`ds-nd-st-usage${showLive ? '' : ' ds-nd-st-usage--assigned-only'}`}>
       <div className="ds-nd-st-usage-grid">
-        <UsageColumn
-          title="Live from Wings"
-          hint={
-            hasLive
-              ? 'Real-time container usage on this host'
-              : liveUsage?.serverCount === 0
-                ? 'No servers deployed yet'
-                : 'Start a server to collect live stats'
-          }
-          variant="live"
-        >
-          {hasLive && liveUsage ? (
-            <>
-              <UsageMetric
-                icon={MemoryStick}
-                label="Memory"
-                usedLabel={formatBytes(liveUsage.liveMemoryBytes)}
-                limit={capacity.effectiveMemoryLimit}
-                percent={pct(liveMemMiB, capacity.effectiveMemoryLimit)}
-              />
-              <UsageMetric
-                icon={HardDrive}
-                label="Disk"
-                usedLabel={formatBytes(liveUsage.liveDiskBytes)}
-                limit={capacity.effectiveDiskLimit}
-                percent={pct(liveDiskMiB, capacity.effectiveDiskLimit)}
-              />
-            </>
-          ) : (
-            <p className="ds-nd-st-usage-empty">
-              {liveUsage?.serverCount === 0
-                ? 'Deploy a server on this node to see live RAM and disk usage.'
-                : 'No live data yet — servers may be offline or Wings is not reporting stats.'}
-            </p>
-          )}
-        </UsageColumn>
+        {showLive ? (
+          <UsageColumn
+            title="Live from Wings"
+            hint={
+              hasLive
+                ? 'Real-time container usage on this host'
+                : liveUsage?.serverCount === 0
+                  ? 'No servers deployed yet'
+                  : 'Start a server to collect live stats'
+            }
+            variant="live"
+          >
+            {hasLive && liveUsage ? (
+              <>
+                <UsageMetric
+                  icon={MemoryStick}
+                  label="Memory"
+                  usedLabel={formatBytes(liveUsage.liveMemoryBytes)}
+                  limit={capacity.effectiveMemoryLimit}
+                  percent={pct(liveMemMiB, capacity.effectiveMemoryLimit)}
+                />
+                <UsageMetric
+                  icon={HardDrive}
+                  label="Disk"
+                  usedLabel={formatBytes(liveUsage.liveDiskBytes)}
+                  limit={capacity.effectiveDiskLimit}
+                  percent={pct(liveDiskMiB, capacity.effectiveDiskLimit)}
+                />
+              </>
+            ) : (
+              <p className="ds-nd-st-usage-empty">
+                {liveUsage?.serverCount === 0
+                  ? 'Deploy a server on this node to see live RAM and disk usage.'
+                  : 'No live data yet — servers may be offline or Wings is not reporting stats.'}
+              </p>
+            )}
+          </UsageColumn>
+        ) : null}
 
         <UsageColumn
           title="Panel assigned"
@@ -147,8 +133,10 @@ function UsageColumn({
   return (
     <div className={`ds-nd-st-usage-col ds-nd-st-usage-col--${variant}`}>
       <div className="ds-nd-st-usage-col-head">
-        <p className="ds-nd-st-usage-col-title">{title}</p>
-        <p className="ds-nd-st-usage-col-hint">{hint}</p>
+        <div className="min-w-0">
+          <p className="ds-nd-st-usage-col-title">{title}</p>
+          <p className="ds-nd-st-usage-col-hint">{hint}</p>
+        </div>
       </div>
       <div className="ds-nd-st-usage-metrics">{children}</div>
     </div>

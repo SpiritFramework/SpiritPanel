@@ -422,8 +422,12 @@ export const SURFACE_TOKEN_KEYS = [
   'border-strong',
 ] as const;
 
-export function applySurfacePreset(preset: ThemePreset, mode: 'light' | 'dark') {
-  const root = document.documentElement;
+export function applySurfacePreset(
+  preset: ThemePreset,
+  mode: 'light' | 'dark',
+  target: HTMLElement = document.documentElement,
+) {
+  const root = target;
   if (preset === 'default') {
     for (const key of SURFACE_TOKEN_KEYS) {
       root.style.removeProperty(`--${key}`);

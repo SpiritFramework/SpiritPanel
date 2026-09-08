@@ -9,8 +9,7 @@ export interface ConsoleLine {
   at: number;
 }
 
-export const CONSOLE_VISIBLE_LINES = 50;
-const MAX_LINES = 100;
+const MAX_LINES = 5000;
 const buffers = new Map<string, ConsoleLine[]>();
 let lineSeq = 0;
 
@@ -72,10 +71,9 @@ export function appendConsoleLine(
   return lines;
 }
 
-/** Last N lines for display — avoids copying the full buffer on every append. */
-export function getVisibleConsoleLines(serverId: string, limit = CONSOLE_VISIBLE_LINES): ConsoleLine[] {
-  const lines = getConsoleLines(serverId);
-  return lines.length <= limit ? lines : lines.slice(-limit);
+/** All buffered lines for display. */
+export function getVisibleConsoleLines(serverId: string): ConsoleLine[] {
+  return getConsoleLines(serverId);
 }
 
 export function clearConsoleLines(serverId: string): void {

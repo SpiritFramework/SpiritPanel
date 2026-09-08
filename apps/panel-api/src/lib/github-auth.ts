@@ -27,6 +27,7 @@ export function buildGithubHeaders(token: string | null): HeadersInit {
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
     'User-Agent': 'Spirit-Panel-Marketplace',
+    'X-GitHub-Api-Version': '2022-11-28',
   };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;

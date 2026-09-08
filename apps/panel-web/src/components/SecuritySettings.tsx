@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Check,
   Copy,
+  Eye,
+  EyeOff,
   Github,
   KeyRound,
   Loader2,
+  Lock,
   Plus,
   ShieldCheck,
   ShieldOff,
@@ -14,99 +18,173 @@ import {
 } from 'lucide-react';
 import { api, type SshKeySummary, type TwoFactorStatus } from '../lib/api';
 import { useToast } from '../context/ToastContext';
-import { AccountSection, AccountStatusBadge } from './account/AccountShell';
+import { useBranding } from '../context/BrandingContext';
+import { DiscordIcon } from './icons/DiscordIcon';
+import { NodeOverviewSection } from './admin/node-detail/NodeDetailShell';
 import { Button, Input, Textarea } from './Layout';
 import { Spinner } from './ui';
+import {
+  ProfileSecuritySidebar,
+  type SecurityOverviewItem,
+} from './profile/ProfileSecuritySidebar';
 
-export function SecuritySettings({ passwordPanel }: { passwordPanel?: ReactNode }) {
-  const [twoFa, setTwoFa] = useState<TwoFactorStatus | null>(null);
-  const [githubConfigured, setGithubConfigured] = useState(false);
-  const [sshCount, setSshCount] = useState(0);
-  const [overviewLoading, setOverviewLoading] = useState(true);
+function SecurityBadge({ active, activeLabel, inactiveLabel }: { active: boolean; activeLabel: string; inactiveLabel: string }) {
+  return (
+    <span className={`ds-sec-badge${active ? ' ds-sec-badge--on' : ''}`}>
+      <span className="ds-sec-badge-dot" aria-hidden />
+      {active ? activeLabel : inactiveLabel}
+    </span>
+  );
+}
 
-  const loadOverview = useCallback(async () => {
-    setOverviewLoading(true);
-    try {
-      const [status, github, ssh] = await Promise.all([
-        api.twoFactorStatus(),
-        api.githubPatStatus(),
-        api.sshKeys(),
-      ]);
-      setTwoFa(status);
-      setGithubConfigured(github.configured);
-      setSshCount(ssh.length);
-    } catch {
-      /* surfaced on individual panels */
-    } finally {
-      setOverviewLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadOverview();
-  }, [loadOverview]);
-
-  const items = [
-    {
-      id: 'password',
-      label: 'Password',
-      value: 'Set',
-      ok: true,
-      icon: KeyRound,
-    },
-    {
-      id: '2fa',
-      label: 'Two-factor',
-      value: overviewLoading ? '…' : twoFa?.enabled ? 'Enabled' : 'Off',
-      ok: Boolean(twoFa?.enabled),
-      icon: ShieldCheck,
-    },
-    {
-      id: 'github',
-      label: 'GitHub',
-      value: overviewLoading ? '…' : githubConfigured ? 'Linked' : 'Not linked',
-      ok: githubConfigured,
-      icon: Github,
-    },
-    {
-      id: 'ssh',
-      label: 'SSH keys',
-      value: overviewLoading ? '…' : sshCount === 0 ? 'None' : `${sshCount}`,
-      ok: sshCount > 0,
-      icon: Terminal,
-    },
-  ] as const;
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete?: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
 
   return (
-    <div className="account-security">
-      <div className="account-security-grid" aria-label="Security status">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.id}
-              className={`account-security-tile ${item.ok ? 'account-security-tile--ok' : ''}`}
-            >
-              <span className="account-security-tile-icon" aria-hidden>
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-              <span className="account-security-tile-label">{item.label}</span>
-              <span className="account-security-tile-value">{item.value}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="account-security-columns">
-        {passwordPanel}
-        <TwoFactorPanel onChanged={loadOverview} />
-      </div>
-
-      <div className="account-security-integrations">
-        <GithubPatPanel onChanged={loadOverview} />
-        <SshKeysPanel onChanged={loadOverview} />
+    <div className="ds-prof-field">
+      <label className="ds-prof-field-label">{label}</label>
+      <div className="ds-prof-field-wrap">
+        <input
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          className="ds-prof-field-input"
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          className="ds-prof-field-toggle"
+          aria-label={visible ? 'Hide password' : 'Show password'}
+        >
+          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
       </div>
     </div>
+  );
+}
+
+function PasswordPanel({ minPasswordLength, onChanged }: { minPasswordLength: number; onChanged?: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  const checks = useMemo(
+    () => ({
+      length: newPassword.length >= minPasswordLength,
+      match: newPassword.length > 0 && newPassword === confirmPassword,
+    }),
+    [newPassword, confirmPassword, minPasswordLength],
+  );
+
+  async function savePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSaved(false);
+
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < minPasswordLength) {
+      setError(`Password must be at least ${minPasswordLength} characters`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.updateProfile({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSaved(true);
+      onChanged?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <NodeOverviewSection
+      icon={Lock}
+      title="Password"
+      description={`At least ${minPasswordLength} characters — use a unique passphrase`}
+      badge={<SecurityBadge active activeLabel="Set" inactiveLabel="Unset" />}
+    >
+      <form onSubmit={savePassword}>
+        <div className="ds-prof-password-grid">
+          <PasswordField
+            label="Current password"
+            value={currentPassword}
+            onChange={(value) => {
+              setCurrentPassword(value);
+              setSaved(false);
+            }}
+            autoComplete="current-password"
+          />
+          <PasswordField
+            label="New password"
+            value={newPassword}
+            onChange={(value) => {
+              setNewPassword(value);
+              setSaved(false);
+            }}
+            autoComplete="new-password"
+            minLength={minPasswordLength}
+          />
+          <PasswordField
+            label="Confirm new password"
+            value={confirmPassword}
+            onChange={(value) => {
+              setConfirmPassword(value);
+              setSaved(false);
+            }}
+            autoComplete="new-password"
+          />
+        </div>
+
+        {(newPassword || confirmPassword) && (
+          <div className="ds-prof-checklist">
+            <div className={`ds-prof-checklist-item${checks.length ? ' ds-prof-checklist-item--ok' : ''}`}>
+              {checks.length ? <Check className="h-3.5 w-3.5" /> : <span className="ds-prof-checklist-dot" aria-hidden />}
+              At least {minPasswordLength} characters
+            </div>
+            <div className={`ds-prof-checklist-item${checks.match ? ' ds-prof-checklist-item--ok' : ''}`}>
+              {checks.match ? <Check className="h-3.5 w-3.5" /> : <span className="ds-prof-checklist-dot" aria-hidden />}
+              Passwords match
+            </div>
+          </div>
+        )}
+
+        <div className="ds-prof-inline-save">
+          <div className="min-w-0">
+            {error ? <p className="text-xs text-[var(--danger-fg)]">{error}</p> : null}
+            {saved && !error ? <p className="text-xs text-[var(--success-fg)]">Password updated</p> : null}
+          </div>
+          <Button type="submit" disabled={saving || !currentPassword || !newPassword || !checks.match}>
+            {saving ? 'Updating…' : saved ? 'Updated' : 'Update password'}
+          </Button>
+        </div>
+      </form>
+    </NodeOverviewSection>
   );
 }
 
@@ -122,21 +200,19 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   }
 
   return (
-    <div className="rounded-xl border border-[var(--warning-border)] bg-[var(--warning-bg)] p-4">
-      <p className="text-sm font-semibold" style={{ color: 'var(--warning-fg)' }}>
-        Save your recovery codes
-      </p>
-      <p className="mt-1 text-xs text-[var(--muted)]">
+    <div className="ds-sec-recovery">
+      <p className="ds-sec-recovery-title">Save your recovery codes</p>
+      <p className="ds-sec-recovery-desc">
         Each code works once if you lose your authenticator. Store them somewhere safe — they won&apos;t be shown again.
       </p>
-      <div className="account-recovery-grid mt-3">
+      <div className="ds-sec-recovery-grid">
         {codes.map((code) => (
-          <span key={code} className="account-recovery-code">
+          <span key={code} className="ds-sec-recovery-code">
             {code}
           </span>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="ds-sec-recovery-actions">
         <Button variant="subtle" onClick={copyAll}>
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           {copied ? 'Copied' : 'Copy all'}
@@ -238,29 +314,28 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
   const enabled = status?.enabled ?? false;
 
   return (
-    <AccountSection
+    <NodeOverviewSection
+      icon={ShieldCheck}
       title="Two-factor authentication"
       description="Require a one-time code from your authenticator app when signing in"
-      icon={ShieldCheck}
-      tone={enabled ? 'success' : 'default'}
-      badge={<AccountStatusBadge active={enabled} activeLabel="Enabled" inactiveLabel="Disabled" />}
+      badge={<SecurityBadge active={enabled} activeLabel="Enabled" inactiveLabel="Disabled" />}
     >
       {loading ? (
-        <div className="flex justify-center py-8">
+        <div className="ds-sec-loading">
           <Spinner className="h-5 w-5" />
         </div>
       ) : recoveryCodes ? (
         <RecoveryCodes codes={recoveryCodes} onDone={() => setRecoveryCodes(null)} />
       ) : enabled ? (
-        <div className="space-y-4">
-          <p className="text-sm text-[var(--muted)]">
+        <div className="ds-sec-stack">
+          <p className="ds-sec-copy">
             Your account is protected with TOTP. You have{' '}
-            <strong className="text-[var(--text)]">{status?.recoveryRemaining ?? 0}</strong> recovery codes remaining.
+            <strong>{status?.recoveryRemaining ?? 0}</strong> recovery codes remaining.
           </p>
 
           {regenerating || disabling ? (
-            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-              <p className="text-xs text-[var(--muted)]">
+            <div className="ds-sec-panel">
+              <p className="ds-sec-panel-lead">
                 {disabling
                   ? 'Enter your password to turn off two-factor authentication.'
                   : 'Enter your password to generate a fresh set of recovery codes.'}
@@ -272,7 +347,7 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
               />
-              <div className="flex flex-wrap gap-2">
+              <div className="ds-sec-actions">
                 <Button
                   onClick={disabling ? confirmDisable : confirmRegenerate}
                   disabled={busy || !password}
@@ -300,7 +375,7 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="ds-sec-actions">
               <Button variant="subtle" onClick={() => setRegenerating(true)}>
                 <KeyRound className="h-3.5 w-3.5" />
                 Regenerate recovery codes
@@ -313,18 +388,16 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
           )}
         </div>
       ) : setup ? (
-        <div className="space-y-4">
-          <div className="account-2fa-setup">
-            <div className="account-qr-frame">
+        <div className="ds-sec-stack">
+          <div className="ds-sec-2fa-setup">
+            <div className="ds-sec-qr-frame">
               <img src={setup.qr} alt="2FA QR code" className="h-36 w-36" />
             </div>
             <div className="min-w-0 space-y-2">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="ds-sec-copy">
                 Scan with Google Authenticator, 1Password, Authy, or any TOTP app. Or enter this key manually:
               </p>
-              <code className="block break-all rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 font-mono text-xs">
-                {setup.secret}
-              </code>
+              <code className="ds-sec-secret">{setup.secret}</code>
             </div>
           </div>
           <div className="max-w-xs">
@@ -337,7 +410,7 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
               inputMode="numeric"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="ds-sec-actions">
             <Button onClick={confirmEnable} disabled={busy || code.trim().length < 6}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
               Verify & enable
@@ -348,8 +421,8 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-[var(--muted)]">
+        <div className="ds-sec-stack">
+          <p className="ds-sec-copy">
             Add an extra layer of protection — you&apos;ll enter a code from your phone each time you sign in.
           </p>
           <Button onClick={beginSetup} disabled={busy}>
@@ -358,7 +431,7 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
           </Button>
         </div>
       )}
-    </AccountSection>
+    </NodeOverviewSection>
   );
 }
 
@@ -420,20 +493,19 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <AccountSection
+    <NodeOverviewSection
+      icon={Github}
       title="GitHub token"
       description="Use your own API rate limit for marketplace search and installs (5000 req/hr)"
-      icon={Github}
-      tone={configured ? 'success' : 'default'}
-      badge={<AccountStatusBadge active={configured} activeLabel="Linked" inactiveLabel="Not linked" />}
+      badge={<SecurityBadge active={configured} activeLabel="Linked" inactiveLabel="Not linked" />}
     >
       {loading ? (
-        <div className="flex justify-center py-8">
+        <div className="ds-sec-loading">
           <Spinner className="h-5 w-5" />
         </div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs leading-relaxed text-[var(--muted)]">
+        <div className="ds-sec-stack">
+          <p className="ds-sec-copy-sm">
             Create a{' '}
             <a
               href="https://github.com/settings/tokens?type=beta"
@@ -443,17 +515,15 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
             >
               fine-grained personal access token
             </a>{' '}
-            or classic PAT with <strong className="text-[var(--text)]">public repository read</strong> access.
-            Your token is encrypted and never shown again after saving.
+            or classic PAT with <strong>public repository read</strong> access. Your token is encrypted and never
+            shown again after saving.
           </p>
 
           {configured && !editing ? (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--success-border,#22c55e)_35%,var(--border))] bg-[color-mix(in_srgb,var(--success-bg,#14532d)_40%,transparent)] px-4 py-3">
-              <Check className="h-4 w-4 text-[var(--success-fg)]" />
-              <span className="flex-1 text-sm text-[var(--success-fg)]">
-                GitHub token saved — marketplace uses your rate limit
-              </span>
-              <div className="flex gap-2">
+            <div className="ds-sec-success-banner">
+              <Check className="h-4 w-4 shrink-0" />
+              <span className="flex-1">GitHub token saved — marketplace uses your rate limit</span>
+              <div className="ds-sec-actions ds-sec-actions--inline">
                 <Button variant="subtle" onClick={() => setEditing(true)} disabled={busy}>
                   Replace
                 </Button>
@@ -463,7 +533,7 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
               </div>
             </div>
           ) : (
-            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+            <div className="ds-sec-panel">
               <Input
                 label="Personal access token"
                 type="password"
@@ -472,13 +542,19 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
                 placeholder="ghp_… or github_pat_…"
                 autoComplete="off"
               />
-              <div className="flex flex-wrap gap-2">
+              <div className="ds-sec-actions">
                 <Button onClick={savePat} disabled={busy || !token.trim()}>
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Github className="h-3.5 w-3.5" />}
                   Save token
                 </Button>
                 {editing && (
-                  <Button variant="ghost" onClick={() => { setEditing(false); setToken(''); }}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setEditing(false);
+                      setToken('');
+                    }}
+                  >
                     Cancel
                   </Button>
                 )}
@@ -487,7 +563,7 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
           )}
         </div>
       )}
-    </AccountSection>
+    </NodeOverviewSection>
   );
 }
 
@@ -545,111 +621,400 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   return (
-    <AccountSection
+    <NodeOverviewSection
+      icon={Terminal}
       title="SSH keys"
       description="Authenticate to SFTP with a public key instead of your password"
-      icon={Terminal}
       badge={
         keys.length > 0 ? (
-          <span className="account-status-badge account-status-badge--on">
-            <span className="account-status-dot" />
+          <span className="ds-sec-badge ds-sec-badge--on">
+            <span className="ds-sec-badge-dot" aria-hidden />
             {keys.length} key{keys.length === 1 ? '' : 's'}
           </span>
         ) : undefined
       }
     >
       {loading ? (
-        <div className="flex justify-center py-8">
+        <div className="ds-sec-loading">
           <Spinner className="h-5 w-5" />
         </div>
+      ) : keys.length === 0 && !adding ? (
+        <div className="ds-sec-empty">
+          <span className="ds-sec-empty-icon" aria-hidden>
+            <Terminal className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="ds-sec-empty-title">No SSH keys yet</p>
+            <p className="ds-sec-empty-desc">Add a public key to connect via SFTP without your panel password.</p>
+          </div>
+          <Button variant="subtle" onClick={() => setAdding(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add SSH key
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {keys.length === 0 && !adding ? (
-            <div className="account-keys-empty">
-              <span className="account-keys-empty-icon">
-                <Terminal className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-medium">No SSH keys yet</p>
-                <p className="mt-0.5 text-xs text-[var(--muted)]">
-                  Add a public key to connect via SFTP without your panel password.
-                </p>
+        <div className="ds-sec-stack">
+          {keys.length > 0 && (
+            <ul className="ds-sec-ssh-list">
+              {keys.map((key) => (
+                <li key={key.id} className="ds-sec-ssh-item">
+                  <span className="ds-sec-ssh-icon" aria-hidden>
+                    <KeyRound className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="ds-sec-ssh-name">{key.name}</p>
+                    <p className="ds-sec-ssh-fp">{key.fingerprint}</p>
+                  </div>
+                  <span className="ds-sec-ssh-date">{new Date(key.createdAt).toLocaleDateString()}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeKey(key)}
+                    className="ds-sec-ssh-remove"
+                    aria-label={`Remove ${key.name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {adding ? (
+            <div className="ds-sec-panel">
+              <Input
+                label="Key name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Work laptop"
+                maxLength={64}
+              />
+              <Textarea
+                label="Public key"
+                value={publicKey}
+                onChange={(e) => setPublicKey(e.target.value)}
+                rows={3}
+                placeholder="ssh-ed25519 AAAA... user@host"
+              />
+              <div className="ds-sec-actions">
+                <Button onClick={addKey} disabled={busy || !name.trim() || !publicKey.trim()}>
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Add key
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setAdding(false);
+                    setName('');
+                    setPublicKey('');
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
+            </div>
+          ) : (
+            keys.length > 0 && (
               <Button variant="subtle" onClick={() => setAdding(true)}>
                 <Plus className="h-3.5 w-3.5" />
                 Add SSH key
               </Button>
-            </div>
-          ) : (
-            <>
-              <ul className="space-y-2">
-                {keys.map((key) => (
-                  <li key={key.id} className="account-ssh-item">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_12%,var(--bg-elevated))] text-[var(--accent)]">
-                      <KeyRound className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{key.name}</p>
-                      <p className="truncate font-mono text-[11px] text-[var(--muted)]">{key.fingerprint}</p>
-                    </div>
-                    <span className="hidden text-[11px] text-[var(--muted)] sm:block">
-                      {new Date(key.createdAt).toLocaleDateString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeKey(key)}
-                      className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)]"
-                      aria-label="Remove key"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              {adding ? (
-                <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-                  <Input
-                    label="Key name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Work laptop"
-                    maxLength={64}
-                  />
-                  <Textarea
-                    label="Public key"
-                    value={publicKey}
-                    onChange={(e) => setPublicKey(e.target.value)}
-                    rows={3}
-                    placeholder="ssh-ed25519 AAAA... user@host"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={addKey} disabled={busy || !name.trim() || !publicKey.trim()}>
-                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                      Add key
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setAdding(false);
-                        setName('');
-                        setPublicKey('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="subtle" onClick={() => setAdding(true)}>
-                  <Plus className="h-3.5 w-3.5" />
-                  Add SSH key
-                </Button>
-              )}
-            </>
+            )
           )}
         </div>
       )}
-    </AccountSection>
+    </NodeOverviewSection>
+  );
+}
+
+function DiscordPanel({ onChanged }: { onChanged: () => void }) {
+  const { success, error: toastError } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState(false);
+  const [linked, setLinked] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const status = await api.discordStatus();
+      setEnabled(status.enabled);
+      setLinked(status.linked);
+      setUsername(status.username);
+      setTwoFactorEnabled(status.twoFactorEnabled);
+    } catch {
+      setEnabled(false);
+      setLinked(false);
+      setUsername(null);
+      setTwoFactorEnabled(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    const linkedFlag = searchParams.get('discord');
+    const discordError = searchParams.get('discord_error');
+    if (linkedFlag === 'linked') {
+      success('Discord account linked. You can use it to sign in next time.');
+      searchParams.delete('discord');
+      setSearchParams(searchParams, { replace: true });
+      void load();
+      onChanged();
+    }
+    if (discordError) {
+      const messages: Record<string, string> = {
+        denied: 'Discord authorization was cancelled.',
+        failed: 'Could not complete Discord linking. Please try again.',
+        taken: 'That Discord account is already linked to another user.',
+        disabled: 'Discord login is not enabled on this panel.',
+        reauth: 'Confirm your password again before linking Discord.',
+      };
+      toastError('Discord link failed', messages[discordError] ?? 'Could not link Discord.');
+      searchParams.delete('discord_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [load, onChanged, searchParams, setSearchParams, success, toastError]);
+
+  function openConfirm() {
+    setConfirmError('');
+    setPassword('');
+    setCode('');
+    setConfirmOpen(true);
+  }
+
+  function closeConfirm() {
+    if (busy) return;
+    setConfirmOpen(false);
+    setConfirmError('');
+    setPassword('');
+    setCode('');
+  }
+
+  async function confirmAndStartLink(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setConfirmError('');
+    try {
+      const { linkToken } = await api.prepareDiscordLink(password, code.trim() || undefined);
+      window.location.href = `/api/auth/discord/start?intent=link&linkToken=${encodeURIComponent(linkToken)}`;
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'Could not verify your account');
+      setBusy(false);
+    }
+  }
+
+  async function unlink() {
+    if (!confirm('Unlink Discord from this account? You can still sign in with your password.')) return;
+    setBusy(true);
+    try {
+      await api.unlinkDiscord();
+      setLinked(false);
+      setUsername(null);
+      success('Discord unlinked');
+      onChanged();
+    } catch (err) {
+      toastError('Could not unlink Discord', err instanceof Error ? err.message : undefined);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <NodeOverviewSection
+      icon={DiscordIcon}
+      title="Discord"
+      description="Link Discord to sign in without your password next time"
+      badge={<SecurityBadge active={linked} activeLabel="Linked" inactiveLabel="Not linked" />}
+    >
+      {loading ? (
+        <div className="ds-sec-loading">
+          <Spinner className="h-5 w-5" />
+        </div>
+      ) : !enabled ? (
+        <p className="ds-sec-copy-sm">
+          Discord login is not enabled on this panel. An administrator can turn it on in Settings → Security.
+        </p>
+      ) : confirmOpen ? (
+        <form className="ds-sec-stack" onSubmit={(e) => void confirmAndStartLink(e)}>
+          <p className="ds-sec-copy-sm">
+            {linked
+              ? 'Confirm your password to change the linked Discord account.'
+              : 'Confirm your password to link Discord to this account.'}
+            {twoFactorEnabled ? ' Enter your authenticator code as well.' : ''}
+          </p>
+          <PasswordField
+            label="Current password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+          />
+          {twoFactorEnabled ? (
+            <div className="ds-prof-field">
+              <label className="ds-prof-field-label">Authentication code</label>
+              <div className="ds-prof-field-wrap">
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  className="ds-prof-field-input"
+                  required
+                />
+              </div>
+            </div>
+          ) : null}
+          {confirmError ? <p className="text-sm text-[var(--danger-fg,#f87171)]">{confirmError}</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="primary" disabled={busy || !password.trim()}>
+              {busy ? 'Verifying…' : linked ? 'Continue to Discord' : 'Continue to Discord'}
+            </Button>
+            <Button type="button" variant="ghost" disabled={busy} onClick={closeConfirm}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : linked ? (
+        <div className="ds-sec-stack">
+          <p className="ds-sec-copy-sm">
+            Linked as <strong>@{username?.replace(/^@/, '')}</strong>. You can sign in with Discord or your password.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="primary" disabled={busy} onClick={openConfirm}>
+              Change Discord
+            </Button>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => void unlink()}>
+              {busy ? 'Unlinking…' : 'Unlink Discord'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="ds-sec-stack">
+          <p className="ds-sec-copy-sm">
+            Connect your Discord account, then use Continue with Discord on the login page. You will need your password
+            {twoFactorEnabled ? ' and 2FA code' : ''} to link.
+          </p>
+          <Button type="button" variant="primary" disabled={busy} onClick={openConfirm}>
+            Link Discord
+          </Button>
+        </div>
+      )}
+    </NodeOverviewSection>
+  );
+}
+
+export function SecuritySettings() {
+  const { branding } = useBranding();
+  const [twoFa, setTwoFa] = useState<TwoFactorStatus | null>(null);
+  const [githubConfigured, setGithubConfigured] = useState(false);
+  const [discordLinked, setDiscordLinked] = useState(false);
+  const [sshCount, setSshCount] = useState(0);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+
+  const loadOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      const [status, github, discord, ssh] = await Promise.all([
+        api.twoFactorStatus(),
+        api.githubPatStatus(),
+        api.discordStatus(),
+        api.sshKeys(),
+      ]);
+      setTwoFa(status);
+      setGithubConfigured(github.configured);
+      setDiscordLinked(discord.linked);
+      setSshCount(ssh.length);
+    } catch {
+      /* surfaced on individual panels */
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
+
+  const items: SecurityOverviewItem[] = [
+    { id: 'password', label: 'Password', value: 'Set', ok: true, icon: KeyRound },
+    {
+      id: '2fa',
+      label: 'Two-factor',
+      value: twoFa?.enabled ? 'Enabled' : 'Off',
+      ok: Boolean(twoFa?.enabled),
+      icon: ShieldCheck,
+    },
+    {
+      id: 'github',
+      label: 'GitHub',
+      value: githubConfigured ? 'Linked' : 'Not linked',
+      ok: githubConfigured,
+      icon: Github,
+    },
+    {
+      id: 'discord',
+      label: 'Discord',
+      value: discordLinked ? 'Linked' : 'Not linked',
+      ok: discordLinked,
+      icon: DiscordIcon,
+    },
+    {
+      id: 'ssh',
+      label: 'SSH keys',
+      value: sshCount === 0 ? 'None' : `${sshCount}`,
+      ok: sshCount > 0,
+      icon: Terminal,
+    },
+  ];
+
+  return (
+    <div className="ds-prof-workspace">
+      <div className="ds-prof-main">
+        <section className="ds-sec-overview" aria-label="Security overview">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.id}
+                className={`ds-sec-overview-tile${item.ok ? ' ds-sec-overview-tile--ok' : ''}${overviewLoading ? ' ds-sec-overview-tile--loading' : ''}`}
+              >
+                <span className="ds-sec-overview-icon" aria-hidden>
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="ds-sec-overview-copy">
+                  <span className="ds-sec-overview-label">{item.label}</span>
+                  <span className="ds-sec-overview-value">{overviewLoading ? '…' : item.value}</span>
+                </span>
+              </div>
+            );
+          })}
+        </section>
+
+        <div className="ds-sec-grid">
+          <div className="ds-sec-col">
+            <PasswordPanel minPasswordLength={branding.minPasswordLength} />
+            <DiscordPanel onChanged={loadOverview} />
+            <GithubPatPanel onChanged={loadOverview} />
+          </div>
+          <div className="ds-sec-col">
+            <TwoFactorPanel onChanged={loadOverview} />
+            <SshKeysPanel onChanged={loadOverview} />
+          </div>
+        </div>
+      </div>
+
+      <ProfileSecuritySidebar items={items} loading={overviewLoading} />
+    </div>
   );
 }

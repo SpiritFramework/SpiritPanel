@@ -6,8 +6,18 @@ import {
 } from './product-meta.js';
 import { isSafeHttpUrl, isSafeImageSrc } from './safe-url.js';
 import { isDiscordWebhookUrl } from './discord-webhook.js';
+import type { BrandingAssetKind } from './branding-assets.js';
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/** Branding field each uploadable asset kind writes to. */
+export function brandingAssetField(
+  kind: BrandingAssetKind,
+): 'logoUrl' | 'faviconUrl' | 'appIconUrl' {
+  if (kind === 'logo') return 'logoUrl';
+  if (kind === 'favicon') return 'faviconUrl';
+  return 'appIconUrl';
+}
 
 /** Empty, panel asset path, or http(s) URL. */
 export function isValidBrandingAssetUrl(url: string): boolean {
@@ -28,21 +38,25 @@ const themePreset = z.enum([
 const defaultThemeMode = z.enum(['system', 'light', 'dark']);
 const loginBackground = z.enum([
   'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void',
 ]);
 const panelBackground = z.enum([
   'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo',
 ]);
-const serverCardStyle = z.enum(['auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked']);
-const adminSidebarStyle = z.enum(['default', 'rail', 'minimal']);
-const clientSidebarStyle = z.enum(['default', 'floating', 'inset']);
-const serverSidebarStyle = z.enum(['default', 'compact', 'wide']);
+const serverCardStyle = z.enum([
+  'auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
+]);
+const adminSidebarStyle = z.enum(['default', 'rail', 'minimal', 'icons', 'boxed']);
+const clientSidebarStyle = z.enum(['default', 'floating', 'inset', 'pill', 'underline']);
+const serverSidebarStyle = z.enum(['default', 'compact', 'wide', 'icons', 'stacked']);
 const surfaceRadius = z.enum(['default', 'soft', 'sharp']);
 const sidebarMaterial = z.enum(['glass', 'solid', 'frosted']);
-const contentDensity = z.enum(['comfortable', 'compact']);
+const contentDensity = z.enum(['comfortable', 'compact', 'spacious']);
 const motionPreference = z.enum(['system', 'full', 'reduced']);
 const serverListDefaultView = z.enum(['grid', 'list']);
-const adminTabsStyle = z.enum(['segmented', 'underline']);
-const loginAmbientLevel = z.enum(['off', 'standard', 'enhanced']);
+const adminTabsStyle = z.enum(['segmented', 'underline', 'pills']);
+const loginAmbientLevel = z.enum(['off', 'standard', 'enhanced', 'cinematic']);
 
 export const brandingSchema = z.object({
   panelName: z.string().min(1).max(64),
@@ -51,6 +65,7 @@ export const brandingSchema = z.object({
   secondaryColor: hexColor.optional(),
   logoUrl: brandingAssetUrl,
   faviconUrl: brandingAssetUrl,
+  appIconUrl: brandingAssetUrl.optional(),
   loginMessage: z.string().max(200),
   themePreset: themePreset.optional(),
   defaultThemeMode: defaultThemeMode.optional(),
@@ -197,6 +212,12 @@ export const turnstileSchema = z.object({
   secretKey: z.string().max(512).optional().default(''),
 });
 
+export const discordAuthSchema = z.object({
+  enabled: z.boolean(),
+  clientId: z.string().max(128).default(''),
+  clientSecret: z.string().max(128).optional().default(''),
+});
+
 export const cloudflareDnsSchema = z.object({
   enabled: z.boolean(),
   apiToken: z.string().max(255).optional().default(''),
@@ -236,6 +257,12 @@ export interface TurnstileSettings {
   secretKey: string;
 }
 
+export interface DiscordAuthSettings {
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+}
+
 export interface CloudflareDnsSettings {
   enabled: boolean;
   apiToken: string;
@@ -251,26 +278,31 @@ export interface BrandingSettings {
   secondaryColor?: string;
   logoUrl: string;
   faviconUrl: string;
+  /** Square PWA/install icon generated from the logo or favicon. */
+  appIconUrl?: string;
   loginMessage: string;
   themePreset?: 'default' | 'midnight' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'mono'
     | 'lavender' | 'crimson' | 'arctic' | 'neon' | 'copper' | 'slate' | 'grape' | 'mint' | 'sand' | 'void' | 'cherry';
   defaultThemeMode?: 'system' | 'light' | 'dark';
   loginBackground?: 'gradient' | 'orbs' | 'mesh' | 'grid' | 'aurora' | 'minimal'
-    | 'waves' | 'stars' | 'beams' | 'ripple' | 'prism' | 'spotlight';
+    | 'waves' | 'stars' | 'beams' | 'ripple' | 'prism' | 'spotlight'
+    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'void';
   panelBackground?: 'gradient' | 'subtle' | 'grid' | 'orbs' | 'none'
-    | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer' | 'bokeh' | 'prism';
+    | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer' | 'bokeh' | 'prism'
+    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'halo';
   panelAmbient?: boolean;
-  serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked';
-  adminSidebarStyle?: 'default' | 'rail' | 'minimal';
-  clientSidebarStyle?: 'default' | 'floating' | 'inset';
-  serverSidebarStyle?: 'default' | 'compact' | 'wide';
+  serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked'
+    | 'poster' | 'split' | 'outline' | 'tile';
+  adminSidebarStyle?: 'default' | 'rail' | 'minimal' | 'icons' | 'boxed';
+  clientSidebarStyle?: 'default' | 'floating' | 'inset' | 'pill' | 'underline';
+  serverSidebarStyle?: 'default' | 'compact' | 'wide' | 'icons' | 'stacked';
   surfaceRadius?: 'default' | 'soft' | 'sharp';
   sidebarMaterial?: 'glass' | 'solid' | 'frosted';
-  contentDensity?: 'comfortable' | 'compact';
+  contentDensity?: 'comfortable' | 'compact' | 'spacious';
   motionPreference?: 'system' | 'full' | 'reduced';
   serverListDefaultView?: 'grid' | 'list';
-  adminTabsStyle?: 'segmented' | 'underline';
-  loginAmbientLevel?: 'off' | 'standard' | 'enhanced';
+  adminTabsStyle?: 'segmented' | 'underline' | 'pills';
+  loginAmbientLevel?: 'off' | 'standard' | 'enhanced' | 'cinematic';
   showHeroStripe?: boolean;
 }
 
@@ -341,6 +373,7 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   secondaryColor: '#8b5cf6',
   logoUrl: '',
   faviconUrl: '',
+  appIconUrl: '',
   loginMessage: 'Sign in to manage your game servers',
   themePreset: 'default',
   defaultThemeMode: 'dark',
@@ -525,6 +558,12 @@ export const DEFAULT_TURNSTILE: TurnstileSettings = {
   secretKey: '',
 };
 
+export const DEFAULT_DISCORD_AUTH: DiscordAuthSettings = {
+  enabled: false,
+  clientId: '',
+  clientSecret: '',
+};
+
 export const DEFAULT_CLOUDFLARE_DNS: CloudflareDnsSettings = {
   enabled: false,
   apiToken: '',
@@ -596,6 +635,20 @@ export async function getTurnstileSettings(): Promise<TurnstileSettings> {
   return readSetting('turnstile', DEFAULT_TURNSTILE);
 }
 
+export async function getDiscordAuthSettings(): Promise<DiscordAuthSettings> {
+  const raw = await readSetting('discord_auth', DEFAULT_DISCORD_AUTH);
+  return {
+    enabled: Boolean(raw.enabled),
+    clientId: typeof raw.clientId === 'string' ? raw.clientId.trim() : '',
+    clientSecret: typeof raw.clientSecret === 'string' ? raw.clientSecret : '',
+  };
+}
+
+export async function isDiscordLoginEnabled(): Promise<boolean> {
+  const settings = await getDiscordAuthSettings();
+  return Boolean(settings.enabled && settings.clientId && settings.clientSecret);
+}
+
 export async function getCloudflareDnsSettings(): Promise<CloudflareDnsSettings> {
   const raw = await readSetting('cloudflare_dns', DEFAULT_CLOUDFLARE_DNS);
   const reserved = Array.isArray(raw.reservedSlugs)
@@ -628,11 +681,13 @@ export async function getMarketplaceSettings(): Promise<MarketplaceSettings> {
 }
 
 export async function isMarketplaceEnabled(): Promise<boolean> {
+  /** @deprecated Prefer isFivemMarketplaceActive() from plugins/manager — panel_plugins is source of truth. */
   const settings = await getMarketplaceSettings();
   return settings.enabled;
 }
 
 export async function isMarketplaceGithubInstallsAllowed(): Promise<boolean> {
+  /** @deprecated Prefer isFivemGithubInstallsAllowed() from plugins/manager. */
   const settings = await getMarketplaceSettings();
   return settings.enabled && settings.allowGithubInstalls;
 }
@@ -645,11 +700,13 @@ export async function getMinecraftPluginsSettings(): Promise<MinecraftPluginsSet
   };
 }
 
+/** @deprecated Prefer isMinecraftPluginsActive() from plugins/manager — panel_plugins is source of truth. */
 export async function isMinecraftPluginsEnabled(): Promise<boolean> {
   const settings = await getMinecraftPluginsSettings();
   return settings.enabled;
 }
 
+/** @deprecated Prefer isMinecraftModrinthInstallsAllowed() from plugins/manager. */
 export async function isMinecraftModrinthInstallsAllowed(): Promise<boolean> {
   const settings = await getMinecraftPluginsSettings();
   return settings.enabled && settings.allowModrinthInstalls;
@@ -682,7 +739,7 @@ export async function assertTicketsEnabledForClients(): Promise<void> {
 }
 
 export async function getPublicPanelConfig() {
-  const [branding, general, maintenance, announcement, registrationEnabled, security, turnstile, tickets] =
+  const [branding, general, maintenance, announcement, registrationEnabled, security, turnstile, tickets, discordAuth] =
     await Promise.all([
     getBrandingSettings(),
     getGeneralSettings(),
@@ -692,6 +749,7 @@ export async function getPublicPanelConfig() {
     getSecuritySettings(),
     getTurnstileSettings(),
     getTicketsSettings(),
+    getDiscordAuthSettings(),
   ]);
 
   const turnstileActive = turnstile.enabled && Boolean(turnstile.siteKey) && Boolean(turnstile.secretKey);
@@ -718,6 +776,7 @@ export async function getPublicPanelConfig() {
     ticketsEnabled: tickets.enabled,
     turnstileEnabled: turnstileActive,
     turnstileSiteKey: turnstileActive ? turnstile.siteKey : '',
+    discordLoginEnabled: Boolean(discordAuth.enabled && discordAuth.clientId && discordAuth.clientSecret),
   };
 }
 

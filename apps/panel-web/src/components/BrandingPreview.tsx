@@ -47,26 +47,32 @@ export function BrandingPreview({
           >
             <div className="login-bg-canvas pointer-events-none absolute inset-0" aria-hidden />
             <div className="login-bg-overlay pointer-events-none absolute inset-0" aria-hidden />
-            <div className="relative flex items-center gap-2">
-              {safeLogo ? (
-                <img src={safeLogo} alt="" className="h-7 w-7 rounded-md object-contain ring-1 ring-white/15" />
-              ) : (
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white"
-                  style={panelNameGradientStyle()}
-                >
-                  {panelNameInitial(panelName)}
-                </span>
-              )}
-              <div className="min-w-0">
-                <PanelName name={panelName || 'Panel name'} variant="preview" className="block truncate text-[11px]" />
-                <p className="truncate text-[9px] text-white/65">{tagline}</p>
+            <div className="relative space-y-2">
+              <div className="flex items-center gap-2">
+                {safeLogo ? (
+                  <img src={safeLogo} alt="" className="h-7 w-7 rounded-md object-contain ring-1 ring-white/15" />
+                ) : (
+                  <span
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white"
+                    style={panelNameGradientStyle()}
+                  >
+                    {panelNameInitial(panelName)}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <PanelName name={panelName || 'Panel name'} variant="preview" className="block truncate text-[11px]" />
+                  {tagline && (
+                    <span className="mt-0.5 inline-block rounded-full border border-white/15 bg-white/10 px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-wide text-white/75">
+                      {tagline}
+                    </span>
+                  )}
+                </div>
               </div>
+              <p className="line-clamp-2 pl-2 text-[9px] font-medium leading-snug text-white/88">{loginMessage}</p>
             </div>
-            <p className="relative mt-3 line-clamp-2 text-[9px] leading-relaxed text-white/70">{loginMessage}</p>
           </div>
           <div
-            className={`panel-preview panel-preview--${panelBackground} relative border-l border-[var(--border)] p-3`}
+            className={`panel-preview panel-preview--${panelBackground} relative flex flex-col justify-center border-l border-[var(--border)] p-3`}
             style={
               {
                 '--preview-accent-glow': accentColor,
@@ -74,15 +80,16 @@ export function BrandingPreview({
               } as CSSProperties
             }
           >
-            <div className="relative rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm">
-              <PanelName name={panelName || 'Panel name'} variant="sidebar" className="block text-[10px]" />
-              <p className="mt-1 text-[9px] text-[var(--muted)]">Sign in to continue</p>
-              <span
-                className="mt-2 inline-block rounded-md px-2 py-1 text-[9px] font-medium text-white"
-                style={{ background: accentColor }}
-              >
-                Sign in
-              </span>
+            <div className="relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] shadow-sm">
+              <div className="absolute inset-y-0 left-0 w-0.5 bg-[var(--accent)]" aria-hidden />
+              <div className="px-2.5 py-2">
+                <p className="text-[8px] font-bold uppercase tracking-wide text-[var(--accent-hover)]">Welcome back</p>
+                <PanelName name={panelName || 'Panel name'} variant="sidebar" className="mt-0.5 block text-[10px]" />
+                <p className="mt-0.5 text-[8px] text-[var(--muted)]">Sign in to your account</p>
+                <span className="mt-2 inline-block rounded-md px-2 py-0.5 text-[8px] font-semibold text-white" style={{ background: accentColor }}>
+                  Sign in
+                </span>
+              </div>
             </div>
           </div>
         </div>

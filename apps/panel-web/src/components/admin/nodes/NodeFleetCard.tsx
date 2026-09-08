@@ -3,6 +3,7 @@ import { ArrowUpRight, HardDrive, MapPin, Network, Server, Wrench } from 'lucide
 import type { AdminNodeSummary } from '../../../lib/api';
 import { formatCapacityLabel } from '../../../lib/node-capacity';
 import { formatResourceAmount } from '../../../lib/server-theme';
+import { LocationFlag } from '../../LocationFlag';
 import { NodeResourceMeter } from '../node-detail/NodeResourceMeter';
 import { getNodeFleetStatus } from './node-fleet-utils';
 
@@ -43,6 +44,9 @@ export function NodeFleetCard({ node }: { node: AdminNodeSummary }) {
       <div className="ds-fleet-card-meta-row">
         <span className="ds-fleet-card-chip">
           <MapPin className="ds-icon ds-icon--sm" aria-hidden />
+          {node.location.flagUrl ? (
+            <LocationFlag url={node.location.flagUrl} size="sm" className="ds-fleet-card-flag" />
+          ) : null}
           {node.location.short}
         </span>
         <span className="ds-fleet-card-chip">

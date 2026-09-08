@@ -16,6 +16,7 @@ import {
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
 import { assertPublicDatabaseHost } from '../lib/network-guard.js';
 import { sendClientError } from '../lib/safe-errors.js';
+import { getDatabaseManagerCapabilities, isDatabaseManagerActive } from '../plugins/manager.js';
 
 const REMOTE_HOST_PATTERN = /^[%a-zA-Z0-9._-]+$/;
 
@@ -112,10 +113,21 @@ export async function databaseRoutes(app: FastifyInstance) {
     });
 
     const meta = resourceQuotaMeta(serverRecord.databaseLimit, rows.length, canCreatePermission);
+    const managerEnabled = await isDatabaseManagerActive();
+    const managerCapabilities = managerEnabled ? await getDatabaseManagerCapabilities() : null;
+    const canEditData =
+      Boolean(managerCapabilities?.allowDataEdits) &&
+      hasClientPermission(access.permissions, 'database.update');
 
     return {
       databases: rows.map((row) => formatServerDatabase(row, canViewPassword)),
       ...meta,
+      manager: {
+        enabled: managerEnabled,
+        allowSqlConsole: managerCapabilities?.allowSqlConsole ?? false,
+        allowDataEdits: managerCapabilities?.allowDataEdits ?? false,
+        canEdit: canEditData,
+      },
     };
   });
 

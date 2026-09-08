@@ -1,5 +1,6 @@
-import { useMemo, type ReactNode } from 'react';
-import { Headphones, Mail, Server, Shield, Terminal } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { Database, Headphones, LogIn, Mail, Server, Shield, Terminal, UserPlus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PanelBranding } from '../lib/panel-settings';
 import { sanitizeImageSrc, sanitizeLinkHref } from '../lib/safe-url';
@@ -9,10 +10,28 @@ import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName
 import { AuthorAttribution } from './AuthorAttribution';
 
 const FEATURES = [
-  { icon: Server, label: 'Deploy & manage game servers' },
-  { icon: Terminal, label: 'Live console and file access' },
-  { icon: Shield, label: 'Secure panel for your community' },
-];
+  {
+    icon: Server,
+    title: 'Deploy servers',
+    description: 'Launch and manage game servers from a single dashboard.',
+  },
+  {
+    icon: Terminal,
+    title: 'Full control',
+    description: 'Console, files, schedules, and backups — all in one place.',
+  },
+  {
+    icon: Shield,
+    title: 'Built for teams',
+    description: 'Secure access with subusers, roles, and activity logs.',
+  },
+] as const;
+
+const CAPABILITIES = [
+  { icon: Terminal, label: 'Console' },
+  { icon: Database, label: 'Backups' },
+  { icon: Server, label: 'Files' },
+] as const;
 
 export function AuthLayout({
   branding,
@@ -22,19 +41,13 @@ export function AuthLayout({
   children: ReactNode;
 }) {
   const companyLabel = branding.general.companyName.trim() || branding.panelName;
-
-  const brandGradient = useMemo(
-    () =>
-      `linear-gradient(135deg, ${branding.accentColor} 0%, ${branding.secondaryColor || branding.accentColor} 100%)`,
-    [branding.accentColor, branding.secondaryColor],
-  );
   const panelBgClass = usePanelBackgroundClass();
   const appearance = normalizeAppearance(branding);
 
   return (
-    <div className="flex min-h-[100dvh] min-h-screen bg-[var(--bg)]">
+    <div className="ds-auth-layout">
       <aside
-        className="login-brand-panel relative hidden w-[44%] shrink-0 flex-col justify-between overflow-hidden p-10 lg:p-12 xl:w-[40%] md:flex"
+        className="login-brand-panel ds-auth-hero"
         data-login-bg={appearance.loginBackground}
         data-login-ambient={appearance.loginAmbientLevel}
       >
@@ -48,54 +61,72 @@ export function AuthLayout({
         <div className="login-bg-grain" aria-hidden />
         <div className="login-shine-sweep" aria-hidden />
         <div className="login-dot-grid pointer-events-none absolute inset-0 opacity-50" />
-        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/45 via-transparent to-black/10" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/50 via-transparent to-black/10" />
 
-        <div className="relative z-[2]">
-          <BrandBlock
+        <div className="ds-auth-hero-inner">
+          <AuthHeroBrand
             logoUrl={branding.logoUrl}
             panelName={branding.panelName}
             tagline={branding.tagline}
-            large
-            gradient={brandGradient}
           />
-        </div>
 
-        <div className="relative z-[2] space-y-6">
-          <p className="max-w-sm text-sm leading-relaxed text-white/75">{branding.loginMessage}</p>
-          <ul className="space-y-3">
-            {FEATURES.map(({ icon: Icon, label }) => (
-              <li key={label} className="login-feature-item flex items-center gap-3 text-sm text-white/85">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
-                  <Icon className="h-4 w-4" />
-                </span>
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+          <div className="ds-auth-hero-content">
+            <div className="ds-auth-hero-intro">
+              <p className="ds-auth-hero-eyebrow">Control panel</p>
+              <h2 className="ds-auth-hero-headline">{branding.loginMessage}</h2>
+              <div className="ds-auth-hero-capabilities">
+                {CAPABILITIES.map(({ icon: Icon, label }) => (
+                  <span key={label} className="ds-auth-hero-cap">
+                    <Icon className="h-3 w-3" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
 
-        <div className="relative z-[2]">
-          <SupportFooter general={branding.general} companyLabel={companyLabel} onDark />
-          <AuthorAttribution variant="sidebar" onDark className="mt-4 opacity-90" />
+            <div className="ds-auth-hero-panel">
+              <p className="ds-auth-hero-panel-label">Everything you need</p>
+              <ul className="ds-auth-feature-list">
+                {FEATURES.map(({ icon: Icon, title, description }, index) => (
+                  <li key={title} className="ds-auth-feature-card">
+                    <span className="ds-auth-feature-index">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="ds-auth-feature-icon">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="ds-auth-feature-copy">
+                      <span className="ds-auth-feature-title">{title}</span>
+                      <span className="ds-auth-feature-desc">{description}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="ds-auth-hero-footer">
+            <SupportFooter general={branding.general} companyLabel={companyLabel} onDark />
+            <AuthorAttribution variant="sidebar" onDark className="mt-4 opacity-90" />
+          </div>
         </div>
       </aside>
 
-      <main className={`${panelBgClass} safe-top safe-bottom flex flex-1 flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-10`}>
-        <div className="w-full max-w-[440px]">
-          <div className="mb-6 md:hidden">
-            <BrandBlock
+      <main className={`ds-auth-main ${panelBgClass}`}>
+        <div className="ds-auth-main-inner">
+          <div className="ds-auth-mobile-brand">
+            <AuthBrandBlock
               logoUrl={branding.logoUrl}
               panelName={branding.panelName}
               tagline={branding.tagline}
-              gradient={brandGradient}
             />
           </div>
 
           {children}
 
-          <AuthorAttribution variant="auth" className="mt-5" />
+          <div className="ds-auth-attribution">
+            <AuthorAttribution variant="auth" />
+          </div>
 
-          <div className="mt-4 md:hidden">
+          <div className="ds-auth-support-mobile">
             <SupportFooter general={branding.general} companyLabel={companyLabel} />
           </div>
         </div>
@@ -104,12 +135,89 @@ export function AuthLayout({
   );
 }
 
-export function AuthCard({ children }: { children: ReactNode }) {
+export function AuthTabs({
+  active,
+  registrationEnabled,
+}: {
+  active: 'login' | 'signup';
+  registrationEnabled: boolean;
+}) {
+  if (!registrationEnabled) return null;
+
   return (
-    <div className="login-card overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-sm">
-      <div className="login-card-accent" />
-      <div className="p-6 sm:p-7">{children}</div>
+    <nav className="ds-auth-tabs" aria-label="Account">
+      <Link
+        to="/login"
+        className={`ds-auth-tab ${active === 'login' ? 'ds-auth-tab--active' : ''}`}
+        aria-current={active === 'login' ? 'page' : undefined}
+      >
+        <LogIn className="h-3.5 w-3.5" />
+        Sign in
+      </Link>
+      <Link
+        to="/signup"
+        className={`ds-auth-tab ${active === 'signup' ? 'ds-auth-tab--active' : ''}`}
+        aria-current={active === 'signup' ? 'page' : undefined}
+      >
+        <UserPlus className="h-3.5 w-3.5" />
+        Create account
+      </Link>
+    </nav>
+  );
+}
+
+export function AuthMaintenanceBanner({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="ds-auth-banner" role="status">
+      <Shield className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p className="ds-auth-banner-title">{title}</p>
+        <p className="ds-auth-banner-text">{message}</p>
+      </div>
     </div>
+  );
+}
+
+export function AuthShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="ds-auth-shell">
+      <div className="ds-auth-shell-accent" aria-hidden />
+      <div className="ds-auth-shell-body">{children}</div>
+    </div>
+  );
+}
+
+/** @deprecated Use AuthShell — kept for forgot/reset password pages */
+export const AuthCard = AuthShell;
+
+export function AuthHeader({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <header className="ds-auth-header">
+      <span className="ds-auth-header-icon">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="ds-auth-header-text">
+        <p className="ds-auth-eyebrow">{eyebrow}</p>
+        <h1 className="ds-auth-title">{title}</h1>
+        <p className="ds-auth-description">{description}</p>
+      </div>
+    </header>
   );
 }
 
@@ -128,15 +236,15 @@ export function AuthField({
   onChange: (value: string) => void;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   return (
-    <label className="auth-field">
-      <span className="auth-field-label">{label}</span>
-      <div className="auth-field-input-wrap">
-        <Icon className="auth-field-icon h-4 w-4" />
+    <label className="ds-auth-field">
+      <span className="ds-auth-label">{label}</span>
+      <div className="ds-auth-input-wrap">
+        <Icon className="ds-auth-input-icon" />
         <input
           {...props}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="auth-field-input"
+          className="ds-auth-input"
         />
         {trailing}
       </div>
@@ -149,58 +257,80 @@ export function AuthError({ message }: { message: string }) {
     message.toLowerCase().includes('suspended') || message.toLowerCase().includes('maintenance');
 
   return (
-    <div
-      className={`rounded-xl border px-3.5 py-2.5 text-sm ${
-        warning
-          ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-          : 'border-red-500/30 bg-red-500/10 text-red-400'
-      }`}
-    >
+    <div className={`ds-auth-alert ${warning ? 'ds-auth-alert--warning' : 'ds-auth-alert--error'}`} role="alert">
       {message}
     </div>
   );
 }
 
-function BrandBlock({
+export function AuthFooter({ children }: { children: ReactNode }) {
+  return <div className="ds-auth-footer">{children}</div>;
+}
+
+function AuthHeroBrand({
+  logoUrl,
+  panelName,
+  tagline,
+}: {
+  logoUrl: string;
+  panelName: string;
+  tagline: string;
+}) {
+  const safeLogo = sanitizeImageSrc(logoUrl);
+
+  return (
+    <div className="ds-auth-hero-brand">
+      <div className="ds-auth-hero-logo-wrap">
+        <span className="ds-auth-hero-logo-glow" aria-hidden />
+        {safeLogo ? (
+          <div className="ds-auth-hero-logo">
+            <img src={safeLogo} alt="" />
+          </div>
+        ) : (
+          <div className="ds-auth-hero-logo" style={panelNameGradientStyle()}>
+            <span className="ds-auth-hero-logo-fallback">{panelNameInitial(panelName)}</span>
+          </div>
+        )}
+      </div>
+      <div className="ds-auth-hero-brand-copy">
+        <PanelName name={panelName} variant="hero" as="h1" className="block" />
+        {tagline.trim() && <span className="ds-auth-hero-badge">{tagline}</span>}
+      </div>
+    </div>
+  );
+}
+
+function AuthBrandBlock({
   logoUrl,
   panelName,
   tagline,
   large,
-  gradient,
 }: {
   logoUrl: string;
   panelName: string;
   tagline: string;
   large?: boolean;
-  gradient: string;
 }) {
   const safeLogo = sanitizeImageSrc(logoUrl);
+
+  if (large) {
+    return <AuthHeroBrand logoUrl={logoUrl} panelName={panelName} tagline={tagline} />;
+  }
+
   return (
-    <div className={`flex items-center gap-3.5 ${large ? 'flex-col items-start gap-4 sm:flex-row sm:items-center' : ''}`}>
+    <div className="ds-auth-hero-brand items-center">
       {safeLogo ? (
-        <img
-          src={safeLogo}
-          alt=""
-          className={`shrink-0 rounded-2xl object-contain ring-1 ring-white/15 ${large ? 'h-16 w-16 bg-black/20 p-1.5' : 'h-12 w-12 bg-[var(--surface)] p-1'}`}
-        />
+        <div className="ds-auth-hero-logo !h-12 !w-12 !rounded-xl">
+          <img src={safeLogo} alt="" />
+        </div>
       ) : (
-        <div
-          className={`flex shrink-0 items-center justify-center rounded-2xl text-white ring-1 ring-white/15 ${large ? 'h-16 w-16 text-xl font-bold' : 'h-12 w-12 text-base font-bold'}`}
-          style={panelNameGradientStyle()}
-        >
-          {panelNameInitial(panelName)}
+        <div className="ds-auth-hero-logo !h-12 !w-12 !rounded-xl" style={panelNameGradientStyle()}>
+          <span className="ds-auth-hero-logo-fallback !text-base">{panelNameInitial(panelName)}</span>
         </div>
       )}
-      <div className={large ? 'min-w-0' : 'min-w-0 text-left'}>
-        <PanelName
-          name={panelName}
-          variant={large ? 'hero' : 'compact'}
-          as={large ? 'h1' : 'span'}
-          className={large ? 'block' : 'block truncate'}
-        />
-        <p className={`mt-1.5 truncate ${large ? 'text-sm text-white/70' : 'text-xs text-[var(--muted)]'}`}>
-          {tagline}
-        </p>
+      <div className="min-w-0">
+        <PanelName name={panelName} variant="compact" as="span" className="block truncate" />
+        {tagline.trim() && <span className="ds-auth-hero-badge !mt-1.5 !text-[0.625rem]">{tagline}</span>}
       </div>
     </div>
   );

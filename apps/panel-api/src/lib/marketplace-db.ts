@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
-import { isMarketplaceEnabled } from './panel-settings.js';
+import { isFivemMarketplaceActive } from '../plugins/manager.js';
 import { seedMarketplacePlugins } from '../services/marketplace-seed.js';
 
 export function isMarketplaceSchemaMissing(error: unknown): boolean {
@@ -35,7 +35,7 @@ export async function ensureMarketplaceCatalog() {
 }
 
 export async function assertMarketplaceEnabledForClients() {
-  if (!(await isMarketplaceEnabled())) {
+  if (!(await isFivemMarketplaceActive())) {
     const err = new Error('FiveM marketplace is disabled on this panel');
     (err as { statusCode?: number }).statusCode = 403;
     throw err;
@@ -77,4 +77,34 @@ export async function isGithubInstallsSchemaReady(): Promise<boolean> {
     if (isMarketplaceSchemaMissing(error)) return false;
     throw error;
   }
+}
+
+const githubInstallLookupSelect = {
+  id: true,
+  installPath: true,
+  installedRef: true,
+  displayName: true,
+  githubOwner: true,
+  githubRepo: true,
+} as const;
+
+/** Case-insensitive owner/repo lookup (MySQL has no Prisma insensitive mode). */
+export async function findGithubInstallByRepo(serverId: string, owner: string, repo: string) {
+  const exact = await prisma.marketplaceGithubInstall.findFirst({
+    where: { serverId, githubOwner: owner, githubRepo: repo },
+    select: githubInstallLookupSelect,
+  });
+  if (exact) return exact;
+
+  const ownerLower = owner.toLowerCase();
+  const repoLower = repo.toLowerCase();
+  const installs = await prisma.marketplaceGithubInstall.findMany({
+    where: { serverId },
+    select: githubInstallLookupSelect,
+  });
+  return (
+    installs.find(
+      (row) => row.githubOwner.toLowerCase() === ownerLower && row.githubRepo.toLowerCase() === repoLower,
+    ) ?? null
+  );
 }

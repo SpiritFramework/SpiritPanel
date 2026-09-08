@@ -1,5 +1,6 @@
 import { Cpu, Gauge, Network, Server } from 'lucide-react';
 import type { AdminLocationSummary } from '../../lib/api';
+import { formatLocationLabel } from '../LocationFlag';
 import type { NodeFormState } from '../../lib/node-admin';
 import { Input, Select } from '../Layout';
 import { Checkbox } from '../Checkbox';
@@ -40,7 +41,7 @@ export function NodeFormFields({
             <option value="">Select a region</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.short} — {l.long}
+                {formatLocationLabel(l)}
               </option>
             ))}
           </Select>

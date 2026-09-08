@@ -14,13 +14,16 @@ import { getNodeServers, getServerFull } from '../services/server-helpers.js';
 import { logActivityBatch } from '../services/activity.js';
 import {
   applyContainerStatusUpdate,
-  parseContainerStatusBody,
+  deleteContainerStatus,
+  resolveContainerStateFromWebhook,
 } from '../lib/container-state.js';
+import { resyncNodeContainerStates } from '../services/node-resync.js';
 import {
   isMailEnabled,
   sendServerDeployedEmail,
   sendServerInstallFailedEmail,
 } from '../lib/mailer.js';
+import { diskFromChecksumType } from '../lib/backup-adapter.js';
 import { logWingsFailure } from '../lib/wings-sync.js';
 import { handleTransferFailure, handleTransferSuccess } from '../services/server-transfer.js';
 
@@ -121,22 +124,54 @@ export async function remoteRoutes(app: FastifyInstance) {
   });
 
   app.post('/servers/reset', async (request) => {
-    // Wings boot: clear runtime badges. Do not wipe install-in-progress flags.
+    // Wings boot contract (ResetServersState): clear stuck installing/restoring flags so
+    // the panel does not block Start after a daemon restart mid-install. Runtime states
+    // are then re-pushed via OnStateChange for every server on this node.
+    const nodeId = request.node!.id;
+    const nodeServers = await prisma.server.findMany({
+      where: { nodeId },
+      select: { uuid: true },
+    });
+
     await prisma.server.updateMany({
       where: {
-        nodeId: request.node!.id,
-        status: { not: 'installing' },
+        nodeId,
+        OR: [
+          { status: 'installing' },
+          { status: 'restoring_backup' },
+          { installStatus: 'installing' },
+        ],
+      },
+      data: {
+        status: 'normal',
+        installStatus: 'installed',
+        containerState: 'offline',
+      },
+    });
+
+    await prisma.server.updateMany({
+      where: {
+        nodeId,
+        status: { notIn: ['installing', 'restoring_backup'] },
         installStatus: { not: 'installing' },
       },
-      data: { status: 'normal', containerState: 'offline' },
-    });
-    await prisma.server.updateMany({
-      where: {
-        nodeId: request.node!.id,
-        OR: [{ status: 'installing' }, { installStatus: 'installing' }],
+      data: {
+        status: 'normal',
+        containerState: 'offline',
       },
-      data: { containerState: 'offline' },
     });
+
+    await Promise.all(nodeServers.map((s) => deleteContainerStatus(s.uuid)));
+
+    try {
+      await Promise.race([
+        resyncNodeContainerStates(nodeId),
+        new Promise<void>((resolve) => setTimeout(resolve, 8_000)),
+      ]);
+    } catch (err) {
+      request.log.warn({ err, nodeId }, 'Post-reset container resync failed');
+    }
+
     return { success: true, message: 'All server statuses reset successfully' };
   });
 
@@ -174,6 +209,7 @@ export async function remoteRoutes(app: FastifyInstance) {
     if (!server || server.nodeId !== request.node!.id) {
       return reply.status(404).send({ error: 'Server not found' });
     }
+    await deleteContainerStatus(server.uuid);
     await prisma.server.update({
       where: { id: server.id },
       data: {
@@ -239,7 +275,7 @@ export async function remoteRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Server not found' });
     }
 
-    const state = parseContainerStatusBody(request.body);
+    const state = resolveContainerStateFromWebhook(request.body);
     if (!state) {
       return reply.status(400).send({ error: 'Missing or invalid state field' });
     }
@@ -302,6 +338,7 @@ export async function remoteRoutes(app: FastifyInstance) {
     const parsed = z
       .object({
         checksum: z.string().optional(),
+        checksum_type: z.string().optional(),
         size: z.number().optional(),
         successful: z.boolean(),
       })
@@ -323,6 +360,7 @@ export async function remoteRoutes(app: FastifyInstance) {
         isSuccessful: body.successful,
         bytes: BigInt(body.size ?? 0),
         checksum: body.checksum ?? null,
+        disk: diskFromChecksumType(body.checksum_type),
         completedAt: new Date(),
       },
     });

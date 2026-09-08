@@ -1,11 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Download } from 'lucide-react';
-import {
-  NodeDetailBreadcrumb,
-  NodeDetailHero,
-  NodeDetailTabNav,
-} from '../../components/admin/node-detail/NodeDetailShell';
+import { NodeDetailHeader, NodeDetailTabNav } from '../../components/admin/node-detail/NodeDetailShell';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AdminDetailNotFound } from '../../components/AdminDetailLayout';
 import { AdminLayout, Button } from '../../components/Layout';
@@ -26,7 +22,18 @@ export function AdminNodeDetail() {
   const setupMode = searchParams.get('setup') === '1';
 
   const ctrl = useNodeDetail(nodeId);
-  const { detail, loading, error, save, downloadConfig, runDiagnostics, diagLoading, diagnostics } = ctrl;
+  const {
+    detail,
+    loading,
+    error,
+    save,
+    downloadConfig,
+    runDiagnostics,
+    diagLoading,
+    diagnostics,
+    copied,
+    copyText,
+  } = ctrl;
 
   const tab = readNodeDetailTab(searchParams.get('tab'));
 
@@ -96,20 +103,21 @@ export function AdminNodeDetail() {
   return (
     <AdminLayout>
       <form onSubmit={(e) => void save(e)} className="ds-nd-page">
-        <NodeDetailBreadcrumb name={detail.name} />
-
-        <NodeDetailHero
-          detail={detail}
-          wingsVersion={wingsVersion}
-          freeAllocations={freeAllocations}
-          onDownloadConfig={downloadConfig}
-          onDiagnostics={() => {
-            changeTab('diagnostics');
-            void runDiagnostics();
-          }}
-        />
-
-        <NodeDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
+        <div className="ds-nd-header-wrap">
+          <NodeDetailHeader
+            detail={detail}
+            wingsVersion={wingsVersion}
+            freeAllocations={freeAllocations}
+            onDownloadConfig={downloadConfig}
+            onDiagnostics={() => {
+              changeTab('diagnostics');
+              void runDiagnostics();
+            }}
+            onCopyFqdn={() => void copyText(detail.fqdn)}
+            copied={copied}
+          />
+          <NodeDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
+        </div>
 
         {setupMode && tab === 'overview' ? (
           <div className="ds-nd-banner">

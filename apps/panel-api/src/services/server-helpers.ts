@@ -3,7 +3,7 @@ import { getConfig } from '../lib/env.js';
 
 const serverInclude = {
   egg: { include: { variables: true, nest: true } },
-  node: true,
+  node: { include: { location: { select: { short: true, flagUrl: true } } } },
   defaultAllocation: true,
   extraAllocations: true,
   variables: { include: { eggVariable: true } },

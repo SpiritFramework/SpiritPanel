@@ -212,6 +212,18 @@ export const DEFAULT_TURNSTILE_FORM: TurnstileForm = {
   secretKey: '',
 };
 
+export interface DiscordAuthForm {
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+}
+
+export const DEFAULT_DISCORD_AUTH_FORM: DiscordAuthForm = {
+  enabled: false,
+  clientId: '',
+  clientSecret: '',
+};
+
 export interface CloudflareDnsForm {
   enabled: boolean;
   apiToken: string;

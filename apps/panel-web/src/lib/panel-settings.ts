@@ -96,6 +96,8 @@ export interface PanelBranding {
   secondaryColor?: string;
   logoUrl: string;
   faviconUrl: string;
+  /** Square install/app icon, generated from the logo or favicon. */
+  appIconUrl: string;
   loginMessage: string;
   themePreset: ThemePreset;
   defaultThemeMode: DefaultThemeMode;
@@ -125,6 +127,7 @@ export interface PanelBranding {
   minPasswordLength: number;
   turnstileEnabled: boolean;
   turnstileSiteKey: string;
+  discordLoginEnabled: boolean;
 }
 
 export const DEFAULT_ANNOUNCEMENT: PanelAnnouncementSettings = {
@@ -145,6 +148,7 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
   secondaryColor: '#8b5cf6',
   logoUrl: '',
   faviconUrl: '',
+  appIconUrl: '',
   loginMessage: 'Sign in to manage your game servers',
   ...DEFAULT_BRANDING_APPEARANCE,
   general: {
@@ -163,6 +167,7 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
   minPasswordLength: 8,
   turnstileEnabled: false,
   turnstileSiteKey: '',
+  discordLoginEnabled: false,
 };
 
 export const DEFAULT_GENERAL: PanelGeneralSettings = DEFAULT_PANEL_BRANDING.general;

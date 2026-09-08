@@ -13,4 +13,5 @@ export const PANEL_TAGLINE = 'Game server panel';
 /** Software attribution copy — not the host company name. */
 export const AUTHOR_CREDIT = `Built by ${PANEL_AUTHOR}`;
 
-export const PANEL_VERSION = '0.1.0';
+/** Synced from monorepo `package.json` at build time via Vite `define`. */
+export const PANEL_VERSION = __PANEL_VERSION__;

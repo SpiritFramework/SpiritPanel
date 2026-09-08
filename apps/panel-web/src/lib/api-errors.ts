@@ -24,6 +24,19 @@ const SAFE_BY_STATUS: Record<number, string> = {
   503: 'The service is temporarily unavailable.',
 };
 
+/** Login/register paths where 401 means bad credentials — not an expired session cookie. */
+const AUTH_ATTEMPT_PATHS = new Set([
+  '/auth/login',
+  '/auth/login/2fa',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+]);
+
+export function shouldTreat401AsSessionExpired(path: string): boolean {
+  return !AUTH_ATTEMPT_PATHS.has(path);
+}
+
 const UNSAFE_PATTERNS = [
   /\bat\s+\S+\s*\(/i,
   /stack trace/i,
@@ -42,14 +55,11 @@ function looksUnsafe(raw: string): boolean {
 
 /** Map HTTP status + optional server message to a user-safe string. */
 export function sanitizeClientError(status: number, raw?: string): string {
-  if (status === 401 || status === 403) {
-    return SAFE_BY_STATUS[status];
+  if (raw && !looksUnsafe(raw)) {
+    return raw;
   }
   if (status >= 500) {
     return SAFE_BY_STATUS[status] ?? SAFE_BY_STATUS[500];
-  }
-  if (raw && !looksUnsafe(raw)) {
-    return raw;
   }
   return SAFE_BY_STATUS[status] ?? 'Request failed. Please try again.';
 }

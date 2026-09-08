@@ -1,5 +1,6 @@
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useServerRouteId } from '../hooks/useServerRouteId';
+import type { GithubSearchSortId } from './api';
 
 export function useMarketplacePaths() {
   const { owner, repo } = useParams<{ owner?: string; repo?: string }>();
@@ -34,11 +35,31 @@ export function useMarketplacePaths() {
     return `${scriptPath(githubOwner, githubRepo)}/install`;
   }
 
+  function catalogPath(pluginIdOrSlug: string): string {
+    return `${base}/catalog/${encodeURIComponent(pluginIdOrSlug)}`;
+  }
+
+  function githubBrowsePath(categoryId?: string): string {
+    return categoryId
+      ? `${base}/github/browse/${encodeURIComponent(categoryId)}`
+      : `${base}/github/browse`;
+  }
+
+  function githubSearchPath(query: string, page = 1, sort: GithubSearchSortId = 'best'): string {
+    const params = new URLSearchParams({ q: query });
+    if (page > 1) params.set('page', String(page));
+    if (sort !== 'best') params.set('sort', sort);
+    return `${base}/github/search?${params.toString()}`;
+  }
+
   return {
     resolvedId,
     base,
     scriptPath,
     scriptInstallPath,
+    catalogPath,
+    githubBrowsePath,
+    githubSearchPath,
     owner: decodedOwner,
     repo: decodedRepo,
     isAdminManage,

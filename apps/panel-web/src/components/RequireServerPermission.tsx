@@ -16,6 +16,7 @@ const PERMISSION_FLAGS = [
   'canUpdateStartup',
   'canReadDatabases',
   'canCreateDatabases',
+  'canUpdateDatabases',
   'canDeleteDatabases',
   'canViewDatabasePassword',
   'canManageSubusers',

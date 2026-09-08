@@ -169,7 +169,9 @@
 }
 
 .ambient-backdrop[data-panel-bg="aurora"] .ambient-backdrop-mesh,
-.ambient-backdrop[data-panel-bg="waves"] .ambient-backdrop-mesh {
+.ambient-backdrop[data-panel-bg="waves"] .ambient-backdrop-mesh,
+.ambient-backdrop[data-panel-bg="fog"] .ambient-backdrop-mesh,
+.ambient-backdrop[data-panel-bg="horizon"] .ambient-backdrop-mesh {
   animation-duration: 18s;
   opacity: 1;
 }
@@ -462,6 +464,36 @@
   display: none;
 }
 
+.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb {
+  filter: blur(72px);
+  opacity: 0.72;
+}
+
+.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--1 {
+  width: 62%;
+  height: 56%;
+}
+
+.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--2 {
+  width: 52%;
+  height: 48%;
+}
+
+.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--3 {
+  width: 36%;
+  height: 36%;
+  opacity: 0.5;
+}
+
+.login-brand-panel[data-login-ambient="cinematic"] .login-bg-grain {
+  opacity: 0.07;
+}
+
+.login-brand-panel[data-login-ambient="cinematic"] .login-shine-sweep {
+  opacity: 0.55;
+  animation-duration: 7s;
+}
+
 /* Global polish tokens */
 [data-surface-radius="soft"] {
   --ds-radius-sm: 0.5rem;
@@ -542,6 +574,135 @@
   padding-bottom: 0.625rem;
 }
 
+/* Admin — icon forward */
+.admin-sidebar.sidebar-style-icons .nav-item {
+  gap: 0.75rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.admin-sidebar.sidebar-style-icons .nav-item-icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: var(--ds-radius-lg);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.admin-sidebar.sidebar-style-icons .nav-item.active .nav-item-icon {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Admin — boxed links */
+.admin-sidebar.sidebar-style-boxed .nav-item {
+  margin-inline: 0.35rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.admin-sidebar.sidebar-style-boxed .nav-item + .nav-item {
+  margin-top: 0.35rem;
+}
+
+.admin-sidebar.sidebar-style-boxed .nav-item.active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 55%, var(--surface));
+}
+
+/* Client — pills */
+.client-sidebar.sidebar-style-pill .nav-item {
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.client-sidebar.sidebar-style-pill .nav-item.active {
+  background: color-mix(in srgb, var(--accent-muted) 70%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.client-sidebar.sidebar-style-pill .nav-item.active .nav-item-icon {
+  background: var(--accent);
+  color: white;
+  border-radius: 999px;
+}
+
+/* Client — underline */
+.client-sidebar.sidebar-style-underline .nav-item {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+}
+
+.client-sidebar.sidebar-style-underline .nav-item.active {
+  background: transparent;
+  border-bottom-color: var(--accent);
+  box-shadow: none;
+}
+
+.client-sidebar.sidebar-style-underline .nav-item.active .nav-item-icon {
+  background: transparent;
+  color: var(--accent-hover);
+  box-shadow: none;
+}
+
+/* Server — icon rail */
+.server-sidebar.sidebar-style-icons .nav-item {
+  gap: 0.65rem;
+}
+
+.server-sidebar.sidebar-style-icons .nav-item-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ds-radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+.server-sidebar.sidebar-style-icons .nav-item.active .nav-item-icon {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+}
+
+/* Server — stacked blocks */
+.server-sidebar.sidebar-style-stacked nav > * + * {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.server-sidebar.sidebar-style-stacked .nav-item {
+  border-radius: var(--ds-radius-lg);
+  background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+}
+
+.server-sidebar.sidebar-style-stacked .nav-item.active {
+  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
+}
+
+[data-content-density="spacious"] .mobile-shell-main > main {
+  padding: 1.15rem;
+}
+
+@media (min-width: 640px) {
+  [data-content-density="spacious"] .mobile-shell-main > main {
+    padding: 1.5rem;
+  }
+}
+
+[data-content-density="spacious"] .ds-card-body {
+  padding: 1.35rem 1.5rem;
+}
+
+[data-content-density="spacious"] .ds-table td,
+[data-content-density="spacious"] .ds-table th {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
 .ds-admin-tabs.ds-admin-tabs--underline {
   padding-left: 0;
   padding-right: 0;
@@ -567,6 +728,25 @@
   border-bottom-color: var(--accent);
 }
 
+.ds-admin-tabs.ds-admin-tabs--pills .ds-admin-tabs-inner {
+  border: none;
+  background: transparent;
+  gap: 0.45rem;
+  padding: 0;
+}
+
+.ds-admin-tabs.ds-admin-tabs--pills .ds-admin-tab {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.ds-admin-tabs.ds-admin-tabs--pills .ds-admin-tab.is-active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 55%, var(--surface));
+  box-shadow: none;
+}
+
 .server-card--minimal {
   background: var(--surface);
 }
@@ -578,6 +758,31 @@
 .server-card--stacked .server-card-stacked-head .server-card-icon-box {
   border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 35%, var(--border));
   background: color-mix(in srgb, var(--card-accent, var(--accent)) 10%, var(--bg-elevated));
+}
+
+.server-card--poster .server-card-poster {
+  min-height: 7.5rem;
+}
+
+.server-card--split .server-card-split-head {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.server-card--outline {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 28%, transparent);
+}
+
+.server-card--outline .server-card-outline-head {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 18%, transparent);
+}
+
+.server-card--tile .server-card-tile-head {
+  min-height: 4.75rem;
+}
+
+.server-card--tile .server-card-icon-box {
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 30%, var(--border));
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 12%, var(--bg-elevated));
 }
 
 [data-motion="reduced"] .login-ambient-orb,
@@ -699,6 +904,97 @@
 
 .branding-mock-card--minimal .branding-mock-card__body {
   display: none;
+}
+
+.branding-mock-card--poster .branding-mock-card__head {
+  min-height: 2.4rem;
+  align-items: flex-end;
+  background: linear-gradient(160deg, var(--preview-accent, #6366f1), color-mix(in srgb, var(--preview-accent, #6366f1) 35%, #0f1117));
+}
+
+.branding-mock-card--poster .branding-mock-card__line {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.branding-mock-card--split {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr;
+}
+
+.branding-mock-card--split .branding-mock-card__head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.35rem 1fr;
+  gap: 0;
+  padding: 0;
+}
+
+.branding-mock-card--split .branding-mock-card__icon {
+  width: 100%;
+  height: 100%;
+  min-height: 1.8rem;
+  border-radius: 0;
+  background: linear-gradient(180deg, var(--preview-accent, #6366f1), color-mix(in srgb, var(--preview-accent, #6366f1) 40%, #0f1117));
+}
+
+.branding-mock-card--split .branding-mock-card__lines {
+  padding: 0.35rem 0.35rem 0.35rem 0.3rem;
+}
+
+.branding-mock-card--outline {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--preview-accent, #6366f1) 45%, transparent);
+}
+
+.branding-mock-card--outline .branding-mock-card__head {
+  margin: 0.25rem;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.branding-mock-card--tile .branding-mock-card__icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  opacity: 0.85;
+}
+
+.branding-sidebar-frame--admin-icons .branding-sidebar-frame__item {
+  height: 0.55rem;
+  border-radius: 4px;
+}
+
+.branding-sidebar-frame--admin-boxed .branding-sidebar-frame__item {
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: var(--surface);
+}
+
+.branding-sidebar-frame--client-pill .branding-sidebar-frame__item {
+  border-radius: 999px;
+}
+
+.branding-sidebar-frame--client-underline .branding-sidebar-frame__item--active {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.branding-sidebar-frame--server-icons .branding-sidebar-frame__item {
+  height: 0.55rem;
+  border-radius: 4px;
+}
+
+.branding-sidebar-frame--server-stacked .branding-sidebar-frame__nav {
+  gap: 0.45rem;
+}
+
+.branding-sidebar-frame--server-stacked .branding-sidebar-frame__item {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.branding-polish-preview--tabs-pills {
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 40%, transparent);
 }
 
 .branding-sidebar-frame {

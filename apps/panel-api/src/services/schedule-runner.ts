@@ -49,7 +49,12 @@ async function runBackupTask(
   }
 
   try {
-    await wingsForNode(server.node).createBackup(server.uuid, backup.uuid, '');
+    const wings = wingsForNode(server.node);
+    const adapter = await wings.resolveBackupAdapter();
+    await wings.createBackup(server.uuid, backup.uuid, '', adapter);
+    if (adapter !== backup.disk) {
+      await prisma.backup.update({ where: { id: backup.id }, data: { disk: adapter } }).catch(() => {});
+    }
   } catch (err) {
     await prisma.backup.delete({ where: { id: backup.id } }).catch(() => {});
     throw err;

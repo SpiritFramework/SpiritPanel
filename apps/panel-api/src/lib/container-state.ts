@@ -75,6 +75,51 @@ export function parseContainerStatusBody(body: unknown): string | null {
   return CONTAINER_STATES.has(normalized) ? normalized : null;
 }
 
+const ACTIVE_STATES = new Set(['running', 'starting']);
+
+/** Read previous_state + new_state from a FeatherWings container status webhook. */
+export function parseContainerStatusTransition(body: unknown): {
+  previous: string | null;
+  next: string | null;
+} {
+  if (!body || typeof body !== 'object') {
+    return { previous: null, next: parseContainerStatusBody(body) };
+  }
+  const record = body as Record<string, unknown>;
+  const nested = record.data as Record<string, unknown> | undefined;
+
+  const prevRaw =
+    (typeof nested?.previous_state === 'string' ? nested.previous_state : null) ??
+    (typeof record.previous_state === 'string' ? record.previous_state : null);
+  const next = parseContainerStatusBody(body);
+
+  const previous = prevRaw?.trim()
+    ? (() => {
+        const normalized = normalizeContainerState(prevRaw.trim());
+        return CONTAINER_STATES.has(normalized) ? normalized : null;
+      })()
+    : null;
+
+  return { previous, next };
+}
+
+/** FeatherWings reports running/starting → offline on crash; infer crashed for panel badges. */
+export function inferContainerStateFromTransition(
+  previous: string | null,
+  next: string | null,
+): string | null {
+  if (!next) return null;
+  if (next !== 'offline') return next;
+  if (previous && ACTIVE_STATES.has(previous)) return 'crashed';
+  return next;
+}
+
+/** Resolve the state to persist from a Wings container status webhook body. */
+export function resolveContainerStateFromWebhook(body: unknown): string | null {
+  const { previous, next } = parseContainerStatusTransition(body);
+  return inferContainerStateFromTransition(previous, next);
+}
+
 function setLocalContainerStatus(uuid: string, state: string) {
   localCache.set(uuid, { state, expiresAt: Date.now() + TTL_MS });
 }
@@ -148,8 +193,15 @@ export async function applyContainerStatusUpdate(
   } else if (state === 'running' || state === 'starting') {
     data.status = 'normal';
     data.installStatus = 'installed';
-  } else if (state === 'stopping' || state === 'stopped' || state === 'offline') {
+  } else if (
+    state === 'stopping' ||
+    state === 'stopped' ||
+    state === 'offline' ||
+    state === 'crashed'
+  ) {
+    // Wings is not installing — clear stuck install flags that block Start after daemon restarts.
     data.status = 'normal';
+    data.installStatus = 'installed';
   }
   // Do not flip Server.suspended from Wings "suspended" runtime state — that flag is admin-controlled.
 
@@ -184,7 +236,7 @@ export function reconcilePanelFieldsForContainerState(
     return { status: 'install_failed', installStatus: 'failed' };
   }
   // IMPORTANT: For all other states (offline, stopping, stopped, crashed, suspended, etc.),
-  // explicitly return installStatus: 'installed' to clear any stale "installing" flag.
-  // Never return {} as that causes the API to fall back to stale DB values.
-  return { installStatus: 'installed' };
+  // explicitly clear both status and installStatus so stale "installing" never leaks into the UI
+  // or blocks Start after a Wings restart.
+  return { status: 'normal', installStatus: 'installed' };
 }

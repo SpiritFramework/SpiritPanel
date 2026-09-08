@@ -4,6 +4,7 @@ import type { AdminNodeSummary } from '../lib/api';
 import { NodeCapacityBars } from './admin/AdminResourceUsage';
 import { AdminMobileCard, AdminResponsiveTable } from './admin/AdminMobileCard';
 import { Badge, DsIcon } from './ui';
+import { LocationFlag } from './LocationFlag';
 
 export function AdminNodeTable({ nodes }: { nodes: AdminNodeSummary[] }) {
   return (
@@ -95,7 +96,10 @@ function AdminNodeRow({ node }: { node: AdminNodeSummary }) {
 
       <td>
         <div className="min-w-[100px]">
-          <p className="truncate font-medium">{node.location.short}</p>
+          <p className="flex items-center gap-1 truncate font-medium">
+            {node.location.flagUrl ? <LocationFlag url={node.location.flagUrl} size="sm" /> : null}
+            {node.location.short}
+          </p>
           <p className="truncate text-[11px] text-[var(--muted)]">{node.location.long}</p>
         </div>
       </td>

@@ -1,13 +1,23 @@
-import { useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Eye, EyeOff, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Eye, EyeOff, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { isStaffOrPanelAdmin } from '../lib/roles';
 import { useBranding } from '../context/BrandingContext';
-import { AuthCard, AuthError, AuthField, AuthLayout } from '../components/AuthLayout';
+import {
+  AuthError,
+  AuthField,
+  AuthFooter,
+  AuthHeader,
+  AuthLayout,
+  AuthMaintenanceBanner,
+  AuthShell,
+  AuthTabs,
+} from '../components/AuthLayout';
 import { Button } from '../components/Layout';
 import { Spinner } from '../components/ui';
 import { TurnstileWidget, resetTurnstileWidget } from '../components/TurnstileWidget';
+import { DiscordIcon } from '../components/icons/DiscordIcon';
 
 export function LoginPage() {
   const { user, loading: authLoading, login, completeTwoFactor, refreshUser } = useAuth();
@@ -22,15 +32,35 @@ export function LoginPage() {
   const [challenge, setChallenge] = useState('');
   const [code, setCode] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [searchParams] = useSearchParams();
 
   const maintenanceActive = branding.maintenance.enabled;
   const turnstileRequired = branding.turnstileEnabled && Boolean(branding.turnstileSiteKey);
 
-  const brandGradient = useMemo(
-    () =>
-      `linear-gradient(135deg, ${branding.accentColor} 0%, ${branding.secondaryColor || branding.accentColor} 100%)`,
-    [branding.accentColor, branding.secondaryColor],
-  );
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#discord2fa=')) {
+      const token = decodeURIComponent(hash.slice('#discord2fa='.length));
+      if (token) {
+        setChallenge(token);
+        history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const code = searchParams.get('discord_error');
+    if (!code) return;
+    const messages: Record<string, string> = {
+      not_linked: 'No panel account is linked to this Discord. Sign in with your password, then link Discord in Security.',
+      denied: 'Discord sign-in was cancelled.',
+      failed: 'Discord sign-in failed. Please try again.',
+      disabled: 'Discord login is not enabled on this panel.',
+      suspended: 'Your account has been suspended. Please contact an administrator.',
+      maintenance: branding.maintenance.message || 'The panel is temporarily down for maintenance.',
+    };
+    setError(messages[code] ?? 'Discord sign-in failed. Please try again.');
+  }, [branding.maintenance.message, searchParams]);
 
   if (authLoading) {
     return (
@@ -89,34 +119,25 @@ export function LoginPage() {
   return (
     <AuthLayout branding={branding}>
       {maintenanceActive && (
-        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            <p className="font-medium">Maintenance mode</p>
-            <p className="mt-0.5 text-xs text-amber-200/90">{branding.maintenance.message}</p>
-          </div>
-        </div>
+        <AuthMaintenanceBanner
+          title="Maintenance mode"
+          message={branding.maintenance.message}
+        />
       )}
 
-      <AuthCard>
+      <AuthTabs active="login" registrationEnabled={branding.registrationEnabled} />
+
+      <AuthShell>
         {challenge ? (
           <>
-            <div className="mb-6 flex items-start gap-3">
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-lg"
-                style={{ background: brandGradient }}
-              >
-                <ShieldCheck className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 pt-0.5">
-                <h2 className="text-lg font-semibold tracking-tight">Two-factor authentication</h2>
-                <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
-                  Enter the 6-digit code from your authenticator app, or a recovery code.
-                </p>
-              </div>
-            </div>
+            <AuthHeader
+              eyebrow="Security"
+              title="Two-factor authentication"
+              description="Enter the 6-digit code from your authenticator app, or a recovery code."
+              icon={ShieldCheck}
+            />
 
-            <form onSubmit={handleTwoFactor} className="space-y-4">
+            <form onSubmit={handleTwoFactor} className="ds-auth-form">
               <AuthField
                 label="Authentication code"
                 icon={ShieldCheck}
@@ -128,127 +149,130 @@ export function LoginPage() {
                 placeholder="123456"
               />
               {error && <AuthError message={error} />}
-              <Button
-                type="submit"
-                disabled={loading || !code.trim()}
-                variant="primary"
-                className="w-full rounded-xl py-2.5 text-sm font-semibold shadow-lg shadow-black/25"
-              >
+              <Button type="submit" disabled={loading || !code.trim()} variant="primary" className="ds-auth-submit">
                 {loading ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center gap-2">
                     <Spinner className="h-4 w-4" />
                     Verifying…
                   </span>
                 ) : (
-                  'Verify & sign in'
+                  'Verify and sign in'
                 )}
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-sm text-[var(--muted)]">
-              <button
-                type="button"
-                onClick={cancelTwoFactor}
-                className="inline-flex items-center gap-1 font-medium accent-text transition hover:underline"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
+            <AuthFooter>
+              <button type="button" onClick={cancelTwoFactor} className="ds-auth-link-btn">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to sign in
               </button>
-            </p>
+            </AuthFooter>
           </>
         ) : (
           <>
-        <div className="mb-6 flex items-start gap-3">
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-lg"
-            style={{ background: brandGradient }}
-          >
-            <LogIn className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 pt-0.5">
-            <h2 className="text-lg font-semibold tracking-tight">Sign in</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
-              Use your username or email to access the panel.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <AuthField
-            label="Username or email"
-            icon={User}
-            type="text"
-            value={identifier}
-            onChange={setIdentifier}
-            required
-            autoComplete="username"
-            placeholder="username or you@example.com"
-          />
-          <AuthField
-            label="Password"
-            icon={Lock}
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={setPassword}
-            required
-            autoComplete="current-password"
-            placeholder="Enter your password"
-            trailing={
-              <button
-                type="button"
-                className="auth-field-toggle"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
-          />
-
-          <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-xs font-medium accent-text transition hover:underline">
-              Forgot password?
-            </Link>
-          </div>
-
-          {error && <AuthError message={error} />}
-
-          {turnstileRequired && (
-            <TurnstileWidget
-              siteKey={branding.turnstileSiteKey}
-              onToken={setTurnstileToken}
-              onExpire={() => setTurnstileToken('')}
-              className="flex justify-center"
+            <AuthHeader
+              eyebrow="Welcome back"
+              title="Sign in to your account"
+              description="Use your username or email to access the panel."
+              icon={LogIn}
             />
-          )}
 
-          <Button
-            type="submit"
-            disabled={loading || (turnstileRequired && !turnstileToken)}
-            variant="primary"
-            className="w-full rounded-xl py-2.5 text-sm font-semibold shadow-lg shadow-black/25"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <Spinner className="h-4 w-4" />
-                Signing in…
-              </span>
-            ) : (
-              'Sign in'
+            <form onSubmit={handleLogin} className="ds-auth-form">
+              <AuthField
+                label="Username or email"
+                icon={User}
+                type="text"
+                value={identifier}
+                onChange={setIdentifier}
+                required
+                autoComplete="username"
+                placeholder="username or you@example.com"
+              />
+              <AuthField
+                label="Password"
+                icon={Lock}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={setPassword}
+                required
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                trailing={
+                  <button
+                    type="button"
+                    className="ds-auth-input-toggle"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                }
+              />
+
+              <div className="ds-auth-row">
+                <span />
+                <Link to="/forgot-password" className="ds-auth-link">
+                  Forgot password?
+                </Link>
+              </div>
+
+              {error && <AuthError message={error} />}
+
+              {turnstileRequired && (
+                <TurnstileWidget
+                  siteKey={branding.turnstileSiteKey}
+                  onToken={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                  className="flex justify-center"
+                />
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading || (turnstileRequired && !turnstileToken)}
+                variant="primary"
+                className="ds-auth-submit"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Spinner className="h-4 w-4" />
+                    Signing in…
+                  </span>
+                ) : (
+                  'Sign in'
+                )}
+              </Button>
+            </form>
+
+            {branding.discordLoginEnabled ? (
+              <div className="mt-5">
+                <div className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-[var(--muted)]">
+                  <span className="h-px flex-1 bg-[var(--border)]" />
+                  or
+                  <span className="h-px flex-1 bg-[var(--border)]" />
+                </div>
+                <a
+                  href="/api/auth/discord/start?intent=login"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+                  style={{ background: '#5865F2' }}
+                >
+                  <DiscordIcon className="h-4 w-4" />
+                  Continue with Discord
+                </a>
+              </div>
+            ) : null}
+
+            {branding.registrationEnabled && (
+              <AuthFooter>
+                Don&apos;t have an account?{' '}
+                <Link to="/signup" className="ds-auth-link">
+                  Create one
+                </Link>
+              </AuthFooter>
             )}
-          </Button>
-        </form>
-
-        {branding.registrationEnabled && (
-          <p className="mt-5 text-center text-sm text-[var(--muted)]">
-            Don&apos;t have an account?{' '}
-            <Link to="/signup" className="font-medium accent-text transition hover:underline">
-              Sign up
-            </Link>
-          </p>
-        )}
           </>
         )}
-      </AuthCard>
+      </AuthShell>
     </AuthLayout>
   );
 }

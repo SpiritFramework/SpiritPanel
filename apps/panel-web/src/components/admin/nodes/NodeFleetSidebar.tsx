@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, MapPin, Plus } from 'lucide-react';
 import { formatResourceAmount } from '../../../lib/server-theme';
+import { LocationFlag } from '../../LocationFlag';
 import { NodeResourceMeter } from '../node-detail/NodeResourceMeter';
 import type { FleetStats, LocationFleetRow } from './node-fleet-utils';
 
@@ -92,7 +93,11 @@ export function NodeFleetSidebar({
               <li key={row.location.id} className="ds-fleet-loc-item">
                 <div className="ds-fleet-loc-item-main">
                   <span className="ds-fleet-loc-icon" aria-hidden>
-                    <MapPin className="ds-icon ds-icon--sm" />
+                    {row.location.flagUrl ? (
+                      <LocationFlag url={row.location.flagUrl} size="md" />
+                    ) : (
+                      <MapPin className="ds-icon ds-icon--sm" />
+                    )}
                   </span>
                   <div className="min-w-0">
                     <p className="ds-fleet-loc-name truncate">{row.location.short}</p>

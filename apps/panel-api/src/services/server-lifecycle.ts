@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import {
   applyContainerStatusUpdate,
+  deleteContainerStatus,
   forcePanelServerOffline,
   suppressTransitionalContainerReports,
 } from '../lib/container-state.js';
@@ -250,11 +251,23 @@ export async function powerServer(uuid: string, action: string) {
   const server = await getServerFull(prisma, uuid);
   if (!server) throw new Error('Server not found');
 
-  if ((action === 'start' || action === 'restart') && isServerInstalling(server)) {
-    throw new Error('Server is still installing. Wait for installation to finish before starting it.');
-  }
-
   const wings = wingsForNode(server.node);
+
+  if ((action === 'start' || action === 'restart') && isServerInstalling(server)) {
+    // After a Wings restart, panel_db can still say "installing" while Docker is already
+    // running (or idle). Trust live Wings state before blocking Start.
+    const liveInstall = await readWingsContainerState(wings, uuid);
+    if (liveInstall === 'installing') {
+      throw Object.assign(
+        new Error('Server is still installing. Wait for installation to finish before starting it.'),
+        { code: 'server_installing', statusCode: 409 },
+      );
+    }
+    await applyContainerStatusUpdate(prisma, server, liveInstall ?? 'offline');
+    if (action === 'start' && (liveInstall === 'running' || liveInstall === 'starting')) {
+      return;
+    }
+  }
 
   if (action === 'kill') {
     // Do not call ensureServerOnWings / waitForOffline — those hang when the daemon is wedged.
@@ -287,6 +300,12 @@ export async function powerServer(uuid: string, action: string) {
     await wings.power(uuid, 'start');
     suppressTransitionalContainerReports(uuid);
     await applyContainerStatusUpdate(prisma, server, 'starting');
+    return;
+  }
+
+  // Already running after a Wings reattach — treat Start as success and sync the badge.
+  if (action === 'start' && (liveState === 'running' || liveState === 'starting')) {
+    await applyContainerStatusUpdate(prisma, server, liveState);
     return;
   }
 
@@ -359,6 +378,8 @@ export async function reinstallServerOnWings(uuid: string, opts?: { wipeFiles?: 
     if (opts?.wipeFiles) {
       await wings.wipeAllServerFiles(uuid);
     }
+
+    await deleteContainerStatus(uuid);
 
     await prisma.server.update({
       where: { id: server.id },

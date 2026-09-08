@@ -50,6 +50,16 @@ const ServerSchedulesPage = lazy(() => import('./pages/client/ServerSchedules').
 const MarketplaceRoutes = lazy(() => import('./pages/client/MarketplaceRoutes').then((m) => ({ default: m.MarketplaceRoutes })));
 const PluginsRoutes = lazy(() => import('./pages/client/PluginsRoutes').then((m) => ({ default: m.PluginsRoutes })));
 const AdminMarketplacePage = lazy(() => import('./pages/admin/Marketplace').then((m) => ({ default: m.AdminMarketplacePage })));
+const AdminPluginsPage = lazy(() => import('./pages/admin/Plugins').then((m) => ({ default: m.AdminPluginsPage })));
+const AdminFivemMarketplacePluginPage = lazy(() =>
+  import('./pages/admin/FivemMarketplacePlugin').then((m) => ({ default: m.AdminFivemMarketplacePluginPage })),
+);
+const AdminMinecraftPluginsPage = lazy(() =>
+  import('./pages/admin/MinecraftPlugins').then((m) => ({ default: m.AdminMinecraftPluginsPage })),
+);
+const AdminDatabaseManagerPage = lazy(() =>
+  import('./pages/admin/DatabaseManager').then((m) => ({ default: m.AdminDatabaseManagerPage })),
+);
 const AdminTicketsPage = lazy(() => import('./pages/admin/Tickets').then((m) => ({ default: m.AdminTicketsPage })));
 const AdminTicketDetailPage = lazy(() => import('./pages/admin/TicketDetail').then((m) => ({ default: m.AdminTicketDetailPage })));
 const ProfilePage = lazy(() => import('./pages/client/ProfilePage').then((m) => ({ default: m.ProfilePage })));
@@ -150,6 +160,10 @@ function PanelRouter() {
                     <Route path="plugins/*" element={<PluginsRoutes />} />
                   </Route>
                   <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/plugins" element={<AdminPluginsPage />} />
+                  <Route path="/admin/plugins/fivem-marketplace" element={<AdminFivemMarketplacePluginPage />} />
+                  <Route path="/admin/plugins/minecraft-plugins" element={<AdminMinecraftPluginsPage />} />
+                  <Route path="/admin/plugins/database-manager" element={<AdminDatabaseManagerPage />} />
                   <Route path="/admin/marketplace" element={<AdminMarketplacePage />} />
                 </Route>
                 <Route path="/admin/nodes/:nodeId" element={<AdminNodeDetail />} />

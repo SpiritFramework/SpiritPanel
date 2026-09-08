@@ -28,7 +28,10 @@ function loginBodyIdentifier(request: FastifyRequest): string {
 }
 
 export const GLOBAL_RATE_LIMIT = {
-  max: isProd() ? 300 : 200,
+  max: (request: FastifyRequest) => {
+    if (request.user?.id) return isProd() ? 600 : 400;
+    return isProd() ? 200 : 100;
+  },
   timeWindow: '1 minute' as const,
   keyGenerator: userOrIpKey,
   skipOnError: true,

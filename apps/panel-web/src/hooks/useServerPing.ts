@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { measureBrowserProbe } from '../lib/browser-ping';
+import { smoothPingReading } from '../lib/ping-smooth';
 
 export type ServerPingState = 'idle' | 'loading' | 'ok' | 'unreachable';
 
-/** Measure round-trip from the browser via the panel API (reachable = game port is open). */
+/**
+ * Estimate latency from the user's browser to the server's node
+ * (same datacenter/host path players use — not panel→game-port TCP).
+ */
 export function useServerPing(serverId: string, enabled: boolean) {
   const [ping, setPing] = useState<number | null>(null);
   const [state, setState] = useState<ServerPingState>('idle');
@@ -19,13 +24,18 @@ export function useServerPing(serverId: string, enabled: boolean) {
 
     async function measure() {
       setState((prev) => (prev === 'ok' ? 'ok' : 'loading'));
-      const start = performance.now();
       try {
-        const res = await api.client.ping(serverId);
+        const target = await api.client.ping(serverId);
         if (cancelled) return;
-        const rtt = Math.round(performance.now() - start);
-        if (res.reachable) {
-          setPing(Math.max(rtt, 1));
+        if (!target.probeUrl) {
+          setPing(null);
+          setState('unreachable');
+          return;
+        }
+        const ms = await measureBrowserProbe(target.probeUrl);
+        if (cancelled) return;
+        if (ms != null) {
+          setPing((prev) => smoothPingReading(prev, ms));
           setState('ok');
         } else {
           setPing(null);
@@ -40,7 +50,7 @@ export function useServerPing(serverId: string, enabled: boolean) {
     }
 
     void measure();
-    const timer = window.setInterval(() => void measure(), 30_000);
+    const timer = window.setInterval(() => void measure(), 15_000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);

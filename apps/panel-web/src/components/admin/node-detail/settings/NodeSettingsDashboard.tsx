@@ -1,12 +1,10 @@
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   AlertTriangle,
   Download,
   Globe,
   HardDrive,
   KeyRound,
-  MapPin,
   MemoryStick,
   RefreshCw,
   RotateCcw,
@@ -18,7 +16,9 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { AdminLocationSummary, AdminNodeDetail, UpdateAdminNodeInput } from '../../../../lib/api';
+import { formatLocationLabel } from '../../../LocationFlag';
 import { Button, Input, Select, Textarea } from '../../../Layout';
+import { NodeOverviewEndpoint, NodeOverviewSection } from '../NodeDetailShell';
 import { NodeSettingsUsageSnapshot } from './NodeSettingsUsageSnapshot';
 import { formatResource } from '../../../../lib/server-theme';
 
@@ -75,64 +75,16 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
   const behindProxy = form.behindProxy ?? detail.behindProxy;
   const maintenanceMode = form.maintenanceMode ?? detail.maintenanceMode;
 
-  const showSaveDock = hasChanges || saved || !!error;
-
   return (
     <div className="ds-nd-st">
-      <header className="ds-nd-st-header">
-        <div>
-          <p className="ds-nd-st-eyebrow">Configuration</p>
-          <h2 className="ds-nd-st-title">Node settings</h2>
-          <p className="ds-nd-st-desc">
-            Identity, networking, resource limits, and FeatherWings credentials for{' '}
-            <strong>{detail.name}</strong>
-          </p>
-        </div>
-        <div className="ds-nd-st-header-meta">
-          <span className="ds-nd-st-meta-chip">
-            <MapPin className="ds-icon ds-icon--sm" aria-hidden />
-            {detail.location.short}
-          </span>
-          <span className="ds-nd-st-meta-chip font-mono">{detail.uuid.slice(0, 8)}…</span>
-        </div>
-      </header>
-
-      {showSaveDock ? (
-        <div className={`ds-nd-st-save-dock${hasChanges ? ' ds-nd-st-save-dock--dirty' : ''}`}>
-          <div className="ds-nd-st-save-status">
-            {error ? (
-              <span className="ds-nd-st-save-msg ds-nd-st-save-msg--error">{error}</span>
-            ) : saved ? (
-              <span className="ds-nd-st-save-msg ds-nd-st-save-msg--success">Changes saved</span>
-            ) : hasChanges ? (
-              <span className="ds-nd-st-save-msg">
-                <span className="ds-nd-st-save-dot" aria-hidden />
-                Unsaved changes
-              </span>
-            ) : null}
-          </div>
-          <div className="ds-nd-st-save-actions">
-            <Button type="button" variant="ghost" size="sm" onClick={resetForm} disabled={!hasChanges || saving}>
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </Button>
-            <Button type="submit" size="sm" disabled={saving || !hasChanges}>
-              <Save className="h-3.5 w-3.5" />
-              {saving ? 'Saving…' : 'Save changes'}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="ds-nd-st-layout">
+      <div className="ds-nd-st-grid">
         <div className="ds-nd-st-main">
-          <SettingsSection
-            id="identity"
+          <NodeOverviewSection
             icon={Server}
             title="Identity"
-            description="How this node appears in the panel and which region it belongs to"
+            description="Display name, region, and internal notes"
           >
-            <div className="ds-nd-st-form-grid">
+            <div className="ds-nd-st-fields">
               <Input
                 label="Node name"
                 value={form.name ?? ''}
@@ -146,16 +98,16 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
               >
                 {locations.length === 0 && (
                   <option value={detail.location.id}>
-                    {detail.location.short} — {detail.location.long}
+                    {formatLocationLabel(detail.location)}
                   </option>
                 )}
                 {locations.map((location) => (
                   <option key={location.id} value={location.id}>
-                    {location.short} — {location.long}
+                    {formatLocationLabel(location)}
                   </option>
                 ))}
               </Select>
-              <div className="ds-nd-st-span-2">
+              <div className="ds-nd-st-fields-span">
                 <Textarea
                   label="Description"
                   value={form.description ?? ''}
@@ -165,15 +117,14 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
                 />
               </div>
             </div>
-          </SettingsSection>
+          </NodeOverviewSection>
 
-          <SettingsSection
-            id="network"
+          <NodeOverviewSection
             icon={Globe}
             title="Network & connectivity"
             description="FQDN, TLS, proxy settings, and daemon ports"
           >
-            <div className="ds-nd-st-form-grid">
+            <div className="ds-nd-st-fields">
               <Input
                 label="FQDN"
                 value={form.fqdn ?? ''}
@@ -242,19 +193,20 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
                 </p>
               </div>
             ) : null}
-          </SettingsSection>
+          </NodeOverviewSection>
 
-          <SettingsSection
-            id="resources"
+          <NodeOverviewSection
             icon={SlidersHorizontal}
             title="Resource limits"
             description="Memory, disk, upload size, and data directory on the host"
           >
             {detail.capacity ? (
-              <NodeSettingsUsageSnapshot capacity={detail.capacity} liveUsage={detail.liveUsage} />
+              <div className="ds-nd-st-usage-wrap">
+                <NodeSettingsUsageSnapshot capacity={detail.capacity} />
+              </div>
             ) : null}
 
-            <div className="ds-nd-st-limit-cards">
+            <div className="ds-nd-st-limit-row">
               <LimitPreviewCard
                 label="RAM limit"
                 value={form.memory ?? detail.memory}
@@ -267,7 +219,7 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
               />
             </div>
 
-            <div className="ds-nd-st-form-grid">
+            <div className="ds-nd-st-fields">
               <Input
                 label="Total memory (MB)"
                 type="number"
@@ -300,7 +252,7 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
                 value={String(form.uploadSize ?? '')}
                 onChange={(e) => setForm({ ...form, uploadSize: Number(e.target.value) })}
               />
-              <div className="ds-nd-st-span-2">
+              <div className="ds-nd-st-fields-span">
                 <Input
                   label="Data directory"
                   value={form.daemonBase ?? ''}
@@ -310,24 +262,22 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
                 />
               </div>
             </div>
-          </SettingsSection>
+          </NodeOverviewSection>
         </div>
 
-        <aside className="ds-nd-st-aside">
+        <aside className="ds-nd-st-rail">
           <button
             type="button"
-            className={`ds-nd-st-maint-card${maintenanceMode ? ' ds-nd-st-maint-card--on' : ''}`}
+            className={`ds-nd-st-maint${maintenanceMode ? ' ds-nd-st-maint--on' : ''}`}
             onClick={() => setForm({ ...form, maintenanceMode: !maintenanceMode })}
           >
             <span className="ds-nd-st-maint-icon" aria-hidden>
-              <Wrench className="ds-icon" />
+              <Wrench className="ds-icon ds-icon--sm" />
             </span>
-            <span className="ds-nd-st-maint-body">
+            <span className="ds-nd-st-maint-copy">
               <span className="ds-nd-st-maint-label">Maintenance mode</span>
               <span className="ds-nd-st-maint-hint">
-                {maintenanceMode
-                  ? 'New deployments blocked — click to disable'
-                  : 'Click to block new server deployments'}
+                {maintenanceMode ? 'Deployments paused — click to disable' : 'Block new server deployments'}
               </span>
             </span>
             <span className={`ds-nd-st-toggle${maintenanceMode ? ' ds-nd-st-toggle--on' : ''}`} aria-hidden>
@@ -335,54 +285,45 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
             </span>
           </button>
 
-          <div className="ds-nd-st-preview-card">
-            <p className="ds-nd-st-section-label">Connection preview</p>
-            <PreviewRow label="Panel API" value={`${scheme}://${fqdn}:${apiPort}`} />
-            <PreviewRow label="SFTP" value={`${fqdn}:${sftpPort}`} />
-            <div className="ds-nd-st-preview-tags">
+          <NodeOverviewSection icon={Globe} title="Live preview" description="Updates as you edit network fields">
+            <div className="ds-nd-ov-endpoint-grid">
+              <NodeOverviewEndpoint label="Panel API" value={`${scheme}://${fqdn}:${apiPort}`} mono />
+              <NodeOverviewEndpoint label="SFTP" value={`${fqdn}:${sftpPort}`} mono />
+            </div>
+            <div className="ds-nd-ov-tags">
               {behindProxy ? <span className="ds-nd-tag">Behind proxy</span> : null}
               <span className="ds-nd-tag">{scheme.toUpperCase()}</span>
             </div>
-          </div>
+          </NodeOverviewSection>
 
-          <SettingsSection
+          <NodeOverviewSection
             icon={KeyRound}
             title="FeatherWings"
             description="Daemon credentials and config"
-            compact
           >
-            <div className="ds-nd-st-wings-meta">
-              <PreviewRow label="Wings version" value={wingsVersion ?? (detail.online ? 'Connected' : '—')} />
-              <PreviewRow label="Token ID" value={detail.daemonTokenId} mono truncate />
+            <div className="ds-nd-ov-endpoint-grid">
+              <NodeOverviewEndpoint
+                label="Wings version"
+                value={wingsVersion ?? (detail.online ? 'Connected' : '—')}
+              />
+              <NodeOverviewEndpoint label="Token ID" value={detail.daemonTokenId} mono />
             </div>
-            <div className="ds-nd-st-action-stack">
-              <Button type="button" variant="ghost" size="sm" className="ds-nd-st-action-btn" onClick={downloadConfig}>
-                <Download className="h-3.5 w-3.5" />
+            <div className="ds-nd-st-wings-actions">
+              <Button type="button" variant="secondary" size="sm" onClick={downloadConfig}>
+                <Download className="h-3.5 w-3.5" aria-hidden />
                 Download config
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="ds-nd-st-action-btn"
-                onClick={() => void copyText(detail.daemonTokenId)}
-              >
-                <Shield className="h-3.5 w-3.5" />
+              <Button type="button" variant="ghost" size="sm" onClick={() => void copyText(detail.daemonTokenId)}>
+                <Shield className="h-3.5 w-3.5" aria-hidden />
                 {copied ? 'Copied' : 'Copy token ID'}
               </Button>
               {!confirmRotate ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ds-nd-st-action-btn"
-                  onClick={() => setConfirmRotate(true)}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmRotate(true)}>
+                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
                   Rotate token
                 </Button>
               ) : (
-                <div className="ds-nd-st-confirm-box ds-nd-st-confirm-box--warn">
+                <div className="ds-nd-st-confirm ds-nd-st-confirm--warn">
                   <p>Rotate daemon token? Wings will need the new config.</p>
                   <div className="ds-nd-st-confirm-actions">
                     <Button type="button" size="sm" disabled={saving} onClick={() => void rotateToken()}>
@@ -395,20 +336,20 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
                 </div>
               )}
             </div>
-          </SettingsSection>
+          </NodeOverviewSection>
         </aside>
       </div>
 
       <section className="ds-nd-st-danger" aria-labelledby="node-danger-heading">
-        <div className="ds-nd-st-danger-head">
-          <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
+        <header className="ds-nd-st-danger-head">
+          <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
           <div>
             <h3 id="node-danger-heading" className="ds-nd-st-danger-title">
               Danger zone
             </h3>
             <p className="ds-nd-st-danger-desc">Permanently remove this node from the panel</p>
           </div>
-        </div>
+        </header>
         <div className="ds-nd-st-danger-body">
           {!confirmDelete ? (
             <>
@@ -420,21 +361,24 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
               <Button
                 type="button"
                 variant="danger"
+                size="sm"
                 disabled={detail.serverCount > 0}
                 onClick={() => setConfirmDelete(true)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 Delete node
               </Button>
             </>
           ) : (
-            <div className="ds-nd-st-confirm-box ds-nd-st-confirm-box--danger">
-              <p>Delete <strong>{detail.name}</strong> permanently?</p>
+            <div className="ds-nd-st-confirm ds-nd-st-confirm--danger">
+              <p>
+                Delete <strong>{detail.name}</strong> permanently?
+              </p>
               <div className="ds-nd-st-confirm-actions">
-                <Button type="button" variant="danger" disabled={saving} onClick={() => void deleteNode()}>
+                <Button type="button" variant="danger" size="sm" disabled={saving} onClick={() => void deleteNode()}>
                   Yes, delete
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setConfirmDelete(false)}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
                   Cancel
                 </Button>
               </div>
@@ -442,51 +386,37 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
           )}
         </div>
       </section>
-    </div>
-  );
-}
 
-function SettingsSection({
-  id,
-  icon: Icon,
-  title,
-  description,
-  compact,
-  children,
-}: {
-  id?: string;
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  compact?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className={`ds-nd-st-section${compact ? ' ds-nd-st-section--compact' : ''}`}
-    >
-      <header className="ds-nd-st-section-head">
-        <span className="ds-nd-st-section-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div>
-          <h3 className="ds-nd-st-section-title">{title}</h3>
-          <p className="ds-nd-st-section-desc">{description}</p>
+      <div
+        className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : ''}${saved ? ' ds-nd-st-savebar--saved' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="ds-nd-st-savebar-status">
+          {error ? (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--error">{error}</span>
+          ) : saved ? (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--success">Changes saved</span>
+          ) : hasChanges ? (
+            <span className="ds-nd-st-savebar-msg">
+              <span className="ds-nd-st-savebar-dot" aria-hidden />
+              Unsaved changes
+            </span>
+          ) : (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--idle">All changes saved</span>
+          )}
         </div>
-      </header>
-      <div className="ds-nd-st-section-body">{children}</div>
-    </section>
-  );
-}
-
-function PreviewRow({ label, value, mono, truncate }: { label: string; value: string; mono?: boolean; truncate?: boolean }) {
-  return (
-    <div className="ds-nd-st-preview-row">
-      <span className="ds-nd-st-preview-label">{label}</span>
-      <span className={`ds-nd-st-preview-value${mono ? ' font-mono' : ''}${truncate ? ' truncate' : ''}`}>
-        {value}
-      </span>
+        <div className="ds-nd-st-savebar-actions">
+          <Button type="button" variant="ghost" size="sm" onClick={resetForm} disabled={!hasChanges || saving}>
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+            Reset
+          </Button>
+          <Button type="submit" size="sm" disabled={saving || !hasChanges}>
+            <Save className="h-3.5 w-3.5" aria-hidden />
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -504,15 +434,13 @@ function LimitPreviewCard({
   const Icon = label.includes('Disk') ? HardDrive : MemoryStick;
 
   return (
-    <div className="ds-nd-st-limit-card">
+    <div className="ds-nd-st-limit">
       <span className="ds-nd-st-limit-icon" aria-hidden>
         <Icon className="ds-icon ds-icon--sm" />
       </span>
       <div className="min-w-0">
         <p className="ds-nd-st-limit-label">{label}</p>
-        <p className="ds-nd-st-limit-value">
-          {effective > 0 ? formatResource(effective, 'MiB') : 'Unlimited'}
-        </p>
+        <p className="ds-nd-st-limit-value">{effective > 0 ? formatResource(effective, 'MiB') : 'Unlimited'}</p>
         {overallocate > 0 && value > 0 ? (
           <p className="ds-nd-st-limit-hint">+{overallocate}% overallocate</p>
         ) : null}

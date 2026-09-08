@@ -7,8 +7,6 @@ import {
   RotateCcw,
   Save,
 } from 'lucide-react';
-import { type ActivityEntry } from '../lib/activity';
-import { ActivityTimeline } from './ActivityTimeline';
 import { Button } from './Layout';
 import { useBranding } from '../context/BrandingContext';
 import { normalizeAppearance } from '../lib/branding-appearance';
@@ -184,9 +182,15 @@ export function AdminDetailTabs<T extends string>({
 }) {
   const { branding } = useBranding();
   const tabsStyle = normalizeAppearance(branding).adminTabsStyle;
+  const tabsClass =
+    tabsStyle === 'underline'
+      ? ' ds-admin-tabs--underline'
+      : tabsStyle === 'pills'
+        ? ' ds-admin-tabs--pills'
+        : '';
 
   return (
-    <div className={`ds-admin-tabs${tabsStyle === 'underline' ? ' ds-admin-tabs--underline' : ''}`}>
+    <div className={`ds-admin-tabs${tabsClass}`}>
       <div className="ds-admin-tabs-inner">
         {tabs.map((t) => {
           const selected = active === t.id;
@@ -538,21 +542,5 @@ export function AdminRelatedTable({
         </div>
       )}
     </div>
-  );
-}
-
-export function AdminActivityTimeline({
-  entries,
-  renderMeta,
-}: {
-  entries: ActivityEntry[];
-  renderMeta?: (entry: ActivityEntry) => React.ReactNode;
-}) {
-  return (
-    <ActivityTimeline
-      entries={entries}
-      compact
-      renderMeta={renderMeta}
-    />
   );
 }

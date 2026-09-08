@@ -80,10 +80,12 @@ export async function verifyApiKeyDetailed(
   if (key.expiresAt && key.expiresAt < new Date()) return null;
   const valid = await bcrypt.compare(token, key.token);
   if (!valid) return null;
-  await prisma.apiKey.update({
-    where: { id: key.id },
-    data: { lastUsedAt: new Date() },
-  });
+  void prisma.apiKey
+    .update({
+      where: { id: key.id },
+      data: { lastUsedAt: new Date() },
+    })
+    .catch(() => {});
   const user = await prisma.user.findUnique({ where: { id: key.userId } });
   if (!user) return null;
 

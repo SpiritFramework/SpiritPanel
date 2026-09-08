@@ -59,3 +59,7 @@ export async function getNodeHealthSnapshot(
 export function clearNodeHealthCache(): void {
   cache.clear();
 }
+
+export function clearNodeHealthCacheForNode(nodeId: string): void {
+  cache.delete(nodeId);
+}

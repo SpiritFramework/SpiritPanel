@@ -1,11 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Readable } from 'node:stream';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { validateCronExpression } from '../lib/cron-match.js';
 import { getServerAccess, hasClientPermission, logServerActivity } from '../lib/client-server.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { executeSchedule } from '../services/schedule-runner.js';
-import { wingsForNode } from '../services/wings-client.js';
+import { wingsForNode, WingsError } from '../services/wings-client.js';
 import { signWingsJwt } from '../lib/auth.js';
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
 import {
@@ -14,6 +15,10 @@ import {
   serializeDiskBudget,
 } from '../lib/server-disk-budget.js';
 import { sendClientError } from '../lib/safe-errors.js';
+import { diskFromChecksumType, resolveStoredBackupAdapter } from '../lib/backup-adapter.js';
+import { getConfig } from '../lib/env.js';
+import { openColocatedBackupStream, resolveColocatedBackupFile } from '../lib/local-backup-path.js';
+import { isNodeColocatedWithPanel } from '../lib/wings-socket.js';
 
 const POWER_ACTIONS = ['start', 'stop', 'restart', 'kill'] as const;
 
@@ -114,9 +119,15 @@ export async function backupRoutes(app: FastifyInstance) {
       include: { node: true },
     });
 
+    const wings = wingsForNode(server.node);
+    const adapter = await wings.resolveBackupAdapter();
+
     try {
       const ignoreList = parseIgnored(body.ignored);
-      await wingsForNode(server.node).createBackup(server.uuid, backup.uuid, ignoreList);
+      await wings.createBackup(server.uuid, backup.uuid, ignoreList, adapter);
+      if (adapter !== backup.disk) {
+        backup = await prisma.backup.update({ where: { id: backup.id }, data: { disk: adapter } });
+      }
     } catch (err) {
       // Roll back the row if the daemon refused to start the backup.
       await prisma.backup.delete({ where: { id: backup.id } }).catch(() => {});
@@ -146,7 +157,11 @@ export async function backupRoutes(app: FastifyInstance) {
     if (!server) return reply.status(404).send({ error: 'Not found' });
 
     try {
-      await wingsForNode(server.node).restoreBackup(server.uuid, backup.uuid, { truncate: true });
+      const adapter = resolveStoredBackupAdapter(backup);
+      await wingsForNode(server.node).restoreBackup(server.uuid, backup.uuid, {
+        adapter,
+        truncate: true,
+      });
       await prisma.server.update({ where: { id: server.id }, data: { status: 'restoring_backup' } });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to restore backup';
@@ -169,8 +184,91 @@ export async function backupRoutes(app: FastifyInstance) {
     if (!backup.isSuccessful) return reply.status(400).send({ error: 'Backup is not complete yet' });
     const server = await prisma.server.findUnique({ where: { id: backup.serverId }, include: { node: true } });
     if (!server) return reply.status(404).send({ error: 'Not found' });
-    const url = wingsForNode(server.node).backupDownloadUrl(server.uuid, backup.uuid, signWingsJwt);
-    return { url };
+
+    const wings = wingsForNode(server.node);
+    let listedOnNode = false;
+    let localBackupCount = 0;
+    try {
+      const list = await wings.listServerBackups(server.uuid);
+      const entries = list.data ?? [];
+      localBackupCount = entries.length;
+      listedOnNode = entries.some(
+        (entry) => entry.uuid.toLowerCase() === backup.uuid.toLowerCase(),
+      );
+    } catch (listErr) {
+      request.log.warn({ err: listErr, serverId: server.id }, 'backup list failed before download');
+    }
+
+    try {
+      const wingsRes = await wings.downloadBackup(
+        server.uuid,
+        backup.uuid,
+        request.user!.uuid,
+        signWingsJwt,
+      );
+      const disposition = wingsRes.headers.get('content-disposition');
+      const filename = backupAttachmentName(backup.name, disposition);
+      reply.header('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"`);
+      reply.type(wingsRes.headers.get('content-type') || 'application/octet-stream');
+      const len = wingsRes.headers.get('content-length');
+      if (len) reply.header('Content-Length', len);
+
+      await logServerActivity(request, {
+        serverId: server.id,
+        event: 'server.backup.download',
+        description: `${request.user!.username} downloaded backup "${backup.name}"`,
+        properties: { backupId: backup.id },
+      });
+
+      if (wingsRes.body) {
+        return reply.send(Readable.fromWeb(wingsRes.body as import('node:stream/web').ReadableStream));
+      }
+      const arrayBuffer = await wingsRes.arrayBuffer();
+      return reply.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+      if (err instanceof WingsError && err.status === 404) {
+        const adapter = resolveStoredBackupAdapter(backup);
+        if (adapter === 'pbs') {
+          return reply.status(404).send({
+            error:
+              'This backup is stored on Proxmox Backup Server and could not be exported. Rebuild and restart FeatherWings on the node with the latest panel release.',
+          });
+        }
+        if (listedOnNode) {
+          const panelUrl = getConfig().panelUrl || getConfig().apiUrl;
+          if (isNodeColocatedWithPanel(server.node, panelUrl)) {
+            const localPath = resolveColocatedBackupFile(server.uuid, backup.uuid);
+            if (localPath) {
+              const { stream, size } = openColocatedBackupStream(localPath);
+              const filename = backupAttachmentName(backup.name, null);
+              reply.header('Content-Disposition', `attachment; filename="${filename.replace(/"/g, '')}"`);
+              reply.type('application/octet-stream');
+              reply.header('Content-Length', String(size));
+              await logServerActivity(request, {
+                serverId: server.id,
+                event: 'server.backup.download',
+                description: `${request.user!.username} downloaded backup "${backup.name}"`,
+                properties: { backupId: backup.id, source: 'local-disk' },
+              });
+              request.log.info(
+                { serverId: server.id, backupId: backup.id, path: localPath },
+                'served backup from colocated disk (FeatherWings download route unavailable)',
+              );
+              return reply.send(stream);
+            }
+          }
+          return reply.status(404).send({
+            error:
+              'The backup file is on the node but could not be streamed. Rebuild FeatherWings from this release and restart the daemon on the node.',
+          });
+        }
+        return reply.status(404).send({
+          error: 'Backup archive not found on the node',
+          hint: `Expected ${backup.uuid}.tar.gz under the node backup directory for server ${server.uuid}. The node currently lists ${localBackupCount} local backup(s) for this server.`,
+        });
+      }
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to download backup');
+    }
   });
 
   app.patch('/backups/:id/lock', async (request, reply) => {
@@ -228,6 +326,25 @@ function parseIgnored(raw?: string): string {
   return trimmed;
 }
 
+function backupAttachmentName(backupName: string, contentDisposition: string | null): string {
+  if (contentDisposition) {
+    const star = contentDisposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+    if (star?.[1]) {
+      try {
+        return decodeURIComponent(star[1]);
+      } catch {
+        // fall through
+      }
+    }
+    const quoted = contentDisposition.match(/filename="([^"]+)"/i);
+    if (quoted?.[1]) return quoted[1];
+    const plain = contentDisposition.match(/filename=([^;\s]+)/i);
+    if (plain?.[1]) return plain[1].replace(/"/g, '');
+  }
+  const base = backupName.replace(/[^\w.\- ]+/g, '_').trim() || 'backup';
+  return /\.(tar|gz|zip|pxar)$/i.test(base) ? base : `${base}.tar.gz`;
+}
+
 function serializeBackup(backup: {
   id: string;
   uuid: string;
@@ -237,6 +354,7 @@ function serializeBackup(backup: {
   isLocked: boolean;
   bytes: bigint;
   checksum: string | null;
+  disk: string;
   completedAt: Date | null;
   createdAt: Date;
 }) {
@@ -249,6 +367,7 @@ function serializeBackup(backup: {
     isLocked: backup.isLocked,
     bytes: Number(backup.bytes),
     checksum: backup.checksum,
+    disk: resolveStoredBackupAdapter(backup),
     completedAt: backup.completedAt?.toISOString() ?? null,
     createdAt: backup.createdAt.toISOString(),
   };

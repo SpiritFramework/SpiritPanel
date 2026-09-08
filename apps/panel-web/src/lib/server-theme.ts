@@ -1,7 +1,18 @@
 import { Box, type LucideIcon } from 'lucide-react';
 import type { ServerCardStylePreference } from './branding-appearance';
 
-export type ServerCardStyle = 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked';
+export type ServerCardStyle =
+  | 'banner'
+  | 'stripe'
+  | 'glass'
+  | 'edge'
+  | 'neon'
+  | 'minimal'
+  | 'stacked'
+  | 'poster'
+  | 'split'
+  | 'outline'
+  | 'tile';
 
 export interface ServerTheme {
   gradient: string;

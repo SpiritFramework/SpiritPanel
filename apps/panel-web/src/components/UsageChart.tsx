@@ -15,6 +15,7 @@ interface UsageChartProps {
   max?: number;
   valueUnit?: 'percent' | 'bytes' | 'rate' | 'raw';
   formatValue?: (value: number) => string;
+  className?: string;
 }
 
 export function UsageChart({
@@ -26,6 +27,7 @@ export function UsageChart({
   max,
   valueUnit = 'raw',
   formatValue,
+  className = '',
 }: UsageChartProps) {
   const gradientId = useId().replace(/:/g, '');
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -83,11 +85,11 @@ export function UsageChart({
 
   if (!layout || data.length === 0) {
     return (
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4">
+      <div className={`rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4${className ? ` ${className}` : ''}`}>
         <ChartHeader title={title} unit={unit} />
-        <div className="flex h-[168px] flex-col items-center justify-center gap-1 text-center text-xs text-[var(--muted)]">
+        <div className="ds-srv-an-chart-empty">
           <span>No usage data for this period yet.</span>
-          <span className="text-[10px] opacity-70">Open the console or refresh — snapshots build over time.</span>
+          <span>Open the console or refresh — snapshots build over time.</span>
         </div>
       </div>
     );
@@ -112,7 +114,7 @@ export function UsageChart({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4">
+    <div className={`rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4${className ? ` ${className}` : ''}`}>
       <ChartHeader title={title} unit={unit} value={fmt(headerValue)} />
       <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-[var(--muted)]">
         <span>

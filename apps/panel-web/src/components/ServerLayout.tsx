@@ -3,14 +3,12 @@ import {
   Archive,
   BarChart3,
   CalendarClock,
-  Copy,
   Database,
   FolderOpen,
   History,
   Network,
   Play,
   RotateCw,
-  Server,
   Settings,
   Settings2,
   Skull,
@@ -22,26 +20,23 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { ServerProvider, useServer } from '../context/ServerContext';
+import { useAdminSupport } from '../context/AdminSupportContext';
 import { formatAllocationAddress } from '../lib/allocation';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
-import { normalizeAppearance, serverSidebarClassName, sidebarMaterialClassName } from '../lib/branding-appearance';
-import { useBranding } from '../context/BrandingContext';
 import { getServerTheme } from '../lib/server-theme';
 import { ServerEggIcon } from './ServerEggIcon';
 import { getServerAccess } from '../lib/server-access';
-import { isServerInstalling, isServerRunning, normalizeRuntimeState } from '../lib/server-runtime';
+import { isServerRunning, normalizeRuntimeState, shouldBlockStartForInstall } from '../lib/server-runtime';
 import type { ServerAccessFlags } from '../lib/api';
 import { ServerLiveProvider, useServerLiveOptional } from '../context/ServerLiveContext';
 import { useServerPing } from '../hooks/useServerPing';
 import { useServerPlayerCount } from '../hooks/useServerPlayerCount';
-import { CompactBackLink, SideNavGroup, SideNavItem, TabNavItem } from './Nav';
+import { CompactBackLink, TabNavItem } from './Nav';
 import { PowerConfirmModal, type DestructivePowerAction } from './PowerConfirmModal';
-import { ServerMetricsNav } from './ServerMetricsNav';
+import { ServerOverviewBar } from './server/ServerOverviewBar';
+import { ServerSidebar } from './server/ServerSidebar';
 import { AmbientBackdrop } from './AmbientBackdrop';
-import { Spinner } from './ui';
-import { ServerStatusBadge } from './ServerStatusBadge';
-import { ThemeToggle } from './ThemeToggle';
-import { useAdminSupport } from '../context/AdminSupportContext';
+import { AlertBanner, Spinner } from './ui';
 import { isFiveMServer, isMinecraftServer } from '../lib/server-eggs';
 import type { ServerDetail } from '../lib/api';
 
@@ -75,7 +70,7 @@ const serverNavGroups: Array<{
       {
         to: 'marketplace',
         label: 'Marketplace',
-        description: 'FiveM scripts & maps',
+        description: 'Scripts & resources',
         icon: Store,
         accessKey: 'canReadFiles',
         when: (s) => isFiveMServer(s) && s.marketplaceEnabled !== false,
@@ -126,8 +121,6 @@ export function ServerShellInner() {
   const isConsoleRoute = /\/console\/?$/.test(location.pathname);
   const isFileEditRoute = /\/files\/edit\/?$/.test(location.pathname);
   const isFullHeightRoute = isConsoleRoute || isFileEditRoute;
-  const { branding } = useBranding();
-  const appearance = normalizeAppearance(branding);
   const theme = getServerTheme(server.egg.name);
   const panelBgClass = usePanelBackgroundClass();
   const [copied, setCopied] = useState(false);
@@ -136,6 +129,11 @@ export function ServerShellInner() {
   const [powerConfirm, setPowerConfirm] = useState<DestructivePowerAction | null>(null);
   const live = useServerLiveOptional();
   const runtimeState = live?.runtimeState ?? normalizeRuntimeState(server.containerState ?? 'offline');
+  const installPhase = live?.installPhase ?? 'idle';
+  const startBlockedForInstall = shouldBlockStartForInstall(server, {
+    runtimeState,
+    installPhase,
+  });
   const serverOnline = !server.suspended && isServerRunning(runtimeState);
   const { ping, state: pingState } = useServerPing(server.id, serverOnline);
   const uptimeMs = live?.uptimeMs ?? null;
@@ -143,6 +141,8 @@ export function ServerShellInner() {
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
+  const backTo = adminSupport?.backTo ?? '/servers';
+  const backLabel = adminSupport ? 'Admin' : 'Servers';
 
   async function copyAddress() {
     await navigator.clipboard.writeText(address);
@@ -152,7 +152,7 @@ export function ServerShellInner() {
 
   function requestPower(action: 'start' | 'restart' | 'stop' | 'kill') {
     setPowerNotice('');
-    if (action === 'start' && isServerInstalling(server)) {
+    if (action === 'start' && startBlockedForInstall) {
       setPowerNotice(
         'This server is still installing. Wait for installation to finish — you can watch progress on the Console tab.',
       );
@@ -185,136 +185,112 @@ export function ServerShellInner() {
   return (
     <>
     <div className={`flex h-[100dvh] w-full max-w-[100vw] overflow-x-hidden overflow-y-hidden ${panelBgClass}`}>
-      {/* Dedicated server sidebar — navigation only */}
-      <aside className={`${serverSidebarClassName(appearance.serverSidebarStyle)} ${sidebarMaterialClassName(appearance.sidebarMaterial)} glass-sidebar hidden h-full w-56 shrink-0 flex-col border-r border-[var(--glass-border)] md:flex`}>
-        <div className="border-b border-[var(--border)] p-3">
-          <div className="mb-2.5 h-0.5 rounded-full" style={{ background: theme.gradient }} />
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/15 shadow-[0_6px_18px_-6px_var(--card-glow,var(--accent-glow))]"
-              style={{ background: theme.gradient, '--card-glow': theme.glow } as React.CSSProperties}
-            >
-              <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-semibold leading-tight">{server.name}</h1>
-              <p className="truncate text-[11px] text-[var(--muted)]">{server.egg.name}</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto p-2">
-          {navGroups.map((group) => (
-            <SideNavGroup key={group.label} label={group.label}>
-              {group.items.map(({ to, label, description, icon }) => (
-                <SideNavItem key={to} to={to} icon={icon} label={label} description={description} />
-              ))}
-            </SideNavGroup>
-          ))}
-        </nav>
-
-        {showPower && (
-          <div className="border-t border-[var(--border)] p-2.5">
-            <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]/60">
-              Power
-            </p>
-            {powerNotice && (
-              <p
-                className="mb-2 rounded-md border px-2 py-1.5 text-[10px] leading-snug"
-                style={{ borderColor: 'var(--info-border)', background: 'var(--info-bg)', color: 'var(--info-fg)' }}
-              >
-                {powerNotice}
-              </p>
-            )}
-            <div className="grid grid-cols-2 gap-1.5">
-              {access.canStart && (
-                <PowerButton
-                  label="Start"
-                  icon={Play}
-                  variant="start"
-                  loading={powering === 'start'}
-                  disabled={isServerInstalling(server)}
-                  onClick={() => requestPower('start')}
-                />
-              )}
-              {access.canRestart && (
-                <PowerButton label="Restart" icon={RotateCw} variant="restart" loading={powering === 'restart'} onClick={() => requestPower('restart')} />
-              )}
-              {access.canStop && (
-                <PowerButton label="Stop" icon={Square} variant="stop" loading={powering === 'stop'} onClick={() => requestPower('stop')} />
-              )}
-              {access.canStop && (
-                <PowerButton label="Kill" icon={Skull} variant="stop" loading={powering === 'kill'} onClick={() => requestPower('kill')} />
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] px-3 py-2">
-          <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
-          <ThemeToggle compact />
-        </div>
-      </aside>
+      <ServerSidebar
+        navGroups={navGroups}
+        showPower={showPower}
+        powering={powering}
+        powerNotice={powerNotice}
+        onPower={requestPower}
+        startBlockedForInstall={startBlockedForInstall}
+      />
 
       {/* Main content */}
       <div className="server-shell-main flex min-h-0 min-w-0 flex-1 flex-col">
         <AmbientBackdrop variant="dense" />
         {/* Mobile header + tabs */}
         <header className="server-mobile-header relative z-[1] glass safe-top border-x-0 border-t-0 border-b border-[var(--glass-border)] md:hidden">
-          <div className={`${isFullHeightRoute ? 'px-2.5 py-2' : 'p-3 pb-2'}`}>
-            <div className="flex items-center gap-2.5">
+          {isConsoleRoute ? (
+            <div className="server-mobile-console-bar">
+              <CompactBackLink to={backTo} label={backLabel} />
               <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
+                className="server-mobile-console-mark"
                 style={{ background: theme.gradient }}
+                aria-hidden
               >
-                <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
+                <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-3.5 w-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-sm font-semibold">{server.name}</h1>
-                <p className="truncate text-[11px] text-[var(--muted)]">{server.egg.name}</p>
+                <p className="truncate text-xs font-semibold leading-snug">{server.name}</p>
+                <p className="truncate text-[10px] leading-snug text-[var(--muted)]">Console</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className={`${isFullHeightRoute ? 'px-2.5 py-2' : 'px-3 py-2.5'}`}>
+              <div className="flex items-center gap-2.5">
+                <CompactBackLink to={backTo} label={backLabel} className="!px-2 !py-1.5" />
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
+                  style={{ background: theme.gradient }}
+                >
+                  <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-sm font-semibold leading-snug">{server.name}</h1>
+                  <p className="mt-0.5 truncate text-[11px] leading-snug text-[var(--muted)]">{server.egg.name}</p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="nav-tabs-scroll-hint">
-            <nav className="nav-tabs-scroll flex gap-1 overflow-x-auto border-t border-[var(--border)] px-3 py-2">
+            <nav
+              className={`nav-tabs-scroll flex gap-1 overflow-x-auto px-2 py-1.5 ${
+                isConsoleRoute ? '' : 'border-t border-[var(--border)]'
+              }`}
+              aria-label="Server sections"
+            >
               {navItems.map(({ to, label, icon }) => (
                 <TabNavItem key={to} to={to} icon={icon} label={label} />
               ))}
             </nav>
           </div>
-          {showPower && !isFullHeightRoute && (
+          {showPower && (isConsoleRoute || !isFullHeightRoute) ? (
             <MobilePowerBar
               access={access}
-              server={server}
               powering={powering}
               powerNotice={powerNotice}
               onPower={requestPower}
+              startBlockedForInstall={startBlockedForInstall}
+              iconsOnly={isConsoleRoute}
             />
-          )}
+          ) : null}
         </header>
 
-        <ServerOverviewBar
-          themeGradient={theme.gradient}
-          address={address}
-          copied={copied}
-          onCopyAddress={copyAddress}
-          ping={ping}
-          pingState={pingState}
-          uptimeMs={uptimeMs}
-          uptimeLive={serverOnline}
-          playerOnline={playerCount.online}
-          playerMax={playerCount.max}
-          playerLoading={playerCount.loading}
-          playerLive={playerCount.running}
-          playerUnavailable={playerCount.unavailable}
-          compact={isFullHeightRoute}
-        />
+        {/* Overview bar: hide on console phones — metrics live in the console header on desktop */}
+        <div className={isConsoleRoute ? 'hidden md:block' : undefined}>
+          <ServerOverviewBar
+            themeGradient={theme.gradient}
+            address={address}
+            copied={copied}
+            onCopyAddress={copyAddress}
+            ping={ping}
+            pingState={pingState}
+            uptimeMs={uptimeMs}
+            uptimeLive={serverOnline}
+            playerOnline={playerCount.online}
+            playerMax={playerCount.max}
+            playerLoading={playerCount.loading}
+            playerLive={playerCount.running}
+            playerUnavailable={playerCount.unavailable}
+            compact={isFullHeightRoute}
+          />
+        </div>
+
+        {server.nodeReachable === false ? (
+          <AlertBanner
+            tone="warning"
+            className={`relative z-[1] mx-3 mt-2 md:mx-5 md:mt-0${isConsoleRoute ? ' hidden md:flex' : ''}`}
+          >
+            Host node is unreachable — status and console may be stale until FeatherWings reconnects.
+          </AlertBanner>
+        ) : null}
 
         <main
           className={`server-shell-content relative z-[1] min-h-0 flex-1 md:p-5 ${
-            isFullHeightRoute
-              ? 'flex flex-col overflow-hidden p-2 safe-bottom md:p-5 md:pb-5'
-              : 'overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-4 md:p-5 md:pb-5'
+            isConsoleRoute
+              ? 'flex flex-col overflow-hidden p-0 safe-bottom md:p-5 md:pb-5'
+              : isFullHeightRoute
+                ? 'flex flex-col overflow-hidden p-2 safe-bottom md:p-5 md:pb-5'
+                : 'overflow-y-auto overflow-x-hidden p-3 safe-bottom sm:p-4 md:p-5 md:pb-5'
           }`}
         >
           <div
@@ -346,147 +322,6 @@ export function ServerShellInner() {
   );
 }
 
-function ServerOverviewBar({
-  themeGradient,
-  address,
-  copied,
-  onCopyAddress,
-  ping,
-  pingState,
-  uptimeMs,
-  uptimeLive,
-  playerOnline,
-  playerMax,
-  playerLoading,
-  playerLive,
-  playerUnavailable,
-  compact = false,
-}: {
-  themeGradient: string;
-  address: string;
-  copied: boolean;
-  onCopyAddress: () => void;
-  ping: number | null;
-  pingState: ReturnType<typeof useServerPing>['state'];
-  uptimeMs: number | null;
-  uptimeLive: boolean;
-  playerOnline: number | null;
-  playerMax: number | null;
-  playerLoading: boolean;
-  playerLive: boolean;
-  playerUnavailable?: boolean;
-  compact?: boolean;
-}) {
-  const { server } = useServer();
-  const adminSupport = useAdminSupport();
-
-  return (
-    <div
-      className={`server-overview-bar glass shrink-0 border-x-0 border-t-0 border-b border-[var(--glass-border)] ${
-        compact ? 'server-overview-bar--compact' : ''
-      }`}
-    >
-      <div className="h-0.5 w-full" style={{ background: themeGradient }} />
-
-      {compact && (
-        <div className="server-overview-compact-wrap">
-          <div className="server-overview-compact">
-            <CompactBackLink
-              to={adminSupport?.backTo ?? '/servers'}
-              label={adminSupport ? 'Admin' : 'Servers'}
-            />
-            <LiveServerStatus compact />
-            <OverviewAddressButton address={address} onCopy={onCopyAddress} className="min-w-0 flex-1" />
-          </div>
-          <div className="server-overview-metrics server-overview-metrics--compact">
-            <ServerMetricsNav
-              compact
-              ping={ping}
-              pingState={pingState}
-              uptimeMs={uptimeMs}
-              uptimeLive={uptimeLive}
-              playerOnline={playerOnline}
-              playerMax={playerMax}
-              playerLoading={playerLoading}
-              playerLive={playerLive}
-              playerUnavailable={playerUnavailable}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="server-overview-expanded flex flex-wrap items-center gap-x-2 gap-y-2 px-2 py-2 sm:gap-x-3 sm:px-4 sm:py-2.5 md:px-5">
-        <CompactBackLink
-          to={adminSupport?.backTo ?? '/servers'}
-          label={adminSupport ? 'Admin server' : 'My servers'}
-          className={compact ? 'hidden md:inline-flex' : undefined}
-        />
-
-        <OverviewDivider className="hidden sm:block" />
-
-        <OverviewAddressButton address={address} onCopy={onCopyAddress} />
-
-        {copied && <span className="text-[10px] font-medium accent-text">Copied</span>}
-
-        <OverviewDivider className="hidden sm:block" />
-
-        <LiveServerStatus compact />
-
-        <OverviewDivider className="hidden md:block" />
-
-        <div className="server-overview-metrics w-full basis-full md:w-auto md:basis-auto">
-          <ServerMetricsNav
-            compact
-            ping={ping}
-            pingState={pingState}
-            uptimeMs={uptimeMs}
-            uptimeLive={uptimeLive}
-            playerOnline={playerOnline}
-            playerMax={playerMax}
-            playerLoading={playerLoading}
-            playerLive={playerLive}
-            playerUnavailable={playerUnavailable}
-          />
-        </div>
-
-        <div className="hidden min-w-0 shrink items-center gap-2 md:ml-auto md:flex">
-          <span className="inline-flex max-w-[8rem] min-w-0 items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--bg-elevated)]/40 px-2 py-1 text-[11px] text-[var(--muted)] lg:max-w-[10rem]">
-            <Server className="h-3 w-3 shrink-0" />
-            <span className="truncate font-medium text-[var(--text)]">{server.node.name}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OverviewAddressButton({
-  address,
-  onCopy,
-  className = '',
-}: {
-  address: string;
-  onCopy: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onCopy}
-      title={`${address} — click to copy`}
-      className={`group flex min-w-0 max-w-[8rem] shrink items-center gap-1.5 overflow-hidden rounded-lg border border-[var(--border)]/80 bg-[var(--bg-elevated)]/50 px-2 py-1.5 text-left transition hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:bg-[var(--bg-elevated)] sm:max-w-[11rem] md:max-w-[12rem] ${className}`}
-    >
-      <Network className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] group-hover:accent-text" />
-      <span className="min-w-0 truncate font-mono text-[11px] font-medium">{address}</span>
-      <Copy className="h-3 w-3 shrink-0 text-[var(--muted)] opacity-60 transition group-hover:opacity-100 group-hover:accent-text" />
-    </button>
-  );
-}
-
-function OverviewDivider({ className = '' }: { className?: string }) {
-  return <div className={`h-4 w-px shrink-0 bg-[var(--border)] ${className}`} />;
-}
-
 function PowerButton({
   label,
   icon: Icon,
@@ -495,6 +330,7 @@ function PowerButton({
   disabled,
   onClick,
   compact,
+  iconsOnly,
 }: {
   label: string;
   icon: typeof Play;
@@ -503,6 +339,7 @@ function PowerButton({
   disabled?: boolean;
   onClick: () => void;
   compact?: boolean;
+  iconsOnly?: boolean;
 }) {
   const styleByVariant = {
     start: { background: 'var(--success-bg)', color: 'var(--success-fg)', borderColor: 'var(--success-border)' },
@@ -520,60 +357,94 @@ function PowerButton({
       type="button"
       disabled={loading || disabled}
       title={disabled ? 'Unavailable while server is installing' : label}
+      aria-label={label}
       onClick={onClick}
       style={styleByVariant[variant]}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg font-semibold shadow-sm transition hover:-translate-y-px hover:brightness-110 disabled:opacity-50 ${compact ? 'min-w-[3.25rem] px-2 py-2 text-[10px]' : 'px-2 py-2 text-[11px]'} ${classByVariant[variant]}`}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg font-semibold shadow-sm transition hover:-translate-y-px hover:brightness-110 disabled:opacity-50 ${
+        iconsOnly
+          ? 'min-h-10 px-2 py-2'
+          : compact
+            ? 'min-h-11 px-2.5 py-2.5 text-xs'
+            : 'px-2 py-2 text-[11px]'
+      } ${classByVariant[variant]}`}
     >
       <Icon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-      {!compact && label}
+      {iconsOnly ? null : <span>{label}</span>}
     </button>
   );
 }
 
 function MobilePowerBar({
   access,
-  server,
   powering,
   powerNotice,
   onPower,
+  startBlockedForInstall = false,
+  iconsOnly = false,
 }: {
   access: ReturnType<typeof getServerAccess>;
-  server: ReturnType<typeof useServer>['server'];
   powering: string | null;
   powerNotice: string;
   onPower: (action: 'start' | 'restart' | 'stop' | 'kill') => void;
+  startBlockedForInstall?: boolean;
+  iconsOnly?: boolean;
 }) {
   return (
-    <div className="border-t border-[var(--border)] px-3 py-2">
-      {powerNotice && (
+    <div className={`border-t border-[var(--border)] ${iconsOnly ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
+      {powerNotice ? (
         <p
-          className="mb-2 rounded-md border px-2 py-1.5 text-[10px] leading-snug"
+          className="mb-2 rounded-md border px-2.5 py-2 text-xs leading-relaxed"
           style={{ borderColor: 'var(--info-border)', background: 'var(--info-bg)', color: 'var(--info-fg)' }}
         >
           {powerNotice}
         </p>
-      )}
+      ) : null}
       <div className="flex flex-wrap gap-1.5">
-        {access.canStart && (
+        {access.canStart ? (
           <PowerButton
             label="Start"
             icon={Play}
             variant="start"
             compact
+            iconsOnly={iconsOnly}
             loading={powering === 'start'}
-            disabled={isServerInstalling(server)}
+            disabled={startBlockedForInstall}
             onClick={() => onPower('start')}
           />
-        )}
-        {access.canRestart && (
-          <PowerButton label="Restart" icon={RotateCw} variant="restart" compact loading={powering === 'restart'} onClick={() => onPower('restart')} />
-        )}
-        {access.canStop && (
+        ) : null}
+        {access.canRestart ? (
+          <PowerButton
+            label="Restart"
+            icon={RotateCw}
+            variant="restart"
+            compact
+            iconsOnly={iconsOnly}
+            loading={powering === 'restart'}
+            onClick={() => onPower('restart')}
+          />
+        ) : null}
+        {access.canStop ? (
           <>
-            <PowerButton label="Stop" icon={Square} variant="stop" compact loading={powering === 'stop'} onClick={() => onPower('stop')} />
-            <PowerButton label="Kill" icon={Skull} variant="stop" compact loading={powering === 'kill'} onClick={() => onPower('kill')} />
+            <PowerButton
+              label="Stop"
+              icon={Square}
+              variant="stop"
+              compact
+              iconsOnly={iconsOnly}
+              loading={powering === 'stop'}
+              onClick={() => onPower('stop')}
+            />
+            <PowerButton
+              label="Kill"
+              icon={Skull}
+              variant="stop"
+              compact
+              iconsOnly={iconsOnly}
+              loading={powering === 'kill'}
+              onClick={() => onPower('kill')}
+            />
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -615,22 +486,5 @@ export function ServerShell() {
         <ServerShellInner />
       </ServerLiveProvider>
     </ServerProvider>
-  );
-}
-
-function LiveServerStatus({ compact }: { compact?: boolean }) {
-  const { server } = useServer();
-  const live = useServerLiveOptional();
-
-  return (
-    <ServerStatusBadge
-      status={server.status}
-      suspended={server.suspended}
-      installStatus={server.installStatus}
-      containerState={server.containerState}
-      runtimeState={live?.runtimeState ?? null}
-      wsConnected={live?.connectionStatus === 'connected'}
-      compact={compact}
-    />
   );
 }

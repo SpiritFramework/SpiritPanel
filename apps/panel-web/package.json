@@ -1,12 +1,13 @@
 {
   "name": "@spirit/panel-web",
-  "version": "0.1.0",
+  "version": "1.3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node ./node_modules/vite/bin/vite.js",
     "build": "tsc -b && node ./node_modules/vite/bin/vite.js build",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "icons": "node scripts/generate-pwa-icons.mjs",
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {

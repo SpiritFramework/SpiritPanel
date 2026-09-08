@@ -107,6 +107,21 @@ pnpm import-eggs -- --dir /path/to/pterodactyl-eggs/game/minecraft --create-nest
 pnpm verify:prod              # validate production .env (after prod install)
 ```
 
+### Tests
+
+```bash
+pnpm --filter @spirit/panel-api test    # API unit tests (node:test via tsx)
+pnpm --filter @spirit/panel-web test    # web unit tests
+```
+
+### Type checking
+
+`pnpm build` type-checks as part of the build. For a faster check without emitting:
+
+```bash
+pnpm --filter @spirit/panel-web exec tsc --noEmit
+```
+
 ---
 
 ## Environment file
@@ -141,6 +156,31 @@ pnpm spirit-install [options]
 | `--skip-build` | Skip `pnpm build` |
 | `--database-url URL` | Use a custom MySQL URL |
 | `--help` | Full option list |
+
+---
+
+## Working on the installable app (PWA)
+
+The service worker is **not** registered in dev — it would fight Vite's HMR by serving a cached shell. `pnpm dev` therefore never exercises offline behaviour, install prompts, or caching.
+
+To test it, build and preview:
+
+```bash
+pnpm build
+pnpm --filter @spirit/panel-web preview
+```
+
+The install prompt additionally requires a secure origin. `http://localhost` counts as secure, so preview is enough; a LAN IP is not.
+
+Regenerate the bundled default icons after changing the generator script:
+
+```bash
+pnpm --filter @spirit/panel-web icons
+```
+
+The manifest itself is served by the API from Branding Studio settings (`/api/auth/branding/manifest.webmanifest`), not from a static file — so changing branding locally changes the manifest without a rebuild.
+
+> When iterating on the worker, use DevTools → Application → Service Workers → **Unregister** between builds. A previously installed worker from an earlier preview can otherwise keep serving its cached shell.
 
 ---
 

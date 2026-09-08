@@ -4,6 +4,7 @@ export interface MarketplaceScriptPreview {
   owner: string;
   repo: string;
   name: string;
+  ownerAvatarUrl?: string | null;
   description?: string;
   stars?: number;
   forks?: number;
@@ -24,6 +25,7 @@ export function previewFromSearchResult(
   return {
     owner: item.owner,
     repo: item.repo,
+    ownerAvatarUrl: item.ownerAvatarUrl ?? null,
     name: item.name,
     description: extras?.blurb || item.description,
     stars: item.stars,

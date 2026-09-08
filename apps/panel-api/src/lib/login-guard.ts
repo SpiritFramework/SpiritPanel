@@ -1,11 +1,21 @@
+import { getSharedRedis } from './redis.js';
+
 const failures = new Map<string, { count: number; lockedUntil: number }>();
 
 const MAX_FAILURES = 10;
 const LOCKOUT_MS = 15 * 60 * 1000;
 const WINDOW_MS = 60 * 60 * 1000;
+const LOCK_PREFIX = 'login:lock:';
+const FAIL_PREFIX = 'login:fail:';
 
 function keyFor(identifier: string, ip: string): string {
   return `${identifier.trim().toLowerCase()}|${ip}`;
+}
+
+function lockoutError(): Error & { statusCode: number } {
+  return Object.assign(new Error('Too many failed login attempts. Please try again later.'), {
+    statusCode: 429,
+  });
 }
 
 function pruneExpired(entry: { count: number; lockedUntil: number }, now: number): void {
@@ -15,21 +25,57 @@ function pruneExpired(entry: { count: number; lockedUntil: number }, now: number
   }
 }
 
-export function assertLoginAllowed(identifier: string, ip: string): void {
-  const now = Date.now();
-  const entry = failures.get(keyFor(identifier, ip));
-  if (!entry) return;
-  pruneExpired(entry, now);
-  if (entry.lockedUntil > now) {
-    throw Object.assign(new Error('Too many failed login attempts. Please try again later.'), {
-      statusCode: 429,
-    });
+async function redisClient() {
+  const redis = getSharedRedis();
+  if (!redis) return null;
+  try {
+    if (redis.status === 'wait') await redis.connect();
+    if (redis.status !== 'ready') return null;
+    return redis;
+  } catch {
+    return null;
   }
 }
 
-export function recordLoginFailure(identifier: string, ip: string): void {
-  const now = Date.now();
+export async function assertLoginAllowed(identifier: string, ip: string): Promise<void> {
   const mapKey = keyFor(identifier, ip);
+  const redis = await redisClient();
+  if (redis) {
+    try {
+      const locked = await redis.get(`${LOCK_PREFIX}${mapKey}`);
+      if (locked) throw lockoutError();
+      return;
+    } catch (err) {
+      if ((err as { statusCode?: number }).statusCode === 429) throw err;
+    }
+  }
+
+  const now = Date.now();
+  const entry = failures.get(mapKey);
+  if (!entry) return;
+  pruneExpired(entry, now);
+  if (entry.lockedUntil > now) throw lockoutError();
+}
+
+export async function recordLoginFailure(identifier: string, ip: string): Promise<void> {
+  const mapKey = keyFor(identifier, ip);
+  const redis = await redisClient();
+  if (redis) {
+    try {
+      const failKey = `${FAIL_PREFIX}${mapKey}`;
+      const count = await redis.incr(failKey);
+      if (count === 1) await redis.pexpire(failKey, WINDOW_MS);
+      if (count >= MAX_FAILURES) {
+        await redis.set(`${LOCK_PREFIX}${mapKey}`, '1', 'PX', LOCKOUT_MS);
+        await redis.del(failKey);
+      }
+      return;
+    } catch {
+      // fall back to in-memory guard
+    }
+  }
+
+  const now = Date.now();
   const entry = failures.get(mapKey) ?? { count: 0, lockedUntil: 0 };
   pruneExpired(entry, now);
   entry.count += 1;
@@ -39,7 +85,6 @@ export function recordLoginFailure(identifier: string, ip: string): void {
   }
   failures.set(mapKey, entry);
 
-  // Prevent unbounded map growth.
   if (failures.size > 10_000) {
     for (const [k, v] of failures) {
       if (v.lockedUntil > 0 && v.lockedUntil < now - WINDOW_MS) failures.delete(k);
@@ -47,6 +92,15 @@ export function recordLoginFailure(identifier: string, ip: string): void {
   }
 }
 
-export function clearLoginFailures(identifier: string, ip: string): void {
-  failures.delete(keyFor(identifier, ip));
+export async function clearLoginFailures(identifier: string, ip: string): Promise<void> {
+  const mapKey = keyFor(identifier, ip);
+  const redis = await redisClient();
+  if (redis) {
+    try {
+      await redis.del(`${LOCK_PREFIX}${mapKey}`, `${FAIL_PREFIX}${mapKey}`);
+    } catch {
+      // ignore
+    }
+  }
+  failures.delete(mapKey);
 }

@@ -1,5 +1,7 @@
 # FeatherWings Crash Detection & Status Reporting Analysis
 
+> **Status: reference snapshot, not a maintained guide.** Written August 2026 against **FeatherWings 1.3.7.4**. The tree vendored in this repo is now **1.3.7.10**, so the `FeatherWings-1.3.7.4/...` paths below no longer resolve — the equivalent files sit under `FeatherWings-1.3.7.10/FeatherWings-1.3.7.10/` (the directory is nested twice) at the same relative paths. Line references may have shifted; search by function name rather than jumping to a line.
+
 ## Overview
 FeatherWings (the panel daemon) has a comprehensive crash detection system that monitors Docker container states, detects crashes, reports them to the panel API, and automatically restarts servers with safety mechanisms to prevent boot loops.
 

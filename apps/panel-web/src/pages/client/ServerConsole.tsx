@@ -6,7 +6,6 @@ import { PanelAnnouncementBanner } from '../../components/PanelAnnouncementBanne
 import { ServerPage } from '../../components/server/ServerPage';
 import { getServerAccess } from '../../lib/server-access';
 import { getConsoleStatusSummary } from '../../lib/server-runtime';
-import { CONSOLE_VISIBLE_LINES } from '../../lib/console-buffer';
 
 export function ServerConsolePage() {
   const { server } = useServer();
@@ -17,7 +16,7 @@ export function ServerConsolePage() {
     runtimeState,
     installPhase,
     consoleLines,
-    consoleLineCount,
+    liveStats,
     followScroll,
     setFollowScroll,
     clearConsole,
@@ -26,7 +25,6 @@ export function ServerConsolePage() {
     reconnect,
   } = useServerLive();
 
-  const truncated = consoleLineCount > CONSOLE_VISIBLE_LINES;
   const status = getConsoleStatusSummary(server, connectionStatus, runtimeState);
   const installing =
     installPhase === 'installing' ||
@@ -37,28 +35,30 @@ export function ServerConsolePage() {
     ? `${adminSupport.owner.username} · ${adminSupport.serverName}`
     : installing
       ? 'Installation in progress'
-      : truncated
-        ? `Last ${CONSOLE_VISIBLE_LINES} lines · download for full log`
-        : 'Live output · history restored on reconnect';
+      : undefined;
 
   const emptyMessage =
     connectionStatus === 'connecting'
       ? 'Connecting to the daemon and loading recent logs…'
       : installing
         ? 'Install script output will appear here as it runs.'
-        : 'Start the server or run a command to see output here.';
+        : status.label.toLowerCase().includes('offline') || status.tone === 'muted'
+          ? 'Start the server from the sidebar to stream live console output and usage.'
+          : 'Start the server or run a command to see output here.';
 
   return (
-    <ServerPage fullHeight className="gap-3">
-      <PanelAnnouncementBanner location="console" compact />
+    <ServerPage fullHeight className="gap-0 md:gap-3">
+      <div className="hidden md:block">
+        <PanelAnnouncementBanner location="console" compact />
+      </div>
       <ConsoleTerminal
         serverName={server.name}
+        eggName={server.egg.name}
+        eggLogoUrl={server.egg.logoUrl}
         subtitle={subtitle}
         status={status}
         connectionStatus={connectionStatus}
         consoleLines={consoleLines}
-        consoleLineCount={consoleLineCount}
-        truncated={truncated}
         installing={installing}
         canCommand={access.canConsole}
         followScroll={followScroll}
@@ -68,6 +68,8 @@ export function ServerConsolePage() {
         downloadLog={downloadConsole}
         sendCommand={sendCommand}
         emptyMessage={emptyMessage}
+        liveStats={liveStats}
+        limits={{ memory: server.memory, disk: server.disk, cpu: server.cpu }}
       />
     </ServerPage>
   );

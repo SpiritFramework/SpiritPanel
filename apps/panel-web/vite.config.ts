@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { PANEL_CSP } from './csp.mjs';
+
+const monorepoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
+const panelVersion = JSON.parse(readFileSync(path.join(monorepoRoot, 'package.json'), 'utf8')).version as string;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __PANEL_VERSION__: JSON.stringify(panelVersion),
+  },
   build: {
     // Enable minification for production
     minify: 'terser',

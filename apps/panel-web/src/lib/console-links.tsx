@@ -47,7 +47,7 @@ function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
           href={safeHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="console-link"
+          className="ds-con-link"
           onClick={(e) => e.stopPropagation()}
         >
           {safeHref}
@@ -77,7 +77,7 @@ export function renderConsoleText(text: string): ReactNode[] {
     if (!segment.text) continue;
     const css = styleToCss(segment.style);
     nodes.push(
-      <span key={`ansi-${index}`} className={css ? 'console-ansi' : undefined} style={css}>
+      <span key={`ansi-${index}`} className={css ? 'ds-con-ansi' : undefined} style={css}>
         {renderLinkedText(segment.text, `s${index}`)}
       </span>,
     );

@@ -19,7 +19,7 @@ export function AdminServerManageShell() {
   const [loadError, setLoadError] = useState('');
   const backTo = `/admin/servers/${serverId}`;
 
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback(async (): Promise<ServerDetail | null> => {
     const [admin, client] = await Promise.all([
       api.admin.server(serverId),
       api.client.server(serverId),
@@ -27,6 +27,7 @@ export function AdminServerManageShell() {
     setDetail(admin);
     setClientServer(client);
     setLoadError('');
+    return client;
   }, [serverId]);
 
   useEffect(() => {

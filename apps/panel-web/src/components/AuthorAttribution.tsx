@@ -5,6 +5,7 @@ import {
   PANEL_VERSION,
 } from '../lib/product-meta';
 import { sanitizeLinkHref } from '../lib/safe-url';
+import { PanelName } from './PanelName';
 
 type AuthorAttributionVariant = 'sidebar' | 'auth' | 'settings';
 
@@ -77,14 +78,26 @@ export function AuthorAttribution({
     );
   }
 
-  const muted = onDark ? 'text-white/50' : 'text-[var(--muted)]';
   const emphasis = onDark ? 'text-white/75' : 'text-[var(--text)]';
 
   return (
-    <p className={`px-1 text-[10px] leading-snug ${muted} ${className}`}>
-      <span className={`font-medium ${emphasis}`}>{PANEL_PRODUCT}</span>
-      <span className="opacity-50"> · </span>
-      <AuthorLink onDark className={emphasis} />
-    </p>
+    <div
+      className={`ds-attrib-sidebar${onDark ? ' ds-attrib-sidebar--dark' : ''} ${className}`.trim()}
+      aria-label={`${PANEL_PRODUCT} version ${PANEL_VERSION}, built by ${PANEL_AUTHOR}`}
+    >
+      <span className="ds-attrib-sidebar-product">
+        <PanelName name={PANEL_PRODUCT} variant="compact" className="panel-name--attrib" />
+      </span>
+      <span className="ds-attrib-sidebar-dot" aria-hidden>
+        ·
+      </span>
+      <AuthorLink onDark className={`ds-attrib-sidebar-author ${emphasis}`} />
+      <span className="ds-attrib-sidebar-dot" aria-hidden>
+        ·
+      </span>
+      <span className={`ds-attrib-sidebar-version${onDark ? ' ds-attrib-sidebar-version--dark' : ''}`}>
+        v{PANEL_VERSION}
+      </span>
+    </div>
   );
 }

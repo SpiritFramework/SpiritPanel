@@ -62,7 +62,7 @@ export async function requireDaemon(request: FastifyRequest, reply: FastifyReply
   }
   const tokenId = token.slice(0, dotIndex);
   const tokenSecret = token.slice(dotIndex + 1);
-  const node = await prisma.node.findFirst({
+  const node = await prisma.node.findUnique({
     where: { daemonTokenId: tokenId },
   });
   if (

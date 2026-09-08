@@ -12,6 +12,7 @@ import {
   Server,
   Settings,
   Store,
+  Puzzle,
   User,
   Users,
   Globe,
@@ -31,6 +32,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
 import { AuthorAttribution } from './AuthorAttribution';
+import { InstallAppButton } from './InstallAppButton';
 
 export { SelectControl } from './SelectControl';
 
@@ -73,7 +75,7 @@ const adminGroups = [
     label: 'Configuration',
     links: [
       { to: '/admin/nests', label: 'Nests & Eggs', description: 'Game configs', icon: Egg },
-      { to: '/admin/marketplace', label: 'Marketplace', description: 'FiveM GitHub & Minecraft Modrinth', icon: Store },
+      { to: '/admin/plugins', label: 'Plugins', description: 'Panel features & catalogs', icon: Puzzle },
       { to: '/admin/settings', label: 'Settings', description: 'Panel options', icon: Settings },
     ],
   },
@@ -125,8 +127,8 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
           <ThemeToggle compact />
         </div>
-        <SidebarFooterLink to="/profile" icon={User} label="Your profile" />
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
+        <InstallAppButton />
         <button
           type="button"
           onClick={logout}
@@ -213,6 +215,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
             </span>
           </Link>
         )}
+        <InstallAppButton />
         <button
           type="button"
           onClick={logout}

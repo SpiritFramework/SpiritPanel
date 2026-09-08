@@ -15,6 +15,7 @@ import {
 } from '../../lib/server-provision';
 import { AdminSettingsPanel } from '../AdminDetailLayout';
 import { Button, Input, Select } from '../Layout';
+import { formatLocationLabel } from '../LocationFlag';
 import { Checkbox } from '../Checkbox';
 import { Spinner } from '../ui';
 
@@ -307,7 +308,7 @@ export function ServerProvisionForm({
             <option value="">Select node</option>
             {nodes.map((n) => (
               <option key={n.id} value={n.id}>
-                {n.name} ({n.location.short})
+                {n.name} ({formatLocationLabel(n.location)})
                 {n.maintenanceMode ? ' · maintenance' : ''}
               </option>
             ))}

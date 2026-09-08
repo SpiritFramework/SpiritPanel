@@ -1,6 +1,7 @@
 import {
   applyContainerStatusUpdate,
   clearContainerStatusCache,
+  deleteContainerStatus,
   getContainerStatus,
   setContainerStatus,
   resolveReportedContainerState,
@@ -54,8 +55,15 @@ export async function fetchLiveContainerState(node: Node, uuid: string): Promise
 }
 
 async function persistContainerStateIfChanged(server: ServerRuntimeRecord, state: string) {
-  // Always sync when Wings reports an active state so stale install flags get cleared.
-  if (state === server.containerState && state !== 'running' && state !== 'starting') return;
+  // Always sync when Wings reports an active or crash state so stale install flags get cleared.
+  if (
+    state === server.containerState &&
+    state !== 'running' &&
+    state !== 'starting' &&
+    state !== 'crashed'
+  ) {
+    return;
+  }
   await applyContainerStatusUpdate(prisma, server, state);
 }
 
@@ -71,12 +79,35 @@ export async function resolveServerContainerState(
   const resolved = fromWings ?? cached ?? server.containerState;
 
   if (fromWings) {
-    persistContainerStateIfChanged(server, fromWings).catch((err) => {
+    try {
+      // Await so responses that reconcile from this live state also persist cleared install flags.
+      await persistContainerStateIfChanged(server, fromWings);
+    } catch (err) {
       logWingsFailure('persist container state failed', err, { serverUuid: server.uuid });
-    });
+    }
   }
 
   return resolved;
+}
+
+/** Poll Wings; when the node is up but state is still offline, drop cache and retry once. */
+export async function resolveServerContainerStateForClient(
+  server: ServerRuntimeRecord,
+  nodeOnline: boolean,
+): Promise<string | null> {
+  let state = await resolveServerContainerState(server, { refresh: true });
+  if (!nodeOnline || (state && state !== 'offline')) return state;
+
+  await deleteContainerStatus(server.uuid);
+  const retried = await fetchLiveContainerState(server.node, server.uuid);
+  if (!retried) return state;
+
+  try {
+    await persistContainerStateIfChanged(server, retried);
+  } catch (err) {
+    logWingsFailure('persist container state failed', err, { serverUuid: server.uuid });
+  }
+  return retried;
 }
 
 /** Attach the best-known container state to a batch of servers. */
@@ -213,6 +244,47 @@ export async function refreshAllServerContainerStates(): Promise<{
 
   return {
     cacheEntriesCleared,
+    serversPolled: servers.length,
+    serversUpdated,
+    pollFailures,
+  };
+}
+
+/** Re-poll every server assigned to one node from Wings (used after reconnect / reset). */
+export async function refreshNodeServerContainerStates(nodeId: string): Promise<{
+  serversPolled: number;
+  serversUpdated: number;
+  pollFailures: number;
+}> {
+  const node = await prisma.node.findUnique({ where: { id: nodeId } });
+  if (!node) {
+    return { serversPolled: 0, serversUpdated: 0, pollFailures: 0 };
+  }
+
+  const servers = await prisma.server.findMany({
+    where: { nodeId },
+    select: { id: true, uuid: true, containerState: true, nodeId: true },
+  });
+
+  let serversUpdated = 0;
+  let pollFailures = 0;
+
+  await mapWithConcurrency(servers, WINGS_POLL_CONCURRENCY, async (server) => {
+    const state = await fetchLiveContainerState(node, server.uuid);
+    if (!state) {
+      pollFailures++;
+      return;
+    }
+
+    try {
+      await persistContainerStateIfChanged({ ...server, node }, state);
+      serversUpdated++;
+    } catch {
+      pollFailures++;
+    }
+  });
+
+  return {
     serversPolled: servers.length,
     serversUpdated,
     pollFailures,

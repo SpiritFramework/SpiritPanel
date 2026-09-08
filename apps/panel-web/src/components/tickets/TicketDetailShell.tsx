@@ -22,6 +22,7 @@ export function TicketDetailShell({
   closedMessage,
   replyPlaceholder,
   sidebar,
+  variant = 'client',
 }: {
   ticket: TicketDetail;
   backHref: string;
@@ -37,6 +38,7 @@ export function TicketDetailShell({
   closedMessage?: ReactNode;
   replyPlaceholder?: string;
   sidebar: ReactNode;
+  variant?: 'client' | 'admin';
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -59,7 +61,7 @@ export function TicketDetailShell({
   }, [detailsOpen]);
 
   return (
-    <div className={`ticket-page${error ? ' ticket-page--has-error' : ''}`}>
+    <div className={`ticket-page ticket-page--${variant}${error ? ' ticket-page--has-error' : ''}`}>
       <header className="ticket-page__header glass">
         <Link to={backHref} className="ticket-page__back" aria-label={backLabel} title={backLabel}>
           <ArrowLeft className="h-4 w-4" />
@@ -70,7 +72,13 @@ export function TicketDetailShell({
         </div>
 
         <div className="ticket-page__heading">
-          <div className="ticket-page__id">Ticket #{ticket.number}</div>
+          <div className="ticket-page__id-row">
+            <span className="ticket-page__id">Ticket #{ticket.number}</span>
+            <span className="ticket-page__id-sep" aria-hidden>
+              ·
+            </span>
+            <span className="ticket-page__id-cat">{ticketCategoryLabel(ticket.category)}</span>
+          </div>
           <h1 className="ticket-page__title">{ticket.subject}</h1>
         </div>
 
@@ -89,6 +97,7 @@ export function TicketDetailShell({
             onClick={() => setDetailsOpen(true)}
           >
             <Info className="h-4 w-4" />
+            <span className="ticket-page__details-btn-label">Details</span>
           </button>
         </div>
       </header>
@@ -226,7 +235,11 @@ export function TicketDetailsCard({
   return (
     <div className="ticket-page__card ds-card">
       <div className="ticket-page__card-head">
-        <h3 className="ticket-page__card-title">Details</h3>
+        <h3 className="ticket-page__card-title">Ticket details</h3>
+        <div className="ticket-page__card-head-badges">
+          <TicketStatusBadge status={ticket.status} />
+          <TicketPriorityBadge priority={ticket.priority} />
+        </div>
       </div>
 
       <div className="ticket-page__card-body ticket-page__card-body--details">

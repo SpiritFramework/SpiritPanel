@@ -1,7 +1,5 @@
 # Spirit-Panel — Production deployment
 
-Deploy Spirit-Panel on **Ubuntu 24.04**. Game servers run on separate machines with **FeatherWings** — do not host game servers on the panel server.
-
 **Local development:** see [LOCAL.md](LOCAL.md)
 
 ---
@@ -19,12 +17,15 @@ Deploy Spirit-Panel on **Ubuntu 24.04**. Game servers run on separate machines w
 9. [FeatherWings (game nodes)](#featherwings-game-nodes)
 10. [Environment variables](#environment-variables)
 11. [Post-install setup](#post-install-setup)
-12. [Post-deploy checklist](#post-deploy-checklist)
-13. [Updates](#updates)
-14. [Troubleshooting](#troubleshooting)
-15. [Security](#security)
+12. [Installable app (PWA)](#installable-app-pwa)
+13. [Post-deploy checklist](#post-deploy-checklist)
+14. [Updates](#updates)
+15. [Troubleshooting](#troubleshooting)
+16. [Security](#security)
 
 ---
+
+
 
 ## Quick start
 
@@ -42,13 +43,15 @@ Same via shell wrapper:
 bash install --production --api-url https://panel.example.com
 ```
 
-**Do not run the installer with `sudo`.** Run as your app user (e.g. `spiritpanel`). The script calls `sudo mysql` itself when needed.
+**Do not run the installer with** `sudo`**.** Run as your app user (e.g. `spiritpanel`). The script calls `sudo mysql` itself when needed.
 
 The installer creates the database, `.env`, admin user, schema, and production build. **Save the credentials it prints.**
 
 Then configure systemd + Nginx (below) and connect FeatherWings nodes.
 
 ---
+
+
 
 ## Architecture
 
@@ -60,29 +63,37 @@ Internet → Nginx (443) → panel-web (static) + panel-api (127.0.0.1:3000)
               FeatherWings nodes (game servers, Docker)
 ```
 
-| Component | Role |
-|-----------|------|
-| **panel-api** | REST API + FeatherWings remote API |
-| **panel-web** | Static React UI (Nginx serves `apps/panel-web/dist/`) |
-| **MariaDB** | Panel database |
-| **Redis** | Schedule worker (optional) |
-| **FeatherWings** | Daemon on game nodes — not on the panel server |
+
+| Component        | Role                                                  |
+| ---------------- | ----------------------------------------------------- |
+| **panel-api**    | REST API + FeatherWings remote API                    |
+| **panel-web**    | Static React UI (Nginx serves `apps/panel-web/dist/`) |
+| **MariaDB**      | Panel database                                        |
+| **Redis**        | Schedule worker (optional)                            |
+| **FeatherWings** | Daemon on game nodes — not on the panel server        |
+
 
 **Critical:** `API_URL` in `.env` must exactly equal `remote:` in every Wings config (HTTPS, no trailing slash).
 
 ---
 
+
+
 ## Server requirements
 
-| Resource | Minimum |
-|----------|---------|
-| OS | Ubuntu 24.04 LTS |
-| CPU | 2 vCPU |
-| RAM | 2 GB (4 GB recommended) |
-| Disk | 40 GB SSD |
-| Ports (public) | 22, 80, 443 only |
+
+| Resource       | Minimum                 |
+| -------------- | ----------------------- |
+| OS             | Ubuntu 24.04 LTS        |
+| CPU            | 2 vCPU                  |
+| RAM            | 2 GB (4 GB recommended) |
+| Disk           | 40 GB SSD               |
+| Ports (public) | 22, 80, 443 only        |
+
 
 ---
+
+
 
 ## First-time Ubuntu setup
 
@@ -104,19 +115,25 @@ sudo systemctl enable --now mariadb redis-server nginx
 sudo adduser --disabled-password --gecos "" spiritpanel
 ```
 
+
+
 ### Path map (default install)
 
-| What | Path |
-|------|------|
-| App root | `/home/spiritpanel/Spirit-Panel/` |
-| Secrets | `/home/spiritpanel/Spirit-Panel/apps/panel-api/.env` |
+
+| What             | Path                                                  |
+| ---------------- | ----------------------------------------------------- |
+| App root         | `/home/spiritpanel/Spirit-Panel/`                     |
+| Secrets          | `/home/spiritpanel/Spirit-Panel/apps/panel-api/.env`  |
 | Web (Nginx root) | `/home/spiritpanel/Spirit-Panel/apps/panel-web/dist/` |
-| Nginx config | `/etc/nginx/sites-available/spirit-panel` |
-| systemd unit | `/etc/systemd/system/spirit-panel-api.service` |
+| Nginx config     | `/etc/nginx/sites-available/spirit-panel`             |
+| systemd unit     | `/etc/systemd/system/spirit-panel-api.service`        |
+
 
 Templates live in `deploy/`.
 
 ---
+
+
 
 ## Install
 
@@ -125,25 +142,33 @@ pnpm spirit-install [options]
 # aliases: pnpm setup, bash install, bash scripts/install.sh
 ```
 
-| Command | Purpose |
-|---------|---------|
-| `pnpm spirit-install --production --api-url https://panel.example.com` | Full production setup |
-| `bash install --production --api-url ...` | Same via shell wrapper |
 
-| Flag | Purpose |
-|------|---------|
-| `--production`, `-p` | Production mode (HTTPS URL, strong secrets, build) |
-| `--api-url URL` | Public panel URL — must match Wings `remote:` |
-| `--mysql-root-password PASS` | MariaDB root password if `sudo mysql` needs it |
-| `--admin-password PASS` | Admin login (auto-generated if omitted) |
-| `--database-url URL` | Use existing MySQL database |
-| `--fix-database` | Re-create DB user from `.env` |
-| `--skip-build` | Skip production build |
-| `--help`, `-h` | Full option list |
+| Command                                                                | Purpose                |
+| ---------------------------------------------------------------------- | ---------------------- |
+| `pnpm spirit-install --production --api-url https://panel.example.com` | Full production setup  |
+| `bash install --production --api-url ...`                              | Same via shell wrapper |
+
+
+
+| Flag                         | Purpose                                            |
+| ---------------------------- | -------------------------------------------------- |
+| `--production`, `-p`         | Production mode (HTTPS URL, strong secrets, build) |
+| `--api-url URL`              | Public panel URL — must match Wings `remote:`      |
+| `--mysql-root-password PASS` | MariaDB root password if `sudo mysql` needs it     |
+| `--admin-password PASS`      | Admin login (auto-generated if omitted)            |
+| `--database-url URL`         | Use existing MySQL database                        |
+| `--fix-database`             | Re-create DB user from `.env`                      |
+| `--skip-build`               | Skip production build                              |
+| `--help`, `-h`               | Full option list                                   |
+
 
 ---
 
+
+
 ## Deploy methods
+
+
 
 ### Via Git
 
@@ -155,15 +180,19 @@ pnpm install
 pnpm spirit-install --production --api-url https://panel.example.com
 ```
 
+
+
 ### Via SFTP (Windows → Ubuntu)
 
-**Include in zip:** `apps/`, `packages/`, `scripts/`, `deploy/`, `docs/`, `install`, `README.md`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `docker-compose.yml`, `.env.example`
+**Include in zip:** `apps/`, `packages/`, `scripts/`, `deploy/`, `docs/`, `install`, `install.ps1`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `docker-compose.yml`, `.env.example`, `README.md`, `LICENSE`
 
-**Exclude:** `node_modules/`, `dist/`, `apps/panel-api/.env`, `.git/`
+**Exclude:** `node_modules/`, `dist/`, `build/`, `.turbo/`, `apps/panel-api/.env`, `.git/`, and the vendored `FeatherWings-*/` tree
 
 ```powershell
-Compress-Archive -Path apps,packages,scripts,deploy,docs,install,README.md,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,turbo.json,docker-compose.yml,.env.example -DestinationPath Spirit-Panel.zip
+tar -a -c -f Spirit-Panel.zip --exclude=node_modules --exclude=dist --exclude=build --exclude=.turbo --exclude=.env --exclude=.env.local --exclude="*.log" apps packages scripts deploy docs install install.ps1 package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json docker-compose.yml .env.example README.md LICENSE
 ```
+
+`tar` is used rather than `Compress-Archive` because it honours the excludes; `Compress-Archive` would otherwise sweep in `node_modules/` from any listed directory.
 
 On the server:
 
@@ -176,6 +205,8 @@ pnpm spirit-install --production --api-url https://panel.example.com
 
 ---
 
+
+
 ## systemd
 
 ```bash
@@ -186,6 +217,8 @@ sudo systemctl enable --now spirit-panel-api
 journalctl -u spirit-panel-api -f
 curl -s http://127.0.0.1:3000/health
 ```
+
+
 
 ### `.env` permissions (common 502 cause)
 
@@ -204,6 +237,8 @@ Ensure `REDIS_PASSWORD` is set in `.env` and matches your Redis `requirepass` (o
 
 ---
 
+
+
 ## Nginx + TLS
 
 Nginx serves the React UI as static files and proxies `/api/*` to the API on `127.0.0.1:3000`. The API must **not** be exposed directly on port 3000 to the internet.
@@ -217,11 +252,13 @@ sudo nano /etc/nginx/sites-available/spirit-panel
 
 Change these lines:
 
-| Setting | Example |
-|---------|---------|
-| `server_name` (both blocks) | `panel.example.com` |
-| `root` | `/home/spiritpanel/Spirit-Panel/apps/panel-web/dist` |
-| `ssl_certificate` / `ssl_certificate_key` | Certbot paths (after TLS step) |
+
+| Setting                                   | Example                                              |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `server_name` (both blocks)               | `panel.example.com`                                  |
+| `root`                                    | `/home/spiritpanel/Spirit-Panel/apps/panel-web/dist` |
+| `ssl_certificate` / `ssl_certificate_key` | Certbot paths (after TLS step)                       |
+
 
 Reference config is in `deploy/nginx/spirit-panel.conf`.
 
@@ -233,6 +270,8 @@ sudo rm -f /etc/nginx/sites-enabled/default   # optional
 sudo nginx -t
 ```
 
+
+
 ### 3. TLS with Certbot
 
 DNS must point at this server before running Certbot.
@@ -243,6 +282,8 @@ sudo systemctl reload nginx
 sudo certbot renew --dry-run
 ```
 
+
+
 ### 4. File permissions
 
 Nginx runs as `www-data` and must traverse into the web dist:
@@ -251,6 +292,8 @@ Nginx runs as `www-data` and must traverse into the web dist:
 chmod o+x /home/spiritpanel
 chmod -R o+rX /home/spiritpanel/Spirit-Panel/apps/panel-web/dist
 ```
+
+
 
 ### 5. Firewall (panel server)
 
@@ -271,7 +314,24 @@ curl -s https://panel.example.com/health/ready
 
 Browser: open `https://panel.example.com/admin`
 
+### 7. Caching rules (do not skip)
+
+The shipped config sets deliberate `Cache-Control` values. Removing them causes deploys to roll out inconsistently:
+
+
+| Path          | Policy                                | Why                                                           |
+| ------------- | ------------------------------------- | ------------------------------------------------------------- |
+| `/sw.js`      | `no-cache, must-revalidate`           | The service worker must be re-fetched to notice a new release |
+| `/index.html` | `no-cache, must-revalidate`           | A stale copy pins users to an old asset manifest              |
+| `/assets/`    | `public, max-age=31536000, immutable` | Filenames are content-hashed by Vite                          |
+| `/icons/`     | `public, max-age=604800`              | Bundled PWA icons change rarely                               |
+
+
+> ⚠️ **nginx** `add_header` **inheritance:** a `location` block that declares **any** `add_header` of its own stops inheriting the server-level ones. Because the blocks above set `Cache-Control`, they must repeat every security header they still need. The `= /index.html` block therefore re-declares the full set including CSP — every SPA route is served through it, so dropping them would silently disable your security headers site-wide. If you add a `location` with `add_header`, copy the header block too.
+
 ---
+
+
 
 ## FeatherWings (game nodes)
 
@@ -285,12 +345,18 @@ panel-api :3000 (local)    ◄────────  remote: https://panel...
 /api/remote/*              HTTPS      token_id + token
 ```
 
+
+
 ### DNS
 
-| Record | Points to |
-|--------|-----------|
+
+| Record              | Points to       |
+| ------------------- | --------------- |
 | `panel.example.com` | Panel server IP |
-| `node1.example.com` | Game node IP |
+| `node1.example.com` | Game node IP    |
+
+
+
 
 ### Step 1 — Panel: create the node
 
@@ -314,6 +380,8 @@ sudo curl -L -o /usr/local/bin/wings \
 sudo chmod +x /usr/local/bin/wings
 sudo mkdir -p /var/lib/pterodactyl/volumes
 ```
+
+
 
 ### Step 3 — Wings config
 
@@ -357,6 +425,8 @@ sudo systemctl enable --now wings
 journalctl -u wings -f
 ```
 
+
+
 ### Step 5 — Game node firewall
 
 ```bash
@@ -367,12 +437,16 @@ sudo ufw allow 25565:25600/tcp
 sudo ufw enable
 ```
 
+
+
 ### Step 6 — Verify from game node
 
 ```bash
 curl -I https://panel.example.com/health
 curl -s http://127.0.0.1:8080/api/system
 ```
+
+
 
 ### Step 7 — Create a game server
 
@@ -389,49 +463,59 @@ docker pull ghcr.io/pterodactyl/yolks:java_21
 docker pull ghcr.io/pterodactyl/installers:debian
 ```
 
+
+
 ### Optional — TLS on game node (WSS console)
 
 Put Nginx in front of Wings on the game node for `wss://`. Set node **Scheme** to `https` in panel admin. See `deploy/nginx/` for reference patterns.
 
 ### FeatherWings troubleshooting
 
-| Problem | Fix |
-|---------|-----|
+
+| Problem                   | Fix                                                               |
+| ------------------------- | ----------------------------------------------------------------- |
 | Wings `401` on remote API | Token mismatch — rotate in **Admin → Nodes**, update `config.yml` |
-| Wings can't reach panel | `curl https://panel.../health` from game node; check firewall/DNS |
-| `remote:` mismatch | Must equal `API_URL` in panel `.env` exactly |
-| Install stuck | `journalctl -u wings -f`; pull egg Docker images |
-| Console won't connect | Port 8080 open; check node FQDN |
-| SFTP fails | Port 2022 open; use username format from panel |
+| Wings can't reach panel   | `curl https://panel.../health` from game node; check firewall/DNS |
+| `remote:` mismatch        | Must equal `API_URL` in panel `.env` exactly                      |
+| Install stuck             | `journalctl -u wings -f`; pull egg Docker images                  |
+| Console won't connect     | Port 8080 open; check node FQDN                                   |
+| SFTP fails                | Port 2022 open; use username format from panel                    |
+
 
 ---
+
+
 
 ## Environment variables
 
 File: `apps/panel-api/.env` (mode `600`)
 
-| Variable | Notes |
-|----------|-------|
-| `DATABASE_URL` | `mysql://spirit_panel:pass@127.0.0.1:3306/spirit_panel` |
-| `JWT_SECRET` | User login tokens |
-| `APP_KEY` | Wings console JWT — must differ from `JWT_SECRET` |
-| `API_URL` | HTTPS public URL — Wings `remote:` |
-| `PANEL_URL` | Usually same as `API_URL` |
-| `ADMIN_PASSWORD` | 12+ chars, quoted if it contains special characters |
-| `HOST` | `127.0.0.1` in production |
-| `PORT` | `3000` |
-| `CORS_ORIGINS` | Comma-separated allowed origins (defaults to `PANEL_URL`) |
-| `DISABLE_SCHEDULE_WORKER` | `true` if Redis unavailable |
-| `DISABLE_STATS_COLLECTOR` | `true` to disable usage analytics |
+
+| Variable                  | Notes                                                     |
+| ------------------------- | --------------------------------------------------------- |
+| `DATABASE_URL`            | `mysql://spirit_panel:pass@127.0.0.1:3306/spirit_panel`   |
+| `JWT_SECRET`              | User login tokens                                         |
+| `APP_KEY`                 | Wings console JWT — must differ from `JWT_SECRET`         |
+| `API_URL`                 | HTTPS public URL — Wings `remote:`                        |
+| `PANEL_URL`               | Usually same as `API_URL`                                 |
+| `ADMIN_PASSWORD`          | 12+ chars, quoted if it contains special characters       |
+| `HOST`                    | `127.0.0.1` in production                                 |
+| `PORT`                    | `3000`                                                    |
+| `CORS_ORIGINS`            | Comma-separated allowed origins (defaults to `PANEL_URL`) |
+| `DISABLE_SCHEDULE_WORKER` | `true` if Redis unavailable                               |
+| `DISABLE_STATS_COLLECTOR` | `true` to disable usage analytics                         |
+
 
 Template: `deploy/env/production.example`
 
 ### What the database seed creates
 
-| Environment | Seeded |
-|-------------|--------|
-| **Production** | Admin user only |
+
+| Environment     | Seeded                                       |
+| --------------- | -------------------------------------------- |
+| **Production**  | Admin user only                              |
 | **Development** | Admin + demo data (see [LOCAL.md](LOCAL.md)) |
+
 
 Always seed production with `NODE_ENV=production` (the installer does this).
 
@@ -445,7 +529,11 @@ ADMIN_PASSWORD="your-strong-password"
 
 ---
 
+
+
 ## Post-install setup
+
+
 
 ### 1. Redis (scheduled tasks)
 
@@ -468,21 +556,29 @@ If Redis is unavailable, set `DISABLE_SCHEDULE_WORKER=true`.
 
 ### 2. Game infrastructure (Admin UI)
 
-| Step | Where |
-|------|--------|
-| Import eggs | **Admin → Nests & Eggs** or `pnpm import-eggs` |
-| Create location | **Admin → Locations** |
-| Create node + Wings config | **Admin → Nodes** |
-| Add allocations | **Admin → Nodes → Allocations** |
-| Database hosts | **Admin → Nodes → Database** tab |
+
+| Step                       | Where                                          |
+| -------------------------- | ---------------------------------------------- |
+| Import eggs                | **Admin → Nests & Eggs** or `pnpm import-eggs` |
+| Create location            | **Admin → Locations**                          |
+| Create node + Wings config | **Admin → Nodes**                              |
+| Add allocations            | **Admin → Nodes → Allocations**                |
+| Database hosts             | **Admin → Nodes → Database** tab               |
+
+
+
 
 ### 3. Panel settings
 
-| Setting | Why |
-|---------|-----|
-| **Admin → Settings → Email** | Password reset (SMTP) |
+
+| Setting                       | Why                         |
+| ----------------------------- | --------------------------- |
+| **Admin → Settings → Email**  | Password reset (SMTP)       |
 | **Admin → Settings → Access** | Disable public registration |
-| Branding | Match your domain |
+| Branding                      | Match your domain           |
+
+
+
 
 ### 4. Schema updates after pulling code
 
@@ -492,25 +588,62 @@ pnpm exec prisma migrate deploy
 sudo systemctl restart spirit-panel-api
 ```
 
+
+
 ### 5. Usage analytics
 
 CPU/memory/disk/network snapshots every **30 seconds**, retained **8 days**. Disable with `DISABLE_STATS_COLLECTOR=true`.
 
 ---
 
-## Post-deploy checklist
 
-| Step | Expected |
-|------|----------|
-| `curl https://panel.example.com/health` | `{"status":"ok"}` |
-| `curl https://panel.example.com/health/ready` | `"database":"connected"`, `"redis":"connected"` |
-| Browser `/admin` | Admin login works |
-| Admin → Nodes | Node online, allocations added |
-| Admin → Servers → Create | Install on Wings |
-| Client console | WebSocket to node connects |
-| Client → Schedules | Create schedule (needs Redis) |
+
+## Installable app (PWA)
+
+Users can install the panel as a standalone app from the **Install app** entry in the sidebar footer. Nothing needs enabling — it works as soon as the panel is served over HTTPS with the shipped nginx config.
+
+The manifest is generated per-deploy from your Branding Studio settings:
+
+```bash
+curl -s https://panel.example.com/api/auth/branding/manifest.webmanifest
+```
+
+Name, short name, description, theme colour, and icon all come from **Admin → Settings → Branding**. Set an **App icon** there (Assets section) so installed apps use your mark rather than the bundled Spirit default.
+
+Requirements and caveats:
+
+
+| Item                               | Detail                                                                                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **HTTPS**                          | Browsers only offer installation on a secure origin. Certbot step above covers this.                                                                       |
+| `/sw.js` **reachable at the root** | A service worker's scope cannot exceed its own directory, so it must not be moved into a subpath.                                                          |
+| **Icon changes after install**     | Desktop OSes bake the icon into the shortcut at install time. Changing branding later does **not** update an already-installed app — users must reinstall. |
+| **Offline behaviour**              | The app shell is cached for flaky connections. API, FeatherWings, and health traffic are never cached, so server state is always live.                     |
+
 
 ---
+
+
+
+## Post-deploy checklist
+
+
+| Step                                                                       | Expected                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------- |
+| `curl https://panel.example.com/health`                                    | `{"status":"ok"}`                               |
+| `curl https://panel.example.com/health/ready`                              | `"database":"connected"`, `"redis":"connected"` |
+| Browser `/admin`                                                           | Admin login works                               |
+| Admin → Nodes                                                              | Node online, allocations added                  |
+| Admin → Servers → Create                                                   | Install on Wings                                |
+| Client console                                                             | WebSocket to node connects                      |
+| Client → Schedules                                                         | Create schedule (needs Redis)                   |
+| `curl -s https://panel.example.com/api/auth/branding/manifest.webmanifest` | Returns your panel name and app icon            |
+| `curl -sI https://panel.example.com/sw.js`                                 | `Cache-Control: no-cache, must-revalidate`      |
+
+
+---
+
+
 
 ## Updates
 
@@ -523,7 +656,15 @@ sudo systemctl restart spirit-panel-api
 sudo systemctl reload nginx
 ```
 
+Check `docs/CHANGELOG.md` for the release you are moving to — entries call out any migration or configuration step beyond the commands above.
+
+If you deployed by extracting a new zip rather than `git pull`, re-copy `deploy/nginx/spirit-panel.conf` when the changelog mentions nginx changes; the installer does not overwrite a config you have already customised.
+
+Browsers pick up the new build on the next load because `index.html` and `sw.js` are served `no-cache`. Users already sitting in an installed app get it on their next launch. There is no need to ask them to clear caches.
+
 ---
+
+
 
 ## Import eggs
 
@@ -536,7 +677,11 @@ Or **Admin → Nests & Eggs → Import Egg** (PTDL_v2 JSON).
 
 ---
 
+
+
 ## Troubleshooting
+
+
 
 ### 500 on `/api/client/servers` or `/api/admin/servers/*`
 
@@ -550,17 +695,23 @@ pnpm exec prisma migrate status
 journalctl -u spirit-panel-api -n 50 --no-pager
 ```
 
+
+
 ### 502 on `/api/*`
 
 - `sudo systemctl status spirit-panel-api`
 - `.env` must have `HOST=127.0.0.1`
 - `journalctl -u spirit-panel-api -n 50`
 
+
+
 ### Blank `/admin` page
 
 - `ls apps/panel-web/dist/index.html`
 - Nginx `root` path correct
 - `chmod o+x /home/spiritpanel`
+
+
 
 ### `vite: Permission denied` during build
 
@@ -579,9 +730,11 @@ Prefer `pnpm install` on the server rather than copying `node_modules/`.
 ./install --production --api-url https://panel.example.com --fix-database
 ```
 
+
+
 ### Wings 401 / 403
 
-Panel → Wings auth uses the **`token` value** from node config.
+Panel → Wings auth uses the `token` **value** from node config.
 
 1. Copy token from **Admin → Nodes → Wings Config**
 2. Must match `token:` in `/etc/featherpanel/config.yml`
@@ -591,6 +744,8 @@ Panel → Wings auth uses the **`token` value** from node config.
 curl -s http://127.0.0.1:8080/api/system -H "Authorization: Bearer YOUR_TOKEN_SECRET"
 ```
 
+
+
 ### Console WebSocket / Mixed Content
 
 Browsers block `ws://` on HTTPS panels. Options:
@@ -598,9 +753,34 @@ Browsers block `ws://` on HTTPS panels. Options:
 - **Same server:** use `/wings/` nginx block from `deploy/nginx/spirit-panel.conf`
 - **Separate node:** TLS on node FQDN, set node scheme to `https`
 
+
+
 ### Schedule worker errors
 
 Set `DISABLE_SCHEDULE_WORKER=true` in `.env` and restart API.
+
+### Installed app still shows the old icon
+
+First confirm the panel is serving the right one:
+
+```bash
+curl -s https://panel.example.com/api/auth/branding/manifest.webmanifest
+```
+
+If the `icons` entry points at your branded asset, the panel side is correct and the stale icon is cached by the operating system, not the panel. Installed apps bake their icon into the OS shortcut at install time and never refresh it, so the fix is always on the client:
+
+1. Uninstall the app, then reinstall it from the browser.
+2. On Windows, a desktop shortcut can stay stale even after reinstalling, because Explorer caches shortcut icons separately. Delete the desktop shortcut and drag a fresh one out of the Start Menu.
+3. If a freshly created shortcut is *still* wrong, clear the icon cache — the files are locked while Explorer runs, so it has to be stopped first:
+
+```powershell
+taskkill /f /im explorer.exe
+Remove-Item "$env:LocalAppData\IconCache.db" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:LocalAppData\Microsoft\Windows\Explorer\iconcache*.db" -Force -ErrorAction SilentlyContinue
+Start-Process explorer.exe
+```
+
+
 
 ### Cleaning up old demo data
 
@@ -611,9 +791,11 @@ If database was seeded in development mode on production:
 
 ---
 
+
+
 ## Security
 
-See [SECURITY.md](../SECURITY.md) for vulnerability reporting, session handling, and API key guidance.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting, session handling, and API key guidance.
 
 1. Store admin password safely after install
 2. **Admin → Settings** — disable public registration
@@ -624,6 +806,8 @@ See [SECURITY.md](../SECURITY.md) for vulnerability reporting, session handling,
 
 ---
 
+
+
 ## Optional: Application API
 
-**Admin → API Keys** → create Application key → use on `/api/application/*` for billing automation.
+**Admin → API Keys** → create Application key → use on `/api/application/`* for billing automation.

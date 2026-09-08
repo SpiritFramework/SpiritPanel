@@ -84,16 +84,17 @@ export function TabNavItem({
     <NavLink
       to={to}
       end={end}
+      title={label}
       className={({ isActive }) =>
-        `nav-tab inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition sm:px-3 ${
+        `nav-tab inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition sm:gap-1.5 sm:px-3 ${
           isActive
             ? 'nav-tab-active accent-bg text-white'
             : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
         }`
       }
     >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="nav-tab-label">{label}</span>
     </NavLink>
   );
 }
@@ -110,7 +111,7 @@ export function CompactBackLink({
   return (
     <Link
       to={to}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--border)]/80 hover:bg-[var(--bg-elevated)]/60 hover:accent-text ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-2 text-xs font-medium leading-snug text-[var(--muted)] transition hover:border-[var(--border)]/80 hover:bg-[var(--bg-elevated)]/60 hover:accent-text md:py-1 md:text-[11px] ${className}`}
     >
       <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
       <span className="max-w-[5.5rem] truncate sm:max-w-none">{label}</span>

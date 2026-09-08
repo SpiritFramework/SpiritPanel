@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
-  BarChart3,
+  ChevronRight,
   Cpu,
   Gauge,
   HardDrive,
   Loader2,
   MemoryStick,
+  Network,
   PlayCircle,
   RefreshCw,
   Server,
@@ -22,6 +23,7 @@ import { formatResource, formatResourceAmount } from '../../../../lib/server-the
 import { UsageChart } from '../../../UsageChart';
 import { AdminServerStatusBadge } from '../../AdminServerStatus';
 import { Button } from '../../../Layout';
+import { NodeOverviewSection } from '../NodeDetailShell';
 import { NodeSettingsUsageSnapshot } from '../settings/NodeSettingsUsageSnapshot';
 
 const RANGES = [
@@ -95,7 +97,7 @@ export function NodeAnalyticsDashboard({ nodeId }: { nodeId: string }) {
         <div className="ds-nd-an-error">
           <p>{error || 'Could not load analytics'}</p>
           <Button type="button" size="sm" onClick={() => load()}>
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             Retry
           </Button>
         </div>
@@ -127,229 +129,212 @@ export function NodeAnalyticsDashboard({ nodeId }: { nodeId: string }) {
       ? Math.min(100, Math.round((summary.assignedAllocations / summary.allocationCount) * 100))
       : 0;
 
+  const liveStrip: { icon: LucideIcon; label: string; value: string; tone?: string }[] = [
+    {
+      icon: PlayCircle,
+      label: 'Running',
+      value: `${summary.runningCount}/${summary.serverCount}`,
+    },
+    {
+      icon: Cpu,
+      label: 'Live CPU',
+      value: `${summary.liveCpuPercent.toFixed(1)}%`,
+      tone: usageTone(summary.liveCpuPercent),
+    },
+    {
+      icon: MemoryStick,
+      label: 'Live RAM',
+      value: formatBytes(summary.liveMemoryBytes),
+      tone: usageTone(liveMemoryPct),
+    },
+    {
+      icon: HardDrive,
+      label: 'Live disk',
+      value: formatBytes(summary.liveDiskBytes),
+      tone: usageTone(liveDiskPct),
+    },
+    {
+      icon: Network,
+      label: 'Ports',
+      value: `${summary.assignedAllocations}/${summary.allocationCount}`,
+    },
+  ];
+
   return (
     <div className="ds-nd-an">
-      <header className="ds-nd-an-header">
-        <div className="ds-nd-an-header-main">
-          <span className="ds-nd-an-header-icon" aria-hidden>
-            <BarChart3 className="ds-icon" />
-          </span>
-          <div>
-            <p className="ds-nd-an-eyebrow">Performance</p>
-            <h2 className="ds-nd-an-title">Node analytics</h2>
-            <p className="ds-nd-an-desc">
-              Live resource totals from Wings and historical trends for this host
-            </p>
-          </div>
+      <div className="ds-nd-an-topbar">
+        <div className="ds-nd-an-range" role="group" aria-label="Time range">
+          {RANGES.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => setRange(r.id)}
+              className={`ds-nd-an-range-btn${range === r.id ? ' ds-nd-an-range-btn--active' : ''}`}
+              aria-pressed={range === r.id}
+            >
+              {r.label}
+            </button>
+          ))}
         </div>
-        <div className="ds-nd-an-toolbar">
-          <div className="ds-nd-an-range" role="group" aria-label="Time range">
-            {RANGES.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRange(r.id)}
-                className={`ds-nd-an-range-btn${range === r.id ? ' ds-nd-an-range-btn--active' : ''}`}
-                aria-pressed={range === r.id}
-              >
-                <span className="ds-nd-an-range-short">{r.label}</span>
-                <span className="ds-nd-an-range-long">{r.longLabel}</span>
-              </button>
-            ))}
-          </div>
-          <Button type="button" variant="ghost" size="sm" onClick={() => load(true)} disabled={refreshing}>
-            <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </header>
-
-      <div className="ds-nd-an-kpis">
-        <KpiCard
-          icon={PlayCircle}
-          label="Running now"
-          value={`${summary.runningCount}/${summary.serverCount}`}
-          hint={
-            summary.suspendedCount > 0
-              ? `${summary.suspendedCount} suspended · ${summary.liveServerCount} live`
-              : `${summary.liveServerCount} reporting from Wings`
-          }
-          tone="info"
-        />
-        <KpiCard
-          icon={Cpu}
-          label="Live CPU"
-          value={`${summary.liveCpuPercent.toFixed(1)}%`}
-          hint={`${summary.totalCpuLimit}% total limit across fleet`}
-          tone={usageTone(summary.liveCpuPercent)}
-        />
-        <KpiCard
-          icon={MemoryStick}
-          label="Live memory"
-          value={formatBytes(summary.liveMemoryBytes)}
-          hint={
-            capacity.effectiveMemoryLimit > 0
-              ? `${liveMemoryPct.toFixed(1)}% of node limit`
-              : `${formatResourceAmount(capacity.allocatedMemory, 'MiB')} assigned`
-          }
-          tone={usageTone(liveMemoryPct)}
-        />
-        <KpiCard
-          icon={HardDrive}
-          label="Live disk"
-          value={formatBytes(summary.liveDiskBytes)}
-          hint={
-            capacity.effectiveDiskLimit > 0
-              ? `${liveDiskPct.toFixed(1)}% of node limit`
-              : `${formatResourceAmount(capacity.allocatedDisk, 'MiB')} assigned`
-          }
-          tone={usageTone(liveDiskPct)}
-        />
+        <p className="ds-nd-an-topbar-meta">{activeRange.longLabel} · aggregated snapshots</p>
+        <Button type="button" variant="ghost" size="sm" onClick={() => load(true)} disabled={refreshing}>
+          <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+          Refresh
+        </Button>
       </div>
 
-      <div className="ds-nd-an-snapshot-wrap">
-        <NodeSettingsUsageSnapshot capacity={capacity} liveUsage={liveUsage} />
-        {summary.allocationCount > 0 ? (
-          <div className="ds-nd-an-ports-card">
-            <div className="ds-nd-an-ports-head">
-              <Gauge className="ds-icon ds-icon--sm" aria-hidden />
-              <div>
-                <p className="ds-nd-an-ports-label">Port allocation</p>
-                <p className="ds-nd-an-ports-value">
-                  {summary.assignedAllocations}/{summary.allocationCount} assigned
+      <div className="ds-nd-an-live-strip" role="list" aria-label="Live node metrics">
+        {liveStrip.map((item) => (
+          <div
+            key={item.label}
+            className={`ds-nd-an-live-stat${item.tone ? ` ds-nd-an-live-stat--${item.tone}` : ''}`}
+            role="listitem"
+          >
+            <span className="ds-nd-an-live-stat-icon" aria-hidden>
+              <item.icon className="h-3.5 w-3.5" />
+            </span>
+            <span className="ds-nd-an-live-stat-copy">
+              <span className="ds-nd-an-live-stat-label">{item.label}</span>
+              <span className="ds-nd-an-live-stat-value">{item.value}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="ds-nd-an-bento">
+        <div className="ds-nd-an-bento-main">
+          <NodeOverviewSection
+            icon={TrendingUp}
+            title="Historical trends"
+            description={`${activeRange.longLabel} · node-wide performance`}
+            badge={stats.series.length > 0 ? `${stats.series.length} points` : undefined}
+          >
+            {stats.series.length > 0 ? (
+              <div className="ds-nd-an-charts">
+                <div className="ds-nd-an-chart">
+                  <UsageChart
+                    title="Combined CPU"
+                    unit="Sum of server CPU limits in use"
+                    color="#818cf8"
+                    range={range}
+                    data={cpuData}
+                    formatValue={(v) => `${v.toFixed(1)}%`}
+                  />
+                </div>
+                <div className="ds-nd-an-chart">
+                  <UsageChart
+                    title="Memory pressure"
+                    unit={
+                      capacity.effectiveMemoryLimit > 0
+                        ? `vs ${formatResource(capacity.effectiveMemoryLimit, 'MiB')} node limit`
+                        : 'Live RAM trend'
+                    }
+                    color="#34d399"
+                    range={range}
+                    data={memoryData}
+                    max={100}
+                    valueUnit="percent"
+                    formatValue={(v) => `${v.toFixed(1)}%`}
+                  />
+                </div>
+                <div className="ds-nd-an-chart ds-nd-an-chart--wide">
+                  <UsageChart
+                    title="Running servers"
+                    unit="Containers reporting running or starting"
+                    color="#38bdf8"
+                    range={range}
+                    data={runningData}
+                    formatValue={(v) => String(Math.round(v))}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="ds-nd-an-empty">
+                <Activity className="h-5 w-5 opacity-50" aria-hidden />
+                <p className="ds-nd-an-empty-title">No historical data yet</p>
+                <p className="ds-nd-an-empty-desc">
+                  Snapshots build when servers run or their console is opened. Live metrics above reflect
+                  the current state.
                 </p>
               </div>
-              <span className="ds-nd-an-ports-pct">{portPercent}%</span>
-            </div>
-            <div className="ds-progress" aria-hidden>
-              <div
-                className={`ds-progress-fill ds-progress-fill--${portPercent >= 90 ? 'bad' : portPercent >= 75 ? 'warn' : 'good'}`}
-                style={{ width: `${Math.max(portPercent > 0 ? 4 : 0, portPercent)}%` }}
+            )}
+          </NodeOverviewSection>
+        </div>
+
+        <aside className="ds-nd-an-bento-side">
+          <NodeOverviewSection
+            icon={Gauge}
+            title="Capacity snapshot"
+            description="Live Wings usage vs panel limits"
+            badge={
+              summary.liveServerCount > 0
+                ? `${summary.liveServerCount}/${summary.serverCount} live`
+                : undefined
+            }
+          >
+            <NodeSettingsUsageSnapshot capacity={capacity} liveUsage={liveUsage} showLive />
+
+            {summary.allocationCount > 0 ? (
+              <div className="ds-nd-an-ports">
+                <div className="ds-nd-an-ports-head">
+                  <span>Port allocation</span>
+                  <span className="ds-text-mono">{portPercent}%</span>
+                </div>
+                <div className="ds-progress" aria-hidden>
+                  <div
+                    className={`ds-progress-fill ds-progress-fill--${portPercent >= 90 ? 'bad' : portPercent >= 75 ? 'warn' : 'good'}`}
+                    style={{ width: `${Math.max(portPercent > 0 ? 4 : 0, portPercent)}%` }}
+                  />
+                </div>
+                <p className="ds-nd-an-ports-meta">
+                  {summary.assignedAllocations} assigned ·{' '}
+                  {summary.allocationCount - summary.assignedAllocations} free
+                </p>
+              </div>
+            ) : null}
+
+            <div className="ds-nd-an-capacity-foot">
+              <CapacityPill
+                label="Assigned RAM"
+                value={formatResourceAmount(capacity.allocatedMemory, 'MiB')}
               />
+              <CapacityPill
+                label="Assigned disk"
+                value={formatResourceAmount(capacity.allocatedDisk, 'MiB')}
+              />
+              <CapacityPill label="CPU fleet" value={`${summary.totalCpuLimit}%`} />
             </div>
-          </div>
-        ) : null}
+          </NodeOverviewSection>
+        </aside>
       </div>
 
-      <section className="ds-nd-an-section" aria-labelledby="node-analytics-charts">
-        <header className="ds-nd-an-section-head">
-          <TrendingUp className="ds-icon ds-icon--sm" aria-hidden />
-          <div>
-            <h3 id="node-analytics-charts" className="ds-nd-an-section-title">
-              Historical trends
-            </h3>
-            <p className="ds-nd-an-section-desc">{activeRange.longLabel} · aggregated node snapshots</p>
-          </div>
-        </header>
-
-        {stats.series.length > 0 ? (
-          <div className="ds-nd-an-charts">
-            <div className="ds-nd-an-chart-card">
-              <UsageChart
-                title="Combined CPU usage"
-                unit="Sum of all server CPU on this node"
-                color="#818cf8"
-                range={range}
-                data={cpuData}
-                formatValue={(v) => `${v.toFixed(1)}%`}
-              />
-            </div>
-            <div className="ds-nd-an-chart-card">
-              <UsageChart
-                title="Memory pressure"
-                unit={
-                  capacity.effectiveMemoryLimit > 0
-                    ? `Live RAM vs ${formatResource(capacity.effectiveMemoryLimit, 'MiB')} limit`
-                    : 'Live RAM usage trend'
-                }
-                color="#34d399"
-                range={range}
-                data={memoryData}
-                max={100}
-                valueUnit="percent"
-                formatValue={(v) => `${v.toFixed(1)}%`}
-              />
-            </div>
-            <div className="ds-nd-an-chart-card ds-nd-an-chart-card--wide">
-              <UsageChart
-                title="Running servers"
-                unit="Containers reporting running or starting"
-                color="#38bdf8"
-                range={range}
-                data={runningData}
-                formatValue={(v) => String(Math.round(v))}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="ds-nd-an-empty">
-            <Activity className="h-8 w-8" aria-hidden />
-            <p className="ds-nd-an-empty-title">No historical data yet</p>
-            <p className="ds-nd-an-empty-desc">
-              Snapshots build when servers run or their console is opened. Live totals above reflect
-              the current state.
-            </p>
-          </div>
-        )}
-      </section>
-
       {stats.servers.length > 0 ? (
-        <section className="ds-nd-an-section" aria-labelledby="node-analytics-fleet">
-          <header className="ds-nd-an-section-head">
-            <Server className="ds-icon ds-icon--sm" aria-hidden />
-            <div>
-              <h3 id="node-analytics-fleet" className="ds-nd-an-section-title">
-                Per-server breakdown
-              </h3>
-              <p className="ds-nd-an-section-desc">
-                {stats.servers.length} server{stats.servers.length === 1 ? '' : 's'} · live limits vs
-                Wings usage
-              </p>
-            </div>
-          </header>
+        <NodeOverviewSection
+          icon={Server}
+          title="Server workload"
+          description={`${stats.servers.length} server${stats.servers.length === 1 ? '' : 's'} on this node`}
+        >
           <ul className="ds-nd-an-fleet">
             {stats.servers.map((server) => (
-              <ServerUsageCard key={server.id} server={server} />
+              <ServerWorkloadRow key={server.id} server={server} />
             ))}
           </ul>
-        </section>
+        </NodeOverviewSection>
       ) : null}
     </div>
   );
 }
 
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  hint: string;
-  tone: 'success' | 'warning' | 'danger' | 'info';
-}) {
+function CapacityPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`ds-nd-an-kpi ds-nd-an-kpi--${tone}`}>
-      <span className="ds-nd-an-kpi-icon" aria-hidden>
-        <Icon className="ds-icon ds-icon--sm" />
-      </span>
-      <div className="min-w-0">
-        <p className="ds-nd-an-kpi-label">{label}</p>
-        <p className="ds-nd-an-kpi-value">{value}</p>
-        <p className="ds-nd-an-kpi-hint">{hint}</p>
-      </div>
+    <div className="ds-nd-an-cap-pill">
+      <span className="ds-nd-an-cap-pill-label">{label}</span>
+      <span className="ds-nd-an-cap-pill-value">{value}</span>
     </div>
   );
 }
 
-function ServerUsageCard({
-  server,
-}: {
-  server: NodeStatsResponse['servers'][number];
-}) {
+function ServerWorkloadRow({ server }: { server: NodeStatsResponse['servers'][number] }) {
   const hasLive = server.live !== null;
   const memPct =
     server.memory > 0 && hasLive
@@ -363,24 +348,47 @@ function ServerUsageCard({
 
   const sourceLabel =
     server.liveSource === 'wings'
-      ? 'Live from Wings'
+      ? 'Live'
       : server.liveSource === 'snapshot' && server.live
-        ? `Snapshot · ${formatActivityTime(server.live.recordedAt)}`
-        : 'No live data';
+        ? formatActivityTime(server.live.recordedAt)
+        : 'No data';
 
   const sourceTone =
     server.liveSource === 'wings' ? 'live' : server.liveSource === 'snapshot' ? 'snapshot' : 'offline';
 
   return (
     <li>
-      <Link to={`/admin/servers/${server.id}`} className="ds-nd-an-server-card">
-        <div className="ds-nd-an-server-head">
-          <div className="min-w-0">
-            <p className="ds-nd-an-server-name">{server.name}</p>
-            <span className={`ds-nd-an-server-source ds-nd-an-server-source--${sourceTone}`}>
-              {sourceLabel}
-            </span>
-          </div>
+      <Link to={`/admin/servers/${server.id}`} className="ds-nd-an-fleet-row">
+        <div className="ds-nd-an-fleet-main">
+          <p className="ds-nd-an-fleet-name">{server.name}</p>
+          <span className={`ds-nd-an-fleet-source ds-nd-an-fleet-source--${sourceTone}`}>{sourceLabel}</span>
+        </div>
+
+        <div className="ds-nd-an-fleet-meters">
+          <FleetMeter
+            icon={MemoryStick}
+            label="RAM"
+            live={hasLive ? formatBytes(server.live!.memoryBytes) : '—'}
+            limit={formatResource(server.memory, 'MiB')}
+            percent={memPct}
+          />
+          <FleetMeter
+            icon={HardDrive}
+            label="Disk"
+            live={hasLive ? formatBytes(server.live!.diskBytes) : '—'}
+            limit={formatResource(server.disk, 'MiB')}
+            percent={diskPct}
+          />
+          <FleetMeter
+            icon={Cpu}
+            label="CPU"
+            live={hasLive ? `${server.live!.cpu.toFixed(0)}%` : '—'}
+            limit={`${server.cpu}%`}
+            percent={cpuPct}
+          />
+        </div>
+
+        <div className="ds-nd-an-fleet-status">
           <AdminServerStatusBadge
             status={server.status}
             suspended={server.suspended}
@@ -388,36 +396,14 @@ function ServerUsageCard({
             containerState={server.containerState}
             compact
           />
-        </div>
-        <div className="ds-nd-an-server-metrics">
-          <ServerMetric
-            icon={MemoryStick}
-            label="RAM"
-            live={hasLive ? formatBytes(server.live!.memoryBytes) : '—'}
-            limit={formatResource(server.memory, 'MiB')}
-            percent={memPct}
-          />
-          <ServerMetric
-            icon={HardDrive}
-            label="Disk"
-            live={hasLive ? formatBytes(server.live!.diskBytes) : '—'}
-            limit={formatResource(server.disk, 'MiB')}
-            percent={diskPct}
-          />
-          <ServerMetric
-            icon={Cpu}
-            label="CPU"
-            live={hasLive ? `${server.live!.cpu.toFixed(1)}%` : '—'}
-            limit={`${server.cpu}%`}
-            percent={cpuPct}
-          />
+          <ChevronRight className="ds-nd-an-fleet-chevron ds-icon ds-icon--sm" aria-hidden />
         </div>
       </Link>
     </li>
   );
 }
 
-function ServerMetric({
+function FleetMeter({
   icon: Icon,
   label,
   live,
@@ -435,20 +421,20 @@ function ServerMetric({
     tone === 'success' ? 'ds-progress-fill--good' : tone === 'warning' ? 'ds-progress-fill--warn' : 'ds-progress-fill--bad';
 
   return (
-    <div className={`ds-nd-an-metric ds-nd-an-metric--${tone}`}>
-      <div className="ds-nd-an-metric-head">
-        <span className="ds-nd-an-metric-label">
+    <div className="ds-nd-an-fleet-meter">
+      <div className="ds-nd-an-fleet-meter-head">
+        <span className="ds-nd-an-fleet-meter-label">
           <Icon className="ds-icon ds-icon--sm" aria-hidden />
           {label}
         </span>
-        {percent > 0 ? <span className="ds-nd-an-metric-pct">{Math.round(percent)}%</span> : null}
+        {percent > 0 ? <span className="ds-nd-an-fleet-meter-pct">{Math.round(percent)}%</span> : null}
       </div>
-      <p className="ds-nd-an-metric-values">
+      <p className="ds-nd-an-fleet-meter-values">
         <span className="font-mono">{live}</span>
-        <span className="ds-nd-an-metric-sep">/</span>
-        <span className="font-mono ds-nd-an-metric-limit">{limit}</span>
+        <span className="ds-nd-an-fleet-meter-sep">/</span>
+        <span className="font-mono opacity-70">{limit}</span>
       </p>
-      <div className="ds-progress ds-nd-an-metric-bar" aria-hidden>
+      <div className="ds-progress ds-nd-an-fleet-meter-bar" aria-hidden>
         <div
           className={`ds-progress-fill ${fillClass}`}
           style={{ width: `${Math.max(percent > 0 ? 4 : 0, percent)}%` }}

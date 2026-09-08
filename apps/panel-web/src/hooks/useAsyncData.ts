@@ -28,6 +28,8 @@ export function useAsyncData<T>(
   const generation = useRef(0);
   const dataRef = useRef<T | null>(null);
   dataRef.current = data;
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
 
   const run = useCallback(async () => {
     const gen = ++generation.current;
@@ -38,7 +40,7 @@ export function useAsyncData<T>(
 
     let promise = inflight.get(key) as Promise<T> | undefined;
     if (!promise) {
-      promise = fetcher().finally(() => {
+      promise = fetcherRef.current().finally(() => {
         inflight.delete(key);
       });
       inflight.set(key, promise);
@@ -60,7 +62,7 @@ export function useAsyncData<T>(
         setValidating(false);
       }
     }
-  }, [key, fetcher]);
+  }, [key]);
 
   const prevKey = useRef(key);
   useEffect(() => {

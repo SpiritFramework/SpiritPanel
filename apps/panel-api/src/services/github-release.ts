@@ -3,7 +3,7 @@ import {
   resolveGithubToken,
   type GithubAuthContext,
 } from '../lib/github-auth.js';
-import { githubHttpError } from '../lib/github-errors.js';
+import { githubHttpError, httpStatusFromUnknown } from '../lib/github-errors.js';
 
 const GITHUB_API = 'https://api.github.com';
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -20,20 +20,24 @@ export interface ResolvedGithubRelease {
   tag: string;
   downloadUrl: string;
   archiveFolderName: string;
+  source: 'release' | 'branch';
 }
 
 function cacheKey(owner: string, repo: string, ref: string, asset?: string | null, scope = 'panel') {
   return `${scope}:${owner}/${repo}@${ref}:${asset ?? ''}`;
 }
 
-function predictArchiveFolder(repo: string, tag: string): string {
-  const normalized = tag.startsWith('v') ? tag.slice(1) : tag;
-  return `${repo}-${normalized}`;
+export function codeloadTagArchiveUrl(owner: string, repo: string, tag: string): string {
+  return `https://codeload.github.com/${owner}/${repo}/zip/refs/tags/${encodeURIComponent(tag)}`;
 }
 
-/** Direct archive download — avoids GitHub API Accept header requirements. */
-function codeloadArchiveUrl(owner: string, repo: string, ref: string): string {
-  return `https://codeload.github.com/${owner}/${repo}/zip/refs/tags/${encodeURIComponent(ref)}`;
+export function codeloadBranchArchiveUrl(owner: string, repo: string, branch: string): string {
+  return `https://codeload.github.com/${owner}/${repo}/zip/refs/heads/${encodeURIComponent(branch)}`;
+}
+
+export function predictArchiveFolder(repo: string, ref: string): string {
+  const normalized = ref.startsWith('v') ? ref.slice(1) : ref;
+  return `${repo}-${normalized}`;
 }
 
 const ALLOWED_GITHUB_DOWNLOAD_HOSTS = new Set([
@@ -79,7 +83,115 @@ async function githubFetch<T>(path: string, ctx?: GithubAuthContext): Promise<T>
 
 interface GithubRelease {
   tag_name: string;
+  prerelease?: boolean;
   assets?: Array<{ name: string; browser_download_url: string }>;
+}
+
+async function fetchDefaultBranch(owner: string, repo: string, ctx?: GithubAuthContext): Promise<string> {
+  const data = await githubFetch<{ default_branch?: string }>(`/repos/${owner}/${repo}`, ctx);
+  return data.default_branch?.trim() || 'main';
+}
+
+function pickAsset(release: GithubRelease, assetName?: string | null) {
+  const assets = release.assets ?? [];
+  if (assets.length === 0) return null;
+  if (assetName) {
+    const match = assets.find((a) => a.name === assetName);
+    if (match) return match;
+  }
+  return assets.find((a) => a.name.endsWith('.zip')) ?? assets[0];
+}
+
+function resolveFromRelease(
+  owner: string,
+  repo: string,
+  release: GithubRelease,
+  assetName?: string | null,
+): ResolvedGithubRelease {
+  const tag = release.tag_name;
+  const asset = pickAsset(release, assetName);
+  const downloadUrl = asset
+    ? sanitizeGithubDownloadUrl(asset.browser_download_url, codeloadTagArchiveUrl(owner, repo, tag))
+    : codeloadTagArchiveUrl(owner, repo, tag);
+
+  return {
+    tag,
+    downloadUrl,
+    archiveFolderName: predictArchiveFolder(repo, tag),
+    source: 'release',
+  };
+}
+
+async function resolveLatestRelease(
+  owner: string,
+  repo: string,
+  assetName: string | null | undefined,
+  ctx?: GithubAuthContext,
+): Promise<ResolvedGithubRelease> {
+  try {
+    const release = await githubFetch<GithubRelease>(`/repos/${owner}/${repo}/releases/latest`, ctx);
+    return resolveFromRelease(owner, repo, release, assetName);
+  } catch (err) {
+    if (httpStatusFromUnknown(err) !== 404) throw err;
+  }
+
+  const releases = await githubFetch<GithubRelease[]>(
+    `/repos/${owner}/${repo}/releases?per_page=10`,
+    ctx,
+  ).catch(() => [] as GithubRelease[]);
+
+  const stable = releases.find((release) => !release.prerelease) ?? releases[0];
+  if (stable) {
+    return resolveFromRelease(owner, repo, stable, assetName);
+  }
+
+  const branch = await fetchDefaultBranch(owner, repo, ctx);
+  return {
+    tag: branch,
+    downloadUrl: codeloadBranchArchiveUrl(owner, repo, branch),
+    archiveFolderName: predictArchiveFolder(repo, branch),
+    source: 'branch',
+  };
+}
+
+async function resolveExplicitRef(
+  owner: string,
+  repo: string,
+  ref: string,
+  assetName: string | null | undefined,
+  ctx?: GithubAuthContext,
+): Promise<ResolvedGithubRelease> {
+  const release = await githubFetch<GithubRelease>(
+    `/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(ref)}`,
+    ctx,
+  ).catch(() => null);
+
+  if (release) {
+    return resolveFromRelease(owner, repo, release, assetName);
+  }
+
+  let branch: string | null = null;
+  try {
+    branch = await fetchDefaultBranch(owner, repo, ctx);
+  } catch {
+    branch = null;
+  }
+
+  if (branch && branch.toLowerCase() === ref.toLowerCase()) {
+    return {
+      tag: branch,
+      downloadUrl: codeloadBranchArchiveUrl(owner, repo, branch),
+      archiveFolderName: predictArchiveFolder(repo, branch),
+      source: 'branch',
+    };
+  }
+
+  return {
+    tag: ref,
+    downloadUrl: codeloadTagArchiveUrl(owner, repo, ref),
+    archiveFolderName: predictArchiveFolder(repo, ref),
+    source: 'release',
+  };
 }
 
 export async function resolveGithubRelease(
@@ -94,53 +206,13 @@ export async function resolveGithubRelease(
   const cached = releaseCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  let tag = ref;
-  let downloadUrl: string;
-
-  if (ref === 'latest-release') {
-    const release = await githubFetch<GithubRelease>(`/repos/${owner}/${repo}/releases/latest`, ctx);
-    tag = release.tag_name;
-    const asset = pickAsset(release, assetName);
-    if (asset) {
-      downloadUrl = sanitizeGithubDownloadUrl(asset.browser_download_url, codeloadArchiveUrl(owner, repo, tag));
-    } else {
-      downloadUrl = codeloadArchiveUrl(owner, repo, tag);
-    }
-  } else {
-    const release = await githubFetch<GithubRelease>(
-      `/repos/${owner}/${repo}/releases/tags/${encodeURIComponent(ref)}`,
-      ctx,
-    ).catch(() => null);
-    if (release) {
-      tag = release.tag_name;
-      const asset = pickAsset(release, assetName);
-      downloadUrl = asset
-        ? sanitizeGithubDownloadUrl(asset.browser_download_url, codeloadArchiveUrl(owner, repo, tag))
-        : codeloadArchiveUrl(owner, repo, tag);
-    } else {
-      tag = ref;
-      downloadUrl = codeloadArchiveUrl(owner, repo, ref);
-    }
-  }
-
-  const resolved: ResolvedGithubRelease = {
-    tag,
-    downloadUrl,
-    archiveFolderName: predictArchiveFolder(repo, tag),
-  };
+  const resolved =
+    ref === 'latest-release'
+      ? await resolveLatestRelease(owner, repo, assetName, ctx)
+      : await resolveExplicitRef(owner, repo, ref, assetName, ctx);
 
   releaseCache.set(key, { value: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
   return resolved;
-}
-
-function pickAsset(release: GithubRelease, assetName?: string | null) {
-  const assets = release.assets ?? [];
-  if (assets.length === 0) return null;
-  if (assetName) {
-    const match = assets.find((a) => a.name === assetName);
-    if (match) return match;
-  }
-  return assets.find((a) => a.name.endsWith('.zip')) ?? assets[0];
 }
 
 async function downloadHeaders(url: string, ctx?: GithubAuthContext): Promise<Record<string, string>> {
@@ -170,6 +242,11 @@ export async function downloadGithubArchive(url: string, ctx?: GithubAuthContext
     redirect: 'follow',
   });
   if (!res.ok) {
+    if (res.status === 404) {
+      throw Object.assign(new Error('GitHub archive not found for that version — try another tag or branch.'), {
+        statusCode: 404,
+      });
+    }
     throw new Error(`Download failed (${res.status})`);
   }
 

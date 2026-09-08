@@ -118,37 +118,19 @@ export function ListPageSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div className="ds-ad ds-ad--skeleton" aria-hidden>
-      <div className="ds-ad-hero">
-        <div className="ds-ad-hero-inner">
-          <div className="space-y-1.5">
-            <Skeleton className="h-3 w-36" />
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-3 w-64 max-w-full" />
-            <div className="flex gap-2 pt-2">
-              <Skeleton className="h-8 w-24 rounded-md" />
-              <Skeleton className="h-8 w-24 rounded-md" />
-            </div>
-          </div>
-          <Skeleton className="h-[4.5rem] w-44 rounded-lg" />
-        </div>
-        <div className="ds-ad-kpis">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-[4.25rem] rounded-lg" />
-          ))}
-        </div>
-      </div>
-      <div className="ds-ad-rail">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-20 rounded-full" />
+      <Skeleton className="h-36 w-full rounded-xl" />
+      <div className="ds-ad-stats">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
         ))}
       </div>
-      <div className="ds-ad-gauges">
-        <Skeleton className="h-24 rounded-lg" />
-        <Skeleton className="h-24 rounded-lg" />
+      <div className="ds-ad-bento">
+        <Skeleton className="h-56 w-full rounded-xl" />
+        <Skeleton className="h-56 w-full rounded-xl" />
       </div>
-      <div className="ds-ad-columns">
-        <Skeleton className="h-64 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="ds-ad-split">
+        <Skeleton className="h-72 w-full rounded-xl" />
+        <Skeleton className="h-72 w-full rounded-xl" />
       </div>
       <Skeleton className="h-44 w-full rounded-xl" />
     </div>

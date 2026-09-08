@@ -74,6 +74,8 @@ export async function applicationRoutes(app: FastifyInstance) {
       return prisma.user.findMany({
         where: q ? { email: q.trim().toLowerCase() } : undefined,
         select: { id: true, uuid: true, email: true, username: true, createdAt: true },
+        take: q ? 1 : 100,
+        orderBy: { createdAt: 'desc' },
       });
     },
   );
@@ -260,7 +262,7 @@ export async function applicationRoutes(app: FastifyInstance) {
           maintenanceMode: true,
           memory: true,
           disk: true,
-          location: { select: { id: true, short: true, long: true } },
+          location: { select: { id: true, short: true, long: true, flagUrl: true } },
           _count: { select: { servers: true, allocations: true } },
         },
         orderBy: { name: 'asc' },

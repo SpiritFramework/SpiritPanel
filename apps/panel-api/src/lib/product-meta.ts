@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 /** Product name — the panel software. */
 export const PANEL_PRODUCT = 'Spirit-Panel';
 
@@ -13,4 +15,8 @@ export const PANEL_TAGLINE = 'Game server panel';
 /** Software attribution copy — not the host company name. */
 export const AUTHOR_CREDIT = `Built by ${PANEL_AUTHOR}`;
 
-export const PANEL_VERSION = '0.1.0';
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json') as { version?: string };
+
+/** Panel release version (`MAJOR.MINOR.FEATURE.PATCH`). */
+export const PANEL_VERSION = pkg.version ?? '1.3.0.0';

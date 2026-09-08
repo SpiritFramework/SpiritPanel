@@ -24,6 +24,7 @@ export interface AppConfig {
   redisTls: boolean;
   disableScheduleWorker: boolean;
   disableStatsCollector: boolean;
+  disableNodeHealthWorker: boolean;
   corsOrigins: string[];
 }
 
@@ -84,6 +85,7 @@ export function loadConfig(): AppConfig {
     redisTls,
     disableScheduleWorker: process.env.DISABLE_SCHEDULE_WORKER === 'true',
     disableStatsCollector: process.env.DISABLE_STATS_COLLECTOR === 'true',
+    disableNodeHealthWorker: process.env.DISABLE_NODE_HEALTH_WORKER === 'true',
     corsOrigins,
   };
 }
