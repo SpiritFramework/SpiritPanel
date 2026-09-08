@@ -116,15 +116,22 @@ app_home() {
   getent passwd "$APP_USER" 2>/dev/null | cut -d: -f6
 }
 
+# Absolute path to a pnpm the panel user can execute. Set by resolve_pnpm.
+PNPM_BIN=""
+
 as_app() {
-  local home
+  local home pathfix=""
   home="$(app_home)"
+  # `bash -l` rebuilds PATH from /etc/profile, which does not necessarily
+  # include the prefix npm installed pnpm into, so put it back explicitly
+  # rather than trusting the panel user's login PATH.
+  [[ -n "$PNPM_BIN" ]] && pathfix="PATH='$(dirname "$PNPM_BIN")':\$PATH "
   # Corepack defaults its cache to $HOME/.cache/node/corepack and aborts with
   # EACCES if that path is root-owned, which happens easily on a box where
   # root has run node tooling in the panel user's home. Pin it somewhere we
   # know is writable and never prompt for a download.
   runuser -u "$APP_USER" -- bash -lc \
-    "export COREPACK_ENABLE_DOWNLOAD_PROMPT=0${home:+ COREPACK_HOME='${home}/.cache/node/corepack'}; $1"
+    "export ${pathfix}COREPACK_ENABLE_DOWNLOAD_PROMPT=0${home:+ COREPACK_HOME='${home}/.cache/node/corepack'}; $1"
 }
 
 # Root-run tooling leaves root-owned dotdirs in the panel user's home, and
@@ -265,17 +272,48 @@ install_pnpm() {
   if command -v pnpm >/dev/null 2>&1; then
     resolved="$(readlink -f "$(command -v pnpm)" 2>/dev/null || true)"
     if [[ "$resolved" != *corepack* ]] && pnpm --version >/dev/null 2>&1; then
+      resolve_pnpm
       ok "pnpm $(pnpm --version)"
       return
     fi
     info "Replacing the corepack pnpm shim with a real install"
   fi
-  # --force because the corepack shim already owns /usr/bin/pnpm.
-  npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
+  # --force because the corepack shim already owns the pnpm name.
+  # --prefix /usr/local because npm's configured prefix may be root-only
+  # (e.g. a prefix under /root), which would leave the panel user unable to
+  # read the binary we just installed.
+  npm install -g --force --prefix /usr/local "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
+    npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1 ||
     die "Failed to install pnpm ${PNPM_VERSION}"
   hash -r 2>/dev/null || true
-  pnpm --version >/dev/null 2>&1 || die "pnpm is still not runnable after installing it"
-  ok "pnpm $(pnpm --version)"
+  resolve_pnpm
+  [[ -n "$PNPM_BIN" ]] || die "pnpm is not on PATH after installing it"
+  ok "pnpm $("$PNPM_BIN" --version 2>/dev/null)"
+}
+
+# Find pnpm as an absolute path. `command -v` alone is not enough on a box
+# where npm's global prefix is not on the current PATH.
+resolve_pnpm() {
+  PNPM_BIN="$(command -v pnpm 2>/dev/null || true)"
+  if [[ -z "$PNPM_BIN" ]]; then
+    local prefix candidate
+    prefix="$(npm prefix -g 2>/dev/null || true)"
+    for candidate in "${prefix}/bin/pnpm" /usr/local/bin/pnpm /usr/bin/pnpm; do
+      [[ -x "$candidate" ]] && { PNPM_BIN="$candidate"; break; }
+    done
+  fi
+}
+
+# The install runs as the panel user, so it is that user - not root - who has
+# to be able to execute pnpm. Check before the long dependency step instead of
+# failing halfway through it.
+verify_pnpm_for_app_user() {
+  as_app "command -v pnpm >/dev/null 2>&1" && return 0
+  warn "${APP_USER} cannot run pnpm"
+  info "pnpm resolved to: ${PNPM_BIN:-not found}"
+  info "Install it somewhere all users can reach, then re-run:"
+  info "  npm install -g --prefix /usr/local pnpm@${PNPM_VERSION}"
+  die "Stopped before installing dependencies. Nothing was changed."
 }
 
 create_app_user() {
@@ -435,6 +473,8 @@ set_env_value() {
 run_panel_installer() {
   step "Installing dependencies"
   ensure_app_home
+  resolve_pnpm
+  verify_pnpm_for_app_user
 
   # NODE_ENV=production makes pnpm skip devDependencies, which the installer
   # (tsx), the build (vite, tsc) and Prisma all need.
@@ -943,6 +983,7 @@ action_update() {
   # install as the panel user, so normalise them here too.
   install_pnpm
   ensure_app_home
+  verify_pnpm_for_app_user
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
   as_app "${base} pnpm install --no-frozen-lockfile" ||
     die "pnpm install failed. Nothing was restarted, so the running version is untouched."

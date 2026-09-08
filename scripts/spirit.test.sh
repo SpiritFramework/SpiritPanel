@@ -145,6 +145,18 @@ fi
 if [[ "${SPIRIT_TEST_MIGRATE_FAIL:-0}" == "1" ]] && [[ "$cmd" == *"migrate deploy"* ]]; then
   exit 1
 fi
+
+# `bash -l` rebuilds PATH from /etc/profile, so a directory that root can see
+# is not necessarily on the panel user's PATH. Drop one to model that.
+if [[ -n "${SPIRIT_TEST_LOGIN_PATH_DROP:-}" ]]; then
+  kept=""
+  IFS=: read -ra _parts <<< "$PATH"
+  for _p in "${_parts[@]}"; do
+    [[ "$_p" == "$SPIRIT_TEST_LOGIN_PATH_DROP" ]] && continue
+    kept="${kept:+$kept:}$_p"
+  done
+  export PATH="$kept"
+fi
 bash -c "$cmd"
 EOF
 
@@ -1151,7 +1163,10 @@ dbg "corepack update" "$corepack_out"
 
 it "detects the corepack pnpm shim and replaces it"
 expect_contains "$corepack_out" "Replacing the corepack pnpm shim" "output"
-expect_contains "$(cat "$CMDLOG")" "npm install -g --force pnpm@" "commands"
+expect_contains "$(cat "$CMDLOG")" "npm install -g --force" "commands"
+expect_contains "$(cat "$CMDLOG")" "pnpm@" "commands"
+# A root-only npm prefix would leave the panel user unable to read the binary.
+expect_contains "$(cat "$CMDLOG")" "--prefix /usr/local" "commands"
 done_test
 
 it "still completes the update afterwards"
@@ -1169,6 +1184,37 @@ done_test
 it "pins COREPACK_HOME for commands run as the panel user"
 expect_contains "$(cat "$CMDLOG")" "COREPACK_HOME" "commands"
 done_test
+teardown_sandbox
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.3"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
+
+# npm's global prefix is not always on the panel user's login PATH. Put pnpm
+# in a prefix only root can see, then have the login shell drop it: without
+# the PATH fix in as_app this reproduces `pnpm: command not found` after
+# install_pnpm has just reported success.
+mkdir -p "$SANDBOX/npmprefix/bin"
+mv "$SANDBOX/bin/pnpm" "$SANDBOX/npmprefix/bin/pnpm"
+export PATH="$SANDBOX/npmprefix/bin:$PATH"
+export SPIRIT_TEST_LOGIN_PATH_DROP="$SANDBOX/npmprefix/bin"
+
+it "runs pnpm as the panel user when npm's prefix is off their login PATH"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+dbg "off-path pnpm" "$out"
+expect_not_contains "$out" "command not found" "output"
+expect_not_contains "$out" "pnpm install failed" "output"
+expect_contains "$out" "Update complete" "output"
+done_test
+unset SPIRIT_TEST_LOGIN_PATH_DROP
 teardown_sandbox
 
 it "accepts a pnpm that is already a real global install"
