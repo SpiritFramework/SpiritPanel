@@ -29,6 +29,7 @@ import { sanitizeLinkHref } from '../../../lib/safe-url';
 import { useBranding } from '../../../context/BrandingContext';
 import { PanelName } from '../../PanelName';
 import { NodeOverviewSection } from '../node-detail/NodeDetailShell';
+import { PanelVersionStatus } from './PanelVersionStatus';
 
 const authorDiscord = sanitizeLinkHref(PANEL_AUTHOR_DISCORD);
 
@@ -102,6 +103,8 @@ export function SettingsAboutPanel() {
             </h2>
             <span className="ds-set-about-version-pill">v{PANEL_VERSION}</span>
           </div>
+
+          <PanelVersionStatus />
 
           <p className="ds-set-about-eyebrow">{PANEL_TAGLINE}</p>
 

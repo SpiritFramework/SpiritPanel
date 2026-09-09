@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.2"
+SCRIPT_VERSION="2.0.3"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -750,6 +750,18 @@ backup_before_update() {
     warn "No .env found at ${env_file}"
   fi
 
+  # Runtime uploads (logo/favicon/app icon, ticket attachments) live outside git
+  # and are not in the GitHub tarball. Back them up so a bad sync cannot lose them.
+  local data_dir="${INSTALL_DIR}/apps/panel-api/data"
+  if [[ -d "$data_dir" ]] && [[ -n "$(ls -A "$data_dir" 2>/dev/null)" ]]; then
+    mkdir -p "${BACKUP_PATH}/panel-api-data"
+    if cp -a "$data_dir"/. "${BACKUP_PATH}/panel-api-data/" 2>/dev/null; then
+      ok "Saved panel-api data (branding, tickets, …)"
+    else
+      warn "Could not copy ${data_dir}"
+    fi
+  fi
+
   local url
   url="$(env_get DATABASE_URL || true)"
   if [[ -z "$url" ]]; then
@@ -879,8 +891,12 @@ update_source_tarball() {
   [[ -n "$src" ]] || die "Unexpected tarball layout"
 
   command -v rsync >/dev/null 2>&1 || apt_install rsync
+  # --delete must NOT touch runtime data: branding logos, ticket attachments, etc.
+  # Those directories are gitignored / absent from the tarball, so without these
+  # excludes rsync would wipe them and leave DB URLs pointing at 404 assets.
   rsync -a --delete \
     --exclude 'apps/panel-api/.env' \
+    --exclude 'apps/panel-api/data/' \
     --exclude 'node_modules/' \
     --exclude '**/node_modules/' \
     --exclude 'apps/panel-web/dist/' \

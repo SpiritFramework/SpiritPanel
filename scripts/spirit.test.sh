@@ -407,6 +407,57 @@ done_test
 teardown_sandbox
 
 # ---------------------------------------------------------------------------
+section "Tarball sync preserves runtime data"
+setup_sandbox
+it "spirit.sh excludes apps/panel-api/data from tarball rsync --delete"
+block="$(sed -n '/^update_source_tarball()/,/^}/p' "$TARGET")"
+expect_contains "$block" "--exclude 'apps/panel-api/data/'" "exclude"
+expect_contains "$block" "rsync -a --delete" "rsync"
+# Exercise the same exclude flags when rsync is available (Git Bash on Windows may lack it).
+if command -v rsync >/dev/null 2>&1; then
+  SRC="$SANDBOX/tarball-src"
+  DST="$SANDBOX/install"
+  mkdir -p "$SRC/apps/panel-api" "$DST/apps/panel-api/data/branding" "$DST/apps/panel-api/data/tickets/t1"
+  echo logo > "$DST/apps/panel-api/data/branding/logo.png"
+  echo attach > "$DST/apps/panel-api/data/tickets/t1/a1.png"
+  echo newcode > "$SRC/apps/panel-api/package.json"
+  rsync -a --delete \
+    --exclude 'apps/panel-api/.env' \
+    --exclude 'apps/panel-api/data/' \
+    --exclude 'node_modules/' \
+    --exclude '**/node_modules/' \
+    --exclude 'apps/panel-web/dist/' \
+    --exclude '.turbo/' \
+    "$SRC/" "$DST/"
+  expect_eq "$(cat "$DST/apps/panel-api/data/branding/logo.png")" "logo" "logo"
+  expect_eq "$(cat "$DST/apps/panel-api/data/tickets/t1/a1.png")" "attach" "ticket"
+  expect_eq "$(cat "$DST/apps/panel-api/package.json")" "newcode" "synced"
+fi
+done_test
+
+it "backup archives panel-api data"
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/apps/panel-api/data/branding"
+echo keepme > "$INSTALL_DIR/apps/panel-api/data/branding/logo.png"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+API_URL="https://panel.example.com"
+EOF
+touch "$SANDBOX/user-exists"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit backup -y < /dev/null)"
+expect_contains "$out" "Saved panel-api data" "output"
+copied="$(find "$SANDBOX/backups" -type f -name 'logo.png' | head -n1)"
+[[ -n "$copied" && -f "$copied" ]] || TEST_ERRORS+="      missing backed-up logo.png"$'\n'
+if [[ -n "$copied" && -f "$copied" ]]; then
+  expect_eq "$(cat "$copied")" "keepme" "logo"
+fi
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
 section "Install guards"
 setup_sandbox
 it "help documents the required --domain flag"

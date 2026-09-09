@@ -706,7 +706,7 @@ sudo bash /tmp/spirit.sh update
 
 Order of operations, which is what makes it safe to run on a live panel:
 
-1. Copies `.env` and runs `mysqldump` into `/var/backups/spirit-panel/<timestamp>/`. If the dump fails it stops and asks before going further.
+1. Copies `.env`, copies `apps/panel-api/data/` (branding logos, ticket attachments, …), and runs `mysqldump` into `/var/backups/spirit-panel/<timestamp>/`. If the dump fails it stops and asks before going further.
 2. Updates the source — `git fetch` and a hard reset onto the tracked upstream, or the release tarball if the deploy was not a git checkout. Local modifications prompt to stash rather than being silently discarded.
 3. `pnpm install`, then `pnpm build`.
 4. `prisma migrate deploy`.
@@ -714,7 +714,7 @@ Order of operations, which is what makes it safe to run on a live panel:
 
 **A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. Add `--ref V1.3.0.1` to move to a specific release, or `-y` to skip prompts.
 
-`.env`, `node_modules/`, and the existing `dist/` are never overwritten by the source sync.
+`.env`, `apps/panel-api/data/` (uploaded logos and ticket files), `node_modules/`, and the existing `dist/` are never overwritten or deleted by the source sync.
 
 ### Manual update
 

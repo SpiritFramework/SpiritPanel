@@ -195,14 +195,44 @@ function isWingsNotFound(err: unknown): boolean {
   return err instanceof Error && /\(404\)/.test(err.message);
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * FeatherWings loads server configs from the panel after restart. Until that
+ * finishes, GET /api/servers/{uuid} returns 404 even though the server exists
+ * on disk. Wait briefly before treating the UUID as permanently missing.
+ */
+async function waitForServerOnWings(
+  wings: WingsClient,
+  uuid: string,
+  attempts = 6,
+  gapMs = 1500,
+): Promise<'ready' | 'missing'> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await wings.getResources(uuid);
+      return 'ready';
+    } catch (err) {
+      if (!isWingsNotFound(err)) {
+        const detail = err instanceof Error ? err.message : String(err);
+        throw Object.assign(
+          new Error(`Cannot reach FeatherWings for this server: ${detail}`),
+          { code: 'wings_unreachable', statusCode: err instanceof WingsError && err.status ? err.status : 502 },
+        );
+      }
+      if (i < attempts - 1) await delay(gapMs);
+    }
+  }
+  return 'missing';
+}
+
 /**
  * Make sure FeatherWings knows about this server.
  *
- * Only calls createServer when the daemon returns HTTP 404 (server truly
- * missing). Any other failure (timeout, connection refused, 401, 5xx) must
- * NOT trigger create — that re-runs the egg install and is what made servers
- * look like they were "reinstalling" after a panel update while Start and
- * install streamed to the console at the same time.
+ * Only calls createServer for first-time provision (not yet installed). A 404
+ * after FeatherWings restart is usually "still booting / loading from panel",
+ * not "needs egg install" — createServer always runs Install() on the daemon
+ * and is what re-ran install scripts when Start was pressed too early.
  *
  * Returns whether a new install was kicked off so callers can avoid powering
  * on mid-install.
@@ -232,6 +262,25 @@ export async function ensureServerOnWings(uuid: string): Promise<{ created: bool
   // createServer again — a second install collides on the daemon and can wipe
   // the in-progress install directory.
   if (isServerInstalling(server)) return { created: false };
+
+  const appeared = await waitForServerOnWings(wings, uuid);
+  if (appeared === 'ready') return { created: false };
+
+  // Already provisioned on the panel — never auto-create (that re-runs the egg
+  // install). FeatherWings may still be loading, or remote GetServers failed.
+  if (server.installStatus === 'installed') {
+    logWingsFailure(
+      'ensureServerOnWings: server missing on daemon after retries (not recreating installed server)',
+      new Error('404 after retries'),
+      { uuid },
+    );
+    throw Object.assign(
+      new Error(
+        'FeatherWings does not know this server yet. Wait for the daemon to finish loading servers from the panel, then try Start again. Use Reinstall only if the server was permanently removed from the node.',
+      ),
+      { code: 'wings_server_missing', statusCode: 503 },
+    );
+  }
 
   await prisma.server.update({
     where: { id: server.id },

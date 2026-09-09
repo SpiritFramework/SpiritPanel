@@ -23,6 +23,7 @@ import { DashboardCapacityPanel } from './DashboardCapacityPanel';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardQuickActions } from './DashboardQuickActions';
 import { DashboardStatsStrip } from './DashboardStatsStrip';
+import { PanelUpdateBanner } from './PanelUpdateBanner';
 
 export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
   const { user } = useAuth();
@@ -49,6 +50,8 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
       />
 
       <DashboardStatsStrip stats={stats} />
+
+      <PanelUpdateBanner />
 
       {error ? (
         <div className="ds-ad-alert ds-ad-alert--error" role="alert">

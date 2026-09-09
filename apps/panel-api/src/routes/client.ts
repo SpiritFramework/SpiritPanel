@@ -321,6 +321,12 @@ export async function clientRoutes(app: FastifyInstance) {
           code: 'wings_unreachable',
         });
       }
+      if (code === 'wings_server_missing' || statusCode === 503) {
+        return reply.status(503).send({
+          error: err instanceof Error ? err.message : 'Server is not loaded on FeatherWings yet',
+          code: 'wings_server_missing',
+        });
+      }
       return sendClientError(reply, 502, 'power', request.log, err, 'Server power failed');
     }
     await logServerActivity(request, {

@@ -7433,6 +7433,12 @@ button.ds-nodes-stat:hover {
   color: var(--warning-fg);
 }
 
+.ds-ad-alert--update {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--text);
+}
+
 .ds-ad-alert-link {
   display: inline-flex;
   align-items: center;
@@ -7446,6 +7452,11 @@ button.ds-nodes-stat:hover {
 
 .ds-ad-alert-link:hover {
   text-decoration: underline;
+}
+
+.ds-ad-alert--update .ds-ad-alert-link {
+  margin-left: 0;
+  color: var(--accent);
 }
 
 /* Bento layout */
@@ -29139,6 +29150,157 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-set-about-version-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--accent-hover);
+  letter-spacing: 0.02em;
+}
+
+.ds-set-about-update {
+  margin: 0.85rem 0 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg));
+}
+
+.ds-set-about-update--behind {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.ds-set-about-update--current {
+  border-color: color-mix(in srgb, var(--success, #22c55e) 35%, var(--border));
+}
+
+.ds-set-about-update-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.ds-set-about-update-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-set-about-update-title {
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.ds-set-about-update-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ds-set-about-update-refresh:hover:not(:disabled) {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.ds-set-about-update-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ds-set-about-update-status {
+  margin-top: 0.65rem;
+}
+
+.ds-set-about-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ds-set-about-update-badge--good {
+  background: color-mix(in srgb, var(--success, #22c55e) 14%, var(--surface));
+  color: var(--success-fg, #15803d);
+}
+
+.ds-set-about-update-badge--warn {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+}
+
+.ds-set-about-update-badge--info {
+  background: color-mix(in srgb, var(--info, #3b82f6) 14%, var(--surface));
+  color: var(--info-fg, #1d4ed8);
+}
+
+.ds-set-about-update-badge--neutral {
+  background: color-mix(in srgb, var(--muted) 12%, var(--surface));
+  color: var(--muted);
+}
+
+.ds-set-about-update-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--danger-fg);
+}
+
+.ds-set-about-update-body {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ds-set-about-update-body p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+
+.ds-set-about-update-cmd {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  overflow-x: auto;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ds-set-about-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ds-set-about-update-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
   display: inline-flex;
   align-items: center;
   padding: 0.28rem 0.65rem;

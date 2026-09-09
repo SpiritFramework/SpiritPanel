@@ -217,7 +217,7 @@ The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are
 
 | Layer | Mitigation |
 |-------|------------|
-| **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled, with `manifest-src 'self'` and `worker-src 'self'` for the installable app. Delivered via **Nginx/Vite headers** (not `<meta>`). |
+| **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled, with `manifest-src 'self'` and `worker-src 'self'` for the installable app. `connect-src` allows `'self'`, Turnstile, and `https:`/`http:`/`wss:`/`ws:` so the browser can probe FeatherWings node endpoints (e.g. `:8080`). Delivered via **Nginx/Vite headers** (not `<meta>`). |
 | **Strict-Transport-Security** | Nginx (`deploy/nginx/spirit-panel.conf`) and API responses (`security-headers.ts`): `max-age=31536000; includeSubDomains; preload`. |
 | **URL sinks** | Avatar, logo, egg icon, support, markdown, and console link URLs are validated client-side (`sanitizeImageSrc` / `sanitizeLinkHref`) and server-side (`safe-url.ts`) — only `http:`/`https:` or same-origin asset paths. |
 | **Branding uploads** | SVG blocked; MIME allowlist on upload. |

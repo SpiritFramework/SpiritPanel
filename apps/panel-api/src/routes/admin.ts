@@ -66,6 +66,7 @@ import {
   saveBrandingAsset,
 } from '../lib/branding-assets.js';
 import { getFeatherWingsLatestRelease } from '../services/featherwings-release.js';
+import { getSpiritPanelReleaseInfo } from '../services/spirit-panel-release.js';
 import { updatePanelPlugin, getPanelPlugin } from '../plugins/manager.js';
 import { PANEL_PLUGIN_IDS } from '@spirit/plugin-sdk';
 import {
@@ -649,6 +650,20 @@ export async function adminRoutes(app: FastifyInstance) {
           : 502;
       return reply.status(statusCode).send({
         error: err instanceof Error ? err.message : 'Failed to load FeatherWings release info',
+      });
+    }
+  });
+
+  app.get('/spirit-panel/release', async (_request, reply) => {
+    try {
+      return await getSpiritPanelReleaseInfo();
+    } catch (err) {
+      const statusCode =
+        err && typeof err === 'object' && 'statusCode' in err && typeof err.statusCode === 'number'
+          ? err.statusCode
+          : 502;
+      return reply.status(statusCode).send({
+        error: err instanceof Error ? err.message : 'Failed to load Spirit Panel release info',
       });
     }
   });
@@ -2195,6 +2210,12 @@ export async function adminRoutes(app: FastifyInstance) {
         return reply.status(statusCode && statusCode >= 400 ? statusCode : 502).send({
           error: err instanceof Error ? err.message : 'Cannot reach FeatherWings for this server',
           code: 'wings_unreachable',
+        });
+      }
+      if (code === 'wings_server_missing' || statusCode === 503) {
+        return reply.status(503).send({
+          error: err instanceof Error ? err.message : 'Server is not loaded on FeatherWings yet',
+          code: 'wings_server_missing',
         });
       }
       request.log.error({ err }, 'Admin server power failed');

@@ -17,6 +17,23 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.1.0] - 2026-09-09
+
+### Added
+
+- **Spirit Panel version checker.** Admin dashboard shows an update banner when the installed build is behind the latest GitHub release. **Settings → About** always shows installed vs latest (up to date / update available / ahead) with a copyable `spirit.sh update` command.
+
+### Fixed
+
+- **CSP blocked browser → FeatherWings probes.** `connect-src` allowed `wss:` but not `https:`/`http:`, so the server layout could not fetch `https://node:8080/` (CSP violations in the console). Nginx, Vite, and API CSP copies now allow `https: http: wss: ws:`.
+- **Start after a FeatherWings restart no longer auto-reinstalls installed servers.** FeatherWings returns 404 until it finishes loading servers from the panel; `createServer` always runs the egg install. The panel now retries briefly, and for already-installed servers returns **503** instead of calling create.
+
+## [1.3.0.6] - 2026-09-09
+
+### Fixed
+
+- **Updater no longer deletes branding logos (and ticket attachments) on zip/tarball updates.** `rsync --delete` from the GitHub tarball did not exclude `apps/panel-api/data/`, so uploaded logo/favicon/app-icon files were wiped while `panel_settings` URLs still pointed at them (404 until re-upload). The sync now preserves that directory, and pre-update backups copy it to `panel-api-data/`.
+
 ## [1.3.0.5] - 2026-09-09
 
 ### Fixed
