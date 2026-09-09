@@ -48,6 +48,7 @@ import {
 } from '../lib/ws-stats';
 import { resolveConsoleCommandTransport } from '../lib/console-command';
 import { useServer } from './ServerContext';
+import { useToast } from './ToastContext';
 
 export type NodeConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -89,6 +90,7 @@ export function ServerLiveProvider({
 }) {
   const id = useServerRouteId();
   const { server, refresh } = useServer();
+  const toast = useToast();
 
   const [connectionStatus, setConnectionStatus] = useState<NodeConnectionStatus>('connecting');
   const [runtimeState, setRuntimeState] = useState(() =>
@@ -102,6 +104,7 @@ export function ServerLiveProvider({
 
   const wsRef = useRef<WebSocket | null>(null);
   const runtimeRef = useRef(normalizeRuntimeState(server.containerState ?? 'offline'));
+  const connectionStatusRef = useRef<NodeConnectionStatus>('connecting');
   const uptimeAnchorRef = useRef<{ ms: number; at: number } | null>(null);
   const reconnectTimer = useRef<number | null>(null);
   const statsTimer = useRef<number | null>(null);
@@ -109,6 +112,10 @@ export function ServerLiveProvider({
   const installLogsHydrated = useRef(false);
 
   const flushTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    connectionStatusRef.current = connectionStatus;
+  }, [connectionStatus]);
 
   const flushConsole = useCallback(() => {
     if (!id) return;
@@ -439,9 +446,19 @@ export function ServerLiveProvider({
         return;
       }
 
-      void liveApi.command(id, trimmed).catch(() => {});
+      if (connectionStatusRef.current === 'disconnected') {
+        syncLines('Cannot send command: disconnected from the node.', 'error');
+        toast.error('Command not sent', 'Not connected to the node');
+        return;
+      }
+
+      void liveApi.command(id, trimmed).catch((err) => {
+        const message = err instanceof Error ? err.message : 'Command failed';
+        syncLines(`Command failed: ${message}`, 'error');
+        toast.error('Command failed', message);
+      });
     },
-    [id, liveApi],
+    [id, liveApi, syncLines, toast],
   );
 
   const value = useMemo<ServerLiveContextValue>(

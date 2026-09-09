@@ -14,7 +14,7 @@ import {
   testDatabaseHostConnection,
 } from '../lib/database-provision.js';
 import { ResourceQuotaError, assertUnderLimit, resourceQuotaMeta } from '../lib/server-quotas.js';
-import { assertPublicDatabaseHost } from '../lib/network-guard.js';
+import { assertPublicDatabaseHostResolved } from '../lib/network-guard.js';
 import { sendClientError } from '../lib/safe-errors.js';
 import { getDatabaseManagerCapabilities, isDatabaseManagerActive } from '../plugins/manager.js';
 
@@ -303,7 +303,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     if (!node) return reply.status(404).send({ error: 'Not found' });
 
     try {
-      assertPublicDatabaseHost(body.host.trim());
+      await assertPublicDatabaseHostResolved(body.host.trim());
       await testDatabaseHostConnection({
         host: body.host.trim(),
         port: body.port,
@@ -352,7 +352,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     const username = body.username.trim();
 
     try {
-      assertPublicDatabaseHost(host);
+      await assertPublicDatabaseHostResolved(host);
       await testDatabaseHostConnection({
         host,
         port: body.port,
@@ -412,7 +412,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
 
     if (body.host || body.port || body.username || body.password) {
       try {
-        assertPublicDatabaseHost(nextHost);
+        await assertPublicDatabaseHostResolved(nextHost);
         await testDatabaseHostConnection({
           host: nextHost,
           port: nextPort,

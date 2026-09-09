@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import { resolvePostAuthPath } from '../lib/post-auth-path';
 import {
   AuthError,
   AuthField,
@@ -21,6 +22,7 @@ export function SignupPage() {
   const { user, loading: authLoading, register } = useAuth();
   const { branding } = useBranding();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -35,17 +37,18 @@ export function SignupPage() {
   const maintenanceActive = branding.maintenance.enabled;
   const minPasswordLength = branding.minPasswordLength;
   const turnstileRequired = branding.turnstileEnabled && Boolean(branding.turnstileSiteKey);
+  const from = (location.state as { from?: string } | null)?.from;
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-[var(--muted)]">
+      <div className="flex min-h-[100dvh] items-center justify-center text-[var(--muted)]">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
 
   if (user) {
-    return <Navigate to="/servers" replace />;
+    return <Navigate to={resolvePostAuthPath(from, '/servers')} replace />;
   }
 
   if (!branding.registrationEnabled) {
@@ -65,7 +68,7 @@ export function SignupPage() {
         lastName: lastName.trim() || undefined,
         turnstileToken: turnstileToken || undefined,
       });
-      navigate('/servers');
+      navigate(resolvePostAuthPath(from, '/servers'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
       setTurnstileToken('');

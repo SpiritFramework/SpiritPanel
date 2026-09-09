@@ -43,6 +43,8 @@ export function useServerFiles() {
   const [showNewFile, setShowNewFile] = useState(false);
   const [creatingFile, setCreatingFile] = useState(false);
   const [moveItems, setMoveItems] = useState<MoveFileItem[] | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,16 +126,24 @@ export function useServerFiles() {
 
   async function deleteEntries(names: string[]) {
     if (!id || names.length === 0) return;
-    if (!confirm(`Delete ${names.length} item(s)? This cannot be undone.`)) return;
+    setPendingDelete(names);
+  }
+
+  async function confirmDelete() {
+    if (!id || !pendingDelete || pendingDelete.length === 0) return;
+    const names = pendingDelete;
+    setDeleteLoading(true);
     setBusy(true);
     try {
       await api.client.deleteFiles(id, currentDir, names);
       toast.success(`Deleted ${names.length} item(s)`);
+      setPendingDelete(null);
       await loadFiles(currentDir);
       setSelectedFile(null);
     } catch (e) {
       toast.error('Delete failed', e instanceof Error ? e.message : undefined);
     } finally {
+      setDeleteLoading(false);
       setBusy(false);
     }
   }
@@ -334,6 +344,10 @@ export function useServerFiles() {
     creatingFile,
     moveItems,
     setMoveItems,
+    pendingDelete,
+    setPendingDelete,
+    deleteLoading,
+    confirmDelete,
     fileInputRef,
     allSelected,
     folderCount,

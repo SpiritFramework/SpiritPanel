@@ -20,7 +20,7 @@ import { parseEggJson } from '@spirit/shared';
 import { buildWingsConfig, serverInclude } from '../services/server-helpers.js';
 import { wingsForNode } from '../services/wings-client.js';
 import { getNodeHealthSnapshot } from '../lib/node-health-cache.js';
-import { probeNodeHealth, sanitizeAdminNode, probeNodesReachability } from '../lib/node-health.js';
+import { probeNodeHealth, sanitizeAdminNode, probeNodesReachability, stripServerNodeSecrets } from '../lib/node-health.js';
 import { parseRefreshQuery } from '../lib/refresh-query.js';
 import { computeNodeCapacity, loadNodeAllocationTotals } from '../lib/node-capacity.js';
 import { WINGS_CLIENT_PERMISSIONS } from '../lib/client-server.js';
@@ -116,7 +116,7 @@ import {
   sendTestEmail,
   verifySmtp,
 } from '../lib/mailer.js';
-import { assertPublicOutboundHost } from '../lib/network-guard.js';
+import { assertPublicOutboundHostResolved } from '../lib/network-guard.js';
 import { API_KEY_CREATION_LIMIT } from '../lib/rate-limits.js';
 import { verifyCloudflareCredentials } from '../services/cloudflare-dns.js';
 import {
@@ -1850,7 +1850,7 @@ export async function adminRoutes(app: FastifyInstance) {
         }
       }
 
-      return server;
+      return stripServerNodeSecrets(server);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       return reply.status(422).send({ error: message });
@@ -1987,7 +1987,7 @@ export async function adminRoutes(app: FastifyInstance) {
       }
     }
 
-    return server;
+    return stripServerNodeSecrets(server);
   });
 
   app.get('/servers/:id/allocations', async (request, reply) => {
@@ -2414,7 +2414,7 @@ export async function adminRoutes(app: FastifyInstance) {
     }
     try {
       if (smtp.enabled && smtp.host.trim()) {
-        assertPublicOutboundHost(smtp.host.trim(), 'SMTP host');
+        await assertPublicOutboundHostResolved(smtp.host.trim(), 'SMTP host');
       }
       await verifySmtp(smtp);
       await sendTestEmail(body.to, smtp);
@@ -2609,7 +2609,7 @@ export async function adminRoutes(app: FastifyInstance) {
       const next = { ...parsed.data, password: parsed.data.password || current.password };
       if (next.enabled && next.host.trim()) {
         try {
-          assertPublicOutboundHost(next.host.trim(), 'SMTP host');
+          await assertPublicOutboundHostResolved(next.host.trim(), 'SMTP host');
         } catch (err) {
           const statusCode = (err as { statusCode?: number }).statusCode ?? 422;
           return reply.status(statusCode).send({ error: err instanceof Error ? err.message : 'Invalid SMTP host' });

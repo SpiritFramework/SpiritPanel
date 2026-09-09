@@ -81,6 +81,24 @@ export async function executeSchedule(
     return;
   }
 
+  // Claim the run slot before work so overlapping polls cannot enqueue a second run.
+  if (!options?.manual) {
+    const claimed = await prisma.schedule.updateMany({
+      where: {
+        id: scheduleId,
+        isActive: true,
+        OR: [
+          { lastRunAt: null },
+          { lastRunAt: { lt: new Date(Date.now() - 55_000) } },
+        ],
+      },
+      data: { lastRunAt: new Date() },
+    });
+    if (claimed.count !== 1) {
+      return;
+    }
+  }
+
   if (schedule.onlyWhenOnline) {
     const online = await serverIsOnline(schedule.server);
     if (!online) {

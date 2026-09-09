@@ -42,7 +42,7 @@ sudo bash /tmp/spirit.sh
 
 This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, clones the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
 
-The script version is printed under the banner (`Script Version: 2.0.0`). If you still see `1.0.0`, you are on an old cached copy — re-download `/tmp/spirit.sh` from `main`.
+The script version is printed under the banner (`Script Version: 2.0.5`). If you still see `1.0.0`, you are on an old cached copy — re-download `/tmp/spirit.sh` from `main`.
 
 **Point DNS at the server first.** Certbot validates over HTTP, so the domain has to resolve before you run it. If issuance fails the installer leaves the panel serving plain HTTP and tells you the command to retry — it does not leave nginx in a broken state.
 
@@ -417,9 +417,9 @@ curl -fsSL https://get.docker.com | sh
 sudo systemctl enable --now docker
 
 sudo mkdir -p /etc/featherpanel
-sudo curl -L -o /usr/local/bin/wings \
+sudo curl -L -o /usr/local/bin/featherwings \
   "https://github.com/MythicalLTD/FeatherWings/releases/latest/download/wings_linux_amd64"
-sudo chmod +x /usr/local/bin/wings
+sudo chmod +x /usr/local/bin/featherwings
 sudo mkdir -p /var/lib/pterodactyl/volumes
 ```
 
@@ -456,7 +456,7 @@ allowed_mounts: []
 allow_cors_private_network: false
 ```
 
-Test: `sudo wings --debug` — Wings should connect and sync.
+Test: `sudo featherwings --debug` — Wings should connect and sync.
 
 ### Step 4 — Wings systemd
 
@@ -715,7 +715,7 @@ Order of operations, which is what makes it safe to run on a live panel:
 
 **A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. Add `--ref V1.3.0.1` to move to a specific release, or `-y` to skip prompts.
 
-`.env`, `apps/panel-api/data/` (uploaded logos and ticket files), `node_modules/`, and the existing `dist/` are never overwritten or deleted by the source sync. Full nginx site replacement still requires `--force-nginx` (or a manual re-copy).
+`.env`, `apps/panel-api/data/` (uploaded logos and ticket files), and `node_modules/` are never overwritten or deleted by the source sync. Zip/tarball sync also excludes `apps/panel-web/dist/`, `apps/panel-api/dist/`, and `packages/*/dist/` so a mid-update failure can still serve the previously built assets until `pnpm build` replaces them. Full nginx site replacement still requires `--force-nginx` (or a manual re-copy).
 
 ### Manual update
 

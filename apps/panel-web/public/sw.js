@@ -42,7 +42,7 @@ self.addEventListener('install', (event) => {
       const cache = await caches.open(SHELL_CACHE);
       // Ignore failures so a missing file never blocks activation.
       await cache.add('/index.html').catch(() => {});
-      await self.skipWaiting();
+      // Stay in `waiting` until the UI posts skip-waiting (PwaUpdateBanner).
     })(),
   );
 });

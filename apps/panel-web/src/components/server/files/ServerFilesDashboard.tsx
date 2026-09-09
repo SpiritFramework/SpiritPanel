@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToast } from '../../../context/ToastContext';
 import { useServerFiles } from '../../../hooks/useServerFiles';
 import { MoveFilesDialog } from '../../files/MoveFilesDialog';
+import { ConfirmModal } from '../../ConfirmModal';
 import { FilesHeader } from './FilesHeader';
 import { FilesStatsRow } from './FilesStatsRow';
 import { FilesExplorerPanel } from './FilesExplorerPanel';
@@ -25,6 +26,10 @@ export function ServerFilesDashboard() {
     selectedFile,
     moveItems,
     setMoveItems,
+    pendingDelete,
+    setPendingDelete,
+    deleteLoading,
+    confirmDelete,
     fileInputRef,
     folderCount,
     fileCount,
@@ -108,6 +113,26 @@ export function ServerFilesDashboard() {
           }}
         />
       ) : null}
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={pendingDelete?.length === 1 ? 'Delete this item?' : 'Delete these items?'}
+        detail={
+          pendingDelete && pendingDelete.length <= 3
+            ? pendingDelete.join(', ')
+            : pendingDelete
+              ? `${pendingDelete.length} items`
+              : undefined
+        }
+        description="This permanently removes the selected files or folders from the server. This cannot be undone."
+        confirmLabel={pendingDelete?.length === 1 ? 'Delete item' : 'Delete items'}
+        tone="danger"
+        loading={deleteLoading}
+        onClose={() => {
+          if (!deleteLoading) setPendingDelete(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </>
   );
 }

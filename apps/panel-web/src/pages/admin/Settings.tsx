@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Save,
   Copy,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { api, type BrandingAssetKind } from '../../lib/api';
 import { generateAppIcon as renderAppIcon } from '../../lib/app-icon';
@@ -55,6 +56,7 @@ import { BrandingStudio } from '../../features/branding-studio';
 import { Checkbox } from '../../components/Checkbox';
 import { DiscordIcon } from '../../components/icons/DiscordIcon';
 import { EmailTemplatesPanel } from '../../components/admin/EmailTemplatesPanel';
+import { DsIcon, EmptyState } from '../../components/ui';
 import {
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_TURNSTILE_FORM,
@@ -76,6 +78,7 @@ export function AdminSettings() {
     setSearchParams({ tab: next }, { replace: true });
   }
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -110,8 +113,11 @@ export function AdminSettings() {
 
   const [initial, setInitial] = useState('');
 
-  useEffect(() => {
-    api.admin.settings().then((s) => {
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const s = await api.admin.settings();
       const b = (s.branding ?? {}) as Partial<BrandingForm>;
       const nextBranding: BrandingForm = {
         ...DEFAULT_BRANDING_FORM,
@@ -210,8 +216,17 @@ export function AdminSettings() {
         discordAuth: nextDiscord,
         cloudflareDns: nextCloudflare,
       }));
-    }).finally(() => setLoading(false));
+    } catch (err) {
+      setInitial('');
+      setLoadError(err instanceof Error ? err.message : 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   useEffect(() => {
     if (tab !== 'branding') {
@@ -220,9 +235,19 @@ export function AdminSettings() {
   }, [tab, refreshBranding]);
 
   const hasChanges = useMemo(() => {
-    if (loading || !initial) return false;
+    if (loading || loadError || !initial) return false;
     return initial !== JSON.stringify({ branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns });
-  }, [branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading]);
+  }, [branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading, loadError]);
+
+  useEffect(() => {
+    if (!hasChanges) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasChanges]);
 
   async function save() {
     setSaving(true);
@@ -438,6 +463,24 @@ export function AdminSettings() {
     return (
       <AdminLayout>
         <AdminEditLoading />
+      </AdminLayout>
+    );
+  }
+
+  if (loadError || !initial) {
+    return (
+      <AdminLayout>
+        <EmptyState
+          icon={<DsIcon icon={SettingsIcon} className="ds-icon--md" />}
+          title="Couldn't load settings"
+          description={loadError || 'Settings did not load. Retry before making changes — defaults are not shown as saved values.'}
+          action={
+            <Button type="button" onClick={() => void loadSettings()}>
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              Try again
+            </Button>
+          }
+        />
       </AdminLayout>
     );
   }

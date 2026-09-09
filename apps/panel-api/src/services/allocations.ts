@@ -1,4 +1,4 @@
-import type { Allocation, Node, Server } from '@prisma/client';
+import type { Allocation, Node, Prisma, Server } from '@prisma/client';
 import { formatAllocationAddress, normalizeAllocationBindIp, resolveAllocationHost } from '@spirit/shared';
 import { prisma } from '../lib/prisma.js';
 import { getServerFull, getServerFullById } from './server-helpers.js';
@@ -64,6 +64,24 @@ export async function findFreeAllocation(nodeId: string, excludeIds: string[] = 
   });
 }
 
+/** Atomically claim an unassigned allocation; fails if another transaction won the race. */
+export async function claimAllocation(
+  allocationId: string,
+  data: { assigned: true; serverId?: string | null },
+  tx: Prisma.TransactionClient | typeof prisma = prisma,
+) {
+  const result = await tx.allocation.updateMany({
+    where: { id: allocationId, assigned: false },
+    data: {
+      assigned: true,
+      ...(data.serverId !== undefined ? { serverId: data.serverId } : {}),
+    },
+  });
+  if (result.count !== 1) {
+    throw new Error('Allocation already assigned');
+  }
+}
+
 export async function resolveAllocationForCreate(nodeId: string, allocationId?: string) {
   if (allocationId) {
     const allocation = await prisma.allocation.findUnique({ where: { id: allocationId } });
@@ -92,10 +110,7 @@ export async function assignSecondaryAllocation(serverId: string, allocationId: 
   if (allocation.assigned) throw new Error('Allocation is already assigned');
   if (allocation.id === server.allocationId) throw new Error('Allocation is already the primary port');
 
-  await prisma.allocation.update({
-    where: { id: allocation.id },
-    data: { assigned: true, serverId: server.id },
-  });
+  await claimAllocation(allocation.id, { assigned: true, serverId: server.id });
 
   return getServerFull(prisma, server.uuid);
 }

@@ -1,4 +1,4 @@
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useMatch, useResolvedPath } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
@@ -17,21 +17,26 @@ export function SideNavItem({
   label: string;
   description?: string;
 }) {
+  const resolved = useResolvedPath(to);
+  const match = useMatch({ path: resolved.pathname, end: Boolean(end) });
+  const isActive = Boolean(match);
+
   return (
     <NavLink
       to={to}
       end={end}
-      className={({ isActive }) =>
+      aria-current={isActive ? 'page' : undefined}
+      className={({ isActive: active }) =>
         `nav-item group flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${
-          isActive ? 'nav-item-active active' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
+          active ? 'nav-item-active active' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
         }`
       }
     >
-      {({ isActive }) => (
+      {({ isActive: active }) => (
         <>
           <span
             className={`nav-item-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
-              isActive
+              active
                 ? 'accent-bg text-white shadow-[0_4px_14px_-4px_var(--accent-glow)] ring-1 ring-white/15'
                 : 'bg-[var(--bg-elevated)] text-[var(--muted)] group-hover:text-[var(--text)] group-hover:bg-[var(--surface-hover)]'
             }`}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, LogIn, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { isStaffOrPanelAdmin } from '../lib/roles';
+import { resolvePostAuthPath } from '../lib/post-auth-path';
 import { useBranding } from '../context/BrandingContext';
 import {
   AuthError,
@@ -23,6 +24,7 @@ export function LoginPage() {
   const { user, loading: authLoading, login, completeTwoFactor, refreshUser } = useAuth();
   const { branding } = useBranding();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +38,14 @@ export function LoginPage() {
 
   const maintenanceActive = branding.maintenance.enabled;
   const turnstileRequired = branding.turnstileEnabled && Boolean(branding.turnstileSiteKey);
+
+  function defaultHome(me: Parameters<typeof isStaffOrPanelAdmin>[0]) {
+    return isStaffOrPanelAdmin(me) ? '/admin' : '/servers';
+  }
+
+  function redirectAfterAuth(me: Parameters<typeof isStaffOrPanelAdmin>[0]) {
+    navigate(resolvePostAuthPath((location.state as { from?: string } | null)?.from, defaultHome(me)));
+  }
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -64,14 +74,19 @@ export function LoginPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-[var(--muted)]">
+      <div className="flex min-h-[100dvh] items-center justify-center text-[var(--muted)]">
         <Spinner className="h-6 w-6" />
       </div>
     );
   }
 
   if (user) {
-    return <Navigate to={isStaffOrPanelAdmin(user) ? '/admin' : '/servers'} replace />;
+    return (
+      <Navigate
+        to={resolvePostAuthPath((location.state as { from?: string } | null)?.from, defaultHome(user))}
+        replace
+      />
+    );
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -84,7 +99,7 @@ export function LoginPage() {
         setChallenge(res.challenge);
       } else {
         const me = await refreshUser();
-        navigate(isStaffOrPanelAdmin(me) ? '/admin' : '/servers');
+        redirectAfterAuth(me);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -102,7 +117,7 @@ export function LoginPage() {
     try {
       await completeTwoFactor(challenge, code.trim());
       const me = await refreshUser();
-      navigate(isStaffOrPanelAdmin(me) ? '/admin' : '/servers');
+      redirectAfterAuth(me);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed');
     } finally {

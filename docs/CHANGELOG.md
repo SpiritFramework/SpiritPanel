@@ -17,6 +17,39 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.3.0] - 2026-09-09
+
+### Security
+
+- **Application API no longer returns Wings daemon tokens or full User secrets.** Server create/GET/PATCH responses strip `daemonTokenSecret` / `daemonTokenId` and sanitize nested `owner` (no password hashes, TOTP, GitHub PAT). Admin create/update server JSON is sanitized the same way.
+- **Application API cannot disable/reset/delete elevated accounts** (admin/staff/rootAdmin).
+- **Outbound host SSRF hardening:** database host and SMTP host checks resolve DNS and reject private/reserved A/AAAA answers.
+- **SQL console blocks `INTO OUTFILE` / `LOAD_FILE` / `LOAD DATA`.**
+- **Staff admin node payloads no longer include `daemonTokenId`.**
+
+### Fixed
+
+- **Allocation claim is atomic** (`updateMany … assigned=false`) so concurrent creates cannot double-assign a port.
+- **Node capacity re-checked inside the create transaction** to reduce over-allocation races.
+- **Server delete only removes the panel row after Wings 404/success** — unreachable Wings no longer orphans containers by wiping the DB first.
+- **Schedule runs claim `lastRunAt` before work** so long jobs / multi-pollers do not double-fire.
+- **Zip/tarball updates preserve `apps/panel-api/dist` and `packages/*/dist`.**
+- **Admin Settings load failures show an error + retry** instead of silent defaults; dirty leave uses `beforeunload`.
+- **Post-login redirects honor `RequireAuth` deep links.**
+- **Console HTTP command fallback surfaces errors** instead of swallowing them.
+- **nginx location blocks re-declare CSP/security headers** on `/sw.js`, `/assets/`, `/icons/`.
+
+### Added
+
+- **PWA “Update available → Reload” banner** when a new service worker is waiting.
+
+### Changed
+
+- Application `GET /servers` is paginated (default 100, max 200) with optional `cursor`.
+- Staff session cookie max-age aligned with admin.
+- Installer `SCRIPT_VERSION` → `2.0.5`; PRODUCTION Wings binary name aligned with `featherwings` unit; Redis `After=`/`Wants=` on API systemd unit.
+- Side nav `aria-current`, mobile drawer Escape/`aria-expanded`, auth shells use `100dvh`.
+
 ## [1.3.2.3] - 2026-09-09
 
 ### Changed

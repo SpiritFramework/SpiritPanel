@@ -21,6 +21,17 @@ export function classifySql(
 
   const match = trimmed.match(/^([a-zA-Z]+)/);
   const verb = (match?.[1] ?? '').toUpperCase();
+
+  // Dangerous MySQL clauses even under SELECT / write verbs.
+  if (
+    /\bINTO\s+(OUTFILE|DUMPFILE)\b/i.test(trimmed) ||
+    /\bLOAD_FILE\s*\(/i.test(trimmed) ||
+    /\bLOAD\s+DATA\b/i.test(trimmed) ||
+    /\bINTO\s+OUTFILE\b/i.test(trimmed)
+  ) {
+    return { verb: verb || 'FILE', kind: 'blocked' };
+  }
+
   if (READ_VERBS.has(verb)) return { verb, kind: 'read' };
   if (WRITE_VERBS.has(verb)) return { verb, kind: 'write' };
   if (opts?.allowDdl && DDL_VERBS.has(verb)) return { verb, kind: 'ddl' };

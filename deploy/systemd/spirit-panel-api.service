@@ -1,7 +1,7 @@
 [Unit]
 Description=Spirit-Panel API
-After=network-online.target mariadb.service mysql.service
-Wants=network-online.target
+After=network-online.target mariadb.service mysql.service redis-server.service redis.service
+Wants=network-online.target redis-server.service redis.service
 
 [Service]
 Type=simple

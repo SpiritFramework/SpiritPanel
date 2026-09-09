@@ -427,12 +427,21 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'node_modules/' \
     --exclude '**/node_modules/' \
     --exclude 'apps/panel-web/dist/' \
+    --exclude 'apps/panel-api/dist/' \
+    --exclude 'packages/*/dist/' \
     --exclude '.turbo/' \
     "$SRC/" "$DST/"
   expect_eq "$(cat "$DST/apps/panel-api/data/branding/logo.png")" "logo" "logo"
   expect_eq "$(cat "$DST/apps/panel-api/data/tickets/t1/a1.png")" "attach" "ticket"
   expect_eq "$(cat "$DST/apps/panel-api/package.json")" "newcode" "synced"
 fi
+done_test
+
+it "spirit.sh excludes build dist dirs from tarball rsync --delete"
+block="$(sed -n '/^update_source_tarball()/,/^}/p' "$TARGET")"
+expect_contains "$block" "--exclude 'apps/panel-web/dist/'" "panel-web dist"
+expect_contains "$block" "--exclude 'apps/panel-api/dist/'" "panel-api dist"
+expect_contains "$block" "--exclude 'packages/*/dist/'" "packages dist"
 done_test
 
 it "sync_nginx_csp patches stale connect-src"

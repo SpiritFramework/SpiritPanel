@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { promises as dns } from 'node:dns';
 
 const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata.google.internal']);
 
@@ -22,6 +23,26 @@ function isPrivateOrReservedIpv6(normalized: string): boolean {
   return false;
 }
 
+function assertIpAllowed(ip: string, label: string): void {
+  const ipVersion = isIP(ip);
+  if (ipVersion === 4) {
+    const parts = ip.split('.').map((n) => Number(n));
+    if (isPrivateOrReservedIpv4(parts)) {
+      throw Object.assign(new Error(`Private or reserved ${label.toLowerCase()}s are not allowed`), {
+        statusCode: 422,
+      });
+    }
+    return;
+  }
+  if (ipVersion === 6) {
+    if (isPrivateOrReservedIpv6(ip)) {
+      throw Object.assign(new Error(`Private or reserved ${label.toLowerCase()}s are not allowed`), {
+        statusCode: 422,
+      });
+    }
+  }
+}
+
 export function assertPublicDatabaseHost(host: string): void {
   const trimmed = host.trim().toLowerCase();
   if (!trimmed) {
@@ -33,22 +54,8 @@ export function assertPublicDatabaseHost(host: string): void {
   }
 
   const ipVersion = isIP(trimmed);
-  if (ipVersion === 4) {
-    const parts = trimmed.split('.').map((n) => Number(n));
-    if (isPrivateOrReservedIpv4(parts)) {
-      throw Object.assign(new Error('Private or reserved database hosts are not allowed'), {
-        statusCode: 422,
-      });
-    }
-    return;
-  }
-
-  if (ipVersion === 6) {
-    if (isPrivateOrReservedIpv6(trimmed)) {
-      throw Object.assign(new Error('Private or reserved database hosts are not allowed'), {
-        statusCode: 422,
-      });
-    }
+  if (ipVersion === 4 || ipVersion === 6) {
+    assertIpAllowed(trimmed, 'Database host');
     return;
   }
 
@@ -60,10 +67,51 @@ export function assertPublicDatabaseHost(host: string): void {
   }
 }
 
+/** Resolve hostname and reject if any A/AAAA is private/reserved (SSRF hardening). */
+export async function assertPublicDatabaseHostResolved(host: string): Promise<void> {
+  assertPublicDatabaseHost(host);
+  const trimmed = host.trim().toLowerCase();
+  if (isIP(trimmed)) return;
+
+  let addresses: string[] = [];
+  try {
+    const [v4, v6] = await Promise.all([
+      dns.resolve4(trimmed).catch(() => [] as string[]),
+      dns.resolve6(trimmed).catch(() => [] as string[]),
+    ]);
+    addresses = [...v4, ...v6];
+  } catch {
+    throw Object.assign(new Error('Could not resolve database host'), { statusCode: 422 });
+  }
+
+  if (addresses.length === 0) {
+    throw Object.assign(new Error('Could not resolve database host'), { statusCode: 422 });
+  }
+
+  for (const addr of addresses) {
+    assertIpAllowed(addr, 'Database host');
+  }
+}
+
 /** Block private/reserved hosts for outbound panel connections (SMTP, etc.). */
 export function assertPublicOutboundHost(host: string, label = 'Host'): void {
   try {
     assertPublicDatabaseHost(host);
+  } catch (err) {
+    if (err instanceof Error && typeof (err as { statusCode?: number }).statusCode === 'number') {
+      const statusCode = (err as unknown as { statusCode: number }).statusCode;
+      const message = err.message
+        .replace('Database host', label)
+        .replace('database host', label.toLowerCase());
+      throw Object.assign(new Error(message), { statusCode });
+    }
+    throw err;
+  }
+}
+
+export async function assertPublicOutboundHostResolved(host: string, label = 'Host'): Promise<void> {
+  try {
+    await assertPublicDatabaseHostResolved(host);
   } catch (err) {
     if (err instanceof Error && typeof (err as { statusCode?: number }).statusCode === 'number') {
       const statusCode = (err as unknown as { statusCode: number }).statusCode;

@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.4"
+SCRIPT_VERSION="2.0.5"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -966,6 +966,8 @@ update_source_tarball() {
     --exclude 'node_modules/' \
     --exclude '**/node_modules/' \
     --exclude 'apps/panel-web/dist/' \
+    --exclude 'apps/panel-api/dist/' \
+    --exclude 'packages/*/dist/' \
     --exclude '.turbo/' \
     "${src}/" "${INSTALL_DIR}/" || die "rsync into ${INSTALL_DIR} failed"
   chown -R "${APP_USER}:${APP_USER}" "$INSTALL_DIR"

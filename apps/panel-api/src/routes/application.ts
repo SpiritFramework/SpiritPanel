@@ -13,12 +13,20 @@ import { assertPasswordMeetsPolicy } from '../lib/password-policy.js';
 import { APPLICATION_RATE_LIMIT } from '../lib/rate-limits.js';
 import { wingsSyncFireAndForget } from '../lib/wings-sync.js';
 import {
+  PUBLIC_USER_SELECT,
+  serializeApplicationServer,
+} from '../lib/node-health.js';
+import {
   assertNodeHasCapacityForUpdate,
   createServerOnPanel,
   deleteServerFromPanel,
   syncServerToWings,
 } from '../services/server-lifecycle.js';
 import { isMailEnabled, sendServerCreatedEmail } from '../lib/mailer.js';
+
+function isElevatedPanelUser(user: { role: string; rootAdmin: boolean }) {
+  return user.rootAdmin || user.role === 'admin' || user.role === 'staff';
+}
 
 async function requireApplicationKey(request: FastifyRequest, reply: FastifyReply) {
   const header = request.headers.authorization;
@@ -177,6 +185,14 @@ export async function applicationRoutes(app: FastifyInstance) {
       const existing = await prisma.user.findFirst({ where: { OR: [{ id }, { uuid: id }] } });
       if (!existing) return reply.status(404).send({ error: 'Not found' });
 
+      if (
+        isElevatedPanelUser(existing) &&
+        (body.enabled === false || body.password !== undefined)
+      ) {
+        return reply.status(403).send({
+          error: 'Application API cannot disable or reset passwords for elevated panel accounts',
+        });
+      }
       if (body.password) {
         try {
           await assertPasswordMeetsPolicy(body.password);
@@ -232,11 +248,20 @@ export async function applicationRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
       const user = await prisma.user.findFirst({
         where: { OR: [{ id }, { uuid: id }] },
-        select: { id: true, username: true, _count: { select: { servers: true } } },
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          rootAdmin: true,
+          _count: { select: { servers: true } },
+        },
       });
       if (!user) return reply.status(404).send({ error: 'Panel user not found' });
       if (user.id === request.user!.id) {
         return reply.status(422).send({ error: 'The Application API owner cannot delete its own account' });
+      }
+      if (isElevatedPanelUser(user)) {
+        return reply.status(403).send({ error: 'Application API cannot delete elevated panel accounts' });
       }
       if (user._count.servers > 0) {
         return reply.status(409).send({
@@ -311,11 +336,18 @@ export async function applicationRoutes(app: FastifyInstance) {
     '/servers',
     { config: APPLICATION_RATE_LIMIT, preHandler: requireApplicationScope('servers.read') },
     async (request) => {
-      const q = (request.query as { externalId?: string }).externalId?.trim();
-      return prisma.server.findMany({
-        where: q ? { externalId: q } : undefined,
-        include: { owner: { select: { email: true } }, defaultAllocation: true },
+      const q = request.query as { externalId?: string; limit?: string; cursor?: string };
+      const externalId = q.externalId?.trim();
+      const limitRaw = Number.parseInt(String(q.limit ?? '100'), 10);
+      const take = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 100, 1), 200);
+      const rows = await prisma.server.findMany({
+        where: externalId ? { externalId } : undefined,
+        include: { owner: { select: PUBLIC_USER_SELECT }, defaultAllocation: true },
+        orderBy: { createdAt: 'desc' },
+        take: externalId ? 20 : take,
+        ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
       });
+      return rows.map((row) => serializeApplicationServer(row));
     },
   );
 
@@ -365,14 +397,16 @@ export async function applicationRoutes(app: FastifyInstance) {
             request.log.error({ err }, 'Failed to send server created email');
           }
         }
-        return server;
+        return serializeApplicationServer(server);
       } catch (e) {
         const code = (e as { code?: string }).code;
         if (code === 'P2002') {
           return reply.status(409).send({ error: 'Server already exists for this external ID' });
         }
         request.log.error({ err: e }, 'Application API server create failed');
-        return reply.status(422).send({ error: 'Could not create server with the provided data' });
+        return reply.status(422).send({
+          error: e instanceof Error ? e.message : 'Could not create server with the provided data',
+        });
       }
     },
   );
@@ -384,10 +418,10 @@ export async function applicationRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
       const server = await prisma.server.findFirst({
         where: { OR: [{ id }, { uuid: id }] },
-        include: { defaultAllocation: true, owner: true },
+        include: { defaultAllocation: true, owner: { select: PUBLIC_USER_SELECT }, node: true },
       });
       if (!server) return reply.status(404).send({ error: 'Not found' });
-      return server;
+      return serializeApplicationServer(server);
     },
   );
 
@@ -434,10 +468,10 @@ export async function applicationRoutes(app: FastifyInstance) {
       const updated = await prisma.server.update({
         where: { id: existing.id },
         data: body,
-        include: { defaultAllocation: true, owner: true },
+        include: { defaultAllocation: true, owner: { select: PUBLIC_USER_SELECT }, node: true },
       });
       await syncServerToWings(updated.uuid);
-      return updated;
+      return serializeApplicationServer(updated);
     },
   );
 

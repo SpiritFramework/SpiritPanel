@@ -7,7 +7,7 @@ const USER_MAX_AGE_SEC = 7 * 24 * 60 * 60;
 const ADMIN_MAX_AGE_SEC = 24 * 60 * 60;
 
 function cookieMaxAge(role: string): number {
-  return role === 'admin' ? ADMIN_MAX_AGE_SEC : USER_MAX_AGE_SEC;
+  return role === 'admin' || role === 'staff' ? ADMIN_MAX_AGE_SEC : USER_MAX_AGE_SEC;
 }
 
 export function setSessionCookie(reply: FastifyReply, token: string, role: string) {

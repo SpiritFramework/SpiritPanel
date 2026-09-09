@@ -20,6 +20,8 @@ describe('database-manager sql-guard', () => {
     assert.equal(classifySql('SELECT 1; SELECT 2').kind, 'blocked');
     assert.equal(classifySql('SELECT /*x*/ 1').kind, 'blocked');
     assert.equal(classifySql('-- evil\nSELECT 1').kind, 'blocked');
+    assert.equal(classifySql("SELECT a INTO OUTFILE '/tmp/x' FROM t").kind, 'blocked');
+    assert.equal(classifySql("SELECT LOAD_FILE('/etc/passwd')").kind, 'blocked');
   });
 
   it('allows ddl in import mode', () => {

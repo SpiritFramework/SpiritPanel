@@ -8,7 +8,7 @@ import {
 import { deprovisionServerDatabase, hostFromRecord } from '../lib/database-provision.js';
 import { generateUuidShort } from './server-configuration.js';
 import { getServerFull, serverInclude } from './server-helpers.js';
-import { releaseServerAllocations, resolveAllocationForCreate } from './allocations.js';
+import { releaseServerAllocations, resolveAllocationForCreate, claimAllocation } from './allocations.js';
 import { effectiveResourceLimit } from '../lib/node-capacity.js';
 import { serverResourceContribution } from '../lib/server-resources.js';
 import { inferStateFromWingsResources } from '../lib/wings-resources.js';
@@ -126,9 +126,44 @@ export async function createServerOnPanel(input: CreateServerInput) {
   const swap = input.swap !== undefined ? input.swap : 0;
   const io = input.io !== undefined ? input.io : 500;
   const cpu = input.cpu !== undefined ? input.cpu : 100;
-  await assertNodeHasCapacity(node, memory, disk);
 
   const server = await prisma.$transaction(async (tx) => {
+    // Re-check capacity inside the transaction so parallel creates cannot over-allocate.
+    const memoryNeed = serverResourceContribution(memory);
+    const diskNeed = serverResourceContribution(disk);
+    if (!(node.memory <= 0 && node.disk <= 0) && !(node.memory > 0 && memoryNeed <= 0 && node.disk > 0 && diskNeed <= 0)) {
+      const siblings = await tx.server.findMany({
+        where: { nodeId: node.id },
+        select: { memory: true, disk: true },
+      });
+      const usedMemory = siblings.reduce((sum, s) => sum + serverResourceContribution(s.memory), 0);
+      const usedDisk = siblings.reduce((sum, s) => sum + serverResourceContribution(s.disk), 0);
+      if (node.memory > 0 && memoryNeed > 0) {
+        const limit = effectiveResourceLimit(node.memory, node.memoryOverallocate);
+        if (usedMemory + memoryNeed > limit) {
+          const free = Math.max(0, limit - usedMemory);
+          throw new Error(
+            `Not enough memory on this node. Requested ${memory} MB but only ${free} MB of ${limit} MB is free.`,
+          );
+        }
+      }
+      if (node.disk > 0 && diskNeed > 0) {
+        const limit = effectiveResourceLimit(node.disk, node.diskOverallocate);
+        if (usedDisk + diskNeed > limit) {
+          const free = Math.max(0, limit - usedDisk);
+          throw new Error(
+            `Not enough disk on this node. Requested ${disk} MB but only ${free} MB of ${limit} MB is free.`,
+          );
+        }
+      }
+    }
+
+    // Re-validate allocation is still free, then claim atomically.
+    const stillFree = await tx.allocation.findFirst({
+      where: { id: allocation.id, nodeId: node.id, assigned: false },
+    });
+    if (!stillFree) throw new Error('Allocation already assigned');
+
     const uuid = crypto.randomUUID();
     const created = await tx.server.create({
       data: {
@@ -167,10 +202,7 @@ export async function createServerOnPanel(input: CreateServerInput) {
       include: serverInclude,
     });
 
-    await tx.allocation.update({
-      where: { id: allocation.id },
-      data: { assigned: true },
-    });
+    await claimAllocation(allocation.id, { assigned: true }, tx);
 
     return created;
   });
@@ -514,8 +546,16 @@ export async function deleteServerFromPanel(uuid: string) {
 
   try {
     await wingsForNode(server.node).deleteServer(uuid);
-  } catch {
-    // wings may already have removed it
+  } catch (e) {
+    // Only treat a confirmed 404 as "already gone". Connection/5xx must not wipe the panel row.
+    const isGone =
+      (e instanceof WingsError && e.status === 404) ||
+      (e instanceof Error && /\(404\)/.test(e.message));
+    if (!isGone) {
+      throw e instanceof Error
+        ? e
+        : new Error('Could not delete server on FeatherWings — try again when the node is reachable');
+    }
   }
 
   try {

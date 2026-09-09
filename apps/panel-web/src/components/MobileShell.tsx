@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
@@ -27,6 +27,7 @@ export function MobileShell({
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
   const isTicketChat = TICKET_CHAT_ROUTE.test(location.pathname);
+  const drawerId = useId();
 
   useEffect(() => {
     setNavOpen(false);
@@ -39,6 +40,15 @@ export function MobileShell({
     return () => {
       document.body.style.overflow = previous;
     };
+  }, [navOpen]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [navOpen]);
 
   const panelBgClass = usePanelBackgroundClass();
@@ -57,6 +67,7 @@ export function MobileShell({
       )}
 
       <aside
+        id={drawerId}
         className={`glass-sidebar app-sidebar ${materialClass} fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none ${sidebarClassName} ${
           navOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
@@ -80,6 +91,8 @@ export function MobileShell({
           <button
             type="button"
             aria-label="Open menu"
+            aria-expanded={navOpen}
+            aria-controls={drawerId}
             onClick={() => setNavOpen(true)}
             className="mobile-icon-btn inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text)] transition hover:bg-[var(--surface-hover)]"
           >

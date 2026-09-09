@@ -8,6 +8,7 @@ import { RequireAdmin, RequireAuth, RequireFullAdmin } from './components/Requir
 import { RequireServerPermission } from './components/RequireServerPermission';
 import { CommandPalette } from './components/CommandPalette';
 import { ServiceUnavailable } from './components/ServiceUnavailable';
+import { PwaUpdateBanner } from './components/PwaUpdateBanner';
 import { PageLoading } from './components/ui';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
@@ -92,6 +93,7 @@ function PanelRouter() {
 
   return (
     <>
+      <PwaUpdateBanner />
       <CommandPalette />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
