@@ -224,27 +224,47 @@ panel_version() {
 confirm() {
   local prompt="$1" default="${2:-n}" reply
   if [[ "$ASSUME_YES" == "1" ]]; then return 0; fi
-  if [[ ! -t 0 ]]; then
-    # Non-interactive without --yes: refuse rather than guess.
-    return 1
+  # Always talk to the controlling terminal. After a colored banner, some
+  # remote shells (or a redirected stdin) leave `read -p` waiting with no
+  # visible prompt, which looks like a hang.
+  local tty="/dev/tty"
+  if [[ ! -r "$tty" || ! -w "$tty" ]]; then
+    if [[ ! -t 0 ]]; then
+      return 1
+    fi
+    tty=""
   fi
   local hint="[y/N]"
   [[ "$default" == "y" ]] && hint="[Y/n]"
-  read -r -p "  ${prompt} ${hint} " reply
+  # Print the question ourselves so it is never swallowed by a stuck -p.
+  printf '  %s %s ' "$prompt" "$hint" >/dev/tty 2>/dev/null || printf '  %s %s ' "$prompt" "$hint"
+  if [[ -n "$tty" ]]; then
+    read -r reply <"$tty" || return 1
+  else
+    read -r reply || return 1
+  fi
   reply="${reply:-$default}"
   [[ "$reply" =~ ^[Yy]$ ]]
 }
 
 ask() {
   local prompt="$1" default="${2:-}" reply
-  if [[ ! -t 0 ]]; then echo "$default"; return; fi
-  if [[ -n "$default" ]]; then
-    read -r -p "  ${prompt} [${default}]: " reply
-    echo "${reply:-$default}"
-  else
-    read -r -p "  ${prompt}: " reply
-    echo "$reply"
+  local tty="/dev/tty"
+  if [[ ! -r "$tty" || ! -w "$tty" ]]; then
+    if [[ ! -t 0 ]]; then echo "$default"; return; fi
+    tty=""
   fi
+  if [[ -n "$default" ]]; then
+    printf '  %s [%s]: ' "$prompt" "$default" >/dev/tty 2>/dev/null || printf '  %s [%s]: ' "$prompt" "$default"
+  else
+    printf '  %s: ' "$prompt" >/dev/tty 2>/dev/null || printf '  %s: ' "$prompt"
+  fi
+  if [[ -n "$tty" ]]; then
+    read -r reply <"$tty" || true
+  else
+    read -r reply || true
+  fi
+  echo "${reply:-$default}"
 }
 
 # ---------------------------------------------------------------------------
@@ -1150,8 +1170,9 @@ action_update() {
   local from_version
   from_version="$(panel_version)"
 
-  printf '  %sUpdating Spirit-Panel%s (currently v%s)\n\n' "$C_BOLD" "$C_RESET" "$from_version"
-  if ! confirm "The API will restart and be briefly unavailable. Continue?" "y"; then
+  printf '  %sUpdating Spirit-Panel%s (currently v%s)\n' "$C_BOLD" "$C_RESET" "$from_version"
+  printf '  The API will restart and be briefly unavailable.\n\n'
+  if ! confirm "Continue?" "y"; then
     die "Cancelled."
   fi
   printf '\n'
