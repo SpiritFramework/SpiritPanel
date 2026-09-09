@@ -5,6 +5,23 @@ import { PANEL_PRODUCT, PANEL_VERSION } from '../../../lib/product-meta';
 import { loadSpiritPanelRelease } from '../../../lib/spirit-panel-release';
 import { Button } from '../../Layout';
 
+function statusCopy(
+  status: SpiritPanelReleaseInfo['status'] | 'unknown',
+  installed: string,
+  latest: string | undefined,
+): string {
+  if (status === 'current') {
+    return `This host matches the latest published ${PANEL_PRODUCT} release on GitHub.`;
+  }
+  if (status === 'behind' && latest) {
+    return `Update available: this host is on v${installed}; GitHub has v${latest}. Run the command below on the panel host (branding and ticket data are preserved).`;
+  }
+  if (status === 'ahead') {
+    return 'This build is newer than the latest GitHub release — common for a local or pre-release build.';
+  }
+  return 'Could not compare against GitHub yet. Use Refresh, or check network access to api.github.com.';
+}
+
 export function PanelVersionStatus() {
   const [release, setRelease] = useState<SpiritPanelReleaseInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,8 +59,8 @@ export function PanelVersionStatus() {
     <section className={`ds-set-about-update ds-set-about-update--${status}`} aria-live="polite">
       <div className="ds-set-about-update-head">
         <div className="min-w-0 flex-1">
-          <p className="ds-set-about-update-eyebrow">{PANEL_PRODUCT}</p>
-          <h3 className="ds-set-about-update-heading">Software version</h3>
+          <p className="ds-set-about-update-eyebrow">Updates</p>
+          <h3 className="ds-set-about-update-heading">{PANEL_PRODUCT} version</h3>
         </div>
         <button
           type="button"
@@ -58,17 +75,17 @@ export function PanelVersionStatus() {
 
       <div className="ds-set-about-update-versions">
         <div className="ds-set-about-update-cell">
-          <span className="ds-set-about-update-cell-label">Installed</span>
+          <span className="ds-set-about-update-cell-label">Installed on this host</span>
           <span className="ds-set-about-update-cell-value ds-text-mono">v{installed}</span>
         </div>
         <div className="ds-set-about-update-cell">
-          <span className="ds-set-about-update-cell-label">Latest</span>
+          <span className="ds-set-about-update-cell-label">Latest on GitHub</span>
           <span
             className={`ds-set-about-update-cell-value ds-text-mono${
               !release?.latestVersion ? ' ds-set-about-update-cell-value--muted' : ''
             }`}
           >
-            {loading ? '…' : release?.latestVersion ? `v${release.latestVersion}` : '—'}
+            {loading ? 'Checking…' : release?.latestVersion ? `v${release.latestVersion}` : '—'}
           </span>
         </div>
       </div>
@@ -91,11 +108,11 @@ export function PanelVersionStatus() {
           </span>
         ) : status === 'ahead' ? (
           <span className="ds-set-about-update-badge ds-set-about-update-badge--info">
-            Newer than latest release
+            Ahead of latest release
           </span>
         ) : (
           <span className="ds-set-about-update-badge ds-set-about-update-badge--neutral">
-            Version unknown
+            Status unknown
           </span>
         )}
         {published && !loading ? (
@@ -103,13 +120,17 @@ export function PanelVersionStatus() {
         ) : null}
       </div>
 
+      {!loading ? (
+        <p className="ds-set-about-update-summary">
+          {statusCopy(status, installed, release?.latestVersion)}
+        </p>
+      ) : null}
+
       {error ? <p className="ds-set-about-update-error">{error}</p> : null}
 
       {status === 'behind' && release ? (
         <div className="ds-set-about-update-body">
-          <p>
-            Update this host to <strong className="ds-text-mono">v{release.latestVersion}</strong>:
-          </p>
+          <p className="ds-set-about-update-body-label">Run on the panel host</p>
           <pre className="ds-set-about-update-cmd">
             <code>{release.updateCommand}</code>
           </pre>
@@ -141,8 +162,18 @@ export function PanelVersionStatus() {
         </div>
       ) : null}
 
-      {status === 'current' && !loading ? (
-        <p className="ds-set-about-update-hint">You are on the latest published release.</p>
+      {status !== 'behind' && release?.releaseUrl && !loading ? (
+        <div className="ds-set-about-update-foot">
+          <a
+            href={release.releaseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ds-set-about-update-link"
+          >
+            View latest release
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
+        </div>
       ) : null}
     </section>
   );

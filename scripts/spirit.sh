@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.3"
+SCRIPT_VERSION="2.0.4"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -629,6 +629,71 @@ EOF
   info "Wrote temporary HTTP vhost for ACME"
 }
 
+# Refresh Content-Security-Policy lines in a live vhost from the shipped
+# reference, without overwriting server_name / TLS / custom locations.
+# Needed so browser → FeatherWings probes (https://node:8080) stay allowed
+# after CSP policy updates even when --force-nginx was never used.
+sync_nginx_csp() {
+  local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
+  local dest="/etc/nginx/sites-available/${NGINX_SITE}"
+  [[ -f "$src" && -f "$dest" ]] || return 0
+
+  if ! grep -q 'add_header Content-Security-Policy' "$src"; then
+    return 0
+  fi
+  if ! grep -q 'add_header Content-Security-Policy' "$dest"; then
+    warn "Live nginx site has no Content-Security-Policy — not patching"
+    info "Re-copy with: sudo bash ${INSTALL_DIR}/scripts/spirit.sh install --force-nginx"
+    return 0
+  fi
+
+  # Already matches shipped connect-src (https: + http: + wss: + ws:)
+  if grep -q "connect-src 'self' https: http: wss: ws:" "$dest"; then
+    info "nginx CSP already allows FeatherWings HTTPS probes"
+    return 0
+  fi
+
+  step "Syncing nginx Content-Security-Policy"
+  local bak="${dest}.spirit-csp.bak"
+  cp -a "$dest" "$bak" || true
+  if ! python3 - "$src" "$dest" <<'PY'
+import pathlib, re, sys
+
+src, dest = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+ref = src.read_text(encoding="utf-8")
+m = re.search(r'add_header Content-Security-Policy "[^"]*" always;', ref)
+if not m:
+    sys.exit(0)
+csp = m.group(0)
+text = dest.read_text(encoding="utf-8")
+new, n = re.subn(
+    r'^([ \t]*)add_header Content-Security-Policy "[^"]*" always;',
+    lambda mm: mm.group(1) + csp,
+    text,
+    flags=re.M,
+)
+if n == 0:
+    sys.exit(0)
+dest.write_text(new, encoding="utf-8")
+print(n)
+PY
+  then
+    warn "Could not patch nginx CSP automatically"
+    info "Manual: copy CSP from ${src} into ${dest}, then nginx -t && systemctl reload nginx"
+    return 0
+  fi
+
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || true
+    rm -f "$bak"
+    ok "nginx CSP updated (allows https:/http: to node daemons)"
+  else
+    warn "nginx -t failed after CSP sync — restoring previous site config"
+    [[ -f "$bak" ]] && mv -f "$bak" "$dest"
+    info "Fix ${dest} manually using ${src} as reference"
+  fi
+}
+
 install_nginx() {
   step "Configuring nginx"
   local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
@@ -638,6 +703,7 @@ install_nginx() {
   if [[ -f "$dest" && "$FORCE_NGINX" != "1" ]]; then
     warn "${dest} exists — leaving your config untouched"
     info "Reference: ${src}"
+    sync_nginx_csp
   else
     install -m 644 "$src" "$dest"
     sed -i \
@@ -1015,6 +1081,8 @@ action_update() {
     info "Restore: ${BACKUP_PATH:-$BACKUP_DIR}"
     die "Stopped before restarting the API so the current version keeps running."
   fi
+
+  sync_nginx_csp
 
   step "Restarting services"
   fix_permissions >/dev/null

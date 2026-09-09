@@ -17,6 +17,17 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.2.2] - 2026-09-09
+
+### Fixed
+
+- **Updates now sync nginx CSP.** `spirit.sh update` (and install when leaving an existing vhost) patches live `Content-Security-Policy` `connect-src` so the browser can reach FeatherWings over `https:`/`http:` (e.g. `https://node:8080/`). Previously only `wss:` was allowed on hosts that never re-copied nginx after V1.3.1.0 — clicking a server then failed with CSP violations. Instant fix without waiting for this release: re-copy `deploy/nginx/spirit-panel.conf` (preserve `server_name`/certs) and `sudo nginx -t && sudo systemctl reload nginx`.
+
+### Changed
+
+- **Admin Settings → About info polish.** Clearer split between product name and this installation’s branding name; Project panel adds license, versioning scheme, stack, and GitHub/Docs/Discord links; version checker copy explains installed vs GitHub and update safety; related admin links renamed and restyled.
+- **Installer `SCRIPT_VERSION` → `2.0.4`.**
+
 ## [1.3.2.1] - 2026-09-09
 
 ### Fixed

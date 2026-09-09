@@ -9,6 +9,12 @@ export const PANEL_AUTHOR = 'SpiritFramework';
 /** Author community link (Discord invite). */
 export const PANEL_AUTHOR_DISCORD = 'https://discord.gg/tyR6FF8u2a';
 
+/** Public GitHub repository. */
+export const PANEL_GITHUB = 'https://github.com/SpiritFramework/SpiritPanel';
+
+/** Production docs on GitHub. */
+export const PANEL_DOCS = 'https://github.com/SpiritFramework/SpiritPanel/tree/main/docs';
+
 /** Default host-facing sidebar tagline (editable in Admin → Settings). */
 export const PANEL_TAGLINE = 'Game server panel';
 
@@ -19,4 +25,4 @@ const require = createRequire(import.meta.url);
 const pkg = require('../../package.json') as { version?: string };
 
 /** Panel release version (`MAJOR.MINOR.FEATURE.PATCH`). */
-export const PANEL_VERSION = pkg.version ?? '1.3.2.1';
+export const PANEL_VERSION = pkg.version ?? '1.3.2.2';

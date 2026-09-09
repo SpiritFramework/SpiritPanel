@@ -7,6 +7,12 @@ export const PANEL_AUTHOR = 'SpiritFramework';
 /** Author community link (Discord invite). */
 export const PANEL_AUTHOR_DISCORD = 'https://discord.gg/tyR6FF8u2a';
 
+/** Public GitHub repository. */
+export const PANEL_GITHUB = 'https://github.com/SpiritFramework/SpiritPanel';
+
+/** Production docs on GitHub. */
+export const PANEL_DOCS = 'https://github.com/SpiritFramework/SpiritPanel/tree/main/docs';
+
 /** Default host-facing sidebar tagline (editable in Admin → Settings). */
 export const PANEL_TAGLINE = 'Game server panel';
 

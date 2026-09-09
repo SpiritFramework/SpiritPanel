@@ -435,6 +435,12 @@ if command -v rsync >/dev/null 2>&1; then
 fi
 done_test
 
+it "sync_nginx_csp patches stale connect-src"
+block="$(sed -n '/^sync_nginx_csp()/,/^}/p' "$TARGET")"
+expect_contains "$block" "connect-src 'self' https: http: wss: ws:" "connect-src check"
+expect_contains "$block" "Content-Security-Policy" "CSP"
+done_test
+
 it "backup archives panel-api data"
 INSTALL_DIR="$SANDBOX/panel"
 export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
