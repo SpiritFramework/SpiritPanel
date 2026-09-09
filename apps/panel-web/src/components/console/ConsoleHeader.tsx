@@ -80,7 +80,7 @@ export function ConsoleHeader({
         ) : null}
 
         <div className="ds-con-toolbar-actions" role="toolbar" aria-label="Console actions">
-          <ConsoleActionBtn icon={RefreshCw} label="Reconnect" onClick={onReconnect} />
+          <ConsoleActionBtn icon={RefreshCw} label="Reconnect" onClick={onReconnect} priority />
           <ConsoleActionBtn icon={Eraser} label="Clear (Ctrl+L)" onClick={onClear} />
           <ConsoleActionBtn icon={Download} label="Download log" onClick={onDownload} />
           <ConsoleActionBtn
@@ -101,12 +101,14 @@ function ConsoleActionBtn({
   onClick,
   active,
   disabled,
+  priority,
 }: {
   icon: LucideIcon;
   label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
+  priority?: boolean;
 }) {
   return (
     <button
@@ -115,7 +117,7 @@ function ConsoleActionBtn({
       title={label}
       aria-label={label}
       disabled={disabled}
-      className={`ds-con-action-btn${active ? ' ds-con-action-btn--active' : ''}`}
+      className={`ds-con-action-btn${active ? ' ds-con-action-btn--active' : ''}${priority ? ' ds-con-action-btn--priority' : ' ds-con-action-btn--secondary'}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
     </button>

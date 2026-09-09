@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.5"
+SCRIPT_VERSION="2.0.6"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -647,9 +647,22 @@ sync_nginx_csp() {
     return 0
   fi
 
-  # Already matches shipped connect-src (https: + http: + wss: + ws:)
-  if grep -q "connect-src 'self' https: http: wss: ws:" "$dest"; then
-    info "nginx CSP already allows FeatherWings HTTPS probes"
+  # Compare full CSP add_header line(s); skip only when live already matches shipped.
+  if python3 - "$src" "$dest" <<'PY'
+import pathlib, re, sys
+
+src, dest = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+pat = re.compile(r'^[ \t]*add_header Content-Security-Policy "[^"]*" always;', re.M)
+
+def csp_lines(text):
+    return sorted({re.sub(r"^[ \t]+", "", m.group(0)) for m in pat.finditer(text)})
+
+shipped = csp_lines(src.read_text(encoding="utf-8"))
+live = csp_lines(dest.read_text(encoding="utf-8"))
+sys.exit(0 if shipped and shipped == live else 1)
+PY
+  then
+    info "nginx CSP already matches shipped config"
     return 0
   fi
 
@@ -686,7 +699,7 @@ PY
   if nginx -t >/dev/null 2>&1; then
     systemctl reload nginx 2>/dev/null || true
     rm -f "$bak"
-    ok "nginx CSP updated (allows https:/http: to node daemons)"
+    ok "nginx CSP updated from shipped config"
   else
     warn "nginx -t failed after CSP sync — restoring previous site config"
     [[ -f "$bak" ]] && mv -f "$bak" "$dest"

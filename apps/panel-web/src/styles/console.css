@@ -535,22 +535,64 @@
 
   .ds-con-toolbar-row {
     padding: 0.4rem 0.55rem;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    flex-wrap: wrap;
   }
 
   .ds-con-toolbar-mark,
   .ds-con-toolbar-server,
-  .ds-con-toolbar-meta,
-  .ds-con-toolbar-metrics {
+  .ds-con-toolbar-meta {
     display: none;
   }
 
   .ds-con-toolbar-identity {
     flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ds-con-toolbar-metrics {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    margin: 0;
+  }
+
+  .ds-con-metrics {
+    gap: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ds-con-metrics::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ds-con-metric-pill--disk,
+  .ds-con-metric-pill--net {
+    display: none;
+  }
+
+  .ds-con-metric-pill {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.2rem 0.35rem;
+    gap: 0.25rem;
+  }
+
+  .ds-con-metric-pill-bar {
+    display: none;
+  }
+
+  .ds-con-metric-pill-label {
+    display: none;
   }
 
   .ds-con-toolbar-actions {
-    margin-left: 0;
+    margin-left: auto;
+  }
+
+  .ds-con-action-btn--secondary {
+    display: none;
   }
 
   .ds-con-compose {

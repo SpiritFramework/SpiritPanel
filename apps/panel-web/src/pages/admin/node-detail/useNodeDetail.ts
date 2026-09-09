@@ -20,6 +20,13 @@ export function useNodeDetail(nodeId: string) {
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRotate, setConfirmRotate] = useState(false);
+  const [allocConfirm, setAllocConfirm] = useState<{
+    title: string;
+    description: string;
+    kind: 'single' | 'bulk';
+    allocationId?: string;
+    bulk?: { ip?: string; ids?: string[] };
+  } | null>(null);
   const [allocForm, setAllocForm] = useState({ ip: '0.0.0.0', ports: '25565-25584' });
   const [allocNotice, setAllocNotice] = useState('');
   const [selectedAllocIds, setSelectedAllocIds] = useState<string[]>([]);
@@ -178,12 +185,21 @@ export function useNodeDetail(nodeId: string) {
   }
 
   async function deleteAllocation(allocationId: string) {
-    if (!confirm('Delete this allocation?')) return;
+    setAllocConfirm({
+      title: 'Delete this allocation?',
+      description: 'This permanently removes the port allocation from the node.',
+      kind: 'single',
+      allocationId,
+    });
+  }
+
+  async function executeDeleteAllocation(allocationId: string) {
     setSaving(true);
     setError('');
     try {
       await api.admin.deleteAllocation(allocationId);
       setSelectedAllocIds((current) => current.filter((id) => id !== allocationId));
+      setAllocConfirm(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete allocation');
@@ -208,14 +224,20 @@ export function useNodeDetail(nodeId: string) {
     });
   }
 
-  async function bulkDeleteAllocations(input: { ip?: string; ids?: string[] }, confirmMessage: string) {
-    if (!nodeId || !confirm(confirmMessage)) return;
+  function requestBulkDelete(input: { ip?: string; ids?: string[] }, title: string, description: string) {
+    if (!nodeId) return;
+    setAllocConfirm({ title, description, kind: 'bulk', bulk: input });
+  }
+
+  async function executeBulkDelete(input: { ip?: string; ids?: string[] }) {
+    if (!nodeId) return;
     setSaving(true);
     setError('');
     setAllocNotice('');
     try {
       const result = await api.admin.bulkDeleteAllocations(nodeId, input);
       setSelectedAllocIds([]);
+      setAllocConfirm(null);
       setAllocNotice(
         `Deleted ${result.deleted} allocation(s)${
           result.skippedAssigned ? `. ${result.skippedAssigned} assigned allocation(s) were kept.` : '.'
@@ -229,20 +251,33 @@ export function useNodeDetail(nodeId: string) {
     }
   }
 
+  async function confirmAllocAction() {
+    if (!allocConfirm) return;
+    if (allocConfirm.kind === 'single' && allocConfirm.allocationId) {
+      await executeDeleteAllocation(allocConfirm.allocationId);
+      return;
+    }
+    if (allocConfirm.kind === 'bulk' && allocConfirm.bulk) {
+      await executeBulkDelete(allocConfirm.bulk);
+    }
+  }
+
   async function deleteFreeOnIp(ip: string, freeCount: number, assignedCount: number) {
     const assignedNote =
       assignedCount > 0 ? ` ${assignedCount} assigned allocation(s) on this IP will be kept.` : '';
-    await bulkDeleteAllocations(
+    requestBulkDelete(
       { ip },
-      `Delete all ${freeCount} unassigned allocation(s) on ${ip}?${assignedNote}`,
+      `Delete ${freeCount} free allocation(s)?`,
+      `Delete all ${freeCount} unassigned allocation(s) on ${ip}.${assignedNote}`,
     );
   }
 
   async function deleteSelectedAllocations() {
     if (selectedFreeCount === 0) return;
-    await bulkDeleteAllocations(
+    requestBulkDelete(
       { ids: selectedAllocIds },
-      `Delete ${selectedFreeCount} selected unassigned allocation(s)? Assigned ports in the selection will be skipped.`,
+      `Delete ${selectedFreeCount} allocation(s)?`,
+      'Delete the selected unassigned allocations. Assigned ports in the selection will be skipped.',
     );
   }
 
@@ -276,6 +311,9 @@ export function useNodeDetail(nodeId: string) {
     setConfirmDelete,
     confirmRotate,
     setConfirmRotate,
+    allocConfirm,
+    setAllocConfirm,
+    confirmAllocAction,
     allocForm,
     setAllocForm,
     allocNotice,

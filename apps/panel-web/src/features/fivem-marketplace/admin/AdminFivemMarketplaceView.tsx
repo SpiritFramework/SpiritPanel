@@ -12,6 +12,7 @@ import {
 } from '../../../components/admin/plugins/fivem/FivemCatalogEditor';
 import { AdminEditLoading } from '../../../components/admin/AdminEditLayout';
 import { AlertBanner } from '../../../components/ui';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 
 type FivemSettings = {
   enabled: boolean;
@@ -34,6 +35,8 @@ export function AdminFivemMarketplaceView() {
     data: FivemCatalogEntryInput;
     id?: string;
   } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<MarketplaceCatalogPlugin | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,12 +105,35 @@ export function AdminFivemMarketplaceView() {
           onEdit={(entry) =>
             setEditor({ mode: 'edit', id: entry.id, data: catalogEntryToForm(entry) })
           }
-          onDelete={(entry) => {
-            if (!confirm(`Delete "${entry.name}"?`)) return;
-            void api.admin.deleteFivemCatalogEntry(entry.id).then(() => load());
-          }}
+          onDelete={(entry) => setPendingDelete(entry)}
         />
       </Page>
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title="Delete catalog resource?"
+        description={`Delete "${pendingDelete?.name ?? 'this resource'}" from the FiveM catalog?`}
+        confirmLabel="Delete"
+        tone="danger"
+        loading={deleting}
+        onClose={() => {
+          if (!deleting) setPendingDelete(null);
+        }}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          setDeleting(true);
+          void api.admin
+            .deleteFivemCatalogEntry(pendingDelete.id)
+            .then(() => {
+              setPendingDelete(null);
+              return load();
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : 'Failed to delete');
+            })
+            .finally(() => setDeleting(false));
+        }}
+      />
 
       <FivemCatalogEditor
         open={editor !== null}

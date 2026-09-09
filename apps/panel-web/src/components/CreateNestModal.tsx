@@ -28,10 +28,10 @@ export function CreateNestModal({ onClose, onCreated }: { onClose: () => void; o
       onClose={onClose}
       header={
         <div className="relative overflow-hidden border-b border-[var(--border)] pr-12">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/25 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[color-mix(in_srgb,var(--accent)_25%,transparent)] via-transparent to-transparent" />
           <div className="relative flex items-start gap-3 px-5 py-5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 shadow-lg">
-              <Layers className="h-5 w-5 text-white" />
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] shadow-lg">
+              <Layers className="h-5 w-5 text-[var(--accent-contrast)]" />
             </div>
             <div>
               <h2 className="text-base font-bold">Create nest</h2>

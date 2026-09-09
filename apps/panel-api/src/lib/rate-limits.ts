@@ -34,7 +34,8 @@ export const GLOBAL_RATE_LIMIT = {
   },
   timeWindow: '1 minute' as const,
   keyGenerator: userOrIpKey,
-  skipOnError: true,
+  // Production: fail closed if the rate-limit store errors. Dev may skip to avoid local friction.
+  skipOnError: !isProd(),
   continueExceeding: false,
   // Wings boot + status + activity can exceed 300/min on busy nodes.
   allowList: (request: FastifyRequest) => isBootstrapAuthPath(request) || isDaemonRemotePath(request),

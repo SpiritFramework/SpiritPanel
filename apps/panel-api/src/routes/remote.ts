@@ -124,15 +124,17 @@ export async function remoteRoutes(app: FastifyInstance) {
   });
 
   app.post('/servers/reset', async (request) => {
-    // Wings boot contract (ResetServersState): clear stuck installing/restoring flags so
-    // the panel does not block Start after a daemon restart mid-install. Runtime states
-    // are then re-pushed via OnStateChange for every server on this node.
+    // Wings boot contract (ResetServersState): daemon restart — mark containers offline and
+    // let Wings re-push runtime state via OnStateChange. Do NOT force mid-install /
+    // mid-restore servers to installed/normal; that falsely marks unfinished installs ready.
+    // Install/restore completion still comes from explicit Wings webhooks.
     const nodeId = request.node!.id;
     const nodeServers = await prisma.server.findMany({
       where: { nodeId },
       select: { uuid: true },
     });
 
+    // Mid-install / mid-restore: only clear live container cache state; keep panel install flags.
     await prisma.server.updateMany({
       where: {
         nodeId,
@@ -143,8 +145,6 @@ export async function remoteRoutes(app: FastifyInstance) {
         ],
       },
       data: {
-        status: 'normal',
-        installStatus: 'installed',
         containerState: 'offline',
       },
     });

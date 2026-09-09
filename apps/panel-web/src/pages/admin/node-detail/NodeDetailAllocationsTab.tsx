@@ -6,6 +6,7 @@ import type { AdminNodeDetail } from '../../../lib/api';
 import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
 import { AdminFormStatus } from '../../../components/AdminDetailLayout';
 import { Button, Input } from '../../../components/Layout';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 import { EmptyState } from '../../../components/ui';
 import type { NodeDetailController } from './useNodeDetail';
 
@@ -183,6 +184,9 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
     toggleIpSelection,
     deleteFreeOnIp,
     deleteSelectedAllocations,
+    allocConfirm,
+    setAllocConfirm,
+    confirmAllocAction,
   } = ctrl;
 
   if (!detail) return null;
@@ -359,6 +363,19 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
           </div>
         )}
       </NodeDetailPanel>
+
+      <ConfirmModal
+        open={allocConfirm !== null}
+        title={allocConfirm?.title ?? 'Delete allocation?'}
+        description={allocConfirm?.description ?? ''}
+        confirmLabel="Delete"
+        tone="danger"
+        loading={saving}
+        onClose={() => {
+          if (!saving) setAllocConfirm(null);
+        }}
+        onConfirm={() => void confirmAllocAction()}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Check,
@@ -19,14 +20,17 @@ import { getServerAccess } from '../../../lib/server-access';
 import { fileBaseName, formatBytes } from '../../../lib/file-manager';
 import { pathSegments, parentPath } from '../../../lib/paths';
 import { useFileEditor } from '../../../hooks/useFileEditor';
+import { ConfirmModal } from '../../ConfirmModal';
 import { ServerEggIcon } from '../../ServerEggIcon';
 import { StatusPill, Spinner } from '../../ui';
 
 export function FileEditorWorkspace({ filePath }: { filePath: string }) {
+  const navigate = useNavigate();
   const { serverId: id, base } = useServerManageBase();
   const { server } = useServer();
   const access = getServerAccess(server);
   const toast = useToast();
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   const editor = useFileEditor(id, filePath, access.canWriteFiles);
   const filesUrl = `${base}/files?dir=${encodeURIComponent(editor.returnDir)}`;
@@ -93,7 +97,9 @@ export function FileEditorWorkspace({ filePath }: { filePath: string }) {
                 className="ds-srv-fe-action-btn"
                 title="Back to files"
                 onClick={(e) => {
-                  if (editor.dirty && !confirm('You have unsaved changes. Discard them?')) e.preventDefault();
+                  if (!editor.dirty) return;
+                  e.preventDefault();
+                  setLeaveConfirmOpen(true);
                 }}
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
@@ -312,6 +318,20 @@ export function FileEditorWorkspace({ filePath }: { filePath: string }) {
           <span className="ds-srv-fe-status-hint">Syntax highlighting disabled for large files</span>
         ) : null}
       </footer>
+
+      <ConfirmModal
+        open={leaveConfirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes. Leave this file without saving?"
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        tone="warning"
+        onClose={() => setLeaveConfirmOpen(false)}
+        onConfirm={() => {
+          setLeaveConfirmOpen(false);
+          navigate(filesUrl);
+        }}
+      />
     </div>
   );
 }

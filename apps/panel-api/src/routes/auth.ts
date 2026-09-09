@@ -489,7 +489,11 @@ export async function authRoutes(app: FastifyInstance) {
 
     const token = randomBytes(32).toString('hex');
     await prisma.passwordReset.create({
-      data: { userId: user.id, token, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+      data: {
+        userId: user.id,
+        token: hashPasswordResetToken(token),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
     });
 
     const resetUrl = `${getConfig().panelUrl}/reset-password?token=${token}`;
@@ -521,7 +525,9 @@ export async function authRoutes(app: FastifyInstance) {
       });
     }
 
-    const reset = await prisma.passwordReset.findUnique({ where: { token: body.token } });
+    const reset = await prisma.passwordReset.findUnique({
+      where: { token: hashPasswordResetToken(body.token) },
+    });
     if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
       return reply.status(400).send({ error: 'This reset link is invalid or has expired.' });
     }
@@ -1011,6 +1017,10 @@ async function consumeRecoveryCode(
     data: { totpRecoveryCodes: JSON.stringify(hashes) },
   });
   return true;
+}
+
+function hashPasswordResetToken(token: string): string {
+  return createHash('sha256').update(token.trim()).digest('hex');
 }
 
 function serializeSshKey(key: { id: string; name: string; publicKey: string; createdAt: Date }) {

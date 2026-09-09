@@ -1,6 +1,9 @@
 import { prisma } from './prisma.js';
 import { generateApiIdentifier, generateApiToken, hashApiToken } from './auth.js';
-import { normalizeApplicationPermissions } from './application-scopes.js';
+import {
+  APPLICATION_SCOPE_ALL,
+  normalizeApplicationPermissions,
+} from './application-scopes.js';
 
 export const API_KEY_TYPE_ACCOUNT = 1;
 export const API_KEY_TYPE_APPLICATION = 2;
@@ -49,9 +52,12 @@ export async function createApiKeyForUser(
       ? new Date(Date.now() + APPLICATION_KEY_TTL_MS)
       : null;
 
+  // Omitted permissions → store full scopes explicitly. null/[] stay empty (deny at auth).
   const permissions =
     data.keyType === API_KEY_TYPE_APPLICATION
-      ? normalizeApplicationPermissions(data.permissions ?? undefined)
+      ? normalizeApplicationPermissions(
+          data.permissions === undefined ? [APPLICATION_SCOPE_ALL] : data.permissions,
+        )
       : null;
 
   const allowedIps =

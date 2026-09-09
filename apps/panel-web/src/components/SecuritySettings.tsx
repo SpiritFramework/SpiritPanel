@@ -22,6 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import { DiscordIcon } from './icons/DiscordIcon';
 import { NodeOverviewSection } from './admin/node-detail/NodeDetailShell';
 import { Button, Input, Textarea } from './Layout';
+import { ConfirmModal } from './ConfirmModal';
 import { Spinner } from './ui';
 import {
   ProfileSecuritySidebar,
@@ -442,6 +443,7 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -477,12 +479,12 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   async function removePat() {
-    if (!confirm('Remove your GitHub token? Marketplace will use the panel default (if any).')) return;
     setBusy(true);
     try {
       await api.removeGithubPat();
       setConfigured(false);
       setEditing(false);
+      setConfirmRemove(false);
       success('GitHub token removed');
       onChanged();
     } catch (err) {
@@ -527,7 +529,7 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
                 <Button variant="subtle" onClick={() => setEditing(true)} disabled={busy}>
                   Replace
                 </Button>
-                <Button variant="ghost" onClick={removePat} disabled={busy}>
+                <Button variant="ghost" onClick={() => setConfirmRemove(true)} disabled={busy}>
                   Remove
                 </Button>
               </div>
@@ -563,6 +565,19 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmRemove}
+        title="Remove GitHub token?"
+        description="Marketplace will use the panel default token (if any) after this token is removed."
+        confirmLabel="Remove token"
+        tone="danger"
+        loading={busy}
+        onClose={() => {
+          if (!busy) setConfirmRemove(false);
+        }}
+        onConfirm={() => void removePat()}
+      />
     </NodeOverviewSection>
   );
 }
@@ -575,6 +590,8 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
   const [name, setName] = useState('');
   const [publicKey, setPublicKey] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<SshKeySummary | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -608,15 +625,19 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
     }
   }
 
-  async function removeKey(key: SshKeySummary) {
-    if (!confirm(`Remove SSH key "${key.name}"?`)) return;
+  async function removeKey() {
+    if (!pendingRemove) return;
+    setRemoving(true);
     try {
-      await api.deleteSshKey(key.id);
+      await api.deleteSshKey(pendingRemove.id);
+      setPendingRemove(null);
       success('SSH key removed');
       await load();
       onChanged();
     } catch (err) {
       toastError('Could not remove key', err instanceof Error ? err.message : undefined);
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -668,7 +689,7 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
                   <span className="ds-sec-ssh-date">{new Date(key.createdAt).toLocaleDateString()}</span>
                   <button
                     type="button"
-                    onClick={() => removeKey(key)}
+                    onClick={() => setPendingRemove(key)}
                     className="ds-sec-ssh-remove"
                     aria-label={`Remove ${key.name}`}
                   >
@@ -722,6 +743,18 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
           )}
         </div>
       )}
+      <ConfirmModal
+        open={pendingRemove !== null}
+        title="Remove SSH key?"
+        description={`Remove SSH key "${pendingRemove?.name ?? ''}"? You will no longer be able to use it for SFTP.`}
+        confirmLabel="Remove key"
+        tone="danger"
+        loading={removing}
+        onClose={() => {
+          if (!removing) setPendingRemove(null);
+        }}
+        onConfirm={() => void removeKey()}
+      />
     </NodeOverviewSection>
   );
 }
@@ -736,6 +769,7 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [confirmError, setConfirmError] = useState('');
@@ -815,12 +849,12 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
   }
 
   async function unlink() {
-    if (!confirm('Unlink Discord from this account? You can still sign in with your password.')) return;
     setBusy(true);
     try {
       await api.unlinkDiscord();
       setLinked(false);
       setUsername(null);
+      setConfirmUnlink(false);
       success('Discord unlinked');
       onChanged();
     } catch (err) {
@@ -894,7 +928,7 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
             <Button type="button" variant="primary" disabled={busy} onClick={openConfirm}>
               Change Discord
             </Button>
-            <Button type="button" variant="ghost" disabled={busy} onClick={() => void unlink()}>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmUnlink(true)}>
               {busy ? 'Unlinking…' : 'Unlink Discord'}
             </Button>
           </div>
@@ -910,6 +944,19 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
           </Button>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmUnlink}
+        title="Unlink Discord?"
+        description="You can still sign in with your password after Discord is unlinked."
+        confirmLabel="Unlink Discord"
+        tone="warning"
+        loading={busy}
+        onClose={() => {
+          if (!busy) setConfirmUnlink(false);
+        }}
+        onConfirm={() => void unlink()}
+      />
     </NodeOverviewSection>
   );
 }

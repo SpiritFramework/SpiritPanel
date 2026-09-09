@@ -36,6 +36,7 @@ import { PowerConfirmModal, type DestructivePowerAction } from './PowerConfirmMo
 import { ServerOverviewBar } from './server/ServerOverviewBar';
 import { ServerSidebar } from './server/ServerSidebar';
 import { AmbientBackdrop } from './AmbientBackdrop';
+import { RouteErrorBoundary } from './ErrorBoundary';
 import { AlertBanner, Spinner } from './ui';
 import { isFiveMServer, isMinecraftServer } from '../lib/server-eggs';
 import type { ServerDetail } from '../lib/api';
@@ -300,7 +301,9 @@ export function ServerShellInner() {
                 : 'w-full min-w-0'
             }
           >
-            <Outlet key={location.pathname} />
+            <RouteErrorBoundary fallbackTitle="This server page failed to load">
+              <Outlet key={location.pathname} />
+            </RouteErrorBoundary>
           </div>
         </main>
       </div>

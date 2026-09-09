@@ -5,6 +5,7 @@ import { api, type TicketDetail } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { Button, ClientLayout, Page } from '../../components/Layout';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertBanner, PageHeader, PageLoading } from '../../components/ui';
 import {
   TicketDetailShell,
@@ -21,6 +22,7 @@ export function TicketDetailPage() {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -58,11 +60,12 @@ export function TicketDetailPage() {
   }
 
   async function closeTicket() {
-    if (!id || !confirm('Close this ticket? You can still read the history but cannot send new messages.')) return;
+    if (!id) return;
     setClosing(true);
     setError('');
     try {
       setTicket(await api.client.closeTicket(id));
+      setConfirmClose(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to close ticket');
     } finally {
@@ -141,7 +144,7 @@ export function TicketDetailPage() {
                 <p className="ticket-page__sidebar-hint">
                   Done with this issue? Closing stops further replies but keeps the thread for your records.
                 </p>
-                <Button variant="secondary" className="w-full" onClick={() => void closeTicket()} disabled={closing}>
+                <Button variant="secondary" className="w-full" onClick={() => setConfirmClose(true)} disabled={closing}>
                   <XCircle className="h-4 w-4" />
                   {closing ? 'Closing…' : 'Close ticket'}
                 </Button>
@@ -149,6 +152,19 @@ export function TicketDetailPage() {
             ) : null}
           </>
         }
+      />
+
+      <ConfirmModal
+        open={confirmClose}
+        title="Close this ticket?"
+        description="You can still read the history but cannot send new messages."
+        confirmLabel="Close ticket"
+        tone="warning"
+        loading={closing}
+        onClose={() => {
+          if (!closing) setConfirmClose(false);
+        }}
+        onConfirm={() => void closeTicket()}
       />
     </ClientLayout>
   );

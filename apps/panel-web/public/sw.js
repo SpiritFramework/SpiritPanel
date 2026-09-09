@@ -27,7 +27,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
   .box{text-align:center;padding:2rem;max-width:22rem}
   h1{font-size:1.1rem;margin:0 0 .5rem}
   p{font-size:.85rem;line-height:1.5;color:#9aa3b8;margin:0 0 1.25rem}
-  button{background:#6366f1;color:#fff;border:0;border-radius:.5rem;
+  button{background:#334155;color:#f8fafc;border:0;border-radius:.5rem;
     padding:.6rem 1.1rem;font-size:.85rem;font-weight:600;cursor:pointer}
 </style></head>
 <body><div class="box">

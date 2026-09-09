@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useBlocker, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Globe,
@@ -36,6 +36,7 @@ import {
   type PanelSecuritySettings,
 } from '../../lib/panel-settings';
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
+import { ConfirmModal } from '../../components/ConfirmModal';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { NodeOverviewSection } from '../../components/admin/node-detail/NodeDetailShell';
 import {
@@ -73,8 +74,10 @@ export function AdminSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const tab: SettingsTab = isSettingsTab(tabParam) ? tabParam : 'branding';
+  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
-  function setTab(next: SettingsTab) {
+  function applyTab(next: SettingsTab) {
     setSearchParams({ tab: next }, { replace: true });
   }
   const [loading, setLoading] = useState(true);
@@ -239,6 +242,27 @@ export function AdminSettings() {
     return initial !== JSON.stringify({ branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns });
   }, [branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading, loadError]);
 
+  function setTab(next: SettingsTab) {
+    if (next === tab) return;
+    if (hasChanges) {
+      setPendingTab(next);
+      setLeaveConfirmOpen(true);
+      return;
+    }
+    applyTab(next);
+  }
+
+  const navBlocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasChanges && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    if (navBlocker.state !== 'blocked') return;
+    setPendingTab(null);
+    setLeaveConfirmOpen(true);
+  }, [navBlocker.state]);
+
   useEffect(() => {
     if (!hasChanges) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -248,6 +272,25 @@ export function AdminSettings() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [hasChanges]);
+
+  function discardPendingLeave() {
+    setLeaveConfirmOpen(false);
+    setPendingTab(null);
+    if (navBlocker.state === 'blocked') navBlocker.reset();
+  }
+
+  function confirmPendingLeave() {
+    const nextTab = pendingTab;
+    const shouldProceedNav = navBlocker.state === 'blocked';
+    setLeaveConfirmOpen(false);
+    setPendingTab(null);
+    resetForm();
+    if (nextTab) {
+      applyTab(nextTab);
+      return;
+    }
+    if (shouldProceedNav) navBlocker.proceed();
+  }
 
   async function save() {
     setSaving(true);
@@ -1021,6 +1064,17 @@ export function AdminSettings() {
           </div>
         </div>
       </form>
+
+      <ConfirmModal
+        open={leaveConfirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved settings changes. Leave this section without saving?"
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        tone="warning"
+        onClose={discardPendingLeave}
+        onConfirm={confirmPendingLeave}
+      />
     </AdminLayout>
   );
 }

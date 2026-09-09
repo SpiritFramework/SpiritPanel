@@ -26,6 +26,7 @@ import {
   type DatabaseManagerTableSummary,
   type ServerDatabaseSummary,
 } from '../../../lib/api';
+import { ConfirmModal } from '../../ConfirmModal';
 import { Spinner } from '../../ui';
 import { DatabaseRowEditor, rowPrimaryKey } from './DatabaseRowEditor';
 
@@ -90,6 +91,8 @@ export function DatabaseManagerModal({
   const [editor, setEditor] = useState<{ mode: 'insert' | 'edit'; row?: Record<string, unknown> } | null>(null);
   const [editorBusy, setEditorBusy] = useState(false);
   const [editorError, setEditorError] = useState('');
+  const [pendingSqlUpload, setPendingSqlUpload] = useState<{ text: string; name: string } | null>(null);
+  const [confirmDeleteRow, setConfirmDeleteRow] = useState(false);
   const sqlRef = useRef(sql);
   sqlRef.current = sql;
 
@@ -249,16 +252,22 @@ export function DatabaseManagerModal({
       setError('SQL file is empty');
       return;
     }
-    const runNow = window.confirm(
-      `Run "${file.name}" against ${database.database}?\n\nThis executes every statement in the file.`,
-    );
-    if (runNow) {
-      await runUploadedScript(text, file.name);
-    } else {
-      setSql(text);
-      setUploadName(file.name);
-      setTab('sql');
-    }
+    setPendingSqlUpload({ text, name: file.name });
+  }
+
+  async function confirmRunSqlUpload() {
+    if (!pendingSqlUpload) return;
+    const { text, name } = pendingSqlUpload;
+    setPendingSqlUpload(null);
+    await runUploadedScript(text, name);
+  }
+
+  function loadSqlUploadIntoEditor() {
+    if (!pendingSqlUpload) return;
+    setSql(pendingSqlUpload.text);
+    setUploadName(pendingSqlUpload.name);
+    setTab('sql');
+    setPendingSqlUpload(null);
   }
 
   const runSqlRef = useRef(runSql);
@@ -295,12 +304,12 @@ export function DatabaseManagerModal({
       setEditorError('Primary key is missing for this row');
       return;
     }
-    if (!window.confirm('Delete this row permanently?')) return;
     setEditorBusy(true);
     setEditorError('');
     try {
       await api.client.databaseManagerDeleteRow(serverId, database.id, selectedTable, pk);
       setEditor(null);
+      setConfirmDeleteRow(false);
       await loadTable(selectedTable, page);
       void loadSchema({ soft: true });
     } catch (err) {
@@ -800,9 +809,34 @@ export function DatabaseManagerModal({
           error={editorError}
           onClose={() => setEditor(null)}
           onSave={(values) => void saveEditor(values)}
-          onDelete={editor.mode === 'edit' ? () => void deleteEditorRow() : undefined}
+          onDelete={editor.mode === 'edit' ? () => setConfirmDeleteRow(true) : undefined}
         />
       ) : null}
+
+      <ConfirmModal
+        open={pendingSqlUpload !== null}
+        title="Run SQL file?"
+        description={`Run "${pendingSqlUpload?.name ?? 'this file'}" against ${database.database}? This executes every statement in the file.`}
+        confirmLabel="Run now"
+        cancelLabel="Open in editor"
+        tone="warning"
+        loading={queryBusy}
+        onClose={loadSqlUploadIntoEditor}
+        onConfirm={() => void confirmRunSqlUpload()}
+      />
+
+      <ConfirmModal
+        open={confirmDeleteRow}
+        title="Delete this row?"
+        description="This permanently deletes the selected row from the table."
+        confirmLabel="Delete row"
+        tone="danger"
+        loading={editorBusy}
+        onClose={() => {
+          if (!editorBusy) setConfirmDeleteRow(false);
+        }}
+        onConfirm={() => void deleteEditorRow()}
+      />
     </div>
   );
 }

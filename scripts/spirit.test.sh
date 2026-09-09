@@ -444,10 +444,12 @@ expect_contains "$block" "--exclude 'apps/panel-api/dist/'" "panel-api dist"
 expect_contains "$block" "--exclude 'packages/*/dist/'" "packages dist"
 done_test
 
-it "sync_nginx_csp patches stale connect-src"
+it "sync_nginx_csp compares full CSP add_header lines"
 block="$(sed -n '/^sync_nginx_csp()/,/^}/p' "$TARGET")"
-expect_contains "$block" "connect-src 'self' https: http: wss: ws:" "connect-src check"
 expect_contains "$block" "Content-Security-Policy" "CSP"
+expect_contains "$block" "already matches shipped config" "full CSP compare"
+expect_contains "$block" "spirit-csp.bak" "backup before patch"
+expect_contains "$block" "nginx -t failed after CSP sync" "restore on nginx -t failure"
 done_test
 
 it "backup archives panel-api data"

@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Database, Pencil, Plus, Trash2, Wifi } from 
 import { api, type CreateDatabaseHostInput, type DatabaseHostSummary, type UpdateDatabaseHostInput } from '../lib/api';
 import { Button, Input } from './Layout';
 import { ModalShell } from './ModalShell';
+import { ConfirmModal } from './ConfirmModal';
 import { EmptyState, Spinner } from './ui';
 
 type ConnectionCreds = { host: string; port: number; username: string; password: string };
@@ -12,6 +13,7 @@ export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeF
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'create' | DatabaseHostSummary | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -32,13 +34,14 @@ export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeF
     load();
   }, [nodeId]);
 
-  async function handleDelete(hostId: string) {
-    if (!confirm('Delete this database host?')) return;
-    setDeletingId(hostId);
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    setDeletingId(pendingDeleteId);
     setSuccess('');
     try {
-      await api.admin.deleteDatabaseHost(nodeId, hostId);
-      setHosts((current) => current.filter((h) => h.id !== hostId));
+      await api.admin.deleteDatabaseHost(nodeId, pendingDeleteId);
+      setHosts((current) => current.filter((h) => h.id !== pendingDeleteId));
+      setPendingDeleteId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete host');
     } finally {
@@ -137,7 +140,7 @@ export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeF
                     type="button"
                     variant="ghost"
                     disabled={deletingId === host.id}
-                    onClick={() => handleDelete(host.id)}
+                    onClick={() => setPendingDeleteId(host.id)}
                     className="text-red-400 hover:text-red-300"
                   >
                     {deletingId === host.id ? <Spinner className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -185,6 +188,19 @@ export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeF
           onTest={async (data) => api.admin.testDatabaseHostConnection(nodeId, data)}
         />
       )}
+
+      <ConfirmModal
+        open={pendingDeleteId !== null}
+        title="Delete this database host?"
+        description="Servers will no longer be able to create databases on this host. Existing databases are not removed from MySQL."
+        confirmLabel="Delete host"
+        tone="danger"
+        loading={deletingId !== null}
+        onClose={() => {
+          if (!deletingId) setPendingDeleteId(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   );
 }

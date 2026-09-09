@@ -42,9 +42,13 @@ export function parseAllowedIps(raw: unknown): string[] | null {
   return raw.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
 }
 
+/**
+ * Normalize scopes for storage on create/update.
+ * Empty/null no longer expands to all scopes (fail closed). Pass `application.*` for full access.
+ */
 export function normalizeApplicationPermissions(input?: string[] | null): string[] {
   if (!input || input.length === 0) {
-    return [...APPLICATION_SCOPES];
+    return [];
   }
   const unique = [...new Set(input.map((s) => s.trim()).filter(Boolean))];
   if (unique.includes(APPLICATION_SCOPE_ALL)) {
@@ -61,9 +65,15 @@ export function normalizeApplicationPermissions(input?: string[] | null): string
   return unique as ApplicationScope[];
 }
 
-/** null permissions on legacy keys = full access until rotated. */
+/**
+ * Check whether an application API key grants a scope.
+ *
+ * One-time migration note: older installs stored `permissions: null` to mean full access.
+ * Null/empty is now deny-by-default. Re-create or update those keys with explicit scopes
+ * (or `application.*`) if they stop authorizing after this change.
+ */
 export function applicationKeyHasScope(key: ApplicationApiKeyContext, scope: ApplicationScope): boolean {
-  if (key.permissions === null) return true;
+  if (key.permissions === null || key.permissions.length === 0) return false;
   if (key.permissions.includes(APPLICATION_SCOPE_ALL)) return true;
   return key.permissions.includes(scope);
 }

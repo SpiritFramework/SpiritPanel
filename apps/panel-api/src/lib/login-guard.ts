@@ -8,8 +8,14 @@ const WINDOW_MS = 60 * 60 * 1000;
 const LOCK_PREFIX = 'login:lock:';
 const FAIL_PREFIX = 'login:fail:';
 
-function keyFor(identifier: string, ip: string): string {
+/** Per identifier+IP (distributed / shared-IP friendly). */
+function pairKey(identifier: string, ip: string): string {
   return `${identifier.trim().toLowerCase()}|${ip}`;
+}
+
+/** Account identity alone — locks after N failures across any IPs. */
+function accountKey(identifier: string): string {
+  return `acct:${identifier.trim().toLowerCase()}`;
 }
 
 function lockoutError(): Error & { statusCode: number } {
@@ -37,8 +43,7 @@ async function redisClient() {
   }
 }
 
-export async function assertLoginAllowed(identifier: string, ip: string): Promise<void> {
-  const mapKey = keyFor(identifier, ip);
+async function assertKeyAllowed(mapKey: string): Promise<void> {
   const redis = await redisClient();
   if (redis) {
     try {
@@ -57,8 +62,7 @@ export async function assertLoginAllowed(identifier: string, ip: string): Promis
   if (entry.lockedUntil > now) throw lockoutError();
 }
 
-export async function recordLoginFailure(identifier: string, ip: string): Promise<void> {
-  const mapKey = keyFor(identifier, ip);
+async function recordKeyFailure(mapKey: string): Promise<void> {
   const redis = await redisClient();
   if (redis) {
     try {
@@ -92,8 +96,7 @@ export async function recordLoginFailure(identifier: string, ip: string): Promis
   }
 }
 
-export async function clearLoginFailures(identifier: string, ip: string): Promise<void> {
-  const mapKey = keyFor(identifier, ip);
+async function clearKeyFailures(mapKey: string): Promise<void> {
   const redis = await redisClient();
   if (redis) {
     try {
@@ -103,4 +106,19 @@ export async function clearLoginFailures(identifier: string, ip: string): Promis
     }
   }
   failures.delete(mapKey);
+}
+
+export async function assertLoginAllowed(identifier: string, ip: string): Promise<void> {
+  await assertKeyAllowed(pairKey(identifier, ip));
+  await assertKeyAllowed(accountKey(identifier));
+}
+
+export async function recordLoginFailure(identifier: string, ip: string): Promise<void> {
+  await recordKeyFailure(pairKey(identifier, ip));
+  await recordKeyFailure(accountKey(identifier));
+}
+
+export async function clearLoginFailures(identifier: string, ip: string): Promise<void> {
+  await clearKeyFailures(pairKey(identifier, ip));
+  await clearKeyFailures(accountKey(identifier));
 }

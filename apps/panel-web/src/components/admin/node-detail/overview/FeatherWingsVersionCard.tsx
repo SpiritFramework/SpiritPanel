@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Download, ExternalLink, Loader2, RefreshCw, Sparkles } from 'lucide-react';
-import { compareVersionStatus } from '../../../../lib/version-compare';
+import { compareVersionStatus } from '@spirit/shared';
 import { api, type FeatherWingsReleaseInfo } from '../../../../lib/api';
 import { Button } from '../../../Layout';
 

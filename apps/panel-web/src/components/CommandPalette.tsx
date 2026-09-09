@@ -33,6 +33,9 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [servers, setServers] = useState<ServerSummary[]>([]);
+  const [serversError, setServersError] = useState('');
+  const [serversLoading, setServersLoading] = useState(false);
+  const [serversAttempted, setServersAttempted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -59,17 +62,31 @@ export function CommandPalette() {
     };
   }, [user]);
 
-  // Load servers once when first opened.
+  // Load servers once when first opened (or after explicit retry).
   useEffect(() => {
-    if (open && servers.length === 0) {
-      api.client.servers().then(setServers).catch(() => {});
-    }
-    if (open) {
-      setQuery('');
-      setActive(0);
-      setTimeout(() => inputRef.current?.focus(), 30);
-    }
-  }, [open, servers.length]);
+    if (!open || serversAttempted || serversLoading) return;
+    setServersLoading(true);
+    api.client
+      .servers()
+      .then((list) => {
+        setServers(list);
+        setServersError('');
+      })
+      .catch((err) => {
+        setServersError(err instanceof Error ? err.message : 'Failed to load servers');
+      })
+      .finally(() => {
+        setServersLoading(false);
+        setServersAttempted(true);
+      });
+  }, [open, serversAttempted, serversLoading]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery('');
+    setActive(0);
+    setTimeout(() => inputRef.current?.focus(), 30);
+  }, [open]);
 
   const commands = useMemo<Command[]>(() => {
     const list: Command[] = [
@@ -148,16 +165,22 @@ export function CommandPalette() {
   let flatIndex = -1;
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center p-4 pt-[12vh]">
+    <div className="ds-modal-overlay items-start justify-center pt-[12vh]" role="presentation">
       <button
         type="button"
-        className="modal-overlay-enter absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 cursor-default"
         onClick={() => setOpen(false)}
         aria-label="Close command palette"
       />
-      <div className="modal-panel-enter relative w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]">
+      <div
+        className="ds-modal relative w-full max-w-xl overflow-hidden p-0"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-2.5 border-b border-[var(--border)] px-4 py-3">
-          <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+          <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden />
           <input
             ref={inputRef}
             value={query}
@@ -168,13 +191,32 @@ export function CommandPalette() {
             onKeyDown={onKeyDown}
             placeholder="Search servers and pages…"
             className="w-full bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+            aria-label="Search commands"
           />
           <kbd className="hidden rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted)] sm:block">
             ESC
           </kbd>
         </div>
         <div className="max-h-[55vh] overflow-y-auto p-2">
-          {filtered.length === 0 ? (
+          {serversError ? (
+            <div className="mb-2 rounded-lg border border-[var(--danger-border,var(--border))] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
+              Could not load servers: {serversError}
+              <button
+                type="button"
+                className="ml-2 underline"
+                onClick={() => {
+                  setServersError('');
+                  setServersAttempted(false);
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+          {serversLoading && servers.length === 0 ? (
+            <p className="px-3 py-4 text-center text-sm text-[var(--muted)]">Loading servers…</p>
+          ) : null}
+          {filtered.length === 0 && !serversLoading ? (
             <p className="px-3 py-8 text-center text-sm text-[var(--muted)]">No results found.</p>
           ) : (
             grouped.map(([group, items]) => (

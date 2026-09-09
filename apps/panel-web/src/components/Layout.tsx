@@ -33,6 +33,7 @@ import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
 import { AuthorAttribution } from './AuthorAttribution';
 import { InstallAppButton } from './InstallAppButton';
+import { RouteErrorBoundary } from './ErrorBoundary';
 
 export { SelectControl } from './SelectControl';
 
@@ -159,7 +160,7 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
         />
       }
     >
-      {children}
+      <RouteErrorBoundary fallbackTitle="This admin page failed to load">{children}</RouteErrorBoundary>
     </MobileShell>
   );
 }

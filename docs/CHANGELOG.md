@@ -17,6 +17,31 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.4.0] - 2026-09-09
+
+### Security
+
+- **Application API keys with `permissions: null` or empty scopes are denied** (no longer treated as full access).
+- **Password reset tokens are stored hashed** (SHA-256); plaintext tokens are never written to the DB.
+- **Secret encryption v2** uses a per-secret random salt; legacy fixed-salt ciphertext still decrypts.
+- **Login lockout keys by identity alone** (not IP+identity), so retries from different IPs still count.
+- **Production rate-limit store errors fail closed** (`skipOnError: false`).
+
+### Fixed
+
+- **Wings `/servers/reset` no longer forces mid-install / mid-restore servers to installed** — only clears live container cache state for those; install completion still comes from Wings webhooks.
+- **Browser latency probe hits Wings `/api/system`** instead of `/` (avoids expected document 404 noise).
+- **nginx CSP sync compares the full `add_header` CSP line**, not only an early `connect-src` match, so partial CSP drift is corrected on update.
+- **Settings dirty leave** uses in-app confirm + router blocker (not only `beforeunload`).
+- Remaining destructive actions use **ConfirmModal** instead of native `confirm()` (security settings, DB manager, file editor, tickets, allocations, marketplace, DB hosts).
+
+### Changed
+
+- Version compare lives in `@spirit/shared` (panel-web no longer duplicates it).
+- Removed unused `performance.ts` / `security.ts` web helpers.
+- ModalShell focus trap / Escape; CommandPalette uses `ds-modal`; nested `RouteErrorBoundary` on admin and server layouts; console mobile / accent polish.
+- Installer `SCRIPT_VERSION` → `2.0.6`.
+
 ## [1.3.3.0] - 2026-09-09
 
 ### Security

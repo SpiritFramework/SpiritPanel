@@ -438,11 +438,12 @@ export async function clientRoutes(app: FastifyInstance) {
     const port = server.defaultAllocation.port;
     const node = server.node;
     const scheme = node.scheme === 'https' ? 'https' : 'http';
-    // Probe the node edge from the user's browser (same location as the game host).
+    // Probe Wings /api/system from the user's browser (same location as the game host).
+    // Unauthenticated GETs typically 401 — quieter/clearer than a root document 404.
     // Behind a reverse proxy, public HTTPS/HTTP is on standard ports — not daemonListen.
     const probeUrl = node.behindProxy
-      ? `${scheme}://${node.fqdn}/`
-      : `${scheme}://${node.fqdn}:${node.daemonListen}/`;
+      ? `${scheme}://${node.fqdn}/api/system`
+      : `${scheme}://${node.fqdn}:${node.daemonListen}/api/system`;
 
     return {
       host,
