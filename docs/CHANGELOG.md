@@ -17,6 +17,16 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [Unreleased]
+
+### Added
+
+- **In-app alerts** for server owners and admins: CPU/memory/disk threshold rules (evaluated ~30s with the stats collector), admin node-offline rules, inbox at `/alerts` with unread bell. Discord delivery deferred.
+
+### Changed
+
+- **Historical trends redesign** (server + node analytics): synced crosshair, warn bands, refreshed chart chrome; node analytics adds disk pressure and a 2×2 grid.
+
 ## [1.3.4.2] - 2026-09-09
 
 ### Fixed
