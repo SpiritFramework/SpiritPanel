@@ -42,6 +42,8 @@ sudo bash /tmp/spirit.sh
 
 This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, clones the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
 
+The script version is printed under the banner (`Script Version: 2.0.0`). If you still see `1.0.0`, you are on an old cached copy — re-download `/tmp/spirit.sh` from `main`.
+
 **Point DNS at the server first.** Certbot validates over HTTP, so the domain has to resolve before you run it. If issuance fails the installer leaves the panel serving plain HTTP and tells you the command to retry — it does not leave nginx in a broken state.
 
 Unattended:

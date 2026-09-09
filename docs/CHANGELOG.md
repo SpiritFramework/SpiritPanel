@@ -17,6 +17,16 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.0.4] - 2026-09-09
+
+### Changed
+
+- **Installer rewritten from scratch (spirit.sh v2.0.0).** Same banner and menu, cleaner control flow. Fixes that are baked in rather than patched on:
+  - `.env` values with Windows CRLF no longer leave a trailing `"` on the database name (the `Incorrect database name 'spirit_panel"'` dump failure).
+  - pnpm is installed under `/usr/local` with `umask 022`, parent dirs are made traversable, and panel-user commands run via non-login bash with an explicit PATH — so a world-readable symlink that pointed into a mode-700 `node_modules` tree can no longer block updates.
+  - Confirm prompts always print on the real terminal; non-interactive runs need `-y`.
+  - Download-to-file bootstrap is the documented path (never `sudo bash <(curl …)`).
+
 ## [1.3.0.3] - 2026-09-08
 
 ### Fixed
