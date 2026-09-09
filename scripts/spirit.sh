@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.1"
+SCRIPT_VERSION="2.0.2"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -180,13 +180,22 @@ ask() {
 # Run a command as the panel user with a predictable environment.
 # Non-login bash avoids broken .profile / nologin shells. PATH keeps the
 # caller's entries (test stubs, distro tools) after our known prefixes.
+# Always cd out of /root first — pnpm walks cwd upward looking for a
+# workspace, and EACCES on scandir('/root') looks like "cannot run pnpm".
 PNPM_BIN=""
 as_app() {
-  local home path_dirs
+  local home path_dirs workdir
   home="$(app_home)"
   path_dirs="/usr/local/bin:/usr/bin:/bin"
   [[ -n "$PNPM_BIN" ]] && path_dirs="$(dirname "$PNPM_BIN"):${path_dirs}"
   path_dirs="${path_dirs}:${PATH}"
+  if [[ -n "$INSTALL_DIR" && -d "$INSTALL_DIR" ]]; then
+    workdir="$INSTALL_DIR"
+  elif [[ -n "$home" && -d "$home" ]]; then
+    workdir="$home"
+  else
+    workdir="/tmp"
+  fi
   runuser -u "$APP_USER" -- env \
     HOME="${home:-/home/${APP_USER}}" \
     USER="$APP_USER" \
@@ -195,7 +204,7 @@ as_app() {
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     COREPACK_HOME="${home:-/home/${APP_USER}}/.cache/node/corepack" \
     npm_config_cache="${home:-/home/${APP_USER}}/.npm" \
-    bash --noprofile --norc -c "$1"
+    bash --noprofile --norc -c "cd '${workdir}' && $1"
 }
 
 ensure_app_home() {
