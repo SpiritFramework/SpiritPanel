@@ -2,6 +2,7 @@ import { getConfig } from '../lib/env.js';
 import { prisma } from '../lib/prisma.js';
 import { probeNodeHealth } from '../lib/node-health.js';
 import { resyncNodeContainerStates } from '../services/node-resync.js';
+import { evaluateNodeOfflineAlerts } from '../services/alerts.js';
 import { logWingsFailure } from '../lib/wings-sync.js';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -16,7 +17,13 @@ async function probeAllNodes() {
     const wasOnline = lastOnlineByNodeId.get(node.id);
     lastOnlineByNodeId.set(node.id, probe.online);
 
-    if (wasOnline === false && probe.online) {
+    if (wasOnline === true && !probe.online) {
+      try {
+        await evaluateNodeOfflineAlerts(node);
+      } catch (err) {
+        logWingsFailure('node offline alert failed', err, { nodeId: node.id });
+      }
+    } else if (wasOnline === false && probe.online) {
       try {
         const result = await resyncNodeContainerStates(node.id);
         console.info(

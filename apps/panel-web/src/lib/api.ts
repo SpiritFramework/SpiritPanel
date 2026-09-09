@@ -307,6 +307,38 @@ export interface SshKeySummary {
   createdAt: string;
 }
 
+export type AlertMetric = 'cpu' | 'memory' | 'disk' | 'node_offline';
+
+export interface AlertRuleSummary {
+  id: string;
+  userId: string;
+  serverId: string | null;
+  nodeId: string | null;
+  metric: AlertMetric;
+  thresholdPct: number;
+  enabled: boolean;
+  cooldownSec: number;
+  lastFiredAt: string | null;
+  createdAt: string;
+  server: { id: string; name: string; uuidShort: string } | null;
+}
+
+export interface AlertEventSummary {
+  id: string;
+  ruleId: string | null;
+  userId: string;
+  serverId: string | null;
+  nodeId: string | null;
+  metric: AlertMetric;
+  severity: string;
+  title: string;
+  message: string;
+  valuePct: number | null;
+  readAt: string | null;
+  createdAt: string;
+  server: { id: string; name: string; uuidShort: string } | null;
+}
+
 export const api = {
   login: (identifier: string, password: string, turnstileToken?: string) =>
     request<LoginResult>('/auth/login', {
@@ -1251,6 +1283,38 @@ export const api = {
       }),
 
     ticketMeta: () => request<TicketMetaResponse>('/client/tickets/meta'),
+    alertsSummary: () => request<{ unread: number }>('/client/alerts/summary'),
+    alertEvents: (unreadOnly = false) =>
+      request<{ events: AlertEventSummary[] }>(
+        `/client/alerts/events${unreadOnly ? '?unreadOnly=1' : ''}`,
+      ),
+    markAlertRead: (id: string) =>
+      request<{ ok: boolean }>(`/client/alerts/events/${id}/read`, { method: 'POST' }),
+    markAllAlertsRead: () =>
+      request<{ ok: boolean }>('/client/alerts/events/read-all', { method: 'POST' }),
+    alertRules: () => request<{ rules: AlertRuleSummary[] }>('/client/alerts/rules'),
+    createAlertRule: (data: {
+      metric: AlertMetric;
+      serverId?: string | null;
+      nodeId?: string | null;
+      thresholdPct?: number;
+      cooldownSec?: number;
+      enabled?: boolean;
+    }) =>
+      request<AlertRuleSummary>('/client/alerts/rules', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    updateAlertRule: (
+      id: string,
+      data: { thresholdPct?: number; cooldownSec?: number; enabled?: boolean },
+    ) =>
+      request<AlertRuleSummary>(`/client/alerts/rules/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    deleteAlertRule: (id: string) =>
+      request<{ ok: boolean }>(`/client/alerts/rules/${id}`, { method: 'DELETE' }),
     tickets: (params?: { status?: 'open' | 'closed' | 'all' }) => {
       const qs = new URLSearchParams();
       if (params?.status) qs.set('status', params.status);

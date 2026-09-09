@@ -5,6 +5,7 @@ import {
   pruneAllStatSnapshots,
   recordStatSnapshot,
 } from '../services/server-stats.js';
+import { evaluateServerResourceAlerts, pruneOldAlertEvents } from '../services/alerts.js';
 import { pruneOldActivityLogs } from '../services/activity.js';
 import { logWingsFailure } from '../lib/wings-sync.js';
 
@@ -22,6 +23,11 @@ async function collectForServer(server: Awaited<ReturnType<typeof loadServers>>[
   const live = await fetchLiveStats(server);
   if (!live) return;
   await recordStatSnapshot(server.id, live);
+  try {
+    await evaluateServerResourceAlerts(server, live);
+  } catch (err) {
+    logWingsFailure('alert evaluation failed', err, { serverId: server.id });
+  }
 }
 
 async function loadServers() {
@@ -70,6 +76,9 @@ export function startStatsCollector() {
       if (!config.disableStatsCollector) {
         void pruneAllStatSnapshots().catch((err) => {
           console.error('[stats] Prune failed:', err instanceof Error ? err.message : err);
+        });
+        void pruneOldAlertEvents().catch((err) => {
+          console.error('[alerts] Prune failed:', err instanceof Error ? err.message : err);
         });
       }
     }, PRUNE_MS);

@@ -1,9 +1,31 @@
-import { useId, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { chartWindowForRange, formatChartTime } from '../lib/stats';
 
 export interface ChartPoint {
   x: string;
   y: number;
+}
+
+type ChartSyncValue = {
+  hoverMs: number | null;
+  setHoverMs: (ms: number | null) => void;
+};
+
+const ChartSyncContext = createContext<ChartSyncValue | null>(null);
+
+/** Sync crosshair time across sibling UsageCharts. */
+export function ChartSyncProvider({ children }: { children: ReactNode }) {
+  const [hoverMs, setHoverMs] = useState<number | null>(null);
+  const value = useMemo(() => ({ hoverMs, setHoverMs }), [hoverMs]);
+  return <ChartSyncContext.Provider value={value}>{children}</ChartSyncContext.Provider>;
 }
 
 interface UsageChartProps {
@@ -13,9 +35,13 @@ interface UsageChartProps {
   range: string;
   data: ChartPoint[];
   max?: number;
+  /** Draw a soft band from this value to yMax (e.g. warn zone). */
+  warnFrom?: number;
   valueUnit?: 'percent' | 'bytes' | 'rate' | 'raw';
   formatValue?: (value: number) => string;
   className?: string;
+  /** Participate in ChartSyncProvider crosshair. */
+  sync?: boolean;
 }
 
 export function UsageChart({
@@ -25,16 +51,20 @@ export function UsageChart({
   range,
   data,
   max,
+  warnFrom,
   valueUnit = 'raw',
   formatValue,
   className = '',
+  sync = false,
 }: UsageChartProps) {
   const gradientId = useId().replace(/:/g, '');
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const bandId = useId().replace(/:/g, '');
+  const [localHover, setLocalHover] = useState<number | null>(null);
+  const syncCtx = useContext(ChartSyncContext);
 
   const width = 640;
-  const height = 168;
-  const pad = { top: 12, right: 12, bottom: 28, left: 44 };
+  const height = 188;
+  const pad = { top: 14, right: 14, bottom: 30, left: 46 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -83,13 +113,53 @@ export function UsageChart({
     return { points, linePath, areaPath, yTicks, xTicks, yMax, latest, avg, peak };
   }, [data, innerH, innerW, max, pad.left, pad.top, window.endMs, window.startMs, range]);
 
+  const resolveHoverIndex = useCallback(
+    (clientX: number, rect: DOMRect) => {
+      if (!layout) return null;
+      const svgX = ((clientX - rect.left) / rect.width) * width;
+      let closest = 0;
+      let minDist = Infinity;
+      layout.points.forEach((p, i) => {
+        const dist = Math.abs(p.x - svgX);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      });
+      return closest;
+    },
+    [layout],
+  );
+
+  const hoverIndex = useMemo(() => {
+    if (!layout) return null;
+    if (sync && syncCtx?.hoverMs != null) {
+      let closest = 0;
+      let minDist = Infinity;
+      layout.points.forEach((p, i) => {
+        const dist = Math.abs(p.t - syncCtx.hoverMs!);
+        if (dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      });
+      return closest;
+    }
+    return localHover;
+  }, [layout, localHover, sync, syncCtx?.hoverMs]);
+
   if (!layout || data.length === 0) {
     return (
-      <div className={`rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4${className ? ` ${className}` : ''}`}>
-        <ChartHeader title={title} unit={unit} />
-        <div className="ds-srv-an-chart-empty">
-          <span>No usage data for this period yet.</span>
-          <span>Open the console or refresh — snapshots build over time.</span>
+      <div className={`ds-chart${className ? ` ${className}` : ''}`}>
+        <div className="ds-chart-head">
+          <div>
+            <p className="ds-chart-title">{title}</p>
+            <p className="ds-chart-unit">{unit}</p>
+          </div>
+        </div>
+        <div className="ds-chart-empty">
+          <span>No samples in this window</span>
+          <span>Snapshots appear while the server runs or the console is open.</span>
         </div>
       </div>
     );
@@ -98,67 +168,86 @@ export function UsageChart({
   const { points, linePath, areaPath, yTicks, xTicks, yMax, latest, avg, peak } = layout;
   const hover = hoverIndex !== null ? points[hoverIndex] : null;
   const headerValue = hover ? hover.value : latest;
-
-  function handlePointerMove(clientX: number, rect: DOMRect) {
-    const svgX = ((clientX - rect.left) / rect.width) * width;
-    let closest = 0;
-    let minDist = Infinity;
-    points.forEach((p, i) => {
-      const dist = Math.abs(p.x - svgX);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = i;
-      }
-    });
-    setHoverIndex(closest);
-  }
+  const warnY =
+    warnFrom != null && warnFrom > 0 && warnFrom < yMax
+      ? pad.top + innerH - (warnFrom / yMax) * innerH
+      : null;
 
   return (
-    <div className={`rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-4${className ? ` ${className}` : ''}`}>
-      <ChartHeader title={title} unit={unit} value={fmt(headerValue)} />
-      <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-[var(--muted)]">
-        <span>
-          Avg <strong className="font-mono text-[var(--text)]">{fmt(avg)}</strong>
-        </span>
-        <span>
-          Peak <strong className="font-mono text-[var(--text)]">{fmt(peak)}</strong>
-        </span>
-        {max !== undefined && (
-          <span>
-            Limit <strong className="font-mono text-[var(--text)]">{fmt(max)}</strong>
-          </span>
-        )}
+    <div className={`ds-chart${className ? ` ${className}` : ''}`}>
+      <div className="ds-chart-head">
+        <div className="min-w-0">
+          <p className="ds-chart-title">{title}</p>
+          <p className="ds-chart-unit">{unit}</p>
+        </div>
+        <p className="ds-chart-live" style={{ color }}>
+          {fmt(headerValue)}
+        </p>
       </div>
 
-      <div className="relative mt-2">
-        {hover && (
+      <div className="ds-chart-stats">
+        <span>
+          Avg <strong>{fmt(avg)}</strong>
+        </span>
+        <span>
+          Peak <strong>{fmt(peak)}</strong>
+        </span>
+        {max !== undefined ? (
+          <span>
+            Cap <strong>{fmt(max)}</strong>
+          </span>
+        ) : null}
+      </div>
+
+      <div className="ds-chart-plot">
+        {hover ? (
           <div
-            className="pointer-events-none absolute z-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-[10px] shadow-lg"
-            style={{
-              left: `${(hover.x / width) * 100}%`,
-              top: 0,
-              transform: 'translate(-50%, -110%)',
-            }}
+            className="ds-chart-tooltip"
+            style={{ left: `${(hover.x / width) * 100}%` }}
           >
-            <p className="font-medium text-[var(--text)]">{fmt(hover.value)}</p>
-            <p className="text-[var(--muted)]">{formatChartTime(hover.label, range)}</p>
+            <p className="ds-chart-tooltip-value">{fmt(hover.value)}</p>
+            <p className="ds-chart-tooltip-time">{formatChartTime(hover.label, range)}</p>
           </div>
-        )}
+        ) : null}
 
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full touch-none"
+          className="ds-chart-svg"
           preserveAspectRatio="none"
-          onMouseLeave={() => setHoverIndex(null)}
-          onMouseMove={(e) => handlePointerMove(e.clientX, e.currentTarget.getBoundingClientRect())}
+          onMouseLeave={() => {
+            setLocalHover(null);
+            if (sync) syncCtx?.setHoverMs(null);
+          }}
+          onMouseMove={(e) => {
+            const idx = resolveHoverIndex(e.clientX, e.currentTarget.getBoundingClientRect());
+            if (idx == null) return;
+            setLocalHover(idx);
+            if (sync && layout.points[idx]) syncCtx?.setHoverMs(layout.points[idx].t);
+          }}
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.42" />
-              <stop offset="55%" stopColor={color} stopOpacity="0.12" />
+              <stop offset="0%" stopColor={color} stopOpacity="0.38" />
+              <stop offset="55%" stopColor={color} stopOpacity="0.1" />
               <stop offset="100%" stopColor={color} stopOpacity="0.01" />
             </linearGradient>
+            {warnY != null ? (
+              <linearGradient id={bandId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.16" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+              </linearGradient>
+            ) : null}
           </defs>
+
+          {warnY != null ? (
+            <rect
+              x={pad.left}
+              y={pad.top}
+              width={innerW}
+              height={Math.max(0, warnY - pad.top)}
+              fill={`url(#${bandId})`}
+            />
+          ) : null}
 
           {yTicks.map((tick) => (
             <g key={tick.pct}>
@@ -169,8 +258,8 @@ export function UsageChart({
                 y2={tick.y}
                 stroke="var(--border)"
                 strokeWidth="1"
-                strokeDasharray="3 4"
-                opacity="0.55"
+                strokeDasharray="3 5"
+                opacity="0.5"
               />
               <text x={pad.left - 6} y={tick.y + 3} textAnchor="end" fill="var(--muted)" fontSize="9">
                 {fmt(tick.value)}
@@ -178,23 +267,31 @@ export function UsageChart({
             </g>
           ))}
 
-          {max !== undefined && max <= yMax && (
+          {max !== undefined && max <= yMax ? (
             <line
               x1={pad.left}
               x2={width - pad.right}
               y1={pad.top + innerH - (max / yMax) * innerH}
               y2={pad.top + innerH - (max / yMax) * innerH}
               stroke={color}
-              strokeWidth="1"
-              strokeDasharray="6 4"
-              opacity="0.45"
+              strokeWidth="1.25"
+              strokeDasharray="5 4"
+              opacity="0.55"
             />
-          )}
+          ) : null}
 
           <path d={areaPath} fill={`url(#${gradientId})`} />
-          <path d={linePath} fill="none" stroke={color} strokeWidth="2.25" vectorEffect="non-scaling-stroke" />
+          <path
+            d={linePath}
+            fill="none"
+            stroke={color}
+            strokeWidth="2.35"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
 
-          {hover && (
+          {hover ? (
             <>
               <line
                 x1={hover.x}
@@ -202,12 +299,12 @@ export function UsageChart({
                 y1={pad.top}
                 y2={pad.top + innerH}
                 stroke={color}
-                strokeWidth="1"
-                opacity="0.35"
+                strokeWidth="1.25"
+                opacity="0.4"
               />
-              <circle cx={hover.x} cy={hover.y} r="4" fill="var(--surface)" stroke={color} strokeWidth="2" />
+              <circle cx={hover.x} cy={hover.y} r="4.5" fill="var(--surface)" stroke={color} strokeWidth="2" />
             </>
-          )}
+          ) : null}
 
           {xTicks.map((tick, i) => (
             <text key={i} x={tick.x} y={height - 6} textAnchor="middle" fill="var(--muted)" fontSize="9">
@@ -216,69 +313,6 @@ export function UsageChart({
           ))}
         </svg>
       </div>
-    </div>
-  );
-}
-
-function ChartHeader({ title, unit, value }: { title: string; unit: string; value?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <div>
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <p className="text-[11px] text-[var(--muted)]">{unit}</p>
-      </div>
-      {value !== undefined && (
-        <span className="font-mono text-sm font-semibold accent-text">{value}</span>
-      )}
-    </div>
-  );
-}
-
-export function UsageMeter({
-  label,
-  value,
-  limit,
-  unit,
-  limitLabel,
-  color,
-}: {
-  label: string;
-  value: number;
-  limit: number;
-  unit: string;
-  limitLabel: string;
-  color: string;
-}) {
-  const unlimited = limit <= 0;
-  const pct = unlimited ? 0 : Math.min(100, (value / limit) * 100);
-
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/50 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-[var(--muted)]">{label}</span>
-        <span className="font-mono text-sm font-semibold">{unit}</span>
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--border)]/80">
-        {unlimited ? (
-          <div className="h-full w-full rounded-full opacity-20" style={{ background: color }} />
-        ) : (
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: color }}
-          />
-        )}
-      </div>
-      <p className="mt-1.5 text-[10px] text-[var(--muted)]">
-        {unlimited ? (
-          limitLabel
-        ) : (
-          <>
-            <span className="font-mono text-[var(--text)]">{pct.toFixed(1)}%</span>
-            {' · '}
-            {limitLabel}
-          </>
-        )}
-      </p>
     </div>
   );
 }

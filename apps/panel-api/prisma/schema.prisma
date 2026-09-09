@@ -63,6 +63,8 @@ model User {
   ticketsCreated          SupportTicket[] @relation("TicketCreator")
   ticketsAssigned         SupportTicket[] @relation("TicketAssignee")
   ticketMessages          TicketMessage[]
+  alertRules              AlertRule[]
+  alertEvents             AlertEvent[]
 
   @@map("users")
 }
@@ -273,6 +275,8 @@ model Server {
   minecraftModrinthInstalls MinecraftModrinthInstall[]
   supportTickets            SupportTicket[]
   domain           ServerDomain?
+  alertRules       AlertRule[]
+  alertEvents      AlertEvent[]
 
   @@index([ownerId])
   @@index([nodeId])
@@ -430,6 +434,63 @@ model ServerStatSnapshot {
 
   @@index([serverId, recordedAt])
   @@map("server_stat_snapshots")
+}
+
+/// Resource / node threshold rules. Discord delivery comes later.
+enum AlertMetric {
+  cpu
+  memory
+  disk
+  node_offline
+}
+
+model AlertRule {
+  id             String      @id @default(cuid())
+  userId         String      @map("user_id")
+  /// Null for panel-wide admin rules (e.g. any node offline).
+  serverId       String?     @map("server_id")
+  /// Optional node scope for node_offline rules.
+  nodeId         String?     @map("node_id")
+  metric         AlertMetric
+  /// Percent 1–100 for cpu/memory/disk. Ignored for node_offline.
+  thresholdPct   Int         @default(90) @map("threshold_pct")
+  enabled        Boolean     @default(true)
+  cooldownSec    Int         @default(900) @map("cooldown_sec")
+  lastFiredAt    DateTime?   @map("last_fired_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  events AlertEvent[]
+
+  @@index([userId, enabled])
+  @@index([serverId, enabled])
+  @@index([metric, enabled])
+  @@map("alert_rules")
+}
+
+model AlertEvent {
+  id         String    @id @default(cuid())
+  ruleId     String?   @map("rule_id")
+  userId     String    @map("user_id")
+  serverId   String?   @map("server_id")
+  nodeId     String?   @map("node_id")
+  metric     AlertMetric
+  severity   String    @default("warning")
+  title      String
+  message    String    @db.Text
+  valuePct   Float?    @map("value_pct")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  rule   AlertRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server Server?    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+  @@map("alert_events")
 }
 
 model ServerVariable {

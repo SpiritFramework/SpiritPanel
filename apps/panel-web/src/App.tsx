@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default:
 const SignupPage = lazy(() => import('./pages/SignupPage').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
+const AlertsPage = lazy(() => import('./pages/client/Alerts').then((m) => ({ default: m.AlertsPage })));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminUsers = lazy(() => import('./pages/admin/Users').then((m) => ({ default: m.AdminUsers })));
 const AdminUserDetail = lazy(() => import('./pages/admin/UserDetail').then((m) => ({ default: m.AdminUserDetail })));
@@ -104,6 +105,7 @@ function PanelRouter() {
             <Route element={<RequireAuth />}>
               <Route path="/servers" element={<ServerListPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/tickets" element={<TicketsPage />} />
               <Route path="/tickets/:id" element={<TicketDetailPage />} />
               <Route path="/servers/:id" element={<ServerShell />}>

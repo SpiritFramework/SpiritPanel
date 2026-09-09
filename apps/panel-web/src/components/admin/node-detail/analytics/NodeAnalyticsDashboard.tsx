@@ -20,7 +20,7 @@ import { formatActivityTime } from '../../../../lib/activity';
 import { usageTone } from '../../../../lib/node-capacity';
 import { formatBytes } from '../../../../lib/stats';
 import { formatResource, formatResourceAmount } from '../../../../lib/server-theme';
-import { UsageChart } from '../../../UsageChart';
+import { ChartSyncProvider, UsageChart } from '../../../UsageChart';
 import { AdminServerStatusBadge } from '../../AdminServerStatus';
 import { Button } from '../../../Layout';
 import { NodeOverviewSection } from '../NodeDetailShell';
@@ -79,6 +79,14 @@ export function NodeAnalyticsDashboard({ nodeId }: { nodeId: string }) {
     () => (stats?.series ?? []).map((p) => ({ x: p.recordedAt, y: p.runningCount })),
     [stats?.series],
   );
+  const diskData = useMemo(() => {
+    if (!stats) return [];
+    const limit = stats.capacity.effectiveDiskLimit;
+    return stats.series.map((p) => ({
+      x: p.recordedAt,
+      y: limit > 0 ? Math.min(100, (p.diskBytes / (limit * 1024 * 1024)) * 100) : 0,
+    }));
+  }, [stats]);
 
   const activeRange = RANGES.find((r) => r.id === range) ?? RANGES[1];
 
@@ -210,44 +218,68 @@ export function NodeAnalyticsDashboard({ nodeId }: { nodeId: string }) {
             badge={stats.series.length > 0 ? `${stats.series.length} points` : undefined}
           >
             {stats.series.length > 0 ? (
-              <div className="ds-nd-an-charts">
-                <div className="ds-nd-an-chart">
-                  <UsageChart
-                    title="Combined CPU"
-                    unit="Sum of server CPU limits in use"
-                    color="#818cf8"
-                    range={range}
-                    data={cpuData}
-                    formatValue={(v) => `${v.toFixed(1)}%`}
-                  />
+              <ChartSyncProvider>
+                <div className="ds-nd-an-charts">
+                  <div className="ds-nd-an-chart">
+                    <UsageChart
+                      title="Combined CPU"
+                      unit="Sum of server CPU in use"
+                      color="var(--accent)"
+                      range={range}
+                      data={cpuData}
+                      formatValue={(v) => `${v.toFixed(1)}%`}
+                      sync
+                    />
+                  </div>
+                  <div className="ds-nd-an-chart">
+                    <UsageChart
+                      title="Memory pressure"
+                      unit={
+                        capacity.effectiveMemoryLimit > 0
+                          ? `vs ${formatResource(capacity.effectiveMemoryLimit, 'MiB')} node limit`
+                          : 'Live RAM trend'
+                      }
+                      color="#34d399"
+                      range={range}
+                      data={memoryData}
+                      max={100}
+                      warnFrom={80}
+                      valueUnit="percent"
+                      formatValue={(v) => `${v.toFixed(1)}%`}
+                      sync
+                    />
+                  </div>
+                  <div className="ds-nd-an-chart">
+                    <UsageChart
+                      title="Disk pressure"
+                      unit={
+                        capacity.effectiveDiskLimit > 0
+                          ? `vs ${formatResource(capacity.effectiveDiskLimit, 'MiB')} node limit`
+                          : 'Live disk trend'
+                      }
+                      color="#fbbf24"
+                      range={range}
+                      data={diskData}
+                      max={capacity.effectiveDiskLimit > 0 ? 100 : undefined}
+                      warnFrom={capacity.effectiveDiskLimit > 0 ? 80 : undefined}
+                      valueUnit="percent"
+                      formatValue={(v) => `${v.toFixed(1)}%`}
+                      sync
+                    />
+                  </div>
+                  <div className="ds-nd-an-chart">
+                    <UsageChart
+                      title="Running servers"
+                      unit="Containers running or starting"
+                      color="#38bdf8"
+                      range={range}
+                      data={runningData}
+                      formatValue={(v) => String(Math.round(v))}
+                      sync
+                    />
+                  </div>
                 </div>
-                <div className="ds-nd-an-chart">
-                  <UsageChart
-                    title="Memory pressure"
-                    unit={
-                      capacity.effectiveMemoryLimit > 0
-                        ? `vs ${formatResource(capacity.effectiveMemoryLimit, 'MiB')} node limit`
-                        : 'Live RAM trend'
-                    }
-                    color="#34d399"
-                    range={range}
-                    data={memoryData}
-                    max={100}
-                    valueUnit="percent"
-                    formatValue={(v) => `${v.toFixed(1)}%`}
-                  />
-                </div>
-                <div className="ds-nd-an-chart ds-nd-an-chart--wide">
-                  <UsageChart
-                    title="Running servers"
-                    unit="Containers reporting running or starting"
-                    color="#38bdf8"
-                    range={range}
-                    data={runningData}
-                    formatValue={(v) => String(Math.round(v))}
-                  />
-                </div>
-              </div>
+              </ChartSyncProvider>
             ) : (
               <div className="ds-nd-an-empty">
                 <Activity className="h-5 w-5 opacity-50" aria-hidden />

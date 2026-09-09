@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
+  Bell,
   Egg,
   LayoutDashboard,
   LogOut,
@@ -33,6 +34,7 @@ import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
 import { AuthorAttribution } from './AuthorAttribution';
 import { InstallAppButton } from './InstallAppButton';
+import { AlertBell } from './AlertBell';
 import { RouteErrorBoundary } from './ErrorBoundary';
 
 export { SelectControl } from './SelectControl';
@@ -58,6 +60,7 @@ const adminGroups = [
     links: [
       { to: '/admin', label: 'Dashboard', description: 'Health & capacity', icon: LayoutDashboard, exact: true },
       { to: '/admin/activity', label: 'Activity', description: 'Audit trail', icon: Activity },
+      { to: '/alerts', label: 'Alerts', description: 'Threshold inbox', icon: Bell },
       { to: '/admin/tickets', label: 'Support', description: 'User tickets', icon: LifeBuoy },
       { to: '/admin/announce', label: 'Announce', description: 'User messages', icon: Megaphone },
     ],
@@ -84,6 +87,7 @@ const adminGroups = [
 
 const clientLinks = [
   { to: '/servers', label: 'My servers', icon: Server },
+  { to: '/alerts', label: 'Alerts', icon: Bell },
 ];
 
 export function AdminLayout({ children, fillHeight }: { children: ReactNode; fillHeight?: boolean }) {
@@ -124,9 +128,12 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
       </nav>
 
       <div className="border-t border-[var(--border)] p-2">
-        <div className="mb-2 flex items-center justify-between px-1">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
-          <ThemeToggle compact />
+          <div className="flex items-center gap-1.5">
+            <AlertBell />
+            <ThemeToggle compact />
+          </div>
         </div>
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
         <InstallAppButton />
@@ -200,9 +207,12 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
       </nav>
 
       <div className="border-t border-[var(--border)] p-2">
-        <div className="mb-2 flex items-center justify-between px-1">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
-          <ThemeToggle compact />
+          <div className="flex items-center gap-1.5">
+            <AlertBell />
+            <ThemeToggle compact />
+          </div>
         </div>
         {user && (
           <Link

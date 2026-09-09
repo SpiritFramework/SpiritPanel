@@ -32,6 +32,7 @@ import { minecraftPluginRoutes } from './routes/minecraft-plugins.js';
 
 import { clientTicketRoutes, adminTicketRoutes } from './routes/tickets.js';
 import { clientPluginRoutes, adminPluginRoutes } from './routes/plugins.js';
+import { alertRoutes, adminAlertRoutes } from './routes/alerts.js';
 import { databaseManagerRoutes } from './plugins/database-manager/index.js';
 import { ensureBuiltinPlugins } from './plugins/manager.js';
 
@@ -228,6 +229,10 @@ await app.register(clientPluginRoutes, { prefix: '/api/client' });
 await app.register(adminPluginRoutes, { prefix: '/api/admin' });
 
 await app.register(clientTicketRoutes, { prefix: '/api/client' });
+
+await app.register(alertRoutes, { prefix: '/api/client' });
+
+await app.register(adminAlertRoutes, { prefix: '/api/admin' });
 
 await app.register(adminDatabaseRoutes, { prefix: '/api/admin' });
 

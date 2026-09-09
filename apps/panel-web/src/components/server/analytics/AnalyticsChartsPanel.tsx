@@ -1,5 +1,5 @@
 import { Activity, BarChart3, Clock, Cpu, Database, Gauge, HardDrive, MemoryStick, TrendingUp, type LucideIcon } from 'lucide-react';
-import { UsageChart } from '../../UsageChart';
+import { ChartSyncProvider, UsageChart } from '../../UsageChart';
 import { formatBytes, formatNetworkRate } from '../../../lib/stats';
 import { formatResource } from '../../../lib/server-theme';
 import type { ChartPoint } from '../../UsageChart';
@@ -78,63 +78,72 @@ export function AnalyticsChartsPanel({
 
         <div className="ds-srv-an-panel-body">
           {hasCharts ? (
-            <div className="ds-srv-an-charts">
-              <div className="ds-srv-an-chart">
-                <UsageChart
-                  className="ds-srv-an-chart-inner"
-                  title="CPU usage"
-                  unit={limits.cpu > 0 ? `Limit ${limits.cpu}%` : 'Processor load'}
-                  color="var(--accent)"
-                  range={range}
-                  data={cpuData}
-                  max={limits.cpu > 0 ? limits.cpu : undefined}
-                  valueUnit="percent"
-                  formatValue={(v) => `${v.toFixed(1)}%`}
-                />
+            <ChartSyncProvider>
+              <div className="ds-srv-an-charts">
+                <div className="ds-srv-an-chart">
+                  <UsageChart
+                    className="ds-srv-an-chart-inner"
+                    title="CPU usage"
+                    unit={limits.cpu > 0 ? `Limit ${limits.cpu}%` : 'Processor load'}
+                    color="var(--accent)"
+                    range={range}
+                    data={cpuData}
+                    max={limits.cpu > 0 ? limits.cpu : undefined}
+                    warnFrom={limits.cpu > 0 ? limits.cpu * 0.8 : undefined}
+                    valueUnit="percent"
+                    formatValue={(v) => `${v.toFixed(1)}%`}
+                    sync
+                  />
+                </div>
+                <div className="ds-srv-an-chart">
+                  <UsageChart
+                    className="ds-srv-an-chart-inner"
+                    title="Memory pressure"
+                    unit={memoryLimitBytes > 0 ? `Limit ${formatResource(limits.memory, 'MiB')}` : 'RAM allocated'}
+                    color="#34d399"
+                    range={range}
+                    data={memoryData}
+                    max={memoryLimitBytes > 0 ? 100 : undefined}
+                    warnFrom={memoryLimitBytes > 0 ? 80 : undefined}
+                    valueUnit={memoryLimitBytes > 0 ? 'percent' : 'bytes'}
+                    formatValue={memoryLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
+                    sync
+                  />
+                </div>
+                <div className="ds-srv-an-chart">
+                  <UsageChart
+                    className="ds-srv-an-chart-inner"
+                    title="Disk footprint"
+                    unit={
+                      diskLimitBytes > 0
+                        ? `Limit ${formatResource(limits.disk, 'MiB')} (files + backups)`
+                        : 'Storage used'
+                    }
+                    color="#fbbf24"
+                    range={range}
+                    data={diskData}
+                    max={diskLimitBytes > 0 ? 100 : undefined}
+                    warnFrom={diskLimitBytes > 0 ? 80 : undefined}
+                    valueUnit={diskLimitBytes > 0 ? 'percent' : 'bytes'}
+                    formatValue={diskLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
+                    sync
+                  />
+                </div>
+                <div className="ds-srv-an-chart">
+                  <UsageChart
+                    className="ds-srv-an-chart-inner"
+                    title="Network throughput"
+                    unit="Combined RX + TX rate"
+                    color="#38bdf8"
+                    range={range}
+                    data={networkData}
+                    valueUnit="rate"
+                    formatValue={formatNetworkRate}
+                    sync
+                  />
+                </div>
               </div>
-              <div className="ds-srv-an-chart">
-                <UsageChart
-                  className="ds-srv-an-chart-inner"
-                  title="Memory pressure"
-                  unit={memoryLimitBytes > 0 ? `Limit ${formatResource(limits.memory, 'MiB')}` : 'RAM allocated'}
-                  color="#34d399"
-                  range={range}
-                  data={memoryData}
-                  max={memoryLimitBytes > 0 ? 100 : undefined}
-                  valueUnit={memoryLimitBytes > 0 ? 'percent' : 'bytes'}
-                  formatValue={memoryLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
-                />
-              </div>
-              <div className="ds-srv-an-chart">
-                <UsageChart
-                  className="ds-srv-an-chart-inner"
-                  title="Disk footprint"
-                  unit={
-                    diskLimitBytes > 0
-                      ? `Limit ${formatResource(limits.disk, 'MiB')} (files + backups)`
-                      : 'Storage used'
-                  }
-                  color="#fbbf24"
-                  range={range}
-                  data={diskData}
-                  max={diskLimitBytes > 0 ? 100 : undefined}
-                  valueUnit={diskLimitBytes > 0 ? 'percent' : 'bytes'}
-                  formatValue={diskLimitBytes > 0 ? (v) => `${v.toFixed(1)}%` : formatBytes}
-                />
-              </div>
-              <div className="ds-srv-an-chart">
-                <UsageChart
-                  className="ds-srv-an-chart-inner"
-                  title="Network throughput"
-                  unit="Combined RX + TX rate"
-                  color="#38bdf8"
-                  range={range}
-                  data={networkData}
-                  valueUnit="rate"
-                  formatValue={formatNetworkRate}
-                />
-              </div>
-            </div>
+            </ChartSyncProvider>
           ) : (
             <div className="ds-srv-an-empty">
               <Activity className="h-5 w-5 opacity-50" aria-hidden />
