@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useBlocker, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   Globe,
@@ -252,17 +252,8 @@ export function AdminSettings() {
     applyTab(next);
   }
 
-  const navBlocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasChanges && currentLocation.pathname !== nextLocation.pathname,
-  );
-
-  useEffect(() => {
-    if (navBlocker.state !== 'blocked') return;
-    setPendingTab(null);
-    setLeaveConfirmOpen(true);
-  }, [navBlocker.state]);
-
+  // Note: useBlocker requires createBrowserRouter; this app uses BrowserRouter.
+  // Tab switches are guarded above; full route leaves use beforeunload only.
   useEffect(() => {
     if (!hasChanges) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -276,20 +267,14 @@ export function AdminSettings() {
   function discardPendingLeave() {
     setLeaveConfirmOpen(false);
     setPendingTab(null);
-    if (navBlocker.state === 'blocked') navBlocker.reset();
   }
 
   function confirmPendingLeave() {
     const nextTab = pendingTab;
-    const shouldProceedNav = navBlocker.state === 'blocked';
     setLeaveConfirmOpen(false);
     setPendingTab(null);
     resetForm();
-    if (nextTab) {
-      applyTab(nextTab);
-      return;
-    }
-    if (shouldProceedNav) navBlocker.proceed();
+    if (nextTab) applyTab(nextTab);
   }
 
   async function save() {
