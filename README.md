@@ -2,13 +2,13 @@
 
 Spirit-Panel is a self-hosted game server control panel built by **SpiritFramework**.
 
-It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons running on separate game nodes.
+It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons, whether those run on dedicated game nodes or on the panel machine itself.
 
 📚 FeatherWings Documentation: https://docs.mythical.systems/docs/featherpanel/wings
 
 📚 Spirit-Panel Documentation: https://framework.spirithost.co.uk/docs?script=spirit-panel
 
-> ⚠️ The panel runs only the control panel (web + API). Game servers are never hosted on the panel machine. All Docker workloads are executed on FeatherWings nodes.
+> **Deployment note.** The panel itself never executes game workloads — every game server runs in a Docker container managed by FeatherWings, never by `panel-api`. That is a split of responsibility, not a requirement for separate hardware: FeatherWings is fully supported on the same machine as the panel, which is what the `location /wings/` block in `deploy/nginx/spirit-panel.conf` is for. Both topologies are covered in [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
 ---
 
@@ -76,7 +76,14 @@ Internet → Nginx (HTTPS)
 | `apps/panel-web` | React (Vite) frontend          |
 | MariaDB          | Primary database               |
 | Redis            | Queue / scheduler system       |
-| FeatherWings     | Game server daemon on nodes    |
+| FeatherWings     | Game server daemon — local, remote, or both |
+
+The arrow to FeatherWings is a network hop, not a machine boundary. Two topologies are supported:
+
+- **Single box.** Panel and FeatherWings on one server. The node points at `127.0.0.1:8080`, and nginx proxies the console WebSocket through `location /wings/` so an HTTPS panel is not blocked talking to a plaintext local daemon.
+- **Separate nodes.** FeatherWings on its own hardware with TLS on the node's own FQDN, and the node's scheme set to `https`.
+
+They mix freely — a panel can drive a local daemon and remote ones at the same time.
 
 > ⚠️ `API_URL` in `.env` must match `remote:` in FeatherWings config exactly (HTTPS, no trailing slash).
 

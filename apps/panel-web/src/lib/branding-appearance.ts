@@ -40,7 +40,12 @@ export type LoginBackground =
   | 'fog'
   | 'circuit'
   | 'dawn'
-  | 'void';
+  | 'void'
+  | 'nebula'
+  | 'meteor'
+  | 'tide'
+  | 'pulse'
+  | 'shear';
 
 export type PanelBackground =
   | 'gradient'
@@ -60,7 +65,12 @@ export type PanelBackground =
   | 'fog'
   | 'circuit'
   | 'dawn'
-  | 'halo';
+  | 'halo'
+  | 'nebula'
+  | 'meteor'
+  | 'tide'
+  | 'pulse'
+  | 'shear';
 
 export type ServerCardLayoutStyle =
   | 'banner'
@@ -113,8 +123,8 @@ export interface BrandingAppearance {
 export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
   themePreset: 'default',
   defaultThemeMode: 'dark',
-  loginBackground: 'gradient',
-  panelBackground: 'gradient',
+  loginBackground: 'nebula',
+  panelBackground: 'nebula',
   panelAmbient: true,
   serverCardStyle: 'glass',
   adminSidebarStyle: 'rail',
@@ -133,11 +143,11 @@ export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
 const THEME_PRESET_IDS = ['default', ...Object.keys(THEME_PALETTES)] as ThemePreset[];
 const LOGIN_BG_IDS: LoginBackground[] = [
   'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
 ];
 const PANEL_BG_IDS: PanelBackground[] = [
   'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
 ];
 const SERVER_CARD_LAYOUT_IDS: ServerCardLayoutStyle[] = [
   'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
@@ -176,12 +186,14 @@ export const DEFAULT_THEME_MODE_OPTIONS: { id: DefaultThemeMode; label: string; 
 ];
 
 export const LOGIN_BACKGROUND_OPTIONS: { id: LoginBackground; label: string; description: string }[] = [
-  { id: 'gradient', label: 'Gradient', description: 'Deep brand wash with drifting color bloom' },
+  { id: 'nebula', label: 'Nebula', description: 'Deep space clouds with drifting color blooms' },
+  { id: 'aurora', label: 'Aurora', description: 'Ribboned northern-lights bands' },
+  { id: 'meteor', label: 'Meteor', description: 'Streaking light trails across the dark' },
+  { id: 'tide', label: 'Tide', description: 'Rolling luminous swells along the base' },
+  { id: 'pulse', label: 'Pulse', description: 'Breathing radial heartbeats of accent light' },
+  { id: 'shear', label: 'Shear', description: 'Sliding diagonal light planes' },
   { id: 'orbs', label: 'Orbs', description: 'Layered floating glow spheres' },
   { id: 'mesh', label: 'Mesh', description: 'Soft morphing color fields' },
-  { id: 'aurora', label: 'Aurora', description: 'Ribboned northern-lights bands' },
-  { id: 'horizon', label: 'Horizon', description: 'Glowing skyline wash along the base' },
-  { id: 'dawn', label: 'Dawn', description: 'Soft rising light from the bottom edge' },
   { id: 'waves', label: 'Waves', description: 'Flowing gradient swells' },
   { id: 'stars', label: 'Stars', description: 'Dense twinkling star field' },
   { id: 'ember', label: 'Ember', description: 'Warm rising spark particles' },
@@ -190,15 +202,20 @@ export const LOGIN_BACKGROUND_OPTIONS: { id: LoginBackground; label: string; des
   { id: 'ripple', label: 'Ripple', description: 'Pulsing concentric rings' },
   { id: 'prism', label: 'Prism', description: 'Chromatic shards of light' },
   { id: 'fog', label: 'Fog', description: 'Soft mist layers across the panel' },
-  { id: 'circuit', label: 'Circuit', description: 'Tech grid with accent nodes' },
+  { id: 'horizon', label: 'Horizon', description: 'Glowing skyline wash along the base' },
+  { id: 'dawn', label: 'Dawn', description: 'Soft rising light from the bottom edge' },
+  { id: 'circuit', label: 'Circuit', description: 'Tech grid with pulsing nodes' },
+  { id: 'gradient', label: 'Gradient', description: 'Deep brand wash with drifting color bloom' },
   { id: 'grid', label: 'Grid', description: 'Animated dot lattice' },
-  { id: 'void', label: 'Void', description: 'Near-black with sparse accent points' },
-  { id: 'minimal', label: 'Minimal', description: 'Flat dark with a thin accent strip' },
 ];
 
 export const PANEL_BACKGROUND_OPTIONS: { id: PanelBackground; label: string; description: string }[] = [
-  { id: 'gradient', label: 'Gradient glow', description: 'Accent radials across the page' },
+  { id: 'nebula', label: 'Nebula', description: 'Drifting cosmic color clouds' },
   { id: 'aurora', label: 'Aurora', description: 'Soft shifting color bands' },
+  { id: 'meteor', label: 'Meteor', description: 'Quiet streaking light trails' },
+  { id: 'tide', label: 'Tide', description: 'Low rolling light along the edge' },
+  { id: 'pulse', label: 'Pulse', description: 'Centered breathing accent bloom' },
+  { id: 'shear', label: 'Shear', description: 'Sliding diagonal light planes' },
   { id: 'horizon', label: 'Horizon', description: 'Low glow along the bottom edge' },
   { id: 'dawn', label: 'Dawn', description: 'Gentle rising wash from below' },
   { id: 'halo', label: 'Halo', description: 'Centered soft accent bloom' },
@@ -212,8 +229,8 @@ export const PANEL_BACKGROUND_OPTIONS: { id: PanelBackground; label: string; des
   { id: 'shimmer', label: 'Shimmer', description: 'Diagonal light sweep' },
   { id: 'prism', label: 'Prism', description: 'Diagonal spectral bands' },
   { id: 'circuit', label: 'Circuit', description: 'Faint tech grid + nodes' },
+  { id: 'gradient', label: 'Gradient glow', description: 'Accent radials across the page' },
   { id: 'grid', label: 'Grid', description: 'Faint geometric pattern' },
-  { id: 'subtle', label: 'Subtle', description: 'Very light accent wash' },
   { id: 'none', label: 'None', description: 'Solid background only' },
 ];
 

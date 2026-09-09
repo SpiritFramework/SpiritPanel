@@ -689,7 +689,11 @@
 .panel-bg-aurora::after,
 .panel-bg-waves::before,
 .panel-bg-mesh::after,
-.panel-bg-shimmer::after {
+.panel-bg-shimmer::after,
+.panel-bg-nebula::after,
+.panel-bg-tide::before,
+.panel-bg-pulse::before,
+.panel-bg-shear::after {
   opacity: 0.72;
 }
 

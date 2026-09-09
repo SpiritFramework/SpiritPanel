@@ -38,11 +38,11 @@ const themePreset = z.enum([
 const defaultThemeMode = z.enum(['system', 'light', 'dark']);
 const loginBackground = z.enum([
   'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
 ]);
 const panelBackground = z.enum([
   'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo',
+  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
 ]);
 const serverCardStyle = z.enum([
   'auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
@@ -286,10 +286,12 @@ export interface BrandingSettings {
   defaultThemeMode?: 'system' | 'light' | 'dark';
   loginBackground?: 'gradient' | 'orbs' | 'mesh' | 'grid' | 'aurora' | 'minimal'
     | 'waves' | 'stars' | 'beams' | 'ripple' | 'prism' | 'spotlight'
-    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'void';
+    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'void'
+    | 'nebula' | 'meteor' | 'tide' | 'pulse' | 'shear';
   panelBackground?: 'gradient' | 'subtle' | 'grid' | 'orbs' | 'none'
     | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer' | 'bokeh' | 'prism'
-    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'halo';
+    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'halo'
+    | 'nebula' | 'meteor' | 'tide' | 'pulse' | 'shear';
   panelAmbient?: boolean;
   serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked'
     | 'poster' | 'split' | 'outline' | 'tile';
@@ -377,8 +379,8 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   loginMessage: 'Sign in to manage your game servers',
   themePreset: 'default',
   defaultThemeMode: 'dark',
-  loginBackground: 'gradient',
-  panelBackground: 'gradient',
+  loginBackground: 'nebula',
+  panelBackground: 'nebula',
   panelAmbient: true,
   serverCardStyle: 'glass',
   adminSidebarStyle: 'rail',

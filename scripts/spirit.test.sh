@@ -267,6 +267,24 @@ EOF
 exit 0
 EOF
 
+  _stub df <<'EOF'
+# require_disk_space reads column 4 of line 2 (available) and column 6 of the
+# -Ph form (mount point).
+if [[ "${SPIRIT_TEST_LOW_DISK:-0}" == "1" ]]; then
+  echo "Filesystem 1M-blocks Used Available Use% Mounted-on"
+  echo "/dev/sda1 100000 99900 120 100% /"
+else
+  echo "Filesystem 1M-blocks Used Available Use% Mounted-on"
+  echo "/dev/sda1 100000 20000 80000 20% /"
+fi
+exit 0
+EOF
+
+  _stub flock <<'EOF'
+# Single-process test runs never contend; just succeed.
+exit 0
+EOF
+
   _stub chown <<'EOF'
 # Ownership changes cannot be verified in the sandbox, so record the call and
 # succeed. Tests assert on the recorded arguments instead.
@@ -458,11 +476,18 @@ run_spirit() {
     -e "s|/etc/letsencrypt|$SANDBOX/etc/letsencrypt|g" \
     -e "s|/etc/sudoers.d|$SANDBOX/etc/sudoers.d|g" \
     -e "s|/var/www/html|$SANDBOX/var/www/html|g" \
+    -e "s|/var/lock|$SANDBOX/var/lock|g" \
     "$TARGET" > "$sandboxed"
+  # Always run under a timeout: several past bugs were infinite loops, and a
+  # regression should fail the suite rather than wedge it. Exit 124 = timed out.
+  local runner=(bash)
+  command -v timeout >/dev/null 2>&1 &&
+    runner=(timeout "${SPIRIT_TEST_TIMEOUT:-90}" bash)
+
   if [[ "${SPIRIT_TEST_TRACE:-0}" == "1" ]]; then
-    bash -x "$sandboxed" "$@" 2>&1
+    "${runner[@]}" -x "$sandboxed" "$@" 2>&1
   else
-    bash "$sandboxed" "$@" 2>&1
+    "${runner[@]}" "$sandboxed" "$@" 2>&1
   fi
 }
 
@@ -566,6 +591,56 @@ it "install refuses to run without a domain when non-interactive"
 out="$(run_spirit install -y < /dev/null)"
 expect_contains "$out" "--domain is required" "output"
 done_test
+
+it "reports its own version"
+out="$(run_spirit --version)"
+expect_contains "$out" "spirit.sh" "output"
+done_test
+
+# A value-taking option with no value used to hang: `shift 2` fails when only
+# one argument is left, so $# never changed and the parse loop spun forever.
+# These run under timeout so a regression fails the suite instead of wedging
+# it.
+for opt in --domain --admin-email --admin-password --email --ref --install-dir --user; do
+  it "handles a missing value for ${opt} instead of looping forever"
+  out="$(SPIRIT_TEST_TIMEOUT=10 run_spirit install "$opt" < /dev/null)"
+  if [[ "$?" -eq 124 ]]; then
+    TEST_ERRORS+="      ${opt} with no value hung (infinite parse loop)"$'\n'
+  else
+    expect_contains "$out" "needs a value" "output"
+  fi
+  done_test
+done
+
+it "rejects an option value that is really the next flag"
+out="$(SPIRIT_TEST_TIMEOUT=10 run_spirit install --domain --no-tls < /dev/null)"
+expect_contains "$out" "needs a value" "output"
+done_test
+
+it "--install-dir survives a later --user"
+# --user used to unconditionally recompute the install directory, silently
+# discarding an explicit --install-dir given before it.
+out="$(run_spirit update --install-dir /opt/custom-panel --user someone -y 2>&1)"
+expect_contains "$out" "/opt/custom-panel" "output"
+expect_not_contains "$out" "/home/someone/Spirit-Panel" "output"
+done_test
+
+it "--user still derives the install dir when none is given"
+out="$(run_spirit update --user someone -y 2>&1)"
+expect_contains "$out" "/home/someone/Spirit-Panel" "output"
+done_test
+
+it "refuses the interactive menu with no TTY rather than hanging"
+out="$(SPIRIT_TEST_TIMEOUT=10 run_spirit < /dev/null)"
+if [[ "$?" -eq 124 ]]; then
+  TEST_ERRORS+="      hung instead of refusing"$'\n'
+fi
+expect_contains "$out" "No TTY" "output"
+done_test
+
+# The menu's own EOF guard (a failed `read` used to loop forever on an empty
+# choice) sits behind a `[[ -t 0 ]]` check, so reaching it needs a real pty.
+skip "menu exits when stdin closes mid-session" "needs a pty"
 
 it "install validates the domain shape"
 out="$(run_spirit install --domain "not a domain" -y < /dev/null)"
@@ -1026,6 +1101,34 @@ done
 [[ -n "$found" ]] || TEST_ERRORS+="      no backup directory was created"$'\n'
 done_test
 
+it "prunes old backups so they cannot fill the disk"
+mkdir -p "$SANDBOX/backups-prune"
+for stamp in 20260101-000001 20260101-000002 20260101-000003 20260101-000004 \
+             20260101-000005 20260101-000006; do
+  mkdir -p "$SANDBOX/backups-prune/$stamp"
+done
+out="$(SPIRIT_BACKUP_KEEP=3 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups-prune" run_spirit backup -y < /dev/null)"
+dbg "prune" "$out"
+remaining="$(find "$SANDBOX/backups-prune" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+# 3 kept, plus the one this run just created.
+expect_eq "$remaining" "3" "backup directories kept"
+# The newest must survive, the oldest must not.
+[[ -d "$SANDBOX/backups-prune/20260101-000001" ]] &&
+  TEST_ERRORS+="      the oldest backup was not pruned"$'\n'
+done_test
+
+it "keeps every backup when pruning is disabled"
+mkdir -p "$SANDBOX/backups-keep"
+for stamp in 20260101-000001 20260101-000002 20260101-000003; do
+  mkdir -p "$SANDBOX/backups-keep/$stamp"
+done
+out="$(SPIRIT_BACKUP_KEEP=0 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups-keep" run_spirit backup -y < /dev/null)"
+remaining="$(find "$SANDBOX/backups-keep" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+expect_eq "$remaining" "4" "backup directories kept"
+done_test
+
 it "a failed dump does not silently pass"
 # Both the credentialed dump and the root-socket fallback have to fail before
 # the script is allowed to report a problem.
@@ -1265,6 +1368,157 @@ fi
 done_test
 unset SPIRIT_TEST_APP_PNPM_PRIVATE
 teardown_sandbox
+
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
+# Tests: destructive operations and cleanup
+# ---------------------------------------------------------------------------
+
+section "Safety"
+
+setup_sandbox
+touch "$SANDBOX/user-exists"
+
+it "refuses to delete an install directory that is not a panel"
+# --install-dir takes arbitrary input and uninstall runs `rm -rf` on it.
+mkdir -p "$SANDBOX/notapanel"
+echo '{}' > "$SANDBOX/notapanel/package.json"
+guard="$SANDBOX/guard.sh"
+{
+  sed -n '/^safe_to_remove()/,/^}/p' "$TARGET"
+  cat <<'CHECK'
+for d in "/" "/usr" "/home" "/etc" "/var" "" "relative/path" "/onlyone"; do
+  if safe_to_remove "$d"; then echo "ACCEPTED:$d"; fi
+done
+CHECK
+} > "$guard"
+out="$(bash "$guard" 2>&1)"
+expect_not_contains "$out" "ACCEPTED" "guard decisions"
+done_test
+
+it "still allows a real panel checkout to be removed"
+{
+  sed -n '/^safe_to_remove()/,/^}/p' "$TARGET"
+  printf 'safe_to_remove "%s" && echo OK\n' "$SANDBOX/notapanel"
+} > "$guard"
+expect_contains "$(bash "$guard" 2>&1)" "OK" "guard decision"
+done_test
+
+it "uninstall keeps a directory it does not recognise"
+export SPIRIT_TEST_INSTALL_DIR="$SANDBOX/notapanel"
+out="$(SPIRIT_INSTALL_DIR="/home" SPIRIT_BACKUP_DIR="$SANDBOX/b" \
+  run_spirit uninstall -y < /dev/null)"
+expect_not_contains "$out" "Removed /home" "output"
+done_test
+
+teardown_sandbox
+
+# One install run, then assert on what it left behind.
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.3"
+touch "$SANDBOX/user-exists"
+install_out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" run_spirit install \
+  --domain panel.example.com --admin-email a@b.co -y < /dev/null)"
+dbg "safety install" "$install_out"
+
+it "leaves no sudoers grant behind after a run"
+# The installer gives the panel user passwordless mysql for the duration of
+# spirit-install; the EXIT trap must remove it however the run ends.
+leftover="$(find "$SANDBOX/etc/sudoers.d" -name 'spirit-panel-install*' 2>/dev/null)"
+[[ -n "$leftover" ]] && TEST_ERRORS+="      sudoers grant left behind: ${leftover}"$'\n'
+done_test
+
+it "restores the umask it changed"
+# write_env_file used to leave umask at 077 for the rest of the run, which
+# silently made every later file - the nginx vhost included - mode 600.
+vhost="$SANDBOX/etc/nginx/sites-available/spirit-panel"
+if [[ -f "$vhost" ]]; then
+  mode="$(stat -c '%a' "$vhost" 2>/dev/null || echo '')"
+  [[ "$mode" == "600" ]] &&
+    TEST_ERRORS+="      nginx vhost written 600 - umask leaked from write_env_file"$'\n'
+else
+  TEST_ERRORS+="      no nginx vhost was written"$'\n'
+fi
+done_test
+
+it "generates an admin password without characters that are hard to retype"
+envf="$INSTALL_DIR/apps/panel-api/.env"
+pw="$(sed -n 's/^ADMIN_PASSWORD="\{0,1\}//p' "$envf" 2>/dev/null | sed 's/"$//')"
+if [[ -z "$pw" ]]; then
+  TEST_ERRORS+="      no ADMIN_PASSWORD in .env"$'\n'
+else
+  [[ "$pw" =~ ^[A-Za-z0-9]+$ ]] ||
+    TEST_ERRORS+="      generated password has awkward characters: ${pw}"$'\n'
+  (( ${#pw} >= 12 )) ||
+    TEST_ERRORS+="      generated password too short for the seed: ${#pw} chars"$'\n'
+fi
+done_test
+teardown_sandbox
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.4"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
+
+it "warns and stops when the disk is nearly full"
+out="$(SPIRIT_TEST_LOW_DISK=1 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups" run_spirit update < /dev/null)"
+dbg "low disk" "$out"
+expect_contains "$out" "MB free" "output"
+expect_contains "$out" "Cancelled" "output"
+done_test
+
+it "proceeds past the disk check with --yes"
+out="$(SPIRIT_TEST_LOW_DISK=1 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups" run_spirit update -y < /dev/null)"
+expect_contains "$out" "Update complete" "output"
+done_test
+teardown_sandbox
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.4"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
+
+it "re-execs from outside the checkout it is about to overwrite"
+out="$(SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR" SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  bash "$INSTALL_DIR/scripts/spirit.sh" update -y < /dev/null 2>&1)"
+dbg "reexec" "$out"
+expect_contains "$out" "Update complete" "output"
+done_test
+
+it "cleans up the temporary copy it re-execed from"
+leftover="$(find /tmp -maxdepth 1 -name 'spirit-update.*' -newermt '-2 minutes' 2>/dev/null | head -n1)"
+[[ -n "$leftover" ]] && TEST_ERRORS+="      left a self-copy behind: ${leftover}"$'\n'
+done_test
+teardown_sandbox
+
+setup_sandbox
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+make_origin_with_newer_commit "$INSTALL_DIR" "1.3.0.2"
+touch "$SANDBOX/user-exists"
+mkdir -p "$INSTALL_DIR/apps/panel-api" "$SANDBOX/apphome"
+cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+EOF
 
 it "accepts a pnpm that is already a real global install"
 setup_sandbox

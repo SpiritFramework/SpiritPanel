@@ -437,17 +437,24 @@ body {
 
 @keyframes login-orb-float {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(6%, -8%) scale(1.08); }
+  33% { transform: translate(10%, -12%) scale(1.14); }
+  66% { transform: translate(-8%, 8%) scale(0.92); }
 }
 
 @keyframes login-mesh-shift {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(4%, -3%) rotate(8deg); }
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate(8%, -6%) rotate(12deg) scale(1.12); }
 }
 
 @keyframes login-aurora-wave {
-  0%, 100% { transform: translateX(-5%) skewY(-3deg); opacity: 0.75; }
-  50% { transform: translateX(8%) skewY(3deg); opacity: 1; }
+  0%, 100% { transform: translateX(-8%) skewY(-4deg) scaleY(1); opacity: 0.7; }
+  50% { transform: translateX(12%) skewY(4deg) scaleY(1.15); opacity: 1; }
+}
+
+@keyframes panel-orbs-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -3%) scale(1.08); }
+  66% { transform: translate(-3%, 2.5%) scale(0.95); }
 }
 
 /* ============================================================
@@ -522,6 +529,12 @@ body {
     radial-gradient(ellipse 65% 50% at 100% 0%, var(--accent-secondary-glow, transparent), transparent 52%),
     radial-gradient(ellipse 80% 45% at 70% 100%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 55%),
     radial-gradient(ellipse 90% 60% at 50% 120%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 55%);
+  animation: panel-gradient-breathe 16s ease-in-out infinite alternate;
+}
+
+@keyframes panel-gradient-breathe {
+  from { opacity: 0.72; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.04); }
 }
 
 .panel-bg-subtle::before {
@@ -560,8 +573,9 @@ body {
 }
 
 @keyframes panel-orbs-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(2%, -1.5%); }
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -3%) scale(1.08); }
+  66% { transform: translate(-3%, 2.5%) scale(0.95); }
 }
 
 /* Legacy alias */

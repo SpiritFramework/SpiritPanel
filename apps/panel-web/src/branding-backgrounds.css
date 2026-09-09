@@ -123,12 +123,12 @@
 
 @keyframes login-waves-flow {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-4%, -6%) scale(1.06); }
+  50% { transform: translate(-8%, -10%) scale(1.12); }
 }
 
 @keyframes login-stars-twinkle {
-  from { opacity: 0.55; }
-  to { opacity: 1; }
+  from { opacity: 0.45; filter: brightness(0.9); }
+  to { opacity: 1; filter: brightness(1.25); }
 }
 
 @keyframes login-beams-spin {
@@ -137,8 +137,8 @@
 }
 
 @keyframes login-ripple-expand {
-  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.8; }
-  100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+  0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; }
 }
 
 /* ── Panel: aurora, waves, stars, mesh, shimmer ── */
@@ -225,18 +225,18 @@
 }
 
 @keyframes panel-aurora-drift {
-  0%, 100% { transform: translateX(-3%) skewY(-2deg); }
-  50% { transform: translateX(5%) skewY(2deg); }
+  0%, 100% { transform: translateX(-6%) skewY(-3deg) scaleY(1); }
+  50% { transform: translateX(9%) skewY(3deg) scaleY(1.12); }
 }
 
 @keyframes panel-waves-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(1.5%, -1%); }
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, -2.5%) scale(1.06); }
 }
 
 @keyframes panel-shimmer-sweep {
-  0%, 100% { transform: translateX(-30%); opacity: 0.4; }
-  50% { transform: translateX(30%); opacity: 0.9; }
+  0%, 100% { transform: translateX(-40%); opacity: 0.35; }
+  50% { transform: translateX(40%); opacity: 1; }
 }
 
 /* ── Settings preview miniatures (new) ── */
@@ -397,8 +397,8 @@
 }
 
 @keyframes login-spotlight-sweep {
-  0%, 100% { transform: translate(-25%, -10%) rotate(-12deg); opacity: 0.55; }
-  50% { transform: translate(20%, 8%) rotate(8deg); opacity: 0.9; }
+  0%, 100% { transform: translate(-30%, -12%) rotate(-14deg); opacity: 0.5; }
+  50% { transform: translate(26%, 10%) rotate(10deg); opacity: 1; }
 }
 
 .login-preview--prism {
@@ -473,13 +473,13 @@
 }
 
 @keyframes panel-bokeh-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(2%, -1.5%); }
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(4%, -3%) scale(1.08); }
 }
 
 @keyframes panel-prism-shift {
-  0%, 100% { transform: translateX(-4%) skewY(-2deg); }
-  50% { transform: translateX(6%) skewY(2deg); }
+  0%, 100% { transform: translateX(-8%) skewY(-3deg); }
+  50% { transform: translateX(10%) skewY(3deg); }
 }
 
 .panel-preview--bokeh::before {
@@ -648,23 +648,23 @@
 }
 
 @keyframes login-horizon-breathe {
-  from { transform: translateY(4%) scale(1); opacity: 0.85; }
-  to { transform: translateY(0) scale(1.05); opacity: 1; }
+  from { transform: translateY(6%) scale(1); opacity: 0.8; }
+  to { transform: translateY(-2%) scale(1.1); opacity: 1; }
 }
 
 @keyframes login-dawn-rise {
-  from { transform: translateY(8%); opacity: 0.75; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(12%) scale(0.96); opacity: 0.7; }
+  to { transform: translateY(0) scale(1.05); opacity: 1; }
 }
 
 @keyframes login-ember-rise {
-  0%, 100% { transform: translateY(0); opacity: 0.7; }
-  50% { transform: translateY(-6%); opacity: 1; }
+  0%, 100% { transform: translateY(0); opacity: 0.65; }
+  50% { transform: translateY(-12%); opacity: 1; }
 }
 
 @keyframes login-fog-drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(4%, -3%) scale(1.08); }
+  50% { transform: translate(7%, -5%) scale(1.14); }
 }
 
 .login-preview--horizon {
@@ -739,20 +739,28 @@
 /* ── Panel: horizon, dawn, ember, fog, circuit, halo ── */
 .panel-bg-horizon::before {
   background:
-    radial-gradient(ellipse 100% 50% at 50% 110%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 58%),
-    radial-gradient(ellipse 70% 40% at 20% -10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%);
+    radial-gradient(ellipse 100% 50% at 50% 110%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 58%),
+    radial-gradient(ellipse 70% 40% at 20% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 55%);
+  animation: login-horizon-breathe 14s ease-in-out infinite alternate;
 }
 
 .panel-bg-dawn::before {
   background:
-    radial-gradient(ellipse 90% 45% at 50% 115%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
-    radial-gradient(ellipse 50% 35% at 80% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 10%, transparent), transparent 50%);
+    radial-gradient(ellipse 90% 45% at 50% 115%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 80% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 50%);
+  animation: login-dawn-rise 18s ease-in-out infinite alternate;
 }
 
 .panel-bg-halo::before {
   background:
-    radial-gradient(ellipse 55% 45% at 50% 35%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
-    radial-gradient(ellipse 40% 35% at 50% 40%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 10%, transparent), transparent 55%);
+    radial-gradient(ellipse 55% 45% at 50% 35%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    radial-gradient(ellipse 40% 35% at 50% 40%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 55%);
+  animation: panel-halo-pulse 10s ease-in-out infinite alternate;
+}
+
+@keyframes panel-halo-pulse {
+  from { transform: scale(0.92); opacity: 0.7; }
+  to { transform: scale(1.08); opacity: 1; }
 }
 
 .panel-bg-ember::before {
@@ -799,6 +807,22 @@
     linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent) 1px, transparent 1px);
   background-size: auto, 40px 40px, 40px 40px;
   mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 15%, transparent 75%);
+  animation: login-grid-drift 32s linear infinite;
+}
+
+.panel-bg-circuit::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    radial-gradient(2px 2px at 18% 28%, color-mix(in srgb, var(--accent) 55%, transparent), transparent),
+    radial-gradient(2px 2px at 62% 42%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 50%, transparent), transparent),
+    radial-gradient(2px 2px at 78% 68%, color-mix(in srgb, var(--accent) 45%, transparent), transparent),
+    radial-gradient(2px 2px at 34% 74%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 40%, transparent), transparent);
+  animation: login-stars-twinkle 4s ease-in-out infinite alternate;
+  opacity: 0.7;
 }
 
 .panel-preview--horizon::before {
@@ -806,6 +830,7 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 100% 55% at 50% 110%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 40%, transparent), transparent 58%);
+  animation: login-horizon-breathe 10s ease-in-out infinite alternate;
 }
 
 .panel-preview--dawn::before {
@@ -813,6 +838,7 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 90% 50% at 50% 115%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 35%, transparent), transparent 55%);
+  animation: login-dawn-rise 12s ease-in-out infinite alternate;
 }
 
 .panel-preview--halo::before {
@@ -820,6 +846,7 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse 50% 45% at 50% 40%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 40%, transparent), transparent 60%);
+  animation: panel-halo-pulse 8s ease-in-out infinite alternate;
 }
 
 .panel-preview--ember::before {
@@ -852,6 +879,415 @@
     linear-gradient(90deg, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 28%, transparent) 1px, transparent 1px);
   background-size: 14px 14px;
   mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 20%, transparent 75%);
+  animation: login-grid-drift 20s linear infinite;
+}
+
+/* ── New animated presets: nebula, meteor, tide, pulse, shear ── */
+.login-brand-panel[data-login-bg="nebula"] .login-bg-canvas,
+.login-brand-panel[data-login-bg="meteor"] .login-bg-canvas,
+.login-brand-panel[data-login-bg="tide"] .login-bg-canvas,
+.login-brand-panel[data-login-bg="pulse"] .login-bg-canvas,
+.login-brand-panel[data-login-bg="shear"] .login-bg-canvas {
+  background: #04060c;
+  overflow: hidden;
+}
+
+.login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::before,
+.login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::after {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  filter: blur(48px);
+  opacity: 0.85;
+}
+
+.login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::before {
+  background:
+    radial-gradient(circle at 22% 28%, color-mix(in srgb, var(--accent) 65%, transparent), transparent 42%),
+    radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 50%, transparent), transparent 40%),
+    radial-gradient(circle at 55% 78%, color-mix(in srgb, var(--accent) 40%, #fff 6%), transparent 48%);
+  animation: login-nebula-drift 22s ease-in-out infinite;
+}
+
+.login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::after {
+  background:
+    radial-gradient(circle at 70% 55%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 45%, transparent), transparent 45%),
+    radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 42%);
+  animation: login-nebula-drift 28s ease-in-out infinite reverse;
+  opacity: 0.55;
+}
+
+.login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::before,
+.login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::after {
+  content: '';
+  position: absolute;
+  width: 140%;
+  height: 2px;
+  left: -20%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 80%, #fff),
+    transparent
+  );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: login-meteor-streak 7s linear infinite;
+  opacity: 0;
+}
+
+.login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::before {
+  top: 22%;
+  transform: rotate(-22deg);
+}
+
+.login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::after {
+  top: 58%;
+  transform: rotate(-18deg);
+  animation-delay: -3.5s;
+  opacity: 0;
+  width: 110%;
+}
+
+.login-brand-panel[data-login-bg="meteor"] .login-bg-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 40% 32%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.5px 1.5px at 72% 14%, color-mix(in srgb, var(--accent) 70%, #fff), transparent),
+    radial-gradient(1px 1px at 88% 48%, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1px 1px at 28% 72%, rgba(255, 255, 255, 0.5), transparent);
+  animation: login-stars-twinkle 5s ease-in-out infinite alternate;
+}
+
+.login-brand-panel[data-login-bg="tide"] .login-bg-canvas::before,
+.login-brand-panel[data-login-bg="tide"] .login-bg-canvas::after {
+  content: '';
+  position: absolute;
+  left: -15%;
+  right: -15%;
+  height: 55%;
+  filter: blur(28px);
+}
+
+.login-brand-panel[data-login-bg="tide"] .login-bg-canvas::before {
+  bottom: -8%;
+  background:
+    radial-gradient(ellipse 80% 70% at 30% 100%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 75% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 40%, transparent), transparent 58%);
+  animation: login-tide-roll 12s ease-in-out infinite;
+}
+
+.login-brand-panel[data-login-bg="tide"] .login-bg-canvas::after {
+  bottom: 8%;
+  height: 40%;
+  opacity: 0.55;
+  background: radial-gradient(ellipse 90% 55% at 50% 100%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 60%);
+  animation: login-tide-roll 16s ease-in-out infinite reverse;
+}
+
+.login-brand-panel[data-login-bg="pulse"] .login-bg-canvas::before,
+.login-brand-panel[data-login-bg="pulse"] .login-bg-overlay::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.login-brand-panel[data-login-bg="pulse"] .login-bg-canvas::before {
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent), transparent 68%);
+  filter: blur(32px);
+  animation: login-pulse-breathe 5.5s ease-in-out infinite;
+}
+
+.login-brand-panel[data-login-bg="pulse"] .login-bg-overlay::before {
+  width: 55%;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: transparent;
+  animation: login-pulse-ring 5.5s ease-out infinite;
+}
+
+.login-brand-panel[data-login-bg="shear"] .login-bg-canvas::before,
+.login-brand-panel[data-login-bg="shear"] .login-bg-canvas::after {
+  content: '';
+  position: absolute;
+  inset: -40% -20%;
+  filter: blur(30px);
+}
+
+.login-brand-panel[data-login-bg="shear"] .login-bg-canvas::before {
+  background: linear-gradient(
+    118deg,
+    transparent 32%,
+    color-mix(in srgb, var(--accent) 45%, transparent) 46%,
+    color-mix(in srgb, var(--accent-secondary, var(--accent)) 35%, transparent) 54%,
+    transparent 68%
+  );
+  animation: login-shear-slide 14s ease-in-out infinite;
+}
+
+.login-brand-panel[data-login-bg="shear"] .login-bg-canvas::after {
+  background: linear-gradient(
+    118deg,
+    transparent 40%,
+    color-mix(in srgb, white 12%, var(--accent)) 50%,
+    transparent 60%
+  );
+  opacity: 0.45;
+  animation: login-shear-slide 18s ease-in-out infinite reverse;
+}
+
+.login-brand-panel[data-login-bg="nebula"] .login-dot-grid,
+.login-brand-panel[data-login-bg="meteor"] .login-dot-grid,
+.login-brand-panel[data-login-bg="tide"] .login-dot-grid,
+.login-brand-panel[data-login-bg="pulse"] .login-dot-grid,
+.login-brand-panel[data-login-bg="shear"] .login-dot-grid {
+  display: none;
+}
+
+@keyframes login-nebula-drift {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(6%, -5%) scale(1.1) rotate(4deg); }
+  66% { transform: translate(-5%, 4%) scale(0.95) rotate(-3deg); }
+}
+
+@keyframes login-meteor-streak {
+  0% { transform: translateX(-30%) rotate(-22deg); opacity: 0; }
+  8% { opacity: 0.95; }
+  35% { opacity: 0; }
+  100% { transform: translateX(55%) rotate(-22deg); opacity: 0; }
+}
+
+@keyframes login-tide-roll {
+  0%, 100% { transform: translateX(0) translateY(0) scaleX(1); }
+  50% { transform: translateX(6%) translateY(-4%) scaleX(1.08); }
+}
+
+@keyframes login-pulse-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.55; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+@keyframes login-pulse-ring {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+@keyframes login-shear-slide {
+  0%, 100% { transform: translateX(-12%) skewY(-2deg); }
+  50% { transform: translateX(12%) skewY(2deg); }
+}
+
+.login-preview--nebula {
+  background: #04060c;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--nebula::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--preview-gradient, #6366f1) 55%, transparent), transparent 45%),
+    radial-gradient(circle at 70% 65%, color-mix(in srgb, #8b5cf6 40%, transparent), transparent 48%);
+  filter: blur(10px);
+  animation: login-nebula-drift 14s ease-in-out infinite;
+}
+
+.login-preview--meteor {
+  background: #04060c;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--meteor::before {
+  content: '';
+  position: absolute;
+  top: 35%;
+  left: -20%;
+  width: 140%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--preview-gradient, #6366f1), transparent);
+  transform: rotate(-20deg);
+  animation: login-meteor-streak 5s linear infinite;
+}
+
+.login-preview--tide {
+  background: #04060c;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--tide::before {
+  content: '';
+  position: absolute;
+  inset: 40% -10% -15%;
+  background: radial-gradient(ellipse 80% 70% at 50% 100%, color-mix(in srgb, var(--preview-gradient, #6366f1) 50%, transparent), transparent 60%);
+  filter: blur(8px);
+  animation: login-tide-roll 10s ease-in-out infinite;
+}
+
+.login-preview--pulse {
+  background: #04060c;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--pulse::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 45%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--preview-gradient, #6366f1) 55%, transparent), transparent 70%);
+  transform: translate(-50%, -50%);
+  animation: login-pulse-breathe 4.5s ease-in-out infinite;
+}
+
+.login-preview--shear {
+  background: #04060c;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-preview--shear::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(118deg, transparent 35%, color-mix(in srgb, var(--preview-gradient, #6366f1) 45%, transparent) 50%, transparent 65%);
+  filter: blur(6px);
+  animation: login-shear-slide 10s ease-in-out infinite;
+}
+
+.panel-bg-nebula::before {
+  background: transparent;
+}
+
+.panel-bg-nebula::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: -25%;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 20% 25%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
+    radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 14%, transparent), transparent 40%),
+    radial-gradient(circle at 55% 80%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 48%);
+  filter: blur(40px);
+  animation: login-nebula-drift 26s ease-in-out infinite;
+  opacity: 0.9;
+}
+
+.panel-bg-meteor::before {
+  background-image:
+    radial-gradient(1px 1px at 15% 20%, color-mix(in srgb, var(--accent) 40%, transparent), transparent),
+    radial-gradient(1px 1px at 70% 30%, color-mix(in srgb, var(--border) 70%, transparent), transparent),
+    radial-gradient(1px 1px at 40% 70%, color-mix(in srgb, var(--accent) 30%, transparent), transparent);
+  animation: login-stars-twinkle 7s ease-in-out infinite alternate;
+}
+
+.panel-bg-meteor::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  top: 28%;
+  left: -15%;
+  width: 130%;
+  height: 1.5px;
+  z-index: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent);
+  transform: rotate(-18deg);
+  animation: login-meteor-streak 11s linear infinite;
+  opacity: 0;
+}
+
+.panel-bg-tide::before {
+  background:
+    radial-gradient(ellipse 100% 45% at 40% 115%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 58%),
+    radial-gradient(ellipse 80% 40% at 80% 110%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 55%);
+  animation: login-tide-roll 16s ease-in-out infinite;
+}
+
+.panel-bg-pulse::before {
+  background: radial-gradient(ellipse 50% 42% at 50% 40%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%);
+  animation: panel-halo-pulse 8s ease-in-out infinite alternate;
+}
+
+.panel-bg-shear::before {
+  background: transparent;
+}
+
+.panel-bg-shear::after {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  background: linear-gradient(
+    118deg,
+    transparent 34%,
+    color-mix(in srgb, var(--accent) 12%, transparent) 48%,
+    color-mix(in srgb, var(--accent-secondary, var(--accent)) 10%, transparent) 54%,
+    transparent 68%
+  );
+  filter: blur(28px);
+  animation: login-shear-slide 16s ease-in-out infinite;
+}
+
+.panel-preview--nebula::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 35%, transparent), transparent 50%),
+    radial-gradient(circle at 70% 65%, color-mix(in srgb, var(--preview-secondary-glow, #8b5cf6) 28%, transparent), transparent 52%);
+  filter: blur(6px);
+  animation: login-nebula-drift 12s ease-in-out infinite;
+}
+
+.panel-preview--meteor::before {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: -20%;
+  width: 140%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--preview-accent-glow, #6366f1), transparent);
+  transform: rotate(-18deg);
+  animation: login-meteor-streak 6s linear infinite;
+}
+
+.panel-preview--tide::before {
+  content: '';
+  position: absolute;
+  inset: 45% 0 -10%;
+  background: radial-gradient(ellipse 90% 60% at 50% 100%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 40%, transparent), transparent 60%);
+  animation: login-tide-roll 10s ease-in-out infinite;
+}
+
+.panel-preview--pulse::before {
+  content: '';
+  position: absolute;
+  inset: 20%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 40%, transparent), transparent 65%);
+  animation: panel-halo-pulse 6s ease-in-out infinite alternate;
+}
+
+.panel-preview--shear::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(118deg, transparent 35%, color-mix(in srgb, var(--preview-accent-glow, #6366f1) 30%, transparent) 50%, transparent 65%);
+  filter: blur(5px);
+  animation: login-shear-slide 10s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -892,10 +1328,62 @@
   .login-brand-panel[data-login-bg="void"] .login-bg-overlay,
   .panel-bg-ember::after,
   .panel-bg-fog::after,
+  .panel-bg-horizon::before,
+  .panel-bg-dawn::before,
+  .panel-bg-halo::before,
+  .panel-bg-circuit::before,
+  .panel-bg-circuit::after,
+  .panel-bg-gradient::before,
   .login-preview--ember::before,
   .login-preview--fog::before,
   .panel-preview--ember::before,
-  .panel-preview--fog::before {
+  .panel-preview--fog::before,
+  .panel-preview--horizon::before,
+  .panel-preview--dawn::before,
+  .panel-preview--halo::before,
+  .panel-preview--circuit::before,
+  .login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="nebula"] .login-bg-canvas::after,
+  .login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::before,
+  .login-brand-panel[data-login-bg="meteor"] .login-bg-overlay::after,
+  .login-brand-panel[data-login-bg="meteor"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="tide"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="tide"] .login-bg-canvas::after,
+  .login-brand-panel[data-login-bg="pulse"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="pulse"] .login-bg-overlay::before,
+  .login-brand-panel[data-login-bg="shear"] .login-bg-canvas::before,
+  .login-brand-panel[data-login-bg="shear"] .login-bg-canvas::after,
+  .panel-bg-nebula::after,
+  .panel-bg-meteor::before,
+  .panel-bg-meteor::after,
+  .panel-bg-tide::before,
+  .panel-bg-pulse::before,
+  .panel-bg-shear::after,
+  .login-preview--nebula::before,
+  .login-preview--meteor::before,
+  .login-preview--tide::before,
+  .login-preview--pulse::before,
+  .login-preview--shear::before,
+  .panel-preview--nebula::before,
+  .panel-preview--meteor::before,
+  .panel-preview--tide::before,
+  .panel-preview--pulse::before,
+  .panel-preview--shear::before {
     animation: none !important;
   }
+}
+
+[data-motion="reduced"] .panel-bg-nebula::after,
+[data-motion="reduced"] .panel-bg-meteor::before,
+[data-motion="reduced"] .panel-bg-meteor::after,
+[data-motion="reduced"] .panel-bg-tide::before,
+[data-motion="reduced"] .panel-bg-pulse::before,
+[data-motion="reduced"] .panel-bg-shear::after,
+[data-motion="reduced"] .panel-bg-horizon::before,
+[data-motion="reduced"] .panel-bg-dawn::before,
+[data-motion="reduced"] .panel-bg-halo::before,
+[data-motion="reduced"] .panel-bg-circuit::before,
+[data-motion="reduced"] .panel-bg-circuit::after,
+[data-motion="reduced"] .panel-bg-gradient::before {
+  animation: none !important;
 }

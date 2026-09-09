@@ -44,6 +44,33 @@ fi
 
 STEP=0
 
+# Anything that must not outlive the run, however it ends. The sudoers grant
+# below is the important one: it lets the panel user call mysql as root, and
+# leaving it behind after a Ctrl-C would be a standing privilege escalation.
+SUDOERS_FILE="/etc/sudoers.d/spirit-panel-install"
+CLEANUP_PATHS=()
+CLEANUP_DONE=0
+
+cleanup() {
+  [[ "$CLEANUP_DONE" == "1" ]] && return 0
+  CLEANUP_DONE=1
+  rm -f "$SUDOERS_FILE" 2>/dev/null || true
+  [[ -n "${SPIRIT_SELF_COPY:-}" ]] && rm -f "$SPIRIT_SELF_COPY" 2>/dev/null || true
+  local p
+  for p in ${CLEANUP_PATHS+"${CLEANUP_PATHS[@]}"}; do
+    [[ -n "$p" ]] && rm -rf "$p" 2>/dev/null || true
+  done
+}
+
+on_signal() {
+  cleanup
+  printf '\n%sInterrupted.%s Nothing further was changed.\n\n' "$C_YELLOW" "$C_RESET" >&2
+  exit 130
+}
+
+trap cleanup EXIT
+trap on_signal INT TERM HUP
+
 step() { STEP=$((STEP + 1)); printf '%s==>%s %s%s%s\n' "$C_CYAN" "$C_RESET" "$C_BOLD" "[$STEP] $*" "$C_RESET"; }
 ok()   { printf '    %s+%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
 info() { printf '    %s-%s %s\n' "$C_DIM" "$C_RESET" "$*"; }
@@ -110,6 +137,23 @@ detect_os() {
 }
 
 is_installed() { [[ -f "${INSTALL_DIR}/package.json" ]]; }
+
+# `rm -rf "$INSTALL_DIR"` is only ever safe on something that really is a panel
+# checkout. --install-dir takes arbitrary input, so refuse system directories
+# and anything that does not look like the panel.
+safe_to_remove() {
+  local d="${1:-}"
+  [[ -n "$d" && "$d" == /* ]] || return 1
+  [[ "$d" != *".."* ]] || return 1
+  case "$d" in
+    / | /bin | /boot | /dev | /etc | /home | /lib | /media | /mnt | /opt | \
+    /proc | /root | /run | /sbin | /srv | /sys | /tmp | /usr | /var) return 1 ;;
+  esac
+  # At least two path components, so /anything-toplevel is out.
+  [[ "$d" == /*/?* ]] || return 1
+  [[ -f "${d}/package.json" ]] || return 1
+  return 0
+}
 
 # Run a command as the panel user, with a login shell so nvm/npm paths resolve.
 app_home() {
@@ -409,6 +453,17 @@ gen_secret() {
   openssl rand -base64 "${1:-32}" | tr -d '\n'
 }
 
+# For the admin password specifically: alphanumeric only. base64 output is
+# fine for a machine-read secret, but a human has to read this one off a
+# terminal and type it into a login form, and +/= invite transcription errors.
+gen_password() {
+  local n="${1:-24}" out
+  out="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c "$n")"
+  # /dev/urandom should always be there; fall back rather than return empty.
+  [[ "${#out}" -eq "$n" ]] || out="$(openssl rand -base64 "$n" | tr -dc 'A-Za-z0-9' | head -c "$n")"
+  printf '%s' "$out"
+}
+
 # Redis needs a password because the API refuses to boot in production with the
 # schedule worker enabled and REDIS_PASSWORD unset (secret-validation.ts). A
 # password in .env that Redis does not enforce fails just as hard ("Client sent
@@ -425,6 +480,12 @@ configure_redis() {
 
   local existing
   existing="$(sed -n 's/^requirepass[[:space:]]\+//p' "$conf" | tail -n1)"
+  # redis.conf allows the value to be quoted; keeping the quotes would put a
+  # password into .env that Redis never accepts.
+  existing="${existing%[[:space:]]}"
+  if [[ "$existing" == \"*\" ]]; then existing="${existing#\"}"; existing="${existing%\"}"
+  elif [[ "$existing" == \'*\' ]]; then existing="${existing#\'}"; existing="${existing%\'}"
+  fi
   if [[ -n "$existing" ]]; then
     REDIS_PASSWORD="$existing"
     ok "Reusing the existing Redis password"
@@ -442,7 +503,8 @@ configure_redis() {
 
   systemctl restart redis-server 2>/dev/null || systemctl restart redis 2>/dev/null || true
 
-  if redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
+  # REDISCLI_AUTH rather than -a: the latter puts the password in ps output.
+  if REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --no-auth-warning ping 2>/dev/null | grep -q PONG; then
     ok "Redis authenticated"
   else
     warn "Could not verify Redis auth - the schedule worker will be disabled"
@@ -468,7 +530,7 @@ write_env_file() {
   [[ -f "$template" ]] || die "Missing ${template}"
 
   if [[ -z "$ADMIN_PASSWORD" ]]; then
-    ADMIN_PASSWORD="$(gen_secret 18)"
+    ADMIN_PASSWORD="$(gen_password 24)"
     ADMIN_PASSWORD_GENERATED=1
   elif [[ "${#ADMIN_PASSWORD}" -lt 12 ]]; then
     die "--admin-password must be at least 12 characters (the seed rejects weaker ones)."
@@ -478,6 +540,10 @@ write_env_file() {
   ADMIN_EMAIL="$admin_email"
 
   mkdir -p "$(dirname "$env_file")"
+  # umask is process-wide, so restore it - otherwise every file written later
+  # in the run (the nginx vhost, for one) silently comes out mode 600.
+  local old_umask
+  old_umask="$(umask)"
   umask 077
   cp "$template" "$env_file"
 
@@ -500,6 +566,7 @@ write_env_file() {
 
   chown "${APP_USER}:${APP_USER}" "$env_file"
   chmod 600 "$env_file"
+  umask "$old_umask"
   ok "Wrote ${env_file} with generated secrets"
 }
 
@@ -538,14 +605,14 @@ run_panel_installer() {
   [[ -n "$ADMIN_PASSWORD" ]] && args+=" --admin-password '${ADMIN_PASSWORD}'"
 
   # spirit-install provisions the database via `sudo mysql`, so the panel user
-  # needs passwordless sudo for that one command during install.
-  local sudoers="/etc/sudoers.d/spirit-panel-install"
-  printf '%s ALL=(root) NOPASSWD: /usr/bin/mysql, /usr/bin/mariadb\n' "$APP_USER" > "$sudoers"
-  chmod 440 "$sudoers"
+  # needs passwordless sudo for that one command during install. The EXIT trap
+  # removes it too, in case this run is interrupted before the line below.
+  printf '%s ALL=(root) NOPASSWD: /usr/bin/mysql, /usr/bin/mariadb\n' "$APP_USER" > "$SUDOERS_FILE"
+  chmod 440 "$SUDOERS_FILE"
 
   local rc=0
   as_app "${base} pnpm spirit-install ${args}" || rc=$?
-  rm -f "$sudoers"
+  rm -f "$SUDOERS_FILE"
 
   [[ "$rc" -eq 0 ]] || die "Panel configuration failed (exit ${rc}). See the output above."
   ok "Database, environment, and build ready"
@@ -712,6 +779,48 @@ configure_firewall() {
   ok "Allowed SSH, HTTP, HTTPS (3000/3306/6379 stay closed)"
 }
 
+# Two concurrent runs would fight over apt, the checkout and systemd. Hold a
+# lock for anything that mutates the system.
+acquire_lock() {
+  command -v flock >/dev/null 2>&1 || return 0
+  mkdir -p /var/lock 2>/dev/null || return 0
+  exec 9>"/var/lock/spirit-panel.lock" 2>/dev/null || return 0
+  if ! flock -n 9; then
+    die "Another spirit.sh run is already in progress.
+If that is wrong, remove /var/lock/spirit-panel.lock and try again."
+  fi
+}
+
+# A build that dies from ENOSPC halfway through is far more annoying than one
+# that refuses to start, so check first.
+require_disk_space() {
+  local need_mb="${1:-2048}" target="${2:-$INSTALL_DIR}" probe avail mount
+  probe="$target"
+  while [[ -n "$probe" && "$probe" != "/" && ! -d "$probe" ]]; do
+    probe="$(dirname "$probe")"
+  done
+  avail="$(df -Pm "$probe" 2>/dev/null | awk 'NR==2 {print $4}')"
+  [[ "$avail" =~ ^[0-9]+$ ]] || return 0
+  (( avail >= need_mb )) && return 0
+
+  mount="$(df -Ph "$probe" 2>/dev/null | awk 'NR==2 {print $6}')"
+  warn "Only ${avail} MB free on ${mount:-$probe}; the install and build need roughly ${need_mb} MB"
+  confirm "Continue anyway?" "n" || die "Cancelled. Free up some disk space and re-run."
+}
+
+# Backups are never pruned by anything else, and a database dump per update
+# adds up on a small disk.
+prune_backups() {
+  local keep="${SPIRIT_BACKUP_KEEP:-10}" old
+  [[ "$keep" =~ ^[0-9]+$ ]] && (( keep > 0 )) || return 0
+  [[ -d "$BACKUP_DIR" ]] || return 0
+  # Directory names are timestamps, so lexical order is chronological.
+  while IFS= read -r old; do
+    [[ -n "$old" ]] || continue
+    rm -rf "${BACKUP_DIR:?}/${old}" 2>/dev/null || true
+  done < <(cd "$BACKUP_DIR" 2>/dev/null && ls -1 2>/dev/null | sort | head -n "-${keep}")
+}
+
 health_check() {
   local tries="${1:-20}" i
   for ((i = 1; i <= tries; i++)); do
@@ -730,6 +839,8 @@ health_check() {
 action_install() {
   require_root
   detect_os
+  acquire_lock
+  require_disk_space 3072
 
   if is_installed && [[ "$ASSUME_YES" != "1" ]]; then
     warn "Spirit-Panel is already installed at ${INSTALL_DIR} (v$(panel_version))"
@@ -809,9 +920,12 @@ print_install_summary() {
   printf '  %sPanel%s        %s://%s\n' "$C_BOLD" "$C_RESET" "$scheme" "$PANEL_DOMAIN"
   printf '  %sVersion%s      %s\n' "$C_BOLD" "$C_RESET" "$(panel_version)"
   printf '  %sAdmin login%s  %s\n' "$C_BOLD" "$C_RESET" "$admin_email"
-  if [[ -n "$admin_pass" ]]; then
+  if [[ "$ADMIN_PASSWORD_GENERATED" == "1" && -n "$admin_pass" ]]; then
     printf '  %sPassword%s     %s\n' "$C_BOLD" "$C_RESET" "$admin_pass"
     printf '\n  %sSave that password now - it is only stored in .env.%s\n' "$C_YELLOW" "$C_RESET"
+  else
+    # Do not echo a password the operator chose; they already have it.
+    printf '  %sPassword%s     %s(the one you supplied)%s\n' "$C_BOLD" "$C_RESET" "$C_DIM" "$C_RESET"
   fi
   printf '\n  Next steps:\n'
   if [[ "${TLS_FAILED:-0}" == "1" ]]; then
@@ -885,6 +999,8 @@ backup_before_update() {
 
   # A defaults file keeps the password off the command line, where it would be
   # visible in ps output.
+  local old_umask
+  old_umask="$(umask)"
   umask 077
   cat > "$cnf" <<EOF
 [client]
@@ -893,6 +1009,7 @@ password="$(cnf_escape "$pass")"
 host="$(cnf_escape "$host")"
 port=${port}
 EOF
+  umask "$old_umask"
 
   local dumped=0
   if mysqldump --defaults-extra-file="$cnf" --single-transaction --quick \
@@ -928,6 +1045,7 @@ EOF
       die "Cancelled. Back up manually, then re-run the update."
     fi
   fi
+  prune_backups
   info "Backup: ${BACKUP_PATH}"
 }
 
@@ -1001,10 +1119,33 @@ update_source_tarball() {
   ok "Synced ${ref} into ${INSTALL_DIR}"
 }
 
+# The update overwrites this very file. git and rsync both replace files by
+# rename, so the running copy keeps its old inode and survives - but this
+# script is meant to be run from inside the checkout it updates, so re-exec
+# from a copy outside the tree and stop relying on that detail.
+reexec_from_copy() {
+  [[ "${SPIRIT_REEXEC:-0}" == "1" ]] && return 0
+  local self copy
+  self="$(readlink -f "$0" 2>/dev/null || printf '%s' "$0")"
+  [[ -f "$self" ]] || return 0
+  case "$self" in
+    "${INSTALL_DIR}"/*) ;;
+    *) return 0 ;;
+  esac
+  copy="$(mktemp /tmp/spirit-update.XXXXXX 2>/dev/null)" || return 0
+  cp "$self" "$copy" 2>/dev/null || { rm -f "$copy"; return 0; }
+  export SPIRIT_REEXEC=1 SPIRIT_SELF_COPY="$copy"
+  exec bash "$copy" ${ORIGINAL_ARGS+"${ORIGINAL_ARGS[@]}"}
+}
+
 action_update() {
   require_root
   detect_os
   is_installed || die "No Spirit-Panel install found at ${INSTALL_DIR}. Run the installer first."
+  # Re-exec before taking the lock, so only the surviving process holds it.
+  reexec_from_copy
+  acquire_lock
+  require_disk_space 2048
 
   local from_version
   from_version="$(panel_version)"
@@ -1115,6 +1256,7 @@ action_status() {
 action_backup() {
   require_root
   is_installed || die "No Spirit-Panel install found at ${INSTALL_DIR}."
+  acquire_lock
   backup_before_update
   printf '\n%s%sBackup complete.%s  %s\n\n' "$C_GREEN" "$C_BOLD" "$C_RESET" "${BACKUP_PATH}"
 }
@@ -1122,6 +1264,7 @@ action_backup() {
 action_uninstall() {
   require_root
   is_installed || die "No Spirit-Panel install found at ${INSTALL_DIR}."
+  acquire_lock
 
   printf '\n  %sThis removes the panel service, nginx site, and %s%s\n' "$C_YELLOW" "$INSTALL_DIR" "$C_RESET"
   printf '  %sThe database and its user are left untouched.%s\n\n' "$C_DIM" "$C_RESET"
@@ -1140,8 +1283,13 @@ action_uninstall() {
   systemctl reload nginx 2>/dev/null || true
   ok "nginx site removed"
 
-  rm -rf "$INSTALL_DIR"
-  ok "Removed ${INSTALL_DIR}"
+  if safe_to_remove "$INSTALL_DIR"; then
+    rm -rf "$INSTALL_DIR"
+    ok "Removed ${INSTALL_DIR}"
+  else
+    warn "Refusing to delete '${INSTALL_DIR}' - it does not look like a panel checkout"
+    info "Remove it by hand if that is really what you want"
+  fi
 
   printf '\n%sSpirit-Panel uninstalled.%s\n' "$C_BOLD" "$C_RESET"
   printf '  Backup kept at: %s\n' "${BACKUP_PATH}"
@@ -1172,16 +1320,22 @@ main_menu() {
     printf '  %s[0]%s Exit\n\n' "$C_CYAN" "$C_RESET"
 
     local choice
-    read -r -p "  Select an option: " choice
+    # A failed read means stdin closed. Without this the empty choice falls
+    # through to the default branch and the menu loops forever.
+    if ! read -r -p "  Select an option: " choice; then
+      printf '\n\n  Input closed - exiting.\n\n'
+      exit 0
+    fi
     printf '\n'
 
-    case "$choice" in
+    case "${choice// /}" in
       1) action_install; break ;;
       2) action_update; break ;;
       3) action_status; pause_menu ;;
       4) action_backup; pause_menu ;;
       5) action_uninstall; break ;;
-      0) printf '  Bye.\n\n'; exit 0 ;;
+      0 | q | Q | quit | exit) printf '  Bye.\n\n'; exit 0 ;;
+      "") ;;
       *) printf '  %sUnknown option: %s%s\n' "$C_YELLOW" "$choice" "$C_RESET"; sleep 1 ;;
     esac
   done
@@ -1257,21 +1411,44 @@ TLS_FAILED=0
 BACKUP_PATH=""
 REDIS_PASSWORD=""
 ADMIN_PASSWORD_GENERATED=0
+INSTALL_DIR_SET=0
+ORIGINAL_ARGS=("$@")
+
+# Options that take a value must actually get one. Without this check a
+# trailing `--domain` leaves $# unchanged (shift 2 fails with only one
+# argument left) and the parse loop spins forever.
+need_value() {
+  [[ $# -ge 2 ]] || die "Option $1 needs a value.
+Run with --help for usage."
+  case "$2" in
+    "" | -*) die "Option $1 needs a value (got '${2}').
+Run with --help for usage." ;;
+  esac
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     install | update | status | backup | uninstall)
       COMMAND="$1"; shift ;;
-    --domain) PANEL_DOMAIN="${2:-}"; shift 2 ;;
-    --admin-email) ADMIN_EMAIL="${2:-}"; shift 2 ;;
-    --admin-password) ADMIN_PASSWORD="${2:-}"; shift 2 ;;
-    --email) LETSENCRYPT_EMAIL="${2:-}"; shift 2 ;;
-    --ref) GIT_REF="${2:-}"; shift 2 ;;
+    --domain) need_value "$@"; PANEL_DOMAIN="$2"; shift 2 ;;
+    --admin-email) need_value "$@"; ADMIN_EMAIL="$2"; shift 2 ;;
+    --admin-password) need_value "$@"; ADMIN_PASSWORD="$2"; shift 2 ;;
+    --email) need_value "$@"; LETSENCRYPT_EMAIL="$2"; shift 2 ;;
+    --ref) need_value "$@"; GIT_REF="$2"; shift 2 ;;
     --no-tls) WANT_TLS=0; shift ;;
     --force-nginx) FORCE_NGINX=1; shift ;;
-    --install-dir) INSTALL_DIR="${2:-}"; shift 2 ;;
-    --user) APP_USER="${2:-}"; INSTALL_DIR="/home/${APP_USER}/Spirit-Panel"; shift 2 ;;
+    --install-dir)
+      need_value "$@"
+      INSTALL_DIR="${2%/}"; INSTALL_DIR_SET=1; shift 2 ;;
+    --user)
+      need_value "$@"
+      APP_USER="$2"
+      # Only derive the install directory when it was not given explicitly,
+      # so --install-dir and --user are order-independent.
+      [[ "$INSTALL_DIR_SET" == "1" ]] || INSTALL_DIR="/home/${APP_USER}/Spirit-Panel"
+      shift 2 ;;
     -y | --yes) ASSUME_YES=1; shift ;;
+    -V | --version) printf 'spirit.sh %s\n' "$SCRIPT_VERSION"; exit 0 ;;
     -h | --help) usage; exit 0 ;;
     *) die "Unknown option: $1
 Run with --help for usage." ;;
