@@ -18,6 +18,10 @@ type ParsedOption = { value: string; label: string; disabled?: boolean };
 type ParsedGroup = { label: string; options: ParsedOption[] };
 type ParsedItem = ParsedOption | ParsedGroup;
 
+const MENU_GAP = 6;
+const MENU_VIEWPORT_PAD = 8;
+const MENU_MAX_HEIGHT_PX = 280;
+
 function isGroup(item: ParsedItem): item is ParsedGroup {
   return 'options' in item;
 }
@@ -96,49 +100,20 @@ export function SelectControl({
   const listId = `${id}-listbox`;
   const wrapRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef(-1);
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
+  const [highlight, setHighlight] = useState(-1);
 
   const items = useMemo(() => parseSelectChildren(children), [children]);
   const options = useMemo(() => flattenOptions(items), [items]);
   const selectedValue = value == null ? '' : String(value);
   const selected = options.find((opt) => opt.value === selectedValue);
+  const enabledOptions = useMemo(() => options.filter((o) => !o.disabled), [options]);
 
   useEffect(() => {
-    if (!open || !wrapRef.current) return;
-
-    function updatePosition() {
-      const rect = wrapRef.current!.getBoundingClientRect();
-      setMenuStyle({
-        position: 'fixed',
-        top: rect.bottom + 6,
-        left: rect.left,
-        width: rect.width,
-        zIndex: 9999,
-      });
-    }
-
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    const onPointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('mousedown', onPointer);
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('mousedown', onPointer);
-    };
-  }, [open]);
+    highlightRef.current = highlight;
+  }, [highlight]);
 
   function pick(nextValue: string) {
     const opt = options.find((o) => o.value === nextValue);
@@ -150,8 +125,105 @@ export function SelectControl({
     setOpen(false);
   }
 
+  useEffect(() => {
+    if (!open || !wrapRef.current) return;
+
+    function updatePosition() {
+      const trigger = wrapRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const width = Math.min(Math.max(rect.width, 160), vw - MENU_VIEWPORT_PAD * 2);
+      const left = Math.min(Math.max(MENU_VIEWPORT_PAD, rect.left), vw - width - MENU_VIEWPORT_PAD);
+
+      const spaceBelow = vh - rect.bottom - MENU_GAP - MENU_VIEWPORT_PAD;
+      const spaceAbove = rect.top - MENU_GAP - MENU_VIEWPORT_PAD;
+      const preferBelow = spaceBelow >= Math.min(MENU_MAX_HEIGHT_PX, 160) || spaceBelow >= spaceAbove;
+      const maxHeight = Math.max(120, Math.min(MENU_MAX_HEIGHT_PX, preferBelow ? spaceBelow : spaceAbove));
+
+      const style: CSSProperties = {
+        position: 'fixed',
+        left,
+        width,
+        zIndex: 9999,
+        maxHeight,
+      };
+
+      if (preferBelow) {
+        style.top = rect.bottom + MENU_GAP;
+        style.bottom = 'auto';
+      } else {
+        style.bottom = vh - rect.top + MENU_GAP;
+        style.top = 'auto';
+      }
+
+      setMenuStyle(style);
+    }
+
+    updatePosition();
+    const selectedIdx = enabledOptions.findIndex((o) => o.value === selectedValue);
+    setHighlight(selectedIdx >= 0 ? selectedIdx : 0);
+
+    const onScrollOrResize = (event: Event) => {
+      if (menuRef.current && event.target instanceof Node && menuRef.current.contains(event.target)) {
+        return;
+      }
+      updatePosition();
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setHighlight((prev) => {
+          if (enabledOptions.length === 0) return -1;
+          if (prev < 0) return 0;
+          const delta = event.key === 'ArrowDown' ? 1 : -1;
+          return (prev + delta + enabledOptions.length) % enabledOptions.length;
+        });
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const idx = highlightRef.current;
+        const opt = enabledOptions[idx] ?? enabledOptions[0];
+        if (opt) {
+          onChange?.({
+            target: { value: opt.value },
+            currentTarget: { value: opt.value },
+          } as ChangeEvent<HTMLSelectElement>);
+          setOpen(false);
+        }
+      }
+    };
+
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onPointer);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onPointer);
+    };
+  }, [open, enabledOptions, selectedValue, onChange]);
+
   function renderOption(opt: ParsedOption) {
     const isSelected = opt.value === selectedValue;
+    const enabledIdx = enabledOptions.findIndex((o) => o.value === opt.value);
+    const isHighlighted = enabledIdx >= 0 && enabledIdx === highlight;
     return (
       <li key={`${opt.value}-${opt.label}`} role="presentation">
         <button
@@ -159,7 +231,12 @@ export function SelectControl({
           role="option"
           aria-selected={isSelected}
           disabled={opt.disabled || disabled}
-          className={`field-select-menu-item${isSelected ? ' is-selected' : ''}`}
+          className={`field-select-menu-item${isSelected ? ' is-selected' : ''}${
+            isHighlighted ? ' is-highlighted' : ''
+          }`}
+          onMouseEnter={() => {
+            if (enabledIdx >= 0) setHighlight(enabledIdx);
+          }}
           onClick={() => pick(opt.value)}
         >
           <span className="field-select-menu-item-label">{opt.label}</span>
@@ -176,7 +253,6 @@ export function SelectControl({
         open ? ' field-select-wrap--open' : ''
       }`}
     >
-      {/* Hidden native select for autofill/form semantics */}
       <select
         {...rest}
         id={id}
@@ -201,6 +277,12 @@ export function SelectControl({
         aria-controls={listId}
         className={`field-select field-select--${variant} field-select--${controlSize} ${className}`}
         onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
       >
         <span className={`field-select-value${selected?.label ? '' : ' is-placeholder'}`}>
           {selected?.label || 'Select…'}
@@ -215,24 +297,30 @@ export function SelectControl({
         createPortal(
           <div
             ref={menuRef}
-            className={`field-select-menu field-select-menu--${variant}`}
+            className={`field-select-menu field-select-menu--portal field-select-menu--${variant}`}
             style={menuStyle}
             id={listId}
             role="listbox"
             aria-labelledby={`${id}-trigger`}
           >
             <ul className="field-select-menu-list">
-              {items.map((item, index) =>
-                isGroup(item) ? (
-                  <li key={`${item.label}-${index}`} role="presentation" className="field-select-menu-group">
-                    <p className="field-select-menu-group-label">{item.label}</p>
-                    <ul role="group" aria-label={item.label}>
-                      {item.options.map((opt) => renderOption(opt))}
-                    </ul>
-                  </li>
-                ) : (
-                  renderOption(item)
-                ),
+              {items.length === 0 ? (
+                <li className="field-select-menu-empty" role="presentation">
+                  No options
+                </li>
+              ) : (
+                items.map((item, index) =>
+                  isGroup(item) ? (
+                    <li key={`${item.label}-${index}`} role="presentation" className="field-select-menu-group">
+                      <p className="field-select-menu-group-label">{item.label}</p>
+                      <ul role="group" aria-label={item.label}>
+                        {item.options.map((opt) => renderOption(opt))}
+                      </ul>
+                    </li>
+                  ) : (
+                    renderOption(item)
+                  ),
+                )
               )}
             </ul>
           </div>,

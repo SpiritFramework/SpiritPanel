@@ -27,7 +27,9 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
-- **Alerts page redesign:** clearer setup flow, styled dropdowns, inbox filters, friendlier rule labels.
+- **Alerts page fully redesigned** to match client Support / Servers branding (hero, stats, cards); scrollable inbox/watches; confirm before removing a watch.
+- **Select dropdowns** flip into the viewport and scroll when option lists are long (keyboard highlight + Enter).
+- **Alert evaluation hardened:** CPU/memory need sustained pressure (~2 samples), skip while offline; graceful Stop no longer fires “unexpected stop”; duplicate rule creates re-enable existing watches.
 - **Historical trends redesign** (server + node analytics): synced crosshair, warn bands, refreshed chart chrome; node analytics adds disk pressure and a 2×2 grid.
 
 ## [1.3.4.2] - 2026-09-09

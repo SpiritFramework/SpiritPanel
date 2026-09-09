@@ -109,6 +109,25 @@ function normalizeState(state: string | undefined | null): string {
 }
 
 const STOPPED_STATES = new Set(['offline', 'stopped']);
+const LIVE_RESOURCE_STATES = new Set(['running', 'starting']);
+/** Require consecutive over-threshold samples before firing flappy CPU/memory rules. */
+const RESOURCE_BREACH_STREAK_REQUIRED = 2;
+const resourceBreachStreak = new Map<string, number>();
+
+function streakKey(ruleId: string) {
+  return ruleId;
+}
+
+function noteBreach(ruleId: string, breached: boolean): number {
+  const key = streakKey(ruleId);
+  if (!breached) {
+    resourceBreachStreak.delete(key);
+    return 0;
+  }
+  const next = (resourceBreachStreak.get(key) ?? 0) + 1;
+  resourceBreachStreak.set(key, next);
+  return next;
+}
 
 /** Fire lifecycle alerts when container state changes (edge-triggered). */
 export async function evaluateServerLifecycleTransition(
@@ -126,7 +145,9 @@ export async function evaluateServerLifecycleTransition(
     STOPPED_STATES.has(next) &&
     !STOPPED_STATES.has(prev) &&
     prev !== 'installing' &&
-    prev !== 'install_failed'
+    prev !== 'install_failed' &&
+    // Graceful Stop goes running → stopping → offline; skip that path.
+    prev !== 'stopping'
   ) {
     metrics.push('server_offline');
   }
@@ -174,6 +195,7 @@ export async function evaluateServerResourceAlerts(
   server: Pick<Server, 'id' | 'name' | 'ownerId' | 'memory' | 'disk' | 'cpu'>,
   live: WingsResourceStats,
 ) {
+  const state = normalizeState(live.state);
   const cpuAbs = live.cpu_absolute ?? 0;
   const memBytes = live.memory_bytes ?? 0;
   const diskBytes = live.disk_bytes ?? 0;
@@ -197,19 +219,42 @@ export async function evaluateServerResourceAlerts(
   });
 
   for (const rule of rules) {
-    if (!cooldownElapsed(rule)) continue;
-    if (rule.metric !== 'cpu' && rule.metric !== 'memory' && rule.metric !== 'disk') continue;
-    const value = values[rule.metric];
-    if (value == null || !Number.isFinite(value)) continue;
-    if (value < rule.thresholdPct) continue;
-    const label = rule.metric === 'cpu' ? 'CPU' : rule.metric === 'memory' ? 'Memory' : 'Disk';
-    await fireRule(rule, {
-      title: `${server.name}: ${label} above ${rule.thresholdPct}%`,
-      message: `${label} is at ${value.toFixed(1)}% of allocation (threshold ${rule.thresholdPct}%).`,
-      severity: value >= Math.min(100, rule.thresholdPct + 10) ? 'critical' : 'warning',
-      valuePct: value,
-      serverId: server.id,
-    });
+    try {
+      if (rule.metric !== 'cpu' && rule.metric !== 'memory' && rule.metric !== 'disk') continue;
+
+      // CPU/memory are only meaningful while the process is alive.
+      if ((rule.metric === 'cpu' || rule.metric === 'memory') && !LIVE_RESOURCE_STATES.has(state)) {
+        noteBreach(rule.id, false);
+        continue;
+      }
+
+      const value = values[rule.metric];
+      if (value == null || !Number.isFinite(value)) {
+        noteBreach(rule.id, false);
+        continue;
+      }
+
+      const breached = value >= rule.thresholdPct;
+      const streak = noteBreach(rule.id, breached);
+      if (!breached) continue;
+      if (!cooldownElapsed(rule)) continue;
+
+      // Disk fills steadily — fire on first breach. CPU/memory need sustained pressure.
+      const needsStreak = rule.metric === 'cpu' || rule.metric === 'memory';
+      if (needsStreak && streak < RESOURCE_BREACH_STREAK_REQUIRED) continue;
+
+      const label = rule.metric === 'cpu' ? 'CPU' : rule.metric === 'memory' ? 'Memory' : 'Disk';
+      await fireRule(rule, {
+        title: `${server.name}: ${label} above ${rule.thresholdPct}%`,
+        message: `${label} is at ${value.toFixed(1)}% of allocation (threshold ${rule.thresholdPct}%).`,
+        severity: value >= Math.min(100, rule.thresholdPct + 10) ? 'critical' : 'warning',
+        valuePct: value,
+        serverId: server.id,
+      });
+      noteBreach(rule.id, false);
+    } catch {
+      /* one rule failure must not block the rest */
+    }
   }
 }
 
@@ -282,13 +327,32 @@ export type AlertRuleCreateInput = {
 };
 
 export async function createAlertRule(input: AlertRuleCreateInput) {
+  const thresholdPct = input.thresholdPct ?? 90;
+  const existing = await prisma.alertRule.findFirst({
+    where: {
+      userId: input.userId,
+      serverId: input.serverId ?? null,
+      nodeId: input.nodeId ?? null,
+      metric: input.metric,
+      thresholdPct,
+    },
+  });
+  if (existing) {
+    return prisma.alertRule.update({
+      where: { id: existing.id },
+      data: {
+        enabled: input.enabled ?? true,
+        cooldownSec: input.cooldownSec ?? existing.cooldownSec,
+      },
+    });
+  }
   return prisma.alertRule.create({
     data: {
       userId: input.userId,
       serverId: input.serverId ?? null,
       nodeId: input.nodeId ?? null,
       metric: input.metric,
-      thresholdPct: input.thresholdPct ?? 90,
+      thresholdPct,
       cooldownSec: input.cooldownSec ?? DEFAULT_COOLDOWN_SEC,
       enabled: input.enabled ?? true,
     },

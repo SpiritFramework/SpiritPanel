@@ -7,6 +7,7 @@
 @import "./styles/servers-list.css";
 @import "./styles/ticket-chat.css";
 @import "./styles/ticket-list.css";
+@import "./styles/alerts.css";
 
 /* ============================================================
    Theme tokens
@@ -966,6 +967,8 @@ body {
   left: 0;
   right: 0;
   z-index: 50;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
@@ -975,6 +978,39 @@ body {
     0 16px 40px -20px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   animation: field-select-menu-in 0.14s ease;
+}
+
+.field-select-menu--portal {
+  top: auto;
+  left: auto;
+  right: auto;
+}
+
+.field-select-menu-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.375rem;
+  margin: 0;
+  list-style: none;
+  scrollbar-gutter: stable;
+}
+
+.field-select-menu--portal .field-select-menu-list {
+  max-height: 100%;
+}
+
+.field-select-menu-empty {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.field-select-menu-item.is-highlighted:not(.is-selected) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .field-select-wrap--hero .field-select-menu,
@@ -994,15 +1030,6 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-.field-select-menu-list {
-  max-height: 16rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0.375rem;
-  margin: 0;
-  list-style: none;
 }
 
 .field-select-menu-group-label {

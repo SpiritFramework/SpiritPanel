@@ -19,13 +19,18 @@ export function AlertBell({ to = '/alerts' }: { to?: string }) {
   useEffect(() => {
     void refresh();
     const id = window.setInterval(() => void refresh(), 45_000);
-    return () => window.clearInterval(id);
+    const onFocus = () => void refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [refresh]);
 
   return (
     <Link
       to={to}
-      className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]"
+      className="ds-icon-btn ds-icon-btn--bordered relative inline-flex h-8 w-8 items-center justify-center text-[var(--muted)] hover:text-[var(--text)]"
       title={unread > 0 ? `${unread} unread alerts` : 'Alerts'}
       aria-label={unread > 0 ? `${unread} unread alerts` : 'Alerts'}
     >
