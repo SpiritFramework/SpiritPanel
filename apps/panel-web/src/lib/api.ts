@@ -457,7 +457,10 @@ export const api = {
     rotateNodeToken: (id: string) => request(`/admin/nodes/${id}/rotate-token`, { method: 'POST' }),
     nodeDiagnostics: (id: string) => request<NodeDiagnostics>(`/admin/nodes/${id}/diagnostics`),
     featherWingsRelease: () => request<FeatherWingsReleaseInfo>('/admin/featherwings/release'),
-    spiritPanelRelease: () => request<SpiritPanelReleaseInfo>('/admin/spirit-panel/release'),
+    spiritPanelRelease: (opts?: { refresh?: boolean }) =>
+      request<SpiritPanelReleaseInfo>(
+        `/admin/spirit-panel/release${opts?.refresh ? '?refresh=1' : ''}`,
+      ),
     nodeStats: (id: string, range = '24h') =>
       request<NodeStatsResponse>(`/admin/nodes/${id}/stats?range=${encodeURIComponent(range)}`),
     nodeConfig: (id: string) =>

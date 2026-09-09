@@ -654,9 +654,10 @@ export async function adminRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/spirit-panel/release', async (_request, reply) => {
+  app.get('/spirit-panel/release', async (request, reply) => {
     try {
-      return await getSpiritPanelReleaseInfo();
+      const refresh = (request.query as { refresh?: string }).refresh === '1';
+      return await getSpiritPanelReleaseInfo({ refresh });
     } catch (err) {
       const statusCode =
         err && typeof err === 'object' && 'statusCode' in err && typeof err.statusCode === 'number'

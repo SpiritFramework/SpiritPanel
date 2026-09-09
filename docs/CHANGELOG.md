@@ -17,6 +17,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.2.1] - 2026-09-09
+
+### Fixed
+
+- **Version checker Refresh now busts the API cache.** The panel API cached GitHub’s latest release for 15 minutes, so Refresh only cleared the browser cache and kept showing the old “latest” (e.g. still `1.3.1.1` after `V1.3.2.0` shipped). Refresh sends `?refresh=1`, cache TTL is 2 minutes, and the checker also cross-checks the recent releases list.
+
 ## [1.3.2.0] - 2026-09-09
 
 ### Changed

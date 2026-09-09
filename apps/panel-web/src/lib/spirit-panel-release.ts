@@ -12,7 +12,7 @@ export function loadSpiritPanelRelease(force = false): Promise<SpiritPanelReleas
   if (!force && releaseCache) return Promise.resolve(releaseCache);
   if (releasePromise) return releasePromise;
   releasePromise = api.admin
-    .spiritPanelRelease()
+    .spiritPanelRelease({ refresh: force })
     .then((data) => {
       releaseCache = data;
       return data;
