@@ -315,6 +315,12 @@ export async function clientRoutes(app: FastifyInstance) {
           code: 'server_installing',
         });
       }
+      if (code === 'wings_unreachable') {
+        return reply.status(statusCode && statusCode >= 400 ? statusCode : 502).send({
+          error: err instanceof Error ? err.message : 'Cannot reach FeatherWings for this server',
+          code: 'wings_unreachable',
+        });
+      }
       return sendClientError(reply, 502, 'power', request.log, err, 'Server power failed');
     }
     await logServerActivity(request, {
@@ -677,7 +683,17 @@ export async function clientRoutes(app: FastifyInstance) {
     if (!access) return;
     const server = await getAccessibleServer(id, request.user!.id, true);
     if (!server) return reply.status(404).send({ error: 'Not found' });
-    return wingsForNode(server.node).listFiles(server.uuid, directory);
+    try {
+      return await wingsForNode(server.node).listFiles(server.uuid, directory);
+    } catch (err) {
+      if (err instanceof WingsError && err.status === 404) {
+        return reply.status(404).send({
+          error: 'Server not found on FeatherWings. Start or reinstall once the daemon is reachable.',
+          code: 'wings_server_missing',
+        });
+      }
+      return sendClientError(reply, 502, 'wings', request.log, err, 'Failed to list files from FeatherWings');
+    }
   });
 
   app.get('/servers/:id/files/contents', async (request, reply) => {

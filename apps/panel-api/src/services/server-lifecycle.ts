@@ -13,7 +13,7 @@ import { effectiveResourceLimit } from '../lib/node-capacity.js';
 import { serverResourceContribution } from '../lib/server-resources.js';
 import { inferStateFromWingsResources } from '../lib/wings-resources.js';
 import { logWingsFailure } from '../lib/wings-sync.js';
-import { wingsForNode, type WingsClient } from './wings-client.js';
+import { wingsForNode, WingsError, type WingsClient } from './wings-client.js';
 
 export interface CreateServerInput {
   ownerId: string;
@@ -190,7 +190,24 @@ export async function createServerOnPanel(input: CreateServerInput) {
   return server;
 }
 
-export async function ensureServerOnWings(uuid: string) {
+function isWingsNotFound(err: unknown): boolean {
+  if (err instanceof WingsError && err.status === 404) return true;
+  return err instanceof Error && /\(404\)/.test(err.message);
+}
+
+/**
+ * Make sure FeatherWings knows about this server.
+ *
+ * Only calls createServer when the daemon returns HTTP 404 (server truly
+ * missing). Any other failure (timeout, connection refused, 401, 5xx) must
+ * NOT trigger create — that re-runs the egg install and is what made servers
+ * look like they were "reinstalling" after a panel update while Start and
+ * install streamed to the console at the same time.
+ *
+ * Returns whether a new install was kicked off so callers can avoid powering
+ * on mid-install.
+ */
+export async function ensureServerOnWings(uuid: string): Promise<{ created: boolean }> {
   const server = await getServerFull(prisma, uuid);
   if (!server) throw new Error('Server not found');
 
@@ -198,21 +215,48 @@ export async function ensureServerOnWings(uuid: string) {
 
   try {
     await wings.getResources(uuid);
-    return;
-  } catch {
-    // Server not reachable on FeatherWings right now.
+    return { created: false };
+  } catch (err) {
+    if (!isWingsNotFound(err)) {
+      const detail = err instanceof Error ? err.message : String(err);
+      logWingsFailure('ensureServerOnWings: daemon unreachable (not recreating)', err, { uuid });
+      throw Object.assign(
+        new Error(`Cannot reach FeatherWings for this server: ${detail}`),
+        { code: 'wings_unreachable', statusCode: err instanceof WingsError && err.status ? err.status : 502 },
+      );
+    }
   }
 
-  // `getResources` also fails transiently while an install container is still
-  // running (the server isn't booted yet). If the panel already considers this
-  // server to be installing, do NOT call createServer again: a second install
-  // collides with the in-progress one on the daemon, which removes the running
-  // install container and wipes its `/tmp/<daemon>/<uuid>` script directory,
-  // leaving a half-installed (corrupt) server. The install-complete callback
-  // (POST /servers/:uuid/install) will clear the installing state when it's done.
-  if (isServerInstalling(server)) return;
+  // getResources 404s while an install container is still running too. If the
+  // panel already considers this server to be installing, do NOT call
+  // createServer again — a second install collides on the daemon and can wipe
+  // the in-progress install directory.
+  if (isServerInstalling(server)) return { created: false };
 
-  await wings.createServer(uuid);
+  await prisma.server.update({
+    where: { id: server.id },
+    data: {
+      installStatus: 'installing',
+      status: 'installing',
+      containerState: 'installing',
+    },
+  });
+
+  try {
+    await wings.createServer(uuid);
+  } catch (e) {
+    await prisma.server.update({
+      where: { id: server.id },
+      data: {
+        installStatus: 'failed',
+        status: 'install_failed',
+        containerState: 'offline',
+      },
+    }).catch(() => undefined);
+    throw e instanceof Error ? e : new Error(String(e));
+  }
+
+  return { created: true };
 }
 
 export async function syncServerToWings(uuid: string) {
@@ -283,7 +327,17 @@ export async function powerServer(uuid: string, action: string) {
   }
 
   // start / restart
-  await ensureServerOnWings(uuid);
+  const ensured = await ensureServerOnWings(uuid);
+  if (ensured.created) {
+    // createServer starts the egg install. Do not power-start in parallel —
+    // that is what mixed install + start output in the console after updates.
+    throw Object.assign(
+      new Error(
+        'Server was missing on FeatherWings and is installing. Wait for installation to finish, then start again.',
+      ),
+      { code: 'server_installing', statusCode: 409 },
+    );
+  }
   const liveState = await readWingsContainerState(wings, uuid);
   const stuck =
     liveState === 'stopping' ||

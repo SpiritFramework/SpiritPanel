@@ -202,7 +202,13 @@ export class WingsClient {
       );
       return Array.isArray(raw) ? raw : (raw.data ?? []);
     } catch (e) {
-      if (e instanceof Error && e.message.includes('(404)')) return [];
+      // Empty directory is 200 + []. A 404 means the server is unknown to
+      // FeatherWings (or the path is missing) — do not fake "0 files", which
+      // made the panel look empty after daemon/panel reconnect blips.
+      if (e instanceof WingsError && e.status === 404) throw e;
+      if (e instanceof Error && e.message.includes('(404)')) {
+        throw new WingsError(e.message, 404);
+      }
       throw e;
     }
   }

@@ -17,6 +17,14 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.0.5] - 2026-09-09
+
+### Fixed
+
+- **Start after panel/FeatherWings blips no longer reinstalls.** `ensureServerOnWings` only calls FeatherWings `createServer` on a real HTTP 404 (server missing on the daemon). Timeouts, connection errors, auth failures, and 5xx used to be treated the same as “missing,” which re-ran the egg install and mixed install + start output in the console when you pressed Start.
+- **Start does not power on mid-install.** If the panel must re-register a missing server, it marks install in progress and returns **409** instead of issuing a power start in parallel.
+- **File manager no longer shows “0 files” for a missing daemon server.** A FeatherWings 404 on list-directory is returned as an error instead of an empty list.
+
 ## [1.3.0.4] - 2026-09-09
 
 ### Changed

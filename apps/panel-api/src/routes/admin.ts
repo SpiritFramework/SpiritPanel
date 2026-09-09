@@ -2191,9 +2191,15 @@ export async function adminRoutes(app: FastifyInstance) {
           code: 'server_installing',
         });
       }
+      if (code === 'wings_unreachable') {
+        return reply.status(statusCode && statusCode >= 400 ? statusCode : 502).send({
+          error: err instanceof Error ? err.message : 'Cannot reach FeatherWings for this server',
+          code: 'wings_unreachable',
+        });
+      }
       request.log.error({ err }, 'Admin server power failed');
       return reply.status(502).send({
-        error: err instanceof Error ? err.message : 'Failed to send power action to Wings',
+        error: err instanceof Error ? err.message : 'Failed to send power action to FeatherWings',
       });
     }
     await logAdminActivity(request, {
