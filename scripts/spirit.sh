@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.0"
+SCRIPT_VERSION="2.0.1"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -287,6 +287,56 @@ pnpm_usable() {
   fi
 }
 
+# Official standalone binary — no npm global prefix, no corepack, no
+# /usr/local/lib/node_modules traversal. This is what fixed panels where
+# `npm install -g` looked successful but spiritpanel still could not run pnpm.
+install_pnpm_standalone() {
+  local arch asset url dest="/usr/local/bin/pnpm" tmp
+  case "$(uname -m)" in
+    x86_64|amd64) arch="x64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *) return 1 ;;
+  esac
+  asset="pnpm-linuxstatic-${arch}"
+  url="https://github.com/pnpm/pnpm/releases/download/v9.15.9/${asset}"
+
+  mkdir -p /usr/local/bin
+  chmod a+rx /usr/local /usr/local/bin 2>/dev/null || true
+  tmp="$(mktemp)"
+  info "Downloading ${asset}"
+  if ! curl -fsSL "$url" -o "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  # Replace any broken symlink/shim sitting on the destination.
+  rm -f "$dest"
+  install -m 755 "$tmp" "$dest"
+  rm -f "$tmp"
+  PNPM_BIN="$dest"
+  return 0
+}
+
+install_pnpm_via_npm() {
+  local log
+  log="$(mktemp)"
+  mkdir -p /usr/local/bin /usr/local/lib 2>/dev/null || true
+  chmod a+rx /usr/local /usr/local/bin /usr/local/lib 2>/dev/null || true
+
+  if ! (umask 022; npm install -g --force --prefix /usr/local "pnpm@9" >"$log" 2>&1); then
+    if ! (umask 022; npm install -g --force "pnpm@9" >"$log" 2>&1); then
+      warn "npm install -g pnpm failed:"
+      tail -n 20 "$log" | while IFS= read -r line; do info "$line"; done
+      rm -f "$log"
+      return 1
+    fi
+  fi
+  rm -f "$log"
+  hash -r 2>/dev/null || true
+  resolve_pnpm
+  repair_pnpm_permissions
+  [[ -n "$PNPM_BIN" ]]
+}
+
 install_pnpm() {
   resolve_pnpm
   local resolved=""
@@ -303,23 +353,33 @@ install_pnpm() {
       ok "pnpm $("$PNPM_BIN" --version 2>/dev/null) (permissions repaired)"
       return
     fi
-    info "Reinstalling pnpm under /usr/local"
+    info "Installing a standalone pnpm binary into /usr/local/bin"
   elif [[ -n "$PNPM_BIN" ]]; then
-    info "Replacing the corepack pnpm shim with a real install"
+    info "Replacing the corepack pnpm shim"
+  else
+    info "Installing pnpm"
   fi
 
-  # umask 022: npm applies the shell umask; 077 makes the install root-only.
-  (umask 022; npm install -g --force --prefix /usr/local "pnpm@${PNPM_VERSION}" >/dev/null 2>&1) ||
-    (umask 022; npm install -g --force "pnpm@${PNPM_VERSION}" >/dev/null 2>&1) ||
-    die "Failed to install pnpm ${PNPM_VERSION}"
-  hash -r 2>/dev/null || true
-  resolve_pnpm
-  [[ -n "$PNPM_BIN" ]] || die "pnpm is not on PATH after install"
+  if install_pnpm_standalone; then
+    ok "pnpm $("$PNPM_BIN" --version 2>/dev/null) (standalone)"
+  elif install_pnpm_via_npm; then
+    ok "pnpm $("$PNPM_BIN" --version 2>/dev/null)"
+  else
+    die "Failed to install pnpm.
+Tried the standalone binary from GitHub and npm install -g.
+Fix manually, then re-run update:
+  curl -fsSL https://github.com/pnpm/pnpm/releases/download/v9.15.9/pnpm-linuxstatic-x64 -o /usr/local/bin/pnpm
+  chmod 755 /usr/local/bin/pnpm
+  runuser -u ${APP_USER} -- /usr/local/bin/pnpm --version"
+  fi
+
   repair_pnpm_permissions
-  pnpm_usable || die "pnpm installed at ${PNPM_BIN} but ${APP_USER} still cannot run it.
-Fix: umask 022 && npm install -g --force --prefix /usr/local pnpm@${PNPM_VERSION}
-     chmod -R a+rX /usr/local/lib/node_modules/pnpm /usr/local/bin/pnpm"
-  ok "pnpm $("$PNPM_BIN" --version 2>/dev/null)"
+  if ! pnpm_usable; then
+    warn "${APP_USER} still cannot run pnpm at ${PNPM_BIN}"
+    info "As ${APP_USER}: $(as_app "'${PNPM_BIN}' --version" 2>&1 | tr '\n' ' ')"
+    info "Node as ${APP_USER}: $(as_app 'command -v node; node -v' 2>&1 | tr '\n' ' ')"
+    die "Stopped before installing dependencies. Nothing was restarted."
+  fi
 }
 
 # ---------------------------------------------------------------------------

@@ -285,7 +285,7 @@ expect_contains "$out" "--domain" "help"
 done_test
 out="$(run_spirit --version)"
 it "prints script version 2.x"
-expect_contains "$out" "2.0.0" "version"
+expect_contains "$out" "2.0." "version"
 done_test
 teardown_sandbox
 
