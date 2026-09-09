@@ -22,11 +22,14 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Added
 
 - **In-app alerts** for server owners and admins: CPU/memory/disk threshold rules (evaluated ~30s with the stats collector), admin node-offline rules, inbox at `/alerts` with unread bell. Discord delivery deferred.
-- **Alert presets** (Essential, Performance, Storage, Full watch, Node health) so casual users can enable watches in one click; custom rules stay under Advanced.
+- **Alert presets** (Essential, Performance, Storage, Account security, Server access, Full watch, Node health) so casual users can enable watches in one click; custom rules stay under Advanced.
 - **Lifecycle alert metrics:** server crashed, unexpected stop/offline, and install failed (edge-triggered on container state / install webhooks).
+- **Account / server security alerts:** failed sign-in, new sign-in, password change, 2FA change, API key create/revoke, subuser add/remove.
 
 ### Changed
 
+- **Alerts inbox + watches redesigned** for usefulness: severity chips, metric icons, relative time, last-fired, and direct links (Console / Security).
+- **Browser ping uses Wings websocket auth RTT** instead of HTTP `/api/system` (stops DevTools 401 spam while keeping browser→node latency).
 - **Alerts page fully redesigned** to match client Support / Servers branding (hero, stats, cards); scrollable inbox/watches; confirm before removing a watch.
 - **Select dropdowns** flip into the viewport and scroll when option lists are long (keyboard highlight + Enter).
 - **Alert evaluation hardened:** CPU/memory need sustained pressure (~2 samples), skip while offline; graceful Stop no longer fires “unexpected stop”; duplicate rule creates re-enable existing watches.

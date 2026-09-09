@@ -36,6 +36,24 @@ export const ALERT_PRESETS = {
       { metric: 'disk' as const, thresholdPct: 95, cooldownSec: 900 },
     ],
   },
+  security: {
+    id: 'security',
+    label: 'Account security',
+    description: 'Failed logins, new sign-ins, password / 2FA / API key changes.',
+    rules: [
+      { metric: 'account_login_failed' as const, thresholdPct: 0, cooldownSec: 300 },
+      { metric: 'account_login' as const, thresholdPct: 0, cooldownSec: 60 },
+      { metric: 'account_password_changed' as const, thresholdPct: 0, cooldownSec: 60 },
+      { metric: 'account_2fa_changed' as const, thresholdPct: 0, cooldownSec: 60 },
+      { metric: 'account_api_key' as const, thresholdPct: 0, cooldownSec: 60 },
+    ],
+  },
+  server_security: {
+    id: 'server_security',
+    label: 'Server access',
+    description: 'Notify when someone is added or removed as a subuser on this server.',
+    rules: [{ metric: 'server_subuser' as const, thresholdPct: 0, cooldownSec: 60 }],
+  },
   full: {
     id: 'full',
     label: 'Full watch',
@@ -59,6 +77,20 @@ export const ALERT_PRESETS = {
 } as const;
 
 export type AlertPresetId = keyof typeof ALERT_PRESETS;
+
+/** Metrics that are account-scoped (no server required). */
+export const ACCOUNT_ALERT_METRICS = new Set<AlertMetricId>([
+  'account_login_failed',
+  'account_login',
+  'account_password_changed',
+  'account_2fa_changed',
+  'account_api_key',
+  'node_offline',
+]);
+
+export function alertMetricNeedsServer(metric: AlertMetricId): boolean {
+  return !ACCOUNT_ALERT_METRICS.has(metric);
+}
 
 function cooldownElapsed(rule: AlertRule, now = new Date()): boolean {
   if (!rule.lastFiredAt) return true;
@@ -372,14 +404,14 @@ export async function applyAlertPreset(input: {
     throw Object.assign(new Error('This preset is for admins only'), { statusCode: 403 });
   }
 
-  const needsServer = preset.rules.some((r) => r.metric !== 'node_offline');
+  const needsServer = preset.rules.some((r) => alertMetricNeedsServer(r.metric));
   if (needsServer && !input.serverId) {
     throw Object.assign(new Error('Pick a server for this preset'), { statusCode: 400 });
   }
 
   const created = [];
   for (const spec of preset.rules) {
-    const serverId = spec.metric === 'node_offline' ? null : input.serverId!;
+    const serverId = alertMetricNeedsServer(spec.metric) ? input.serverId! : null;
     const existing = await prisma.alertRule.findFirst({
       where: {
         userId: input.userId,
@@ -410,4 +442,46 @@ export async function applyAlertPreset(input: {
     );
   }
   return { created: created.length, presetId: input.presetId };
+}
+
+/** Fire enabled rules for an account/security (or scoped server) metric. */
+export async function notifyUserAlertMetric(
+  userId: string,
+  metric: AlertMetricId,
+  input: {
+    title: string;
+    message: string;
+    severity?: string;
+    serverId?: string | null;
+    valuePct?: number | null;
+  },
+) {
+  const rules = await prisma.alertRule.findMany({
+    where: {
+      userId,
+      enabled: true,
+      metric,
+      ...(input.serverId
+        ? { OR: [{ serverId: input.serverId }, { serverId: null }] }
+        : { serverId: null }),
+    },
+  });
+
+  for (const rule of rules) {
+    try {
+      if (!cooldownElapsed(rule)) continue;
+      // Per-server rules should not fire for other servers.
+      if (rule.serverId && input.serverId && rule.serverId !== input.serverId) continue;
+      if (rule.serverId && !input.serverId) continue;
+      await fireRule(rule, {
+        title: input.title,
+        message: input.message,
+        severity: input.severity ?? 'warning',
+        serverId: input.serverId ?? rule.serverId,
+        valuePct: input.valuePct ?? null,
+      });
+    } catch {
+      /* keep notifying other rules */
+    }
+  }
 }

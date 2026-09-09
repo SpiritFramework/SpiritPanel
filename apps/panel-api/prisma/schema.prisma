@@ -445,6 +445,12 @@ enum AlertMetric {
   server_offline
   server_crashed
   install_failed
+  account_login_failed
+  account_login
+  account_password_changed
+  account_2fa_changed
+  account_api_key
+  server_subuser
 }
 
 model AlertRule {

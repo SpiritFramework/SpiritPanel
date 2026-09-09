@@ -314,7 +314,13 @@ export type AlertMetric =
   | 'node_offline'
   | 'server_offline'
   | 'server_crashed'
-  | 'install_failed';
+  | 'install_failed'
+  | 'account_login_failed'
+  | 'account_login'
+  | 'account_password_changed'
+  | 'account_2fa_changed'
+  | 'account_api_key'
+  | 'server_subuser';
 
 export interface AlertRuleSummary {
   id: string;
@@ -835,8 +841,9 @@ export const api = {
       request<{
         host: string;
         port: number;
-        probeUrl: string;
-        method: 'browser';
+        socket: string;
+        token: string;
+        method: 'websocket';
       }>(`/client/servers/${id}/ping`),
     playerCount: (id: string) => request<ServerPlayerCountResponse>(`/client/servers/${id}/players`),
     websocket: (id: string) => request<{ token: string; socket: string }>(`/client/servers/${id}/websocket`),

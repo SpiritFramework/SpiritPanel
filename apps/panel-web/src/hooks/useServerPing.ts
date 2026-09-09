@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { measureBrowserProbe } from '../lib/browser-ping';
+import { measureWingsAuthRtt } from '../lib/browser-ping';
 import { smoothPingReading } from '../lib/ping-smooth';
 
 export type ServerPingState = 'idle' | 'loading' | 'ok' | 'unreachable';
 
 /**
  * Estimate latency from the user's browser to the server's node
- * (same datacenter/host path players use — not panel→game-port TCP).
+ * via a short authenticated Wings websocket handshake (no HTTP 401 noise).
  */
 export function useServerPing(serverId: string, enabled: boolean) {
   const [ping, setPing] = useState<number | null>(null);
@@ -27,13 +27,12 @@ export function useServerPing(serverId: string, enabled: boolean) {
       try {
         const target = await api.client.ping(serverId);
         if (cancelled) return;
-        if (!target.probeUrl) {
+        if (target.method !== 'websocket' || !target.socket || !target.token) {
           setPing(null);
           setState('unreachable');
           return;
         }
-        // One sample: Wings has no `/` page, so each GET logs a benign 404 in DevTools.
-        const ms = await measureBrowserProbe(target.probeUrl, { samples: 1 });
+        const ms = await measureWingsAuthRtt(target.socket, target.token);
         if (cancelled) return;
         if (ms != null) {
           setPing((prev) => smoothPingReading(prev, ms));
@@ -51,7 +50,6 @@ export function useServerPing(serverId: string, enabled: boolean) {
     }
 
     void measure();
-    // Refresh occasionally — not every few seconds (avoids flooding the console with probe 404s).
     const timer = window.setInterval(() => void measure(), 60_000);
     return () => {
       cancelled = true;

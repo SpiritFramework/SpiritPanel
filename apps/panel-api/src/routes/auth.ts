@@ -177,6 +177,15 @@ export async function authRoutes(app: FastifyInstance) {
     const valid = await verifyPassword(body.password, user.passwordHash);
     if (!valid) {
       await recordLoginFailure(identifier, request.ip);
+      void import('../services/alerts.js')
+        .then(({ notifyUserAlertMetric }) =>
+          notifyUserAlertMetric(user.id, 'account_login_failed', {
+            title: 'Failed sign-in attempt',
+            message: `Someone tried to sign in to your account from ${request.ip} with the wrong password.`,
+            severity: 'critical',
+          }),
+        )
+        .catch(() => undefined);
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
 
@@ -209,6 +218,16 @@ export async function authRoutes(app: FastifyInstance) {
       description: `${user.username} logged in`,
       properties: { role: user.role },
     });
+
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(user.id, 'account_login', {
+          title: 'New sign-in',
+          message: `Your account signed in from ${request.ip}. If this wasn’t you, change your password and enable 2FA.`,
+          severity: 'warning',
+        }),
+      )
+      .catch(() => undefined);
 
     return issueAuthSession(reply, user);
   });
@@ -245,6 +264,15 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (!verified) {
       await recordLoginFailure(`2fa:${userId}`, ip);
+      void import('../services/alerts.js')
+        .then(({ notifyUserAlertMetric }) =>
+          notifyUserAlertMetric(user.id, 'account_login_failed', {
+            title: 'Failed 2FA attempt',
+            message: `Someone entered an incorrect two-factor code from ${ip}.`,
+            severity: 'critical',
+          }),
+        )
+        .catch(() => undefined);
       return reply.status(401).send({ error: 'Invalid authentication code' });
     }
 
@@ -255,6 +283,16 @@ export async function authRoutes(app: FastifyInstance) {
       description: `${user.username} logged in (2FA)`,
       properties: { role: user.role },
     });
+
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(user.id, 'account_login', {
+          title: 'New sign-in',
+          message: `Your account signed in (2FA) from ${ip}. If this wasn’t you, change your password.`,
+          severity: 'warning',
+        }),
+      )
+      .catch(() => undefined);
 
     return issueAuthSession(reply, user);
   });
@@ -383,6 +421,15 @@ export async function authRoutes(app: FastifyInstance) {
       description: `${user.username} logged in with Discord`,
       properties: { role: user.role, method: 'discord' },
     });
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(user.id, 'account_login', {
+          title: 'New Discord sign-in',
+          message: `Your account signed in with Discord from ${request.ip}.`,
+          severity: 'warning',
+        }),
+      )
+      .catch(() => undefined);
     issueAuthSession(reply, user);
     return reply.redirect(panelRedirect(user.role === 'admin' || user.role === 'staff' ? '/admin' : '/servers'));
   });
@@ -652,6 +699,15 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     if (body.newPassword) {
+      void import('../services/alerts.js')
+        .then(({ notifyUserAlertMetric }) =>
+          notifyUserAlertMetric(user.id, 'account_password_changed', {
+            title: 'Password changed',
+            message: 'Your account password was changed. If you didn’t do this, reset it immediately and review Security.',
+            severity: 'critical',
+          }),
+        )
+        .catch(() => undefined);
       return issueAuthSession(reply, updated);
     }
 
@@ -716,6 +772,16 @@ export async function authRoutes(app: FastifyInstance) {
       description: `${user.username} enabled two-factor authentication`,
     });
 
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(user.id, 'account_2fa_changed', {
+          title: 'Two-factor authentication enabled',
+          message: '2FA is now on for your account.',
+          severity: 'info',
+        }),
+      )
+      .catch(() => undefined);
+
     return { success: true, recoveryCodes: codes };
   });
 
@@ -737,6 +803,16 @@ export async function authRoutes(app: FastifyInstance) {
       actorId: user.id,
       description: `${user.username} disabled two-factor authentication`,
     });
+
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(user.id, 'account_2fa_changed', {
+          title: 'Two-factor authentication disabled',
+          message: '2FA was turned off on your account. Re-enable it under Profile → Security if this wasn’t you.',
+          severity: 'critical',
+        }),
+      )
+      .catch(() => undefined);
 
     return { success: true };
   });

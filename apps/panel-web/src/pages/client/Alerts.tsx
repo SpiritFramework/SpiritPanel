@@ -6,14 +6,22 @@ import {
   BellOff,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Cpu,
   HardDrive,
+  KeyRound,
+  LogIn,
+  Pause,
+  Play,
   Plus,
   RefreshCw,
   Server,
+  Shield,
   ShieldAlert,
   Sparkles,
   Trash2,
+  UserPlus,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   api,
@@ -38,29 +46,84 @@ type PresetInfo = {
   ruleCount: number;
 };
 
-type InboxFilter = 'all' | 'unread' | 'critical';
+type InboxFilter = 'all' | 'unread' | 'critical' | 'security';
 
-const ADVANCED_METRICS: { id: AlertMetric; label: string; needsThreshold: boolean }[] = [
-  { id: 'server_crashed', label: 'Server crashed', needsThreshold: false },
-  { id: 'server_offline', label: 'Unexpected stop / offline', needsThreshold: false },
-  { id: 'install_failed', label: 'Install failed', needsThreshold: false },
-  { id: 'cpu', label: 'CPU over threshold', needsThreshold: true },
-  { id: 'memory', label: 'Memory over threshold', needsThreshold: true },
-  { id: 'disk', label: 'Disk over threshold', needsThreshold: true },
-  { id: 'node_offline', label: 'Node offline (admin)', needsThreshold: false },
+const ADVANCED_METRICS: {
+  id: AlertMetric;
+  label: string;
+  needsThreshold: boolean;
+  needsServer: boolean;
+}[] = [
+  { id: 'server_crashed', label: 'Server crashed', needsThreshold: false, needsServer: true },
+  { id: 'server_offline', label: 'Unexpected stop / offline', needsThreshold: false, needsServer: true },
+  { id: 'install_failed', label: 'Install failed', needsThreshold: false, needsServer: true },
+  { id: 'cpu', label: 'CPU over threshold', needsThreshold: true, needsServer: true },
+  { id: 'memory', label: 'Memory over threshold', needsThreshold: true, needsServer: true },
+  { id: 'disk', label: 'Disk over threshold', needsThreshold: true, needsServer: true },
+  { id: 'account_login_failed', label: 'Failed sign-in', needsThreshold: false, needsServer: false },
+  { id: 'account_login', label: 'New sign-in', needsThreshold: false, needsServer: false },
+  { id: 'account_password_changed', label: 'Password changed', needsThreshold: false, needsServer: false },
+  { id: 'account_2fa_changed', label: '2FA changed', needsThreshold: false, needsServer: false },
+  { id: 'account_api_key', label: 'API key created/revoked', needsThreshold: false, needsServer: false },
+  { id: 'server_subuser', label: 'Subuser access changed', needsThreshold: false, needsServer: true },
+  { id: 'node_offline', label: 'Node offline (admin)', needsThreshold: false, needsServer: false },
 ];
 
-const PRESET_ICONS: Record<string, typeof ShieldAlert> = {
+const PRESET_ICONS: Record<string, LucideIcon> = {
   essential: ShieldAlert,
   performance: Cpu,
   storage: HardDrive,
+  security: Shield,
+  server_security: UserPlus,
   full: Sparkles,
   node_health: Activity,
 };
 
-function formatWhen(iso: string) {
+const SECURITY_METRICS = new Set<AlertMetric>([
+  'account_login_failed',
+  'account_login',
+  'account_password_changed',
+  'account_2fa_changed',
+  'account_api_key',
+  'server_subuser',
+]);
+
+function metricIcon(metric: AlertMetric): LucideIcon {
+  switch (metric) {
+    case 'cpu':
+      return Cpu;
+    case 'memory':
+    case 'disk':
+      return HardDrive;
+    case 'server_crashed':
+    case 'server_offline':
+    case 'install_failed':
+      return Server;
+    case 'account_login_failed':
+    case 'account_login':
+      return LogIn;
+    case 'account_password_changed':
+    case 'account_2fa_changed':
+      return Shield;
+    case 'account_api_key':
+      return KeyRound;
+    case 'server_subuser':
+      return UserPlus;
+    case 'node_offline':
+      return Activity;
+    default:
+      return Bell;
+  }
+}
+
+function formatRelative(iso: string) {
   try {
-    return new Date(iso).toLocaleString();
+    const ms = Date.now() - new Date(iso).getTime();
+    if (ms < 60_000) return 'Just now';
+    if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+    if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+    if (ms < 7 * 86_400_000) return `${Math.floor(ms / 86_400_000)}d ago`;
+    return new Date(iso).toLocaleDateString();
   } catch {
     return iso;
   }
@@ -76,6 +139,18 @@ function friendlyRuleLabel(rule: AlertRuleSummary): string {
       return 'Install failures';
     case 'node_offline':
       return 'Node offline';
+    case 'account_login_failed':
+      return 'Failed sign-ins';
+    case 'account_login':
+      return 'New sign-ins';
+    case 'account_password_changed':
+      return 'Password changes';
+    case 'account_2fa_changed':
+      return '2FA changes';
+    case 'account_api_key':
+      return 'API key activity';
+    case 'server_subuser':
+      return 'Subuser access';
     case 'cpu':
       return `CPU ≥ ${rule.thresholdPct}%`;
     case 'memory':
@@ -87,10 +162,23 @@ function friendlyRuleLabel(rule: AlertRuleSummary): string {
   }
 }
 
-function severityTone(severity: string): string {
-  if (severity === 'critical') return 'alerts-page__event--critical';
-  if (severity === 'warning') return 'alerts-page__event--warning';
-  return '';
+function eventAction(event: AlertEventSummary): { to: string; label: string } | null {
+  if (SECURITY_METRICS.has(event.metric) && event.metric !== 'server_subuser') {
+    return { to: '/profile?tab=security', label: 'Security' };
+  }
+  if (event.server) {
+    return { to: `/servers/${event.server.id}/console`, label: 'Console' };
+  }
+  if (event.metric === 'node_offline') {
+    return { to: '/admin/nodes', label: 'Nodes' };
+  }
+  return null;
+}
+
+function severityLabel(severity: string) {
+  if (severity === 'critical') return 'Critical';
+  if (severity === 'warning') return 'Warning';
+  return 'Info';
 }
 
 export function AlertsPage() {
@@ -156,43 +244,49 @@ export function AlertsPage() {
     [events],
   );
   const activeWatches = useMemo(() => rules.filter((r) => r.enabled).length, [rules]);
-  const watchedServers = useMemo(() => {
-    const ids = new Set(rules.filter((r) => r.serverId).map((r) => r.serverId!));
-    return ids.size;
-  }, [rules]);
+  const securityUnread = useMemo(
+    () => events.filter((e) => !e.readAt && SECURITY_METRICS.has(e.metric)).length,
+    [events],
+  );
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       if (inboxFilter === 'unread') return !event.readAt;
       if (inboxFilter === 'critical') return event.severity === 'critical';
+      if (inboxFilter === 'security') return SECURITY_METRICS.has(event.metric);
       return true;
     });
   }, [events, inboxFilter]);
 
   const visibleRules = useMemo(() => {
     if (!serverId) return rules;
-    return rules.filter((r) => !r.serverId || r.serverId === serverId || r.metric === 'node_offline');
+    return rules.filter(
+      (r) => !r.serverId || r.serverId === serverId || SECURITY_METRICS.has(r.metric) || r.metric === 'node_offline',
+    );
   }, [rules, serverId]);
 
   const selectedServer = servers.find((s) => s.id === serverId);
   const advancedMetric = ADVANCED_METRICS.find((m) => m.id === metric);
-  const showAdvancedServer = metric !== 'node_offline';
+  const showAdvancedServer = Boolean(advancedMetric?.needsServer);
   const showThreshold = Boolean(advancedMetric?.needsThreshold);
   const deletingRule = rules.find((r) => r.id === deleteRuleId) ?? null;
+  const accountOnlyPreset = (id: string) => id === 'security' || id === 'node_health';
 
   async function applyPreset(presetId: string) {
     setApplyingPreset(presetId);
     setError('');
     setNotice('');
     try {
-      if (presetId !== 'node_health' && !serverId) throw new Error('Choose a server first');
+      if (!accountOnlyPreset(presetId) && !serverId) throw new Error('Choose a server first');
       const result = await api.client.applyAlertPreset({
         presetId,
-        serverId: presetId === 'node_health' ? null : serverId,
+        serverId: accountOnlyPreset(presetId) ? null : serverId,
       });
       setNotice(
         result.created > 0
-          ? `Added ${result.created} watch${result.created === 1 ? '' : 'es'}${selectedServer ? ` on ${selectedServer.name}` : ''}.`
+          ? `Added ${result.created} watch${result.created === 1 ? '' : 'es'}${
+              !accountOnlyPreset(presetId) && selectedServer ? ` on ${selectedServer.name}` : ''
+            }.`
           : 'Those watches were already enabled.',
       );
       await load({ soft: true });
@@ -211,14 +305,12 @@ export function AlertsPage() {
       if (metric === 'node_offline') {
         if (!isAdmin) throw new Error('Only admins can watch node offline');
         await api.client.createAlertRule({ metric: 'node_offline', thresholdPct: 0 });
+      } else if (!showAdvancedServer) {
+        await api.client.createAlertRule({ metric, thresholdPct: 0 });
       } else {
         if (!serverId) throw new Error('Pick a server');
         const pct = showThreshold ? Math.min(100, Math.max(1, thresholdPct || 90)) : 0;
-        await api.client.createAlertRule({
-          metric,
-          serverId,
-          thresholdPct: pct,
-        });
+        await api.client.createAlertRule({ metric, serverId, thresholdPct: pct });
       }
       setNotice('Custom watch added.');
       await load({ soft: true });
@@ -303,8 +395,8 @@ export function AlertsPage() {
                     <p className="alerts-page__eyebrow">Monitoring</p>
                     <h1 className="alerts-page__title">Alerts</h1>
                     <p className="alerts-page__desc">
-                      Get notified when a server crashes, fills disk, or hits pressure. Start with a preset — fine-tune
-                      only if you need to.
+                      Catch crashes, disk pressure, and account security events. Start with a preset — open any alert for
+                      the next step.
                     </p>
                   </div>
                 </div>
@@ -350,24 +442,25 @@ export function AlertsPage() {
                   <span className="alerts-page__stat-value">{criticalUnread}</span>
                   <span className="alerts-page__stat-label">Critical</span>
                 </button>
+                <button
+                  type="button"
+                  role="listitem"
+                  className={`alerts-page__stat${inboxFilter === 'security' ? ' is-active' : ''}`}
+                  onClick={() => setInboxFilter(inboxFilter === 'security' ? 'all' : 'security')}
+                >
+                  <span className="alerts-page__stat-value">{securityUnread}</span>
+                  <span className="alerts-page__stat-label">Security</span>
+                </button>
                 <div className="alerts-page__stat" role="listitem">
                   <span className="alerts-page__stat-value">{activeWatches}</span>
                   <span className="alerts-page__stat-label">Active watches</span>
-                </div>
-                <div className="alerts-page__stat" role="listitem">
-                  <span className="alerts-page__stat-value">{watchedServers}</span>
-                  <span className="alerts-page__stat-label">Servers watched</span>
                 </div>
               </div>
             </div>
           </header>
 
-          {error ? (
-            <AlertBanner tone="error">{error}</AlertBanner>
-          ) : null}
-          {notice ? (
-            <AlertBanner tone="info">{notice}</AlertBanner>
-          ) : null}
+          {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
+          {notice ? <AlertBanner tone="info">{notice}</AlertBanner> : null}
 
           <section className="alerts-page__setup" aria-labelledby="alerts-setup-title">
             <div className="alerts-page__setup-head">
@@ -377,8 +470,7 @@ export function AlertsPage() {
                   What should we watch?
                 </h2>
                 <p className="alerts-page__setup-desc">
-                  Choose a server, then enable a preset. Resource checks run about every 30 seconds; crash and stop
-                  alerts fire when state changes.
+                  Account security needs no server. Server presets use the selection on the right.
                 </p>
               </div>
               <div className="alerts-page__server-pick">
@@ -399,43 +491,36 @@ export function AlertsPage() {
               </div>
             </div>
 
-            {servers.length === 0 ? (
-              <EmptyState
-                icon={<Server className="h-5 w-5" />}
-                title="No servers to watch"
-                description="Once you have a server, presets will appear here."
-              />
-            ) : (
-              <div className="alerts-page__presets">
-                {presets.map((preset) => {
-                  const Icon = PRESET_ICONS[preset.id] ?? Sparkles;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className="alerts-page__preset"
-                      disabled={Boolean(applyingPreset) || (preset.id !== 'node_health' && !serverId)}
-                      onClick={() => void applyPreset(preset.id)}
-                    >
-                      <span className="alerts-page__preset-icon" aria-hidden>
-                        <Icon className="h-4 w-4" />
+            <div className="alerts-page__presets">
+              {presets.map((preset) => {
+                const Icon = PRESET_ICONS[preset.id] ?? Sparkles;
+                const needsServer = !accountOnlyPreset(preset.id);
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className="alerts-page__preset"
+                    disabled={Boolean(applyingPreset) || (needsServer && !serverId)}
+                    onClick={() => void applyPreset(preset.id)}
+                  >
+                    <span className="alerts-page__preset-icon" aria-hidden>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="alerts-page__preset-copy">
+                      <span className="alerts-page__preset-label">{preset.label}</span>
+                      <span className="alerts-page__preset-desc">{preset.description}</span>
+                      <span className="alerts-page__preset-meta">
+                        {preset.ruleCount} watch{preset.ruleCount === 1 ? '' : 'es'}
+                        {preset.adminOnly ? ' · Admin' : needsServer ? ' · Per server' : ' · Account'}
                       </span>
-                      <span className="alerts-page__preset-copy">
-                        <span className="alerts-page__preset-label">{preset.label}</span>
-                        <span className="alerts-page__preset-desc">{preset.description}</span>
-                        <span className="alerts-page__preset-meta">
-                          {preset.ruleCount} watch{preset.ruleCount === 1 ? '' : 'es'}
-                          {preset.adminOnly ? ' · Admin' : ''}
-                        </span>
-                      </span>
-                      <span className="alerts-page__preset-cta">
-                        {applyingPreset === preset.id ? <Spinner className="h-3.5 w-3.5" /> : 'Enable'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                    </span>
+                    <span className="alerts-page__preset-cta">
+                      {applyingPreset === preset.id ? <Spinner className="h-3.5 w-3.5" /> : 'Enable'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
           <div className="alerts-page__grid">
@@ -447,7 +532,7 @@ export function AlertsPage() {
                     <h2 id="alerts-inbox-title" className="alerts-page__panel-title">
                       Inbox
                     </h2>
-                    <p className="alerts-page__panel-sub">Newest first · auto-refreshes</p>
+                    <p className="alerts-page__panel-sub">Actionable events · auto-refreshes</p>
                   </div>
                   {unread > 0 ? <span className="alerts-page__badge">{unread} new</span> : null}
                 </div>
@@ -457,6 +542,7 @@ export function AlertsPage() {
                       ['all', 'All'],
                       ['unread', 'Unread'],
                       ['critical', 'Critical'],
+                      ['security', 'Security'],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -479,45 +565,71 @@ export function AlertsPage() {
                       ? 'You are caught up'
                       : inboxFilter === 'critical'
                         ? 'No critical alerts'
-                        : 'No alerts yet'
+                        : inboxFilter === 'security'
+                          ? 'No security alerts'
+                          : 'No alerts yet'
                   }
-                  description="When a watch fires, it shows up here. Cooldowns keep the same issue from spamming you."
+                  description="Enable Essential or Account security above — when something fires, you’ll get a clear next step here."
                 />
               ) : (
                 <ul className="alerts-page__scroll list-none m-0 p-0">
-                  {filteredEvents.map((event) => (
-                    <li
-                      key={event.id}
-                      className={`alerts-page__event ${severityTone(event.severity)}${
-                        event.readAt ? '' : ' is-unread'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="alerts-page__event-title">{event.title}</p>
-                        <p className="alerts-page__event-msg">{event.message}</p>
-                        <p className="alerts-page__event-meta">
-                          {formatWhen(event.createdAt)}
-                          {event.server ? (
-                            <>
-                              {' · '}
-                              <Link
-                                className="accent-text hover:underline"
-                                to={`/servers/${event.server.id}/console`}
-                              >
-                                {event.server.name}
+                  {filteredEvents.map((event) => {
+                    const Icon = metricIcon(event.metric);
+                    const action = eventAction(event);
+                    const unreadItem = !event.readAt;
+                    return (
+                      <li
+                        key={event.id}
+                        className={`alerts-page__msg alerts-page__msg--${event.severity || 'info'}${
+                          unreadItem ? ' is-unread' : ''
+                        }`}
+                      >
+                        <span className={`alerts-page__msg-icon alerts-page__msg-icon--${event.severity || 'info'}`} aria-hidden>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="alerts-page__msg-body min-w-0 flex-1">
+                          <div className="alerts-page__msg-top">
+                            <p className="alerts-page__msg-title">{event.title}</p>
+                            <span className={`alerts-page__sev alerts-page__sev--${event.severity || 'info'}`}>
+                              {severityLabel(event.severity)}
+                            </span>
+                          </div>
+                          <p className="alerts-page__msg-text">{event.message}</p>
+                          <div className="alerts-page__msg-meta">
+                            <span>{formatRelative(event.createdAt)}</span>
+                            {event.server ? (
+                              <>
+                                <span aria-hidden>·</span>
+                                <Link className="accent-text hover:underline" to={`/servers/${event.server.id}/console`}>
+                                  {event.server.name}
+                                </Link>
+                              </>
+                            ) : null}
+                            {event.valuePct != null ? (
+                              <>
+                                <span aria-hidden>·</span>
+                                <span>{event.valuePct.toFixed(0)}%</span>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="alerts-page__msg-actions">
+                            {action ? (
+                              <Link className="alerts-page__msg-link" to={action.to}>
+                                {action.label}
+                                <ChevronRight className="h-3.5 w-3.5" />
                               </Link>
-                            </>
-                          ) : null}
-                        </p>
-                      </div>
-                      {!event.readAt ? (
-                        <Button type="button" size="sm" variant="ghost" onClick={() => void markRead(event.id)}>
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Read
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
+                            ) : null}
+                            {unreadItem ? (
+                              <button type="button" className="alerts-page__msg-read" onClick={() => void markRead(event.id)}>
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Mark read
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
@@ -528,9 +640,7 @@ export function AlertsPage() {
                   <h2 id="alerts-watches-title" className="alerts-page__panel-title">
                     Active watches
                   </h2>
-                  <p className="alerts-page__panel-sub">
-                    {selectedServer ? `Showing ${selectedServer.name} + panel-wide` : 'Pause or remove anytime'}
-                  </p>
+                  <p className="alerts-page__panel-sub">Pause anything noisy · remove when done</p>
                 </div>
               </div>
 
@@ -538,44 +648,62 @@ export function AlertsPage() {
                 <EmptyState
                   icon={<ShieldAlert className="h-5 w-5" />}
                   title="No watches yet"
-                  description="Enable a preset above to start monitoring."
+                  description="Enable Essential for servers, or Account security for sign-ins and password changes."
                 />
               ) : (
                 <ul className="alerts-page__scroll list-none m-0 p-0">
-                  {visibleRules.map((rule) => (
-                    <li key={rule.id} className={`alerts-page__rule${rule.enabled ? '' : ' is-paused'}`}>
-                      <div className="min-w-0">
-                        <p className="alerts-page__rule-title">
-                          {friendlyRuleLabel(rule)}
-                          {rule.server ? ` · ${rule.server.name}` : ''}
-                        </p>
-                        <p className="alerts-page__rule-meta">
-                          {rule.enabled ? 'On' : 'Paused'} · cooldown {Math.round(rule.cooldownSec / 60)}m
-                        </p>
-                      </div>
-                      <div className="alerts-page__rule-actions">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={busyRuleId === rule.id}
-                          onClick={() => void toggleRule(rule)}
-                        >
-                          {rule.enabled ? 'Pause' : 'Resume'}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={busyRuleId === rule.id}
-                          onClick={() => setDeleteRuleId(rule.id)}
-                          aria-label="Remove watch"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
+                  {visibleRules.map((rule) => {
+                    const Icon = metricIcon(rule.metric);
+                    return (
+                      <li key={rule.id} className={`alerts-page__watch${rule.enabled ? '' : ' is-paused'}`}>
+                        <span className="alerts-page__watch-icon" aria-hidden>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="alerts-page__watch-title">{friendlyRuleLabel(rule)}</p>
+                          <p className="alerts-page__watch-meta">
+                            <span className={`alerts-page__watch-state${rule.enabled ? ' is-on' : ''}`}>
+                              {rule.enabled ? 'On' : 'Paused'}
+                            </span>
+                            <span aria-hidden>·</span>
+                            <span>
+                              {rule.server
+                                ? rule.server.name
+                                : SECURITY_METRICS.has(rule.metric)
+                                  ? 'Account'
+                                  : 'Panel-wide'}
+                            </span>
+                            <span aria-hidden>·</span>
+                            <span>
+                              {rule.lastFiredAt ? `Last ${formatRelative(rule.lastFiredAt)}` : 'Never fired'}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="alerts-page__watch-actions">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={busyRuleId === rule.id}
+                            onClick={() => void toggleRule(rule)}
+                            aria-label={rule.enabled ? 'Pause watch' : 'Resume watch'}
+                          >
+                            {rule.enabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={busyRuleId === rule.id}
+                            onClick={() => setDeleteRuleId(rule.id)}
+                            aria-label="Remove watch"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 
@@ -593,7 +721,7 @@ export function AlertsPage() {
                 {advancedOpen ? (
                   <div className="alerts-page__advanced-body">
                     <p className="alerts-page__advanced-hint">
-                      For power users. Prefer presets unless you need a specific threshold.
+                      Prefer presets. Use this for a single threshold or security metric.
                     </p>
                     <div className="alerts-page__advanced-row">
                       <Select

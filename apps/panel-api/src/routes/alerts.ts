@@ -5,6 +5,7 @@ import { requireAuth, requireSession, requireAdmin } from '../middleware/auth.js
 import { getServerAccess } from '../lib/client-server.js';
 import {
   ALERT_PRESETS,
+  ACCOUNT_ALERT_METRICS,
   applyAlertPreset,
   countUnreadAlerts,
   createAlertRule,
@@ -22,9 +23,34 @@ const metricSchema = z.enum([
   'server_offline',
   'server_crashed',
   'install_failed',
+  'account_login_failed',
+  'account_login',
+  'account_password_changed',
+  'account_2fa_changed',
+  'account_api_key',
+  'server_subuser',
 ]);
-const presetSchema = z.enum(['essential', 'performance', 'storage', 'full', 'node_health']);
-const LIFECYCLE_METRICS = new Set(['node_offline', 'server_offline', 'server_crashed', 'install_failed']);
+const presetSchema = z.enum([
+  'essential',
+  'performance',
+  'storage',
+  'security',
+  'server_security',
+  'full',
+  'node_health',
+]);
+const LIFECYCLE_METRICS = new Set([
+  'node_offline',
+  'server_offline',
+  'server_crashed',
+  'install_failed',
+  'account_login_failed',
+  'account_login',
+  'account_password_changed',
+  'account_2fa_changed',
+  'account_api_key',
+  'server_subuser',
+]);
 
 function serializeRule(rule: {
   id: string;
@@ -142,7 +168,7 @@ export async function alertRoutes(app: FastifyInstance) {
       })
       .parse(request.body);
 
-    if (body.presetId !== 'node_health') {
+    if (body.presetId !== 'node_health' && body.presetId !== 'security') {
       if (!body.serverId) return reply.status(400).send({ error: 'Pick a server' });
       try {
         await assertCanManageServerAlerts(user.id, body.serverId, isAdmin);
@@ -225,6 +251,17 @@ export async function alertRoutes(app: FastifyInstance) {
         userId: user.id,
         metric: 'node_offline',
         nodeId: body.nodeId ?? null,
+        thresholdPct: 0,
+        cooldownSec: body.cooldownSec,
+        enabled: body.enabled,
+      });
+      return serializeRule(rule);
+    }
+
+    if (ACCOUNT_ALERT_METRICS.has(body.metric)) {
+      const rule = await createAlertRule({
+        userId: user.id,
+        metric: body.metric,
         thresholdPct: 0,
         cooldownSec: body.cooldownSec,
         enabled: body.enabled,

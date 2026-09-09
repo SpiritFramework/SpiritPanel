@@ -72,16 +72,35 @@ export async function clientRoutes(app: FastifyInstance) {
 
     accountApp.post('/account/api-keys', { config: API_KEY_CREATION_LIMIT }, async (request) => {
       const body = z.object({ memo: z.string().max(255).default('') }).parse(request.body ?? {});
-      return createApiKeyForUser(request.user!.id, {
+      const key = await createApiKeyForUser(request.user!.id, {
         memo: body.memo,
         keyType: API_KEY_TYPE_ACCOUNT,
       });
+      void import('../services/alerts.js')
+        .then(({ notifyUserAlertMetric }) =>
+          notifyUserAlertMetric(request.user!.id, 'account_api_key', {
+            title: 'API key created',
+            message: `A new account API key was created${body.memo ? ` (${body.memo})` : ''}. Revoke unknown keys under Profile → API keys.`,
+            severity: 'warning',
+          }),
+        )
+        .catch(() => undefined);
+      return key;
     });
 
     accountApp.delete('/account/api-keys/:id', async (request, reply) => {
       const { id } = request.params as { id: string };
       const deleted = await deleteApiKeyForUser(id, request.user!.id);
       if (!deleted) return reply.status(404).send({ error: 'API key not found' });
+      void import('../services/alerts.js')
+        .then(({ notifyUserAlertMetric }) =>
+          notifyUserAlertMetric(request.user!.id, 'account_api_key', {
+            title: 'API key revoked',
+            message: 'An account API key was deleted.',
+            severity: 'info',
+          }),
+        )
+        .catch(() => undefined);
       return { deleted: true };
     });
   });
@@ -422,7 +441,7 @@ export async function clientRoutes(app: FastifyInstance) {
 
   app.get('/servers/:id/ping', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const access = await requireServerAccess(request, reply, id, 'allocation.read');
+    const access = await requireServerAccess(request, reply, id, 'websocket.connect');
     if (!access) return;
     const server = await getAccessibleServer(id, request.user!.id, true);
     if (!server) return reply.status(404).send({ error: 'Not found' });
@@ -436,20 +455,40 @@ export async function clientRoutes(app: FastifyInstance) {
       { fqdn: server.node.fqdn },
     );
     const port = server.defaultAllocation.port;
-    const node = server.node;
-    const scheme = node.scheme === 'https' ? 'https' : 'http';
-    // Probe Wings /api/system from the user's browser (same location as the game host).
-    // Unauthenticated GETs typically 401 — quieter/clearer than a root document 404.
-    // Behind a reverse proxy, public HTTPS/HTTP is on standard ports — not daemonListen.
-    const probeUrl = node.behindProxy
-      ? `${scheme}://${node.fqdn}/api/system`
-      : `${scheme}://${node.fqdn}:${node.daemonListen}/api/system`;
+
+    // Browser→node RTT via authenticated Wings websocket (no HTTP /api/system 401 console noise).
+    const token = signWingsJwt(
+      {
+        jti: crypto.randomUUID(),
+        user_uuid: request.user!.uuid,
+        server_uuid: server.uuid,
+        scope: 'websocket',
+        permissions: wingsPermissionsForUser(
+          access.isOwner || access.isAdminSupport,
+          access.permissions,
+          [...WINGS_CLIENT_PERMISSIONS],
+        ),
+      },
+      '2m',
+      server.node.daemonTokenSecret,
+    );
+
+    let socket: string;
+    try {
+      socket = buildWingsWebsocketUrl(server.uuid, server.node);
+    } catch (err) {
+      return reply.status(400).send({
+        error: err instanceof Error ? err.message : 'Ping is not available for this node configuration',
+        code: 'console_unavailable',
+      });
+    }
 
     return {
       host,
       port,
-      probeUrl,
-      method: 'browser' as const,
+      socket,
+      token,
+      method: 'websocket' as const,
     };
   });
 
@@ -1171,6 +1210,17 @@ export async function clientRoutes(app: FastifyInstance) {
       properties: { email: body.email, permissions },
     });
 
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(server.ownerId, 'server_subuser', {
+          title: `${server.name}: subuser added`,
+          message: `${user.username} (${user.email}) was granted access to this server.`,
+          severity: 'warning',
+          serverId: id,
+        }),
+      )
+      .catch(() => undefined);
+
     if (await isMailEnabled()) {
       try {
         await sendSubuserAddedEmail(
@@ -1233,6 +1283,16 @@ export async function clientRoutes(app: FastifyInstance) {
       event: 'server.subuser.removed',
       description: `${request.user!.username} removed subuser ${removed.user.username}`,
     });
+    void import('../services/alerts.js')
+      .then(({ notifyUserAlertMetric }) =>
+        notifyUserAlertMetric(server.ownerId, 'server_subuser', {
+          title: `${server.name}: subuser removed`,
+          message: `${removed.user.username} no longer has access to this server.`,
+          severity: 'warning',
+          serverId: id,
+        }),
+      )
+      .catch(() => undefined);
     return { deleted: true };
   });
 
