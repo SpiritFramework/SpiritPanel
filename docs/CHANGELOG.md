@@ -17,6 +17,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.2.3] - 2026-09-09
+
+### Changed
+
+- **Quieter browser latency probe.** Server ping uses one sample every 60s instead of three every 15s, so DevTools is not flooded with expected FeatherWings `GET /` 404s (Wings has no document at `/`; the probe only needs a network response for RTT).
+
 ## [1.3.2.2] - 2026-09-09
 
 ### Fixed

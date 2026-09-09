@@ -25,4 +25,4 @@ const require = createRequire(import.meta.url);
 const pkg = require('../../package.json') as { version?: string };
 
 /** Panel release version (`MAJOR.MINOR.FEATURE.PATCH`). */
-export const PANEL_VERSION = pkg.version ?? '1.3.2.2';
+export const PANEL_VERSION = pkg.version ?? '1.3.2.3';

@@ -32,7 +32,8 @@ export function useServerPing(serverId: string, enabled: boolean) {
           setState('unreachable');
           return;
         }
-        const ms = await measureBrowserProbe(target.probeUrl);
+        // One sample: Wings has no `/` page, so each GET logs a benign 404 in DevTools.
+        const ms = await measureBrowserProbe(target.probeUrl, { samples: 1 });
         if (cancelled) return;
         if (ms != null) {
           setPing((prev) => smoothPingReading(prev, ms));
@@ -50,7 +51,8 @@ export function useServerPing(serverId: string, enabled: boolean) {
     }
 
     void measure();
-    const timer = window.setInterval(() => void measure(), 15_000);
+    // Refresh occasionally — not every few seconds (avoids flooding the console with probe 404s).
+    const timer = window.setInterval(() => void measure(), 60_000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);

@@ -20,6 +20,9 @@ export function browserSafeProbeUrl(probeUrl: string): string {
 /**
  * One RTT sample from the user's browser to a node probe URL.
  * Uses no-cors so Wings/nginx need not allow the panel origin — we only need network timing.
+ *
+ * Note: FeatherWings has no document at `/`, so DevTools may show a benign 404 for this GET.
+ * That response still proves the daemon edge is reachable.
  */
 export function measureBrowserProbeOnce(url: string, timeoutMs = 2500): Promise<number | null> {
   return new Promise((resolve) => {
