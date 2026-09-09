@@ -436,12 +436,15 @@ model ServerStatSnapshot {
   @@map("server_stat_snapshots")
 }
 
-/// Resource / node threshold rules. Discord delivery comes later.
+/// Resource / node / lifecycle threshold rules. Discord delivery comes later.
 enum AlertMetric {
   cpu
   memory
   disk
   node_offline
+  server_offline
+  server_crashed
+  install_failed
 }
 
 model AlertRule {

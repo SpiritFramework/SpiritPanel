@@ -307,7 +307,14 @@ export interface SshKeySummary {
   createdAt: string;
 }
 
-export type AlertMetric = 'cpu' | 'memory' | 'disk' | 'node_offline';
+export type AlertMetric =
+  | 'cpu'
+  | 'memory'
+  | 'disk'
+  | 'node_offline'
+  | 'server_offline'
+  | 'server_crashed'
+  | 'install_failed';
 
 export interface AlertRuleSummary {
   id: string;
@@ -1284,6 +1291,21 @@ export const api = {
 
     ticketMeta: () => request<TicketMetaResponse>('/client/tickets/meta'),
     alertsSummary: () => request<{ unread: number }>('/client/alerts/summary'),
+    alertPresets: () =>
+      request<{
+        presets: Array<{
+          id: string;
+          label: string;
+          description: string;
+          adminOnly: boolean;
+          ruleCount: number;
+        }>;
+      }>('/client/alerts/presets'),
+    applyAlertPreset: (data: { presetId: string; serverId?: string | null }) =>
+      request<{ created: number; presetId: string }>('/client/alerts/presets/apply', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     alertEvents: (unreadOnly = false) =>
       request<{ events: AlertEventSummary[] }>(
         `/client/alerts/events${unreadOnly ? '?unreadOnly=1' : ''}`,

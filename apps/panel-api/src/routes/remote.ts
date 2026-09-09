@@ -220,6 +220,15 @@ export async function remoteRoutes(app: FastifyInstance) {
       },
     });
 
+    if (!body.successful) {
+      try {
+        const { evaluateServerLifecycleTransition } = await import('../services/alerts.js');
+        await evaluateServerLifecycleTransition(server, server.containerState, 'install_failed');
+      } catch {
+        /* alerts must not block install webhook */
+      }
+    }
+
     if (await isMailEnabled()) {
       try {
         const full = await prisma.server.findUnique({

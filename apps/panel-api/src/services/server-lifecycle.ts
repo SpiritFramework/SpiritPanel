@@ -334,6 +334,12 @@ export async function ensureServerOnWings(uuid: string): Promise<{ created: bool
         containerState: 'offline',
       },
     }).catch(() => undefined);
+    try {
+      const { evaluateServerLifecycleTransition } = await import('./alerts.js');
+      await evaluateServerLifecycleTransition(server, 'installing', 'install_failed');
+    } catch {
+      /* ignore */
+    }
     throw e instanceof Error ? e : new Error(String(e));
   }
 

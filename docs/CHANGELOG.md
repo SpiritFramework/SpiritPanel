@@ -22,9 +22,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Added
 
 - **In-app alerts** for server owners and admins: CPU/memory/disk threshold rules (evaluated ~30s with the stats collector), admin node-offline rules, inbox at `/alerts` with unread bell. Discord delivery deferred.
+- **Alert presets** (Essential, Performance, Storage, Full watch, Node health) so casual users can enable watches in one click; custom rules stay under Advanced.
+- **Lifecycle alert metrics:** server crashed, unexpected stop/offline, and install failed (edge-triggered on container state / install webhooks).
 
 ### Changed
 
+- **Alerts page redesign:** clearer setup flow, styled dropdowns, inbox filters, friendlier rule labels.
 - **Historical trends redesign** (server + node analytics): synced crosshair, warn bands, refreshed chart chrome; node analytics adds disk pressure and a 2×2 grid.
 
 ## [1.3.4.2] - 2026-09-09

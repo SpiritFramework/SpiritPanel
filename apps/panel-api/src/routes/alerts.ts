@@ -4,14 +4,27 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireSession, requireAdmin } from '../middleware/auth.js';
 import { getServerAccess } from '../lib/client-server.js';
 import {
+  ALERT_PRESETS,
+  applyAlertPreset,
   countUnreadAlerts,
   createAlertRule,
   listAlertEventsForUser,
   markAlertRead,
   markAllAlertsRead,
+  type AlertPresetId,
 } from '../services/alerts.js';
 
-const metricSchema = z.enum(['cpu', 'memory', 'disk', 'node_offline']);
+const metricSchema = z.enum([
+  'cpu',
+  'memory',
+  'disk',
+  'node_offline',
+  'server_offline',
+  'server_crashed',
+  'install_failed',
+]);
+const presetSchema = z.enum(['essential', 'performance', 'storage', 'full', 'node_health']);
+const LIFECYCLE_METRICS = new Set(['node_offline', 'server_offline', 'server_crashed', 'install_failed']);
 
 function serializeRule(rule: {
   id: string;
@@ -103,6 +116,56 @@ export async function alertRoutes(app: FastifyInstance) {
     return { unread };
   });
 
+  app.get('/alerts/presets', async (request) => {
+    const user = request.user!;
+    const isAdmin = user.role === 'admin' || user.rootAdmin;
+    return {
+      presets: Object.values(ALERT_PRESETS)
+        .filter((p) => !('adminOnly' in p && p.adminOnly) || isAdmin)
+        .map((p) => ({
+          id: p.id,
+          label: p.label,
+          description: p.description,
+          adminOnly: 'adminOnly' in p && Boolean(p.adminOnly),
+          ruleCount: p.rules.length,
+        })),
+    };
+  });
+
+  app.post('/alerts/presets/apply', async (request, reply) => {
+    const user = request.user!;
+    const isAdmin = user.role === 'admin' || user.rootAdmin;
+    const body = z
+      .object({
+        presetId: presetSchema,
+        serverId: z.string().min(1).optional().nullable(),
+      })
+      .parse(request.body);
+
+    if (body.presetId !== 'node_health') {
+      if (!body.serverId) return reply.status(400).send({ error: 'Pick a server' });
+      try {
+        await assertCanManageServerAlerts(user.id, body.serverId, isAdmin);
+      } catch (err) {
+        const status = (err as { statusCode?: number }).statusCode ?? 500;
+        return reply.status(status).send({ error: err instanceof Error ? err.message : 'Failed' });
+      }
+    }
+
+    try {
+      const result = await applyAlertPreset({
+        userId: user.id,
+        presetId: body.presetId as AlertPresetId,
+        serverId: body.serverId ?? null,
+        isAdmin,
+      });
+      return result;
+    } catch (err) {
+      const status = (err as { statusCode?: number }).statusCode ?? 500;
+      return reply.status(status).send({ error: err instanceof Error ? err.message : 'Failed' });
+    }
+  });
+
   app.get('/alerts/events', async (request) => {
     const query = z
       .object({
@@ -133,17 +196,13 @@ export async function alertRoutes(app: FastifyInstance) {
 
   app.get('/alerts/rules', async (request) => {
     const user = request.user!;
-    const isAdmin = user.role === 'admin' || user.rootAdmin;
     const rules = await prisma.alertRule.findMany({
-      where: isAdmin ? undefined : { userId: user.id },
+      where: { userId: user.id },
       include: { server: { select: { id: true, name: true, uuidShort: true } } },
       orderBy: { createdAt: 'desc' },
-      take: isAdmin ? 200 : 100,
+      take: 100,
     });
-    // Non-admins only see own; admins see all but clients listing own still filter by userId above for non-admin.
-    // For admins viewing "my rules" in the shared inbox page we still return all — OK for small panels.
-    const scoped = isAdmin ? rules.filter((r) => r.userId === user.id || r.metric === 'node_offline') : rules;
-    return { rules: scoped.map(serializeRule) };
+    return { rules: rules.map(serializeRule) };
   });
 
   app.post('/alerts/rules', async (request, reply) => {
@@ -154,7 +213,7 @@ export async function alertRoutes(app: FastifyInstance) {
         metric: metricSchema,
         serverId: z.string().min(1).optional().nullable(),
         nodeId: z.string().min(1).optional().nullable(),
-        thresholdPct: z.number().int().min(1).max(100).optional(),
+        thresholdPct: z.number().int().min(0).max(100).optional(),
         cooldownSec: z.number().int().min(60).max(86_400).optional(),
         enabled: z.boolean().optional(),
       })
@@ -173,7 +232,7 @@ export async function alertRoutes(app: FastifyInstance) {
       return serializeRule(rule);
     }
 
-    if (!body.serverId) return reply.status(400).send({ error: 'serverId is required for resource alerts' });
+    if (!body.serverId) return reply.status(400).send({ error: 'serverId is required for this alert' });
     try {
       await assertCanManageServerAlerts(user.id, body.serverId, isAdmin);
     } catch (err) {
@@ -185,7 +244,7 @@ export async function alertRoutes(app: FastifyInstance) {
       userId: user.id,
       serverId: body.serverId,
       metric: body.metric,
-      thresholdPct: body.thresholdPct ?? 90,
+      thresholdPct: LIFECYCLE_METRICS.has(body.metric) ? 0 : (body.thresholdPct ?? 90),
       cooldownSec: body.cooldownSec,
       enabled: body.enabled,
     });

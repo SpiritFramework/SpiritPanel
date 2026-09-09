@@ -175,6 +175,12 @@ export async function applyContainerStatusUpdate(
     return;
   }
 
+  const existing = await prisma.server.findUnique({
+    where: { id: server.id },
+    select: { id: true, name: true, suspended: true, containerState: true },
+  });
+  const previousState = existing?.containerState ?? 'offline';
+
   setContainerStatus(server.uuid, state);
 
   const data: {
@@ -206,6 +212,15 @@ export async function applyContainerStatusUpdate(
   // Do not flip Server.suspended from Wings "suspended" runtime state — that flag is admin-controlled.
 
   await prisma.server.update({ where: { id: server.id }, data });
+
+  if (existing) {
+    try {
+      const { evaluateServerLifecycleTransition } = await import('../services/alerts.js');
+      await evaluateServerLifecycleTransition(existing, previousState, state);
+    } catch {
+      // Alert evaluation must never block state updates.
+    }
+  }
 }
 
 /** Clear a stuck stopping/starting badge in the panel (and suppress daemon re-stick). */
