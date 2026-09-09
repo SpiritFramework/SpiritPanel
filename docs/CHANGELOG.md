@@ -17,6 +17,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.2.0] - 2026-09-09
+
+### Changed
+
+- **Admin Settings → About redesigned.** Cleaner brand-first layout: product hero, dedicated software version panel (installed vs latest), compact credits/Discord, and a simple related-admin list. Removed the busy glow banner, capability pill strip, and marketing feature cards.
+
 ## [1.3.1.1] - 2026-09-09
 
 ### Fixed

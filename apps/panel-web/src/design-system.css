@@ -1,5 +1,5 @@
 /* ============================================================
-   Spirit Panel â€” unified design system
+   Spirit Panel Ã¢â‚¬â€ unified design system
    Complements Tailwind; uses existing theme tokens from index.css
 
    ENFORCEMENT: New UI must use ds-* classes only.
@@ -30,7 +30,7 @@
   --ds-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* â”€â”€ Page shell â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Page shell Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-page {
   width: 100%;
   max-width: var(--ds-content-max);
@@ -117,7 +117,7 @@
   }
 }
 
-/* â”€â”€ Cards â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Cards Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-card {
   overflow: hidden;
   border-radius: var(--ds-radius-xl);
@@ -209,7 +209,7 @@
   transform: translate(1px, -1px);
 }
 
-/* â”€â”€ Buttons â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Buttons Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-btn {
   display: inline-flex;
   align-items: center;
@@ -323,7 +323,7 @@
   border: 1px solid var(--border);
 }
 
-/* â”€â”€ Form fields â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Form fields Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-field {
   width: 100%;
   min-height: 2.375rem;
@@ -418,7 +418,7 @@
   color: var(--danger-fg);
 }
 
-/* â”€â”€ Tables â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Tables Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -471,7 +471,7 @@
   padding-right: 0;
 }
 
-/* â”€â”€ Modals â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Modals Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-modal-overlay {
   position: fixed;
   inset: 0;
@@ -541,7 +541,7 @@
   background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
 }
 
-/* â”€â”€ Empty + loading â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Empty + loading Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-empty {
   display: flex;
   flex-direction: column;
@@ -602,7 +602,7 @@
   font-size: 0.8125rem;
 }
 
-/* â”€â”€ Alerts â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Alerts Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-alert {
   display: flex;
   align-items: flex-start;
@@ -632,7 +632,7 @@
   color: var(--info-fg);
 }
 
-/* â”€â”€ Content scrim (readable over branded backgrounds) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Content scrim (readable over branded backgrounds) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .mobile-shell-main {
   position: relative;
 }
@@ -651,7 +651,7 @@
   z-index: 1;
 }
 
-/* â”€â”€ Sidebar polish â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Sidebar polish Ã¢â€â‚¬Ã¢â€â‚¬ */
 .glass-sidebar {
   background: linear-gradient(180deg, var(--glass-sidebar-from), var(--glass-sidebar-to));
   backdrop-filter: blur(12px);
@@ -669,7 +669,7 @@
   color: var(--accent-hover);
 }
 
-/* â”€â”€ Panel ambient backgrounds â€” visible but behind content â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Panel ambient backgrounds Ã¢â‚¬â€ visible but behind content Ã¢â€â‚¬Ã¢â€â‚¬ */
 .panel-bg-root::before {
   opacity: 0.58;
 }
@@ -697,7 +697,7 @@
   opacity: 0.72;
 }
 
-/* â”€â”€ Icons (Lucide) â€” consistent sizing â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Icons (Lucide) Ã¢â‚¬â€ consistent sizing Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-icon {
   width: 0.875rem;
   height: 0.875rem;
@@ -719,7 +719,7 @@
   opacity: 0.9;
 }
 
-/* â”€â”€ Typography helpers â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Typography helpers Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-text-sm {
   font-size: 0.8125rem;
   line-height: 1.45;
@@ -739,7 +739,7 @@
   font-feature-settings: 'tnum';
 }
 
-/* â”€â”€ Filters & segmented controls â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Filters & segmented controls Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-filter-pill {
   display: inline-flex;
   align-items: center;
@@ -806,7 +806,7 @@
   box-shadow: var(--ds-shadow-card);
 }
 
-/* â”€â”€ Quiet links (panel headers) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Quiet links (panel headers) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-link-quiet {
   display: inline-flex;
   align-items: center;
@@ -822,7 +822,7 @@
   color: var(--text);
 }
 
-/* â”€â”€ Progress / capacity meters â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Progress / capacity meters Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-progress {
   height: 4px;
   border-radius: 9999px;
@@ -841,7 +841,7 @@
 .ds-progress-fill--bad { background: var(--danger); }
 .ds-progress-fill--neutral { background: var(--muted); }
 
-/* â”€â”€ Dashboard / metric grids â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Dashboard / metric grids Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-metric-grid {
   display: grid;
   gap: var(--ds-space-3);
@@ -1037,7 +1037,7 @@
   letter-spacing: -0.02em;
 }
 
-/* ── Marketplace: hub header + tabs ── */
+/* â”€â”€ Marketplace: hub header + tabs â”€â”€ */
 .ds-marketplace-header {
   overflow: hidden;
   border-radius: var(--ds-radius-xl);
@@ -1362,7 +1362,7 @@
   gap: 0.35rem;
 }
 
-/* â”€â”€ Marketplace: detail rows (sidebar metadata) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Marketplace: detail rows (sidebar metadata) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-detail-row {
   display: flex;
   flex-direction: column;
@@ -1437,7 +1437,7 @@
   opacity: 0.7;
 }
 
-/* â”€â”€ Marketplace: GitHub owner avatars â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Marketplace: GitHub owner avatars Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-github-repo-avatar {
   display: flex;
   shrink: 0;
@@ -1455,7 +1455,7 @@
   object-fit: cover;
 }
 
-/* â”€â”€ Marketplace: category browse cards â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Marketplace: category browse cards Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-category-card {
   display: flex;
   width: 100%;
@@ -1573,7 +1573,7 @@
   color: var(--muted);
 }
 
-/* â”€â”€ Admin: detail + edit shells â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin: detail + edit shells Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-admin-page {
   display: flex;
   min-height: calc(100dvh - 3rem);
@@ -2086,7 +2086,7 @@
   100% { background-position: -200% 0; }
 }
 
-/* â”€â”€ Node fleet (admin nodes page) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Node fleet (admin nodes page) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-fleet-page {
   display: flex;
   flex-direction: column;
@@ -2844,7 +2844,7 @@ button.ds-fleet-kpi:hover {
   color: var(--accent-hover);
 }
 
-/* â”€â”€ Admin nodes page (redesigned) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin nodes page (redesigned) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .ds-nodes-stats {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3207,7 +3207,7 @@ button.ds-nodes-stat:hover {
   gap: 1.25rem;
 }
 
-/* â”€â”€ Node detail header (ds-nd-header-*) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Node detail header (ds-nd-header-*) Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-nd-header-wrap {
   display: flex;
@@ -5328,7 +5328,7 @@ button.ds-nodes-stat:hover {
   line-height: 1.45;
 }
 
-/* â”€â”€ Overview v2: dock, bento, cards, timeline â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Overview v2: dock, bento, cards, timeline Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-nd-ov-dock {
   display: grid;
@@ -6169,7 +6169,7 @@ button.ds-nodes-stat:hover {
   transform: translateX(1.05rem);
 }
 
-/* Settings â€” current usage snapshot */
+/* Settings Ã¢â‚¬â€ current usage snapshot */
 .ds-nd-st-usage {
   margin-bottom: 1.25rem;
   border-radius: var(--radius-xl);
@@ -8124,7 +8124,7 @@ button.ds-nodes-stat:hover {
   border-style: dashed;
 }
 
-/* â”€â”€ FiveM Marketplace (fm-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ FiveM Marketplace (fm-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .fm-page {
   display: flex;
@@ -9511,7 +9511,7 @@ button.ds-nodes-stat:hover {
   color: #fbbf24;
 }
 
-/* â”€â”€ Minecraft Plugins (mc-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Minecraft Plugins (mc-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .mc-hero {
   border-radius: 1rem;
@@ -11880,7 +11880,7 @@ button.ds-nodes-stat:hover {
   opacity: 1;
 }
 
-/* â”€â”€ Admin announce page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin announce page Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-ann-page {
   display: flex;
@@ -12470,7 +12470,7 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Admin subdomains fleet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin subdomains fleet Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-dom-overview {
   display: grid;
@@ -13002,7 +13002,7 @@ button.ds-nodes-stat:hover {
   opacity: 1;
 }
 
-/* â”€â”€ Admin plugins hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin plugins hub Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-plg-page {
   display: flex;
@@ -13782,7 +13782,7 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Server overview bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server overview bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-bar {
   position: relative;
@@ -14056,9 +14056,9 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Server sidebar shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server sidebar shell Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
-/* Display is Tailwind-controlled (`!hidden md:!flex`) â€” do not force display here
+/* Display is Tailwind-controlled (`!hidden md:!flex`) Ã¢â‚¬â€ do not force display here
    or it overrides `hidden` and the desktop sidebar eats half the phone viewport. */
 .ds-srv-sidebar {
   flex-direction: column;
@@ -14152,7 +14152,7 @@ button.ds-nodes-stat:hover {
   margin-top: auto;
 }
 
-/* â”€â”€ Server analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server analytics Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-an-shell {
   border-radius: var(--radius-xl);
@@ -14805,7 +14805,7 @@ button.ds-nodes-stat:hover {
   opacity: 0.9;
 }
 
-/* â”€â”€ Server activity / audit log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server activity / audit log Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-act-shell {
   border-radius: var(--radius-xl);
@@ -15741,7 +15741,7 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Server file manager (ds-srv-fm-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server file manager (ds-srv-fm-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-fm-shell {
   border-radius: var(--radius-xl);
@@ -16638,7 +16638,7 @@ button.ds-nodes-stat:hover {
   cursor: not-allowed;
 }
 
-/* â”€â”€ Server file editor (ds-srv-fe-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server file editor (ds-srv-fe-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-fe-shell {
   display: flex;
@@ -17048,7 +17048,7 @@ button.ds-nodes-stat:hover {
   text-decoration: underline;
 }
 
-/* â”€â”€ Server backups (ds-srv-bk-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server backups (ds-srv-bk-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-bk-shell {
   border-radius: var(--radius-xl);
@@ -17604,7 +17604,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Server databases (ds-srv-db-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server databases (ds-srv-db-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-db-shell {
   border-radius: var(--radius-xl);
@@ -18388,7 +18388,7 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Built-in database manager (ds-srv-dbm-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Built-in database manager (ds-srv-dbm-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-dbm-overlay {
   position: fixed;
@@ -19463,7 +19463,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Server schedules (ds-srv-sch-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server schedules (ds-srv-sch-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-sch-shell {
   border-radius: var(--radius-xl);
@@ -20171,7 +20171,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Server network (ds-srv-net-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server network (ds-srv-net-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-net-shell {
   border-radius: var(--radius-xl);
@@ -21005,7 +21005,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Server startup (ds-srv-stu-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server startup (ds-srv-stu-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-stu-shell {
   border-radius: var(--radius-xl);
@@ -21669,7 +21669,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Server settings (ds-srv-set-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server settings (ds-srv-set-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-set-shell {
   border-radius: var(--radius-xl);
@@ -22199,7 +22199,7 @@ button.ds-nodes-stat:hover {
   gap: 0.4rem;
 }
 
-/* â”€â”€ Server subusers (ds-srv-sub-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Server subusers (ds-srv-sub-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-srv-sub-shell {
   border-radius: var(--radius-xl);
@@ -22791,7 +22791,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Admin users fleet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin users fleet Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-usr-page {
   display: flex;
@@ -23384,7 +23384,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Admin user detail (ds-ud-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin user detail (ds-ud-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-ud-page {
   display: flex;
@@ -24206,7 +24206,7 @@ button.ds-nodes-stat:hover {
   min-width: 0;
 }
 
-/* â”€â”€ Admin user detail â€” servers tab (ds-ud-srv-*) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin user detail Ã¢â‚¬â€ servers tab (ds-ud-srv-*) Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-ud-srv {
   display: flex;
@@ -24882,7 +24882,7 @@ button.ds-nodes-stat:hover {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, white 10%, transparent);
 }
 
-/* â”€â”€ Admin user detail â€” activity tab (ds-ud-act-*) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin user detail Ã¢â‚¬â€ activity tab (ds-ud-act-*) Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-ud-act {
   display: flex;
@@ -25464,7 +25464,7 @@ button.ds-nodes-stat:hover {
   opacity: 0.75;
 }
 
-/* â”€â”€ Admin servers fleet (ds-adm-srv-*) â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin servers fleet (ds-adm-srv-*) Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-adm-srv-page {
   display: flex;
@@ -26042,7 +26042,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Admin server detail (ds-asd-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin server detail (ds-asd-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-asd-page {
   display: flex;
@@ -26853,7 +26853,7 @@ button.ds-nodes-stat:hover {
   color: #fca5a5;
 }
 
-/* â”€â”€ Admin nests fleet (ds-adm-nest-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin nests fleet (ds-adm-nest-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-adm-nest-page {
   display: flex;
@@ -27552,7 +27552,7 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-/* â”€â”€ Nest detail (ds-nst-*) & Egg detail (ds-egg-*) shared patterns â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Nest detail (ds-nst-*) & Egg detail (ds-egg-*) shared patterns Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-nst-page,
 .ds-egg-page {
@@ -28187,7 +28187,7 @@ button.ds-nodes-stat:hover {
   gap: 0.75rem;
 }
 
-/* â”€â”€ Auth (login / signup) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Auth (login / signup) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-auth-layout {
   display: flex;
@@ -28845,7 +28845,7 @@ button.ds-nodes-stat:hover {
   }
 }
 
-/* â”€â”€ Admin panel settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin panel settings Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-set-page {
   display: flex;
@@ -29087,97 +29087,171 @@ button.ds-nodes-stat:hover {
 .ds-set-about {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
-.ds-set-about-banner {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
-  background:
-    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%),
-    radial-gradient(80% 60% at 100% 100%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 50%),
-    color-mix(in srgb, var(--surface) 85%, var(--accent-muted));
-}
-
-.ds-set-about-banner-glow {
-  position: absolute;
-  inset: -40% auto auto -10%;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  filter: blur(48px);
-  pointer-events: none;
-}
-
-.ds-set-about-banner-grid {
-  position: absolute;
-  inset: 0;
-  opacity: 0.35;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--border) 40%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--border) 40%, transparent) 1px, transparent 1px);
-  background-size: 24px 24px;
-  mask-image: linear-gradient(180deg, black 0%, transparent 85%);
-  pointer-events: none;
-}
-
-.ds-set-about-banner-inner {
-  position: relative;
-  z-index: 1;
+.ds-set-about-hero {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 1.35rem 1.5rem 1.5rem;
+  gap: 0.55rem;
+  padding: 0.15rem 0 0.35rem;
+  animation: ds-set-about-in 0.45s ease both;
 }
 
-.ds-set-about-brand-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem 0.85rem;
+.ds-set-about-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-hover);
 }
 
-.ds-set-about-product-heading {
+.ds-set-about-title {
   margin: 0;
   font: inherit;
 }
 
-.ds-set-about-product-name.panel-name--hero {
-  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+.ds-set-about-brand.panel-name--hero {
+  font-size: clamp(1.65rem, 3.2vw, 2.15rem);
+  line-height: 1.1;
 }
 
-.ds-set-about-version-pill {
+.ds-set-about-lede {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.ds-set-about-host {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.ds-set-about-host strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.ds-set-about-layout {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  animation: ds-set-about-in 0.5s ease 0.06s both;
+}
+
+@media (min-width: 960px) {
+  .ds-set-about-layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(14rem, 0.75fr);
+  }
+}
+
+.ds-set-about-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.05rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 72%, var(--bg));
+}
+
+.ds-set-about-aside-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-set-about-aside-brand {
+  font-size: 1rem;
+}
+
+.ds-set-about-aside-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.ds-set-about-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0;
+}
+
+.ds-set-about-meta > div {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.65rem;
+  align-items: baseline;
+  font-size: 0.8125rem;
+}
+
+.ds-set-about-meta dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ds-set-about-meta dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.ds-set-about-discord {
   display: inline-flex;
   align-items: center;
-  padding: 0.28rem 0.65rem;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  gap: 0.4rem;
+  width: fit-content;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 40%, var(--surface));
+  font-size: 0.8125rem;
+  font-weight: 650;
   color: var(--accent-hover);
-  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.ds-set-about-discord:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 60%, var(--surface));
+  transform: translateY(-1px);
 }
 
 .ds-set-about-update {
-  margin: 0.85rem 0 0;
-  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.05rem 1.1rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 88%, var(--bg));
+  background: color-mix(in srgb, var(--surface) 78%, var(--bg));
 }
 
 .ds-set-about-update--behind {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 10%, transparent),
+      transparent 42%
+    ),
+    color-mix(in srgb, var(--surface) 78%, var(--bg));
 }
 
 .ds-set-about-update--current {
-  border-color: color-mix(in srgb, var(--success, #22c55e) 35%, var(--border));
+  border-color: color-mix(in srgb, var(--success, #22c55e) 32%, var(--border));
 }
 
 .ds-set-about-update-head {
@@ -29188,16 +29262,17 @@ button.ds-nodes-stat:hover {
 
 .ds-set-about-update-eyebrow {
   margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.ds-set-about-update-title {
-  margin: 0.15rem 0 0;
-  font-size: 0.875rem;
+.ds-set-about-update-heading {
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 650;
   color: var(--text);
 }
 
@@ -29205,13 +29280,14 @@ button.ds-nodes-stat:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.85rem;
+  height: 1.85rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
   cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .ds-set-about-update-refresh:hover:not(:disabled) {
@@ -29224,18 +29300,56 @@ button.ds-nodes-stat:hover {
   cursor: not-allowed;
 }
 
+.ds-set-about-update-versions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.ds-set-about-update-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+}
+
+.ds-set-about-update-cell-label {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-set-about-update-cell-value {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-set-about-update-cell-value--muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .ds-set-about-update-status {
-  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
 }
 
 .ds-set-about-update-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
+  padding: 0.22rem 0.55rem;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .ds-set-about-update-badge--good {
@@ -29258,16 +29372,22 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
+.ds-set-about-update-published {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .ds-set-about-update-error {
-  margin: 0.5rem 0 0;
+  margin: 0;
   font-size: 0.75rem;
   color: var(--danger-fg);
 }
 
 .ds-set-about-update-body {
-  margin-top: 0.75rem;
   display: grid;
   gap: 0.55rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .ds-set-about-update-body p {
@@ -29278,7 +29398,7 @@ button.ds-nodes-stat:hover {
 
 .ds-set-about-update-cmd {
   margin: 0;
-  padding: 0.65rem 0.75rem;
+  padding: 0.7rem 0.8rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg);
@@ -29296,278 +29416,94 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-set-about-update-hint {
-  margin: 0.55rem 0 0;
+  margin: 0;
   font-size: 0.75rem;
   color: var(--muted);
 }
 
-.ds-set-about-eyebrow {
-  margin: 0;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent-hover);
-}
-
-.ds-set-about-desc {
-  margin: 0;
-  max-width: 62ch;
-  font-size: 0.9375rem;
-  line-height: 1.65;
-  color: var(--muted);
-}
-
-.ds-set-about-host {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--muted);
-}
-
-.ds-set-about-host strong {
-  color: var(--text);
-  font-weight: 650;
-}
-
-.ds-set-about-caps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.15rem;
-}
-
-.ds-set-about-cap {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.ds-set-about-split {
-  display: grid;
-  gap: 1rem;
-  align-items: start;
-}
-
-@media (min-width: 1024px) {
-  .ds-set-about-split {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  }
-}
-
-.ds-set-about-features {
+.ds-set-about-nav {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  animation: ds-set-about-in 0.55s ease 0.12s both;
+}
+
+.ds-set-about-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--border);
 }
 
-.ds-set-about-feature {
+.ds-set-about-nav-link {
   display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: start;
-  gap: 0.65rem;
-  padding: 0.75rem 0.8rem;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.15rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease, padding-left 0.15s ease;
 }
 
-.ds-set-about-feature-index {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--muted);
-  opacity: 0.7;
-  padding-top: 0.15rem;
+.ds-set-about-nav-link:hover {
+  background: color-mix(in srgb, var(--accent-muted) 22%, transparent);
+  padding-left: 0.35rem;
 }
 
-.ds-set-about-feature-icon {
+.ds-set-about-nav-link:hover .ds-set-about-nav-chevron {
+  color: var(--accent-hover);
+  transform: translateX(2px);
+}
+
+.ds-set-about-nav-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2rem;
   height: 2rem;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--accent-muted) 55%, var(--surface));
-  color: var(--accent-hover);
-}
-
-.ds-set-about-feature-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.ds-set-about-feature-title {
-  font-size: 0.875rem;
-  font-weight: 650;
-  color: var(--text);
-}
-
-.ds-set-about-feature-desc {
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.ds-set-about-credits {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.ds-set-about-credits-brand {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.ds-set-about-credits-version {
-  font-size: 0.75rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--muted);
-}
-
-.ds-set-about-credits-copy {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--text);
-}
-
-.ds-set-about-credits-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin: 0;
-}
-
-.ds-set-about-credits-row {
-  display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 0.75rem;
-  padding: 0.45rem 0.55rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface) 50%, transparent);
-  font-size: 0.8125rem;
-}
-
-.ds-set-about-credits-row dt {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.ds-set-about-credits-row dd {
-  margin: 0;
-  color: var(--text);
-  font-weight: 650;
-}
-
-.ds-set-about-discord-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  width: fit-content;
-  padding: 0.55rem 0.85rem;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   background: color-mix(in srgb, var(--accent-muted) 45%, var(--surface));
-  font-size: 0.8125rem;
-  font-weight: 650;
-  color: var(--accent-hover);
-  text-decoration: none;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-}
-
-.ds-set-about-discord-btn:hover {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 65%, var(--surface));
-  color: var(--accent-hover);
-  transform: translateY(-1px);
-}
-
-.ds-set-about-link-grid {
-  display: grid;
-  gap: 0.55rem;
-}
-
-@media (min-width: 768px) {
-  .ds-set-about-link-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.ds-set-about-link-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 0.9rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-}
-
-.ds-set-about-link-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 35%, var(--surface));
-  transform: translateY(-1px);
-}
-
-.ds-set-about-link-card:hover .ds-set-about-link-arrow {
-  color: var(--accent-hover);
-  transform: translateX(2px);
-}
-
-.ds-set-about-link-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
   color: var(--accent-hover);
 }
 
-.ds-set-about-link-copy {
+.ds-set-about-nav-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.12rem;
   min-width: 0;
 }
 
-.ds-set-about-link-title {
+.ds-set-about-nav-title {
   font-size: 0.875rem;
   font-weight: 650;
   color: var(--text);
 }
 
-.ds-set-about-link-desc {
+.ds-set-about-nav-desc {
   font-size: 0.75rem;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--muted);
 }
 
-.ds-set-about-link-arrow {
+.ds-set-about-nav-chevron {
   color: var(--muted);
   transition: color 0.15s ease, transform 0.15s ease;
+}
+
+@keyframes ds-set-about-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ds-set-main {
@@ -29652,7 +29588,7 @@ button.ds-nodes-stat:hover {
   color: var(--accent-hover);
 }
 
-/* â”€â”€ Sidebar software attribution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Sidebar software attribution Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-attrib-sidebar {
   display: flex;
@@ -29724,7 +29660,7 @@ button.ds-nodes-stat:hover {
   color: color-mix(in srgb, var(--accent-hover) 75%, #fff);
 }
 
-/* â”€â”€ Profile page (fleet-style account) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Profile page (fleet-style account) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-prof-page {
   display: flex;
@@ -30177,7 +30113,7 @@ button.ds-nodes-stat:hover {
   border-top: 1px solid var(--border);
 }
 
-/* â”€â”€ Profile security tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Profile security tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-sec-overview {
   display: grid;
@@ -30693,7 +30629,7 @@ button.ds-nodes-stat:hover {
   background: var(--success-fg, #22c55e);
 }
 
-/* â”€â”€ Admin activity page (ds-ad-act-*) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Admin activity page (ds-ad-act-*) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ds-ad-act-page {
   display: flex;

@@ -30,21 +30,20 @@ export function PanelVersionStatus() {
 
   const status = release?.status ?? 'unknown';
   const installed = release?.installedVersion ?? PANEL_VERSION;
+  const published = release?.publishedAt
+    ? new Date(release.publishedAt).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null;
 
   return (
-    <div className={`ds-set-about-update ds-set-about-update--${status}`} aria-live="polite">
+    <section className={`ds-set-about-update ds-set-about-update--${status}`} aria-live="polite">
       <div className="ds-set-about-update-head">
         <div className="min-w-0 flex-1">
-          <p className="ds-set-about-update-eyebrow">{PANEL_PRODUCT} version</p>
-          <p className="ds-set-about-update-title">
-            Installed <span className="ds-text-mono">v{installed}</span>
-            {release?.latestVersion ? (
-              <>
-                {' · '}
-                Latest <span className="ds-text-mono">v{release.latestVersion}</span>
-              </>
-            ) : null}
-          </p>
+          <p className="ds-set-about-update-eyebrow">{PANEL_PRODUCT}</p>
+          <h3 className="ds-set-about-update-heading">Software version</h3>
         </div>
         <button
           type="button"
@@ -55,6 +54,23 @@ export function PanelVersionStatus() {
         >
           <RefreshCw className={`h-3.5 w-3.5${loading ? ' animate-spin' : ''}`} />
         </button>
+      </div>
+
+      <div className="ds-set-about-update-versions">
+        <div className="ds-set-about-update-cell">
+          <span className="ds-set-about-update-cell-label">Installed</span>
+          <span className="ds-set-about-update-cell-value ds-text-mono">v{installed}</span>
+        </div>
+        <div className="ds-set-about-update-cell">
+          <span className="ds-set-about-update-cell-label">Latest</span>
+          <span
+            className={`ds-set-about-update-cell-value ds-text-mono${
+              !release?.latestVersion ? ' ds-set-about-update-cell-value--muted' : ''
+            }`}
+          >
+            {loading ? '…' : release?.latestVersion ? `v${release.latestVersion}` : '—'}
+          </span>
+        </div>
       </div>
 
       <div className="ds-set-about-update-status">
@@ -82,6 +98,9 @@ export function PanelVersionStatus() {
             Version unknown
           </span>
         )}
+        {published && !loading ? (
+          <span className="ds-set-about-update-published">Latest published {published}</span>
+        ) : null}
       </div>
 
       {error ? <p className="ds-set-about-update-error">{error}</p> : null}
@@ -89,7 +108,7 @@ export function PanelVersionStatus() {
       {status === 'behind' && release ? (
         <div className="ds-set-about-update-body">
           <p>
-            Run this on the panel host to update to <strong>v{release.latestVersion}</strong>:
+            Update this host to <strong className="ds-text-mono">v{release.latestVersion}</strong>:
           </p>
           <pre className="ds-set-about-update-cmd">
             <code>{release.updateCommand}</code>
@@ -122,19 +141,9 @@ export function PanelVersionStatus() {
         </div>
       ) : null}
 
-      {status === 'current' && release ? (
-        <p className="ds-set-about-update-hint">
-          You are running the latest published release
-          {release.publishedAt
-            ? ` (${new Date(release.publishedAt).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })})`
-            : ''}
-          .
-        </p>
+      {status === 'current' && !loading ? (
+        <p className="ds-set-about-update-hint">You are on the latest published release.</p>
       ) : null}
-    </div>
+    </section>
   );
 }
