@@ -17,6 +17,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 > **Note on numbering.** Entries below `1.3.0.0` and above `1.2.x` use `1.5.x` build numbers. Those were **internal builds that were never published** — the working version raced ahead of the public release tags while development happened outside GitHub. Numbering was reconciled at the **V1.3.0.0** release, which ships all of that work. Read the `1.5.x` entries as the detailed development log for V1.3.0.0; they are kept intact rather than renumbered so the history stays honest.
 
+## [1.3.1.1] - 2026-09-09
+
+### Fixed
+
+- **panel-web build: Tailwind `Missing opening {`.** An orphaned property block was left in `design-system.css` after the About version-checker styles (closing `}` without a selector), which broke `@tailwindcss/vite` during `pnpm build`.
+
 ## [1.3.1.0] - 2026-09-09
 
 ### Added

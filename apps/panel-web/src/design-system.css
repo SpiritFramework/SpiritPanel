@@ -29301,19 +29301,6 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-  display: inline-flex;
-  align-items: center;
-  padding: 0.28rem 0.65rem;
-  border-radius: var(--radius-full);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 50%, var(--surface));
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--accent-hover);
-  letter-spacing: 0.02em;
-}
-
 .ds-set-about-eyebrow {
   margin: 0;
   font-size: 0.6875rem;
