@@ -29794,39 +29794,50 @@ button.ds-nodes-stat:hover {
 
 .ds-attrib-sidebar {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-direction: column;
   gap: 0.2rem;
+  width: 100%;
   min-width: 0;
-  padding: 0.15rem 0.3rem;
-  border-radius: var(--radius-sm);
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.55rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: color-mix(in srgb, var(--surface) 50%, transparent);
-  font-size: 0.625rem;
-  line-height: 1.2;
+  font-size: 0.6875rem;
+  line-height: 1.25;
   color: var(--muted);
   overflow: hidden;
 }
 
+.ds-attrib-sidebar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .ds-attrib-sidebar-product {
-  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ds-attrib-sidebar-dot {
-  flex-shrink: 0;
-  opacity: 0.45;
-  line-height: 1;
+  display: none;
 }
 
 .ds-attrib-sidebar-author {
+  display: block;
   min-width: 0;
-  flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: none;
+  color: color-mix(in srgb, var(--text) 78%, var(--muted));
   transition: color 0.15s ease;
 }
 
@@ -29834,11 +29845,19 @@ button.ds-nodes-stat:hover {
   color: var(--accent-hover);
 }
 
+.ds-attrib-sidebar-author--dark {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .ds-attrib-sidebar-version {
   flex-shrink: 0;
+  padding: 0.08rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: inherit;
-  font-weight: 600;
+  font-size: 0.625rem;
+  font-weight: 650;
   letter-spacing: 0.01em;
   color: color-mix(in srgb, var(--accent-hover) 88%, var(--muted));
   white-space: nowrap;

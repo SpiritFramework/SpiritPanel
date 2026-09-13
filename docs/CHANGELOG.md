@@ -25,6 +25,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Sidebar attribution** stacks Spirit-Panel, version, and SpiritFramework so it fits the 224px nav without clipping.
 - **Alerts are always on.** Server health, crashes, account security, and node-offline events go straight to each user’s inbox — no presets or custom watches to configure.
 - **Alerts inbox redesigned** to match My Servers / Support: branded hero, compact stats, filter pills, and a full-width expandable list. The sidebar link is gone; the bell next to Theme still opens `/alerts`.
 

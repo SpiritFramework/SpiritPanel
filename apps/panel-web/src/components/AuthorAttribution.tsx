@@ -78,26 +78,20 @@ export function AuthorAttribution({
     );
   }
 
-  const emphasis = onDark ? 'text-white/75' : 'text-[var(--text)]';
-
   return (
     <div
       className={`ds-attrib-sidebar${onDark ? ' ds-attrib-sidebar--dark' : ''} ${className}`.trim()}
       aria-label={`${PANEL_PRODUCT} version ${PANEL_VERSION}, built by ${PANEL_AUTHOR}`}
     >
-      <span className="ds-attrib-sidebar-product">
-        <PanelName name={PANEL_PRODUCT} variant="compact" className="panel-name--attrib" />
-      </span>
-      <span className="ds-attrib-sidebar-dot" aria-hidden>
-        ·
-      </span>
-      <AuthorLink onDark className={`ds-attrib-sidebar-author ${emphasis}`} />
-      <span className="ds-attrib-sidebar-dot" aria-hidden>
-        ·
-      </span>
-      <span className={`ds-attrib-sidebar-version${onDark ? ' ds-attrib-sidebar-version--dark' : ''}`}>
-        v{PANEL_VERSION}
-      </span>
+      <div className="ds-attrib-sidebar-row">
+        <span className="ds-attrib-sidebar-product">
+          <PanelName name={PANEL_PRODUCT} variant="compact" className="panel-name--attrib" />
+        </span>
+        <span className={`ds-attrib-sidebar-version${onDark ? ' ds-attrib-sidebar-version--dark' : ''}`}>
+          v{PANEL_VERSION}
+        </span>
+      </div>
+      <AuthorLink onDark className={`ds-attrib-sidebar-author${onDark ? ' ds-attrib-sidebar-author--dark' : ''}`} />
     </div>
   );
 }
