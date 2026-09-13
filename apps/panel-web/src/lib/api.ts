@@ -1292,6 +1292,10 @@ export const api = {
       request<{ ok: boolean }>(`/client/alerts/events/${id}/read`, { method: 'POST' }),
     markAllAlertsRead: () =>
       request<{ ok: boolean }>('/client/alerts/events/read-all', { method: 'POST' }),
+    deleteAlert: (id: string) =>
+      request<{ ok: boolean }>(`/client/alerts/events/${id}`, { method: 'DELETE' }),
+    deleteAllAlerts: () =>
+      request<{ ok: boolean; deleted: number }>('/client/alerts/events', { method: 'DELETE' }),
     tickets: (params?: { status?: 'open' | 'closed' | 'all' }) => {
       const qs = new URLSearchParams();
       if (params?.status) qs.set('status', params.status);

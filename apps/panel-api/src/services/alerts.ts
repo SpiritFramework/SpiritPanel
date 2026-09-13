@@ -300,6 +300,18 @@ export async function markAllAlertsRead(userId: string) {
   });
 }
 
+export async function deleteAlertEvent(userId: string, eventId: string) {
+  return prisma.alertEvent.deleteMany({
+    where: { id: eventId, userId },
+  });
+}
+
+export async function deleteAllAlertEvents(userId: string) {
+  return prisma.alertEvent.deleteMany({
+    where: { userId },
+  });
+}
+
 export async function pruneOldAlertEvents() {
   const cutoff = new Date(Date.now() - EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
   await prisma.alertEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });

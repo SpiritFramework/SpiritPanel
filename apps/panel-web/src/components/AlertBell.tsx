@@ -21,9 +21,11 @@ export function AlertBell({ to = '/alerts' }: { to?: string }) {
     const id = window.setInterval(() => void refresh(), 45_000);
     const onFocus = () => void refresh();
     window.addEventListener('focus', onFocus);
+    window.addEventListener('spirit-alerts-changed', onFocus);
     return () => {
       window.clearInterval(id);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('spirit-alerts-changed', onFocus);
     };
   }, [refresh]);
 

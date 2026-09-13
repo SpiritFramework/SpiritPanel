@@ -19,10 +19,14 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Added
+
+- **Delete alerts** from the inbox (one message or clear all, with confirm on clear).
+
 ### Changed
 
 - **Alerts are always on.** Server health, crashes, account security, and node-offline events go straight to each user’s inbox — no presets or custom watches to configure.
-- **Alerts page is inbox-only** (filters, mark read, jump to console/security). The sidebar link is gone; the bell next to Theme still opens `/alerts`.
+- **Alerts inbox redesigned** as a two-pane reader: search, date groups, filters, and a message pane. The sidebar link is gone; the bell next to Theme still opens `/alerts`.
 
 ### Removed
 

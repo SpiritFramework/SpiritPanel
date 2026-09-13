@@ -4,6 +4,8 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireSession, requireAdmin } from '../middleware/auth.js';
 import {
   countUnreadAlerts,
+  deleteAlertEvent,
+  deleteAllAlertEvents,
   listAlertEventsForUser,
   markAlertRead,
   markAllAlertsRead,
@@ -70,6 +72,18 @@ export async function alertRoutes(app: FastifyInstance) {
 
   app.post('/alerts/events/read-all', async (request) => {
     await markAllAlertsRead(request.user!.id);
+    return { ok: true };
+  });
+
+  app.delete('/alerts/events', async (request) => {
+    const result = await deleteAllAlertEvents(request.user!.id);
+    return { ok: true, deleted: result.count };
+  });
+
+  app.delete('/alerts/events/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const result = await deleteAlertEvent(request.user!.id, id);
+    if (result.count === 0) return reply.status(404).send({ error: 'Alert not found' });
     return { ok: true };
   });
 
