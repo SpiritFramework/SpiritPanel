@@ -19,6 +19,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+## [1.3.4.3] - 2026-09-13
+
 ### Added
 
 - **In-app alerts** for server owners and admins: CPU/memory/disk threshold rules (evaluated ~30s with the stats collector), admin node-offline rules, inbox at `/alerts` with unread bell. Discord delivery deferred.
@@ -34,6 +36,10 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **Select dropdowns** flip into the viewport and scroll when option lists are long (keyboard highlight + Enter).
 - **Alert evaluation hardened:** CPU/memory need sustained pressure (~2 samples), skip while offline; graceful Stop no longer fires “unexpected stop”; duplicate rule creates re-enable existing watches.
 - **Historical trends redesign** (server + node analytics): synced crosshair, warn bands, refreshed chart chrome; node analytics adds disk pressure and a 2×2 grid.
+
+### Removed
+
+- Unused leftovers: old FiveM marketplace pages, unused branding/node/usage components, unused API helper stubs (`cache`, `tcp-ping`, etc.), `hooks/performance.ts`, `brandify-server-css.mjs`, and tracked `tsconfig.tsbuildinfo` caches.
 
 ## [1.3.4.2] - 2026-09-09
 

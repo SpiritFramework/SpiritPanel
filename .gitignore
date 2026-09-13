@@ -5,6 +5,7 @@ dist
 *.log
 .turbo
 coverage
+*.tsbuildinfo
 
 # Release artifact, rebuilt on demand
 Spirit-Panel.zip
