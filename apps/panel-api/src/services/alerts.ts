@@ -1,135 +1,35 @@
-import type { AlertMetric, AlertRule, Server } from '@prisma/client';
+import type { AlertMetric, Server } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import type { WingsResourceStats } from './server-stats.js';
 
-const DEFAULT_COOLDOWN_SEC = 900;
 const EVENT_RETENTION_DAYS = 30;
 
 export type AlertMetricId = AlertMetric;
 
-export const ALERT_PRESETS = {
-  essential: {
-    id: 'essential',
-    label: 'Essential',
-    description: 'Crash, unexpected stop, and nearly full disk.',
-    rules: [
-      { metric: 'server_crashed' as const, thresholdPct: 0, cooldownSec: 600 },
-      { metric: 'server_offline' as const, thresholdPct: 0, cooldownSec: 900 },
-      { metric: 'disk' as const, thresholdPct: 90, cooldownSec: 1800 },
-    ],
-  },
-  performance: {
-    id: 'performance',
-    label: 'Performance',
-    description: 'High CPU or memory pressure on the allocation.',
-    rules: [
-      { metric: 'cpu' as const, thresholdPct: 85, cooldownSec: 900 },
-      { metric: 'memory' as const, thresholdPct: 90, cooldownSec: 900 },
-    ],
-  },
-  storage: {
-    id: 'storage',
-    label: 'Storage',
-    description: 'Warn early and again when disk is almost full.',
-    rules: [
-      { metric: 'disk' as const, thresholdPct: 80, cooldownSec: 1800 },
-      { metric: 'disk' as const, thresholdPct: 95, cooldownSec: 900 },
-    ],
-  },
-  security: {
-    id: 'security',
-    label: 'Account security',
-    description: 'Failed logins, new sign-ins, password / 2FA / API key changes.',
-    rules: [
-      { metric: 'account_login_failed' as const, thresholdPct: 0, cooldownSec: 300 },
-      { metric: 'account_login' as const, thresholdPct: 0, cooldownSec: 60 },
-      { metric: 'account_password_changed' as const, thresholdPct: 0, cooldownSec: 60 },
-      { metric: 'account_2fa_changed' as const, thresholdPct: 0, cooldownSec: 60 },
-      { metric: 'account_api_key' as const, thresholdPct: 0, cooldownSec: 60 },
-    ],
-  },
-  server_security: {
-    id: 'server_security',
-    label: 'Server access',
-    description: 'Notify when someone is added or removed as a subuser on this server.',
-    rules: [{ metric: 'server_subuser' as const, thresholdPct: 0, cooldownSec: 60 }],
-  },
-  full: {
-    id: 'full',
-    label: 'Full watch',
-    description: 'Essential + performance + install failures.',
-    rules: [
-      { metric: 'server_crashed' as const, thresholdPct: 0, cooldownSec: 600 },
-      { metric: 'server_offline' as const, thresholdPct: 0, cooldownSec: 900 },
-      { metric: 'install_failed' as const, thresholdPct: 0, cooldownSec: 1800 },
-      { metric: 'cpu' as const, thresholdPct: 85, cooldownSec: 900 },
-      { metric: 'memory' as const, thresholdPct: 90, cooldownSec: 900 },
-      { metric: 'disk' as const, thresholdPct: 90, cooldownSec: 1800 },
-    ],
-  },
-  node_health: {
-    id: 'node_health',
-    label: 'Node health',
-    description: 'Admin only — notify when any Wings node goes offline.',
-    adminOnly: true,
-    rules: [{ metric: 'node_offline' as const, thresholdPct: 0, cooldownSec: 600 }],
-  },
-} as const;
+/** Built-in watches — always on for every relevant inbox. */
+export const DEFAULT_WATCHES: Record<
+  AlertMetricId,
+  { cooldownSec: number; thresholdPct: number }
+> = {
+  cpu: { cooldownSec: 900, thresholdPct: 85 },
+  memory: { cooldownSec: 900, thresholdPct: 90 },
+  disk: { cooldownSec: 1800, thresholdPct: 90 },
+  server_crashed: { cooldownSec: 600, thresholdPct: 0 },
+  server_offline: { cooldownSec: 900, thresholdPct: 0 },
+  install_failed: { cooldownSec: 1800, thresholdPct: 0 },
+  account_login_failed: { cooldownSec: 300, thresholdPct: 0 },
+  account_login: { cooldownSec: 1800, thresholdPct: 0 },
+  account_password_changed: { cooldownSec: 60, thresholdPct: 0 },
+  account_2fa_changed: { cooldownSec: 60, thresholdPct: 0 },
+  account_api_key: { cooldownSec: 60, thresholdPct: 0 },
+  server_subuser: { cooldownSec: 60, thresholdPct: 0 },
+  node_offline: { cooldownSec: 600, thresholdPct: 0 },
+};
 
-export type AlertPresetId = keyof typeof ALERT_PRESETS;
-
-/** Metrics that are account-scoped (no server required). */
-export const ACCOUNT_ALERT_METRICS = new Set<AlertMetricId>([
-  'account_login_failed',
-  'account_login',
-  'account_password_changed',
-  'account_2fa_changed',
-  'account_api_key',
-  'node_offline',
-]);
-
-export function alertMetricNeedsServer(metric: AlertMetricId): boolean {
-  return !ACCOUNT_ALERT_METRICS.has(metric);
-}
-
-function cooldownElapsed(rule: AlertRule, now = new Date()): boolean {
-  if (!rule.lastFiredAt) return true;
-  const elapsed = (now.getTime() - rule.lastFiredAt.getTime()) / 1000;
-  return elapsed >= Math.max(60, rule.cooldownSec || DEFAULT_COOLDOWN_SEC);
-}
-
-async function fireRule(
-  rule: AlertRule,
-  input: {
-    title: string;
-    message: string;
-    severity?: string;
-    valuePct?: number | null;
-    serverId?: string | null;
-    nodeId?: string | null;
-  },
-) {
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.alertEvent.create({
-      data: {
-        ruleId: rule.id,
-        userId: rule.userId,
-        serverId: input.serverId ?? rule.serverId,
-        nodeId: input.nodeId ?? rule.nodeId,
-        metric: rule.metric,
-        severity: input.severity ?? 'warning',
-        title: input.title,
-        message: input.message,
-        valuePct: input.valuePct ?? null,
-      },
-    }),
-    prisma.alertRule.update({
-      where: { id: rule.id },
-      data: { lastFiredAt: now },
-    }),
-  ]);
-}
+const STOPPED_STATES = new Set(['offline', 'stopped']);
+const LIVE_RESOURCE_STATES = new Set(['running', 'starting']);
+const RESOURCE_BREACH_STREAK_REQUIRED = 2;
+const resourceBreachStreak = new Map<string, number>();
 
 function pctOfLimit(used: number, limit: number): number | null {
   if (!Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) return null;
@@ -140,18 +40,7 @@ function normalizeState(state: string | undefined | null): string {
   return (state ?? '').trim().toLowerCase();
 }
 
-const STOPPED_STATES = new Set(['offline', 'stopped']);
-const LIVE_RESOURCE_STATES = new Set(['running', 'starting']);
-/** Require consecutive over-threshold samples before firing flappy CPU/memory rules. */
-const RESOURCE_BREACH_STREAK_REQUIRED = 2;
-const resourceBreachStreak = new Map<string, number>();
-
-function streakKey(ruleId: string) {
-  return ruleId;
-}
-
-function noteBreach(ruleId: string, breached: boolean): number {
-  const key = streakKey(ruleId);
+function noteBreach(key: string, breached: boolean): number {
   if (!breached) {
     resourceBreachStreak.delete(key);
     return 0;
@@ -161,9 +50,104 @@ function noteBreach(ruleId: string, breached: boolean): number {
   return next;
 }
 
+async function cooldownReady(
+  userId: string,
+  metric: AlertMetricId,
+  serverId?: string | null,
+  nodeId?: string | null,
+): Promise<boolean> {
+  const cooldownSec = DEFAULT_WATCHES[metric]?.cooldownSec ?? 900;
+  const since = new Date(Date.now() - Math.max(60, cooldownSec) * 1000);
+  const recent = await prisma.alertEvent.findFirst({
+    where: {
+      userId,
+      metric,
+      createdAt: { gte: since },
+      ...(serverId ? { serverId } : {}),
+      ...(nodeId ? { nodeId } : {}),
+    },
+    select: { id: true },
+  });
+  return !recent;
+}
+
+async function deliverInboxAlert(input: {
+  userId: string;
+  metric: AlertMetricId;
+  title: string;
+  message: string;
+  severity?: string;
+  serverId?: string | null;
+  nodeId?: string | null;
+  valuePct?: number | null;
+}) {
+  if (!(await cooldownReady(input.userId, input.metric, input.serverId, input.nodeId))) return;
+  await prisma.alertEvent.create({
+    data: {
+      userId: input.userId,
+      serverId: input.serverId ?? null,
+      nodeId: input.nodeId ?? null,
+      metric: input.metric,
+      severity: input.severity ?? 'warning',
+      title: input.title,
+      message: input.message,
+      valuePct: input.valuePct ?? null,
+    },
+  });
+}
+
+async function listServerInboxUserIds(serverId: string, ownerId?: string | null) {
+  const ids = new Set<string>();
+  if (ownerId) ids.add(ownerId);
+  const server = await prisma.server.findUnique({
+    where: { id: serverId },
+    select: {
+      ownerId: true,
+      subusers: { select: { userId: true } },
+    },
+  });
+  if (server) {
+    ids.add(server.ownerId);
+    for (const su of server.subusers) ids.add(su.userId);
+  }
+  return [...ids];
+}
+
+async function listAdminInboxUserIds() {
+  const admins = await prisma.user.findMany({
+    where: {
+      enabled: true,
+      OR: [{ role: 'admin' }, { rootAdmin: true }],
+    },
+    select: { id: true },
+  });
+  return admins.map((u) => u.id);
+}
+
+async function deliverToUsers(
+  userIds: string[],
+  input: {
+    metric: AlertMetricId;
+    title: string;
+    message: string;
+    severity?: string;
+    serverId?: string | null;
+    nodeId?: string | null;
+    valuePct?: number | null;
+  },
+) {
+  for (const userId of userIds) {
+    try {
+      await deliverInboxAlert({ ...input, userId });
+    } catch {
+      /* one inbox must not block the rest */
+    }
+  }
+}
+
 /** Fire lifecycle alerts when container state changes (edge-triggered). */
 export async function evaluateServerLifecycleTransition(
-  server: Pick<Server, 'id' | 'name' | 'suspended'>,
+  server: Pick<Server, 'id' | 'name' | 'suspended'> & { ownerId?: string | null },
   fromState: string,
   toState: string,
 ) {
@@ -171,58 +155,48 @@ export async function evaluateServerLifecycleTransition(
   const next = normalizeState(toState);
   if (prev === next) return;
 
-  const metrics: AlertMetricId[] = [];
-  if (next === 'crashed') metrics.push('server_crashed');
+  const userIds = await listServerInboxUserIds(server.id, server.ownerId);
+  if (userIds.length === 0) return;
+
+  if (next === 'crashed') {
+    await deliverToUsers(userIds, {
+      metric: 'server_crashed',
+      title: `${server.name}: server crashed`,
+      message: 'The container reported a crash. Check the console for the last lines before exit.',
+      severity: 'critical',
+      serverId: server.id,
+    });
+  }
+
   if (
     STOPPED_STATES.has(next) &&
     !STOPPED_STATES.has(prev) &&
     prev !== 'installing' &&
     prev !== 'install_failed' &&
-    // Graceful Stop goes running → stopping → offline; skip that path.
-    prev !== 'stopping'
+    prev !== 'stopping' &&
+    !server.suspended
   ) {
-    metrics.push('server_offline');
-  }
-  if (next === 'install_failed') metrics.push('install_failed');
-  if (metrics.length === 0) return;
-
-  const rules = await prisma.alertRule.findMany({
-    where: {
-      enabled: true,
+    await deliverToUsers(userIds, {
+      metric: 'server_offline',
+      title: `${server.name}: server stopped`,
+      message: `The server is ${next}. Start it again from the console if this was unexpected.`,
+      severity: 'warning',
       serverId: server.id,
-      metric: { in: metrics },
-    },
-  });
+    });
+  }
 
-  for (const rule of rules) {
-    if (!cooldownElapsed(rule)) continue;
-    if (rule.metric === 'server_crashed') {
-      await fireRule(rule, {
-        title: `${server.name}: server crashed`,
-        message: 'The container reported a crash. Check the console for the last lines before exit.',
-        severity: 'critical',
-        serverId: server.id,
-      });
-    } else if (rule.metric === 'server_offline') {
-      if (server.suspended) continue;
-      await fireRule(rule, {
-        title: `${server.name}: server stopped`,
-        message: `The server is ${next}. Start it again from the console if this was unexpected.`,
-        severity: 'warning',
-        serverId: server.id,
-      });
-    } else if (rule.metric === 'install_failed') {
-      await fireRule(rule, {
-        title: `${server.name}: install failed`,
-        message: 'The install / reinstall script failed. Open install logs for details.',
-        severity: 'critical',
-        serverId: server.id,
-      });
-    }
+  if (next === 'install_failed') {
+    await deliverToUsers(userIds, {
+      metric: 'install_failed',
+      title: `${server.name}: install failed`,
+      message: 'The install / reinstall script failed. Open install logs for details.',
+      severity: 'critical',
+      serverId: server.id,
+    });
   }
 }
 
-/** Evaluate CPU / memory / disk threshold rules after a live stats sample. */
+/** Evaluate CPU / memory / disk after a live stats sample. */
 export async function evaluateServerResourceAlerts(
   server: Pick<Server, 'id' | 'name' | 'ownerId' | 'memory' | 'disk' | 'cpu'>,
   live: WingsResourceStats,
@@ -242,73 +216,56 @@ export async function evaluateServerResourceAlerts(
     disk: pctOfLimit(diskBytes, diskLimitBytes),
   };
 
-  const rules = await prisma.alertRule.findMany({
-    where: {
-      enabled: true,
-      serverId: server.id,
-      metric: { in: ['cpu', 'memory', 'disk'] },
-    },
-  });
+  const userIds = await listServerInboxUserIds(server.id, server.ownerId);
+  if (userIds.length === 0) return;
 
-  for (const rule of rules) {
+  for (const metric of ['cpu', 'memory', 'disk'] as const) {
     try {
-      if (rule.metric !== 'cpu' && rule.metric !== 'memory' && rule.metric !== 'disk') continue;
-
-      // CPU/memory are only meaningful while the process is alive.
-      if ((rule.metric === 'cpu' || rule.metric === 'memory') && !LIVE_RESOURCE_STATES.has(state)) {
-        noteBreach(rule.id, false);
+      if ((metric === 'cpu' || metric === 'memory') && !LIVE_RESOURCE_STATES.has(state)) {
+        noteBreach(`${server.id}:${metric}`, false);
         continue;
       }
 
-      const value = values[rule.metric];
+      const value = values[metric];
+      const watch = DEFAULT_WATCHES[metric];
       if (value == null || !Number.isFinite(value)) {
-        noteBreach(rule.id, false);
+        noteBreach(`${server.id}:${metric}`, false);
         continue;
       }
 
-      const breached = value >= rule.thresholdPct;
-      const streak = noteBreach(rule.id, breached);
+      const breached = value >= watch.thresholdPct;
+      const streak = noteBreach(`${server.id}:${metric}`, breached);
       if (!breached) continue;
-      if (!cooldownElapsed(rule)) continue;
 
-      // Disk fills steadily — fire on first breach. CPU/memory need sustained pressure.
-      const needsStreak = rule.metric === 'cpu' || rule.metric === 'memory';
+      const needsStreak = metric === 'cpu' || metric === 'memory';
       if (needsStreak && streak < RESOURCE_BREACH_STREAK_REQUIRED) continue;
 
-      const label = rule.metric === 'cpu' ? 'CPU' : rule.metric === 'memory' ? 'Memory' : 'Disk';
-      await fireRule(rule, {
-        title: `${server.name}: ${label} above ${rule.thresholdPct}%`,
-        message: `${label} is at ${value.toFixed(1)}% of allocation (threshold ${rule.thresholdPct}%).`,
-        severity: value >= Math.min(100, rule.thresholdPct + 10) ? 'critical' : 'warning',
+      const label = metric === 'cpu' ? 'CPU' : metric === 'memory' ? 'Memory' : 'Disk';
+      await deliverToUsers(userIds, {
+        metric,
+        title: `${server.name}: ${label} above ${watch.thresholdPct}%`,
+        message: `${label} is at ${value.toFixed(1)}% of allocation (threshold ${watch.thresholdPct}%).`,
+        severity: value >= Math.min(100, watch.thresholdPct + 10) ? 'critical' : 'warning',
         valuePct: value,
         serverId: server.id,
       });
-      noteBreach(rule.id, false);
+      noteBreach(`${server.id}:${metric}`, false);
     } catch {
-      /* one rule failure must not block the rest */
+      /* one metric must not block the rest */
     }
   }
 }
 
-/** Fire admin node_offline rules when a node transitions online → offline. */
+/** Notify every admin when a node goes online → offline. */
 export async function evaluateNodeOfflineAlerts(node: { id: string; name: string }) {
-  const rules = await prisma.alertRule.findMany({
-    where: {
-      enabled: true,
-      metric: 'node_offline',
-      OR: [{ nodeId: null }, { nodeId: node.id }],
-    },
+  const userIds = await listAdminInboxUserIds();
+  await deliverToUsers(userIds, {
+    metric: 'node_offline',
+    title: `Node offline: ${node.name}`,
+    message: `${node.name} stopped responding to health checks.`,
+    severity: 'critical',
+    nodeId: node.id,
   });
-
-  for (const rule of rules) {
-    if (!cooldownElapsed(rule)) continue;
-    await fireRule(rule, {
-      title: `Node offline: ${node.name}`,
-      message: `${node.name} stopped responding to health checks.`,
-      severity: 'critical',
-      nodeId: node.id,
-    });
-  }
 }
 
 export async function listAlertEventsForUser(userId: string, opts?: { unreadOnly?: boolean; take?: number }) {
@@ -348,103 +305,7 @@ export async function pruneOldAlertEvents() {
   await prisma.alertEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });
 }
 
-export type AlertRuleCreateInput = {
-  userId: string;
-  serverId?: string | null;
-  nodeId?: string | null;
-  metric: AlertMetricId;
-  thresholdPct?: number;
-  cooldownSec?: number;
-  enabled?: boolean;
-};
-
-export async function createAlertRule(input: AlertRuleCreateInput) {
-  const thresholdPct = input.thresholdPct ?? 90;
-  const existing = await prisma.alertRule.findFirst({
-    where: {
-      userId: input.userId,
-      serverId: input.serverId ?? null,
-      nodeId: input.nodeId ?? null,
-      metric: input.metric,
-      thresholdPct,
-    },
-  });
-  if (existing) {
-    return prisma.alertRule.update({
-      where: { id: existing.id },
-      data: {
-        enabled: input.enabled ?? true,
-        cooldownSec: input.cooldownSec ?? existing.cooldownSec,
-      },
-    });
-  }
-  return prisma.alertRule.create({
-    data: {
-      userId: input.userId,
-      serverId: input.serverId ?? null,
-      nodeId: input.nodeId ?? null,
-      metric: input.metric,
-      thresholdPct,
-      cooldownSec: input.cooldownSec ?? DEFAULT_COOLDOWN_SEC,
-      enabled: input.enabled ?? true,
-    },
-  });
-}
-
-/** Apply a named preset: skip duplicates (same metric+threshold+server). */
-export async function applyAlertPreset(input: {
-  userId: string;
-  presetId: AlertPresetId;
-  serverId?: string | null;
-  isAdmin: boolean;
-}) {
-  const preset = ALERT_PRESETS[input.presetId];
-  if (!preset) throw Object.assign(new Error('Unknown preset'), { statusCode: 400 });
-  if ('adminOnly' in preset && preset.adminOnly && !input.isAdmin) {
-    throw Object.assign(new Error('This preset is for admins only'), { statusCode: 403 });
-  }
-
-  const needsServer = preset.rules.some((r) => alertMetricNeedsServer(r.metric));
-  if (needsServer && !input.serverId) {
-    throw Object.assign(new Error('Pick a server for this preset'), { statusCode: 400 });
-  }
-
-  const created = [];
-  for (const spec of preset.rules) {
-    const serverId = alertMetricNeedsServer(spec.metric) ? input.serverId! : null;
-    const existing = await prisma.alertRule.findFirst({
-      where: {
-        userId: input.userId,
-        serverId,
-        metric: spec.metric,
-        thresholdPct: spec.thresholdPct,
-      },
-    });
-    if (existing) {
-      if (!existing.enabled) {
-        created.push(
-          await prisma.alertRule.update({
-            where: { id: existing.id },
-            data: { enabled: true, cooldownSec: spec.cooldownSec },
-          }),
-        );
-      }
-      continue;
-    }
-    created.push(
-      await createAlertRule({
-        userId: input.userId,
-        serverId,
-        metric: spec.metric,
-        thresholdPct: spec.thresholdPct,
-        cooldownSec: spec.cooldownSec,
-      }),
-    );
-  }
-  return { created: created.length, presetId: input.presetId };
-}
-
-/** Fire enabled rules for an account/security (or scoped server) metric. */
+/** Always-on account / server-security notice for a specific user. */
 export async function notifyUserAlertMetric(
   userId: string,
   metric: AlertMetricId,
@@ -456,32 +317,13 @@ export async function notifyUserAlertMetric(
     valuePct?: number | null;
   },
 ) {
-  const rules = await prisma.alertRule.findMany({
-    where: {
-      userId,
-      enabled: true,
-      metric,
-      ...(input.serverId
-        ? { OR: [{ serverId: input.serverId }, { serverId: null }] }
-        : { serverId: null }),
-    },
+  await deliverInboxAlert({
+    userId,
+    metric,
+    title: input.title,
+    message: input.message,
+    severity: input.severity ?? 'warning',
+    serverId: input.serverId ?? null,
+    valuePct: input.valuePct ?? null,
   });
-
-  for (const rule of rules) {
-    try {
-      if (!cooldownElapsed(rule)) continue;
-      // Per-server rules should not fire for other servers.
-      if (rule.serverId && input.serverId && rule.serverId !== input.serverId) continue;
-      if (rule.serverId && !input.serverId) continue;
-      await fireRule(rule, {
-        title: input.title,
-        message: input.message,
-        severity: input.severity ?? 'warning',
-        serverId: input.serverId ?? rule.serverId,
-        valuePct: input.valuePct ?? null,
-      });
-    } catch {
-      /* keep notifying other rules */
-    }
-  }
 }

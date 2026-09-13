@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   MapPin,
   Search,
+  Bell,
   Server,
   Settings,
   Terminal,
@@ -91,6 +92,7 @@ export function CommandPalette() {
   const commands = useMemo<Command[]>(() => {
     const list: Command[] = [
       { id: 'servers', label: 'My servers', icon: Server, to: '/servers', group: 'Navigate' },
+      { id: 'alerts', label: 'Alerts', icon: Bell, to: '/alerts', group: 'Navigate', keywords: 'inbox notify notifications' },
       { id: 'profile', label: 'Profile', icon: User, to: '/profile', group: 'Navigate' },
     ];
     if (isStaffAdmin) {

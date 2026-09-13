@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
-  Bell,
   Egg,
   LayoutDashboard,
   LogOut,
@@ -60,7 +59,6 @@ const adminGroups = [
     links: [
       { to: '/admin', label: 'Dashboard', description: 'Health & capacity', icon: LayoutDashboard, exact: true },
       { to: '/admin/activity', label: 'Activity', description: 'Audit trail', icon: Activity },
-      { to: '/alerts', label: 'Alerts', description: 'Threshold inbox', icon: Bell },
       { to: '/admin/tickets', label: 'Support', description: 'User tickets', icon: LifeBuoy },
       { to: '/admin/announce', label: 'Announce', description: 'User messages', icon: Megaphone },
     ],
@@ -87,7 +85,6 @@ const adminGroups = [
 
 const clientLinks = [
   { to: '/servers', label: 'My servers', icon: Server },
-  { to: '/alerts', label: 'Alerts', icon: Bell },
 ];
 
 export function AdminLayout({ children, fillHeight }: { children: ReactNode; fillHeight?: boolean }) {

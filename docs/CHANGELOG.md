@@ -19,6 +19,15 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Changed
+
+- **Alerts are always on.** Server health, crashes, account security, and node-offline events go straight to each user’s inbox — no presets or custom watches to configure.
+- **Alerts page is inbox-only** (filters, mark read, jump to console/security). The sidebar link is gone; the bell next to Theme still opens `/alerts`.
+
+### Removed
+
+- Client alert presets and rule CRUD (API + UI). Built-in watches are automatic.
+
 ## [1.3.4.3] - 2026-09-13
 
 ### Added

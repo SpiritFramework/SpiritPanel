@@ -177,7 +177,7 @@ export async function applyContainerStatusUpdate(
 
   const existing = await prisma.server.findUnique({
     where: { id: server.id },
-    select: { id: true, name: true, suspended: true, containerState: true },
+    select: { id: true, name: true, ownerId: true, suspended: true, containerState: true },
   });
   const previousState = existing?.containerState ?? 'offline';
 
