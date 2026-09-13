@@ -26,7 +26,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Changed
 
 - **Alerts are always on.** Server health, crashes, account security, and node-offline events go straight to each user’s inbox — no presets or custom watches to configure.
-- **Alerts inbox redesigned** as a two-pane reader: search, date groups, filters, and a message pane. The sidebar link is gone; the bell next to Theme still opens `/alerts`.
+- **Alerts inbox redesigned** to match My Servers / Support: branded hero, compact stats, filter pills, and a full-width expandable list. The sidebar link is gone; the bell next to Theme still opens `/alerts`.
 
 ### Removed
 
