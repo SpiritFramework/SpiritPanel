@@ -14,7 +14,7 @@ It provides a modern web interface for managing users, nodes, game servers, and 
 
 ## 🖼️ Preview
 
-![Spirit-Panel Preview](https://iili.io/CCK2Esp.png)
+![Spirit-Panel Preview](https://iili.io/nISZy7f.png)
 
 ---
 
