@@ -70,7 +70,7 @@ export function AdminEggDetail() {
 
   return (
     <AdminLayout>
-      <form onSubmit={(e) => void ctrl.save(e)} className="ds-egg-page">
+      <div className="ds-egg-page">
         <div className="ds-egg-header-wrap">
           <EggDetailHeader detail={detail} />
           <EggDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
@@ -97,7 +97,7 @@ export function AdminEggDetail() {
         {tab === 'variables' ? <EggVariablesDashboard ctrl={ctrl} /> : null}
 
         {tab === 'config' ? <EggConfigDashboard ctrl={ctrl} /> : null}
-      </form>
+      </div>
     </AdminLayout>
   );
 }
