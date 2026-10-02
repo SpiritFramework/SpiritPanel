@@ -25,7 +25,7 @@ export function EggVariablesEditor({
 }: {
   eggId: string;
   variables: AdminEggVariable[];
-  onSaved: () => void;
+  onSaved: (variables: AdminEggVariable[]) => void;
 }) {
   const [form, setForm] = useState<EggVariableInput[]>(variables);
   const [saving, setSaving] = useState(false);
@@ -34,7 +34,6 @@ export function EggVariablesEditor({
 
   useEffect(() => {
     setForm(variables);
-    setSaved(false);
     setError('');
   }, [variables]);
 
@@ -65,12 +64,12 @@ export function EggVariablesEditor({
       if (form.some((v) => !v.name.trim() || !v.envVariable.trim())) {
         throw new Error('Each variable needs a name and environment variable');
       }
-      await api.admin.updateEggVariables(
+      const savedVariables = await api.admin.updateEggVariables(
         eggId,
         form.map(({ id, ...rest }) => (id ? { id, ...rest } : rest)),
       );
       setSaved(true);
-      onSaved();
+      onSaved(savedVariables);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save variables');
     } finally {

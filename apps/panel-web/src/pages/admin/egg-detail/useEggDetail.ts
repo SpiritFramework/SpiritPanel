@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type AdminEggDetail, type UpdateAdminEggInput } from '../../../lib/api';
+import { api, type AdminEggDetail, type AdminEggVariable, type UpdateAdminEggInput } from '../../../lib/api';
 import { formFromEggDetail, eggFormHasChanges } from './helpers';
 
 export function useEggDetail(eggId: string) {
@@ -34,6 +34,10 @@ export function useEggDetail(eggId: string) {
       setLoading(false);
     }
   }, [eggId]);
+
+  function updateVariables(variables: AdminEggVariable[]) {
+    setDetail((current) => (current ? { ...current, variables } : current));
+  }
 
   useEffect(() => {
     void load();
@@ -144,6 +148,7 @@ export function useEggDetail(eggId: string) {
     setReimported,
     setReimportError,
     load,
+    updateVariables,
     resetForm,
     save,
     deleteEgg,
