@@ -1,4 +1,5 @@
 import type { MarketplacePlugin } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma.js';
 import { isFiveMEgg } from '../lib/fivem-egg.js';
 import { assertSafeServerPath, UnsafeFilePathError } from '../lib/file-paths.js';
@@ -123,43 +124,74 @@ async function dirHasResourceManifest(wings: WingsClient, uuid: string, dirPath:
   return entries.some((e) => e.name === 'fxmanifest.lua' || e.name === '__resource.lua');
 }
 
+type ExtractedEntry = { name: string; directory: boolean };
+
+export function findExtractedResourceFolder(
+  entries: ExtractedEntry[],
+  folderName: string,
+  predictedArchiveName: string,
+  rootHasManifest: boolean,
+  manifestFolders: Set<string>,
+): string | null {
+  if (rootHasManifest) return null;
+  if (entries.some((entry) => entry.name === folderName && entry.directory)) return folderName;
+
+  const predicted = entries.find((entry) => entry.name === predictedArchiveName && entry.directory);
+  if (predicted) return predicted.name;
+
+  const candidates = entries.filter(
+    (entry) =>
+      entry.directory &&
+      !entry.name.startsWith('.') &&
+      !entry.name.endsWith('.zip') &&
+      entry.name !== folderName,
+  );
+  const manifestFolder = candidates.find((entry) => manifestFolders.has(entry.name));
+  if (manifestFolder) return manifestFolder.name;
+  if (candidates.length === 1) return candidates[0]!.name;
+
+  const names = candidates.map((entry) => entry.name).join(', ') || '(none)';
+  throw new Error(
+    `Could not locate extracted resource folder (found: ${names}). Check the install path points to an existing resources folder.`,
+  );
+}
+
 async function reconcileExtractedFolder(
   wings: WingsClient,
   uuid: string,
   parent: string,
   folderName: string,
   predictedArchiveName: string,
-) {
+): Promise<string | null> {
   const entries = await wings.listFiles(uuid, parent);
-  if (entries.some((e) => e.name === folderName && e.directory)) return;
-
-  const predicted = entries.find((e) => e.name === predictedArchiveName && e.directory);
-  if (predicted) {
-    await wings.renameFiles(uuid, parent, [{ from: predicted.name, to: folderName }]);
-    return;
-  }
+  const rootHasManifest = entries.some((entry) => entry.name === 'fxmanifest.lua' || entry.name === '__resource.lua');
+  if (rootHasManifest) return null;
 
   const candidates = entries.filter(
-    (e) => e.directory && !e.name.startsWith('.') && !e.name.endsWith('.zip') && e.name !== folderName,
+    (entry) =>
+      entry.directory &&
+      !entry.name.startsWith('.') &&
+      !entry.name.endsWith('.zip') &&
+      entry.name !== folderName,
   );
-
+  const manifestFolders = new Set<string>();
   for (const candidate of candidates) {
     const candidatePath = parent === '/' ? `/${candidate.name}` : `${parent}/${candidate.name}`;
-    if (await dirHasResourceManifest(wings, uuid, candidatePath)) {
-      await wings.renameFiles(uuid, parent, [{ from: candidate.name, to: folderName }]);
-      return;
-    }
+    if (await dirHasResourceManifest(wings, uuid, candidatePath)) manifestFolders.add(candidate.name);
   }
 
-  if (candidates.length === 1) {
-    await wings.renameFiles(uuid, parent, [{ from: candidates[0]!.name, to: folderName }]);
-    return;
-  }
-
-  const names = candidates.map((c) => c.name).join(', ') || '(none)';
-  throw new Error(
-    `Could not locate extracted resource folder (found: ${names}). Check the install path points to an existing resources folder.`,
+  const selectedFolder = findExtractedResourceFolder(
+    entries,
+    folderName,
+    predictedArchiveName,
+    rootHasManifest,
+    manifestFolders,
   );
+  if (selectedFolder === null) return null;
+  if (selectedFolder !== folderName) {
+    await wings.renameFiles(uuid, parent, [{ from: selectedFolder, to: folderName }]);
+  }
+  return folderName;
 }
 
 export async function patchServerCfg(
@@ -228,21 +260,31 @@ export async function deployGithubArchive(
 ) {
   const installPath = normalizePath(target.installPath);
   const { parent, name: folderName } = parentAndName(installPath);
-  const zipName = `.spirit-dl-${target.slug}.zip`;
-  const zipPath = parent === '/' ? `/${zipName}` : `${parent}/${zipName}`;
-
-  await ensureDirectoryPath(wings, serverUuid, parent);
-  await removePathIfExists(wings, serverUuid, installPath);
+  const stagingName = `.spirit-install-${randomUUID()}`;
+  const stagingPath = parent === '/' ? `/${stagingName}` : `${parent}/${stagingName}`;
+  const zipName = 'archive.zip';
+  const zipPath = `${stagingPath}/${zipName}`;
 
   const archive = await downloadGithubArchive(target.release.downloadUrl, ctx);
-  await wings.uploadFile(serverUuid, zipPath, archive, 300_000);
-  await wings.decompressFile(serverUuid, parent, zipName);
-  await reconcileExtractedFolder(wings, serverUuid, parent, folderName, target.release.archiveFolderName);
-
+  await ensureDirectoryPath(wings, serverUuid, parent);
   try {
-    await wings.deleteFiles(serverUuid, parent, [zipName]);
-  } catch {
-    // non-fatal
+    await ensureDirectoryPath(wings, serverUuid, stagingPath);
+    await wings.uploadFile(serverUuid, zipPath, archive, 300_000);
+    await wings.decompressFile(serverUuid, stagingPath, zipName);
+    await removePathIfExists(wings, serverUuid, zipPath);
+
+    const resourceFolder = await reconcileExtractedFolder(
+      wings,
+      serverUuid,
+      stagingPath,
+      folderName,
+      target.release.archiveFolderName,
+    );
+    const sourcePath = resourceFolder === null ? stagingPath : `${stagingPath}/${resourceFolder}`;
+    await removePathIfExists(wings, serverUuid, installPath);
+    await wings.renameFiles(serverUuid, '/', [{ from: sourcePath.slice(1), to: installPath.slice(1) }]);
+  } finally {
+    await removePathIfExists(wings, serverUuid, stagingPath).catch(() => undefined);
   }
 }
 
