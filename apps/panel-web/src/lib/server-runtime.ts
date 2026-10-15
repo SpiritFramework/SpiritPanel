@@ -216,14 +216,24 @@ export function isServerEffectivelyInstalling(server: ServerStatusFields): boole
   return getServerDisplayStatus(server).label === 'Installing';
 }
 
+/** Not suspended, not installing, and not effectively running. */
+export function isServerEffectivelyOffline(server: ServerStatusFields): boolean {
+  if (server.suspended) return false;
+  if (isServerEffectivelyInstalling(server)) return false;
+  return !isServerEffectivelyRunning(server);
+}
+
+export type ServerStatusFilter = 'all' | 'running' | 'offline' | 'suspended' | 'installing';
+
 export function matchesServerStatusFilter(
   server: ServerStatusFields,
-  filter: 'all' | 'running' | 'suspended' | 'installing',
+  filter: ServerStatusFilter,
 ): boolean {
   if (filter === 'all') return true;
   if (filter === 'suspended') return Boolean(server.suspended);
   if (filter === 'running') return isServerEffectivelyRunning(server);
   if (filter === 'installing') return isServerEffectivelyInstalling(server);
+  if (filter === 'offline') return isServerEffectivelyOffline(server);
   return true;
 }
 

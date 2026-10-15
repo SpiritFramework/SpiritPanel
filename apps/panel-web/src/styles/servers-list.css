@@ -1,19 +1,24 @@
-/* My Servers — fleet header (branding tokens only) */
+/* My Servers — fleet page (aligned with Support / Alerts) */
+
+.ds-servers-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
 .ds-servers-fleet {
   position: relative;
   overflow: hidden;
-  margin-bottom: 1rem;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: var(--radius-xl, 0.9rem);
+  border-radius: var(--radius-xl, var(--ds-radius-xl, 0.9rem));
   background:
     linear-gradient(
       165deg,
-      color-mix(in srgb, var(--accent) 7%, transparent) 0%,
-      transparent 42%
+      color-mix(in srgb, var(--accent) 8%, transparent) 0%,
+      transparent 48%
     ),
-    color-mix(in srgb, var(--surface) 92%, transparent);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent);
+    color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--ds-shadow-card, 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent));
 }
 
 .ds-servers-fleet .ds-hero-stripe {
@@ -26,12 +31,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem 1.25rem;
-  padding: 1.1rem 1.15rem 0.95rem;
+  padding: 1.15rem 1.15rem 0.25rem;
 }
 
 @media (min-width: 640px) {
   .ds-servers-fleet-top {
-    padding: 1.2rem 1.35rem 1rem;
+    padding: 1.3rem 1.45rem 0.35rem;
   }
 }
 
@@ -39,32 +44,32 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.9rem;
 }
 
 .ds-servers-fleet-mark {
   display: flex;
-  height: 2.75rem;
-  width: 2.75rem;
+  height: 3rem;
+  width: 3rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: 0.75rem;
+  border-radius: 0.85rem;
   background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .ds-servers-fleet-mark img {
   height: 100%;
   width: 100%;
   object-fit: contain;
-  padding: 0.35rem;
+  padding: 0.4rem;
 }
 
 .ds-servers-fleet-mark-fallback {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #fff;
 }
@@ -76,23 +81,24 @@
 .ds-servers-fleet-greeting {
   margin: 0;
   font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 .ds-servers-fleet-title {
-  margin: 0.15rem 0 0;
-  font-size: 1.35rem;
+  margin: 0.2rem 0 0;
+  font-size: 1.4rem;
   font-weight: 750;
   letter-spacing: -0.03em;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--text);
 }
 
 @media (min-width: 640px) {
   .ds-servers-fleet-title {
-    font-size: 1.5rem;
+    font-size: 1.65rem;
   }
 }
 
@@ -102,7 +108,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.55rem;
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
   font-size: 0.75rem;
   line-height: 1.4;
 }
@@ -113,7 +119,8 @@
 
 .ds-servers-fleet-summary {
   margin: 0.55rem 0 0;
-  font-size: 0.75rem;
+  max-width: 34rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--muted);
 }
@@ -124,39 +131,210 @@
   gap: 0.4rem;
 }
 
-.ds-servers-fleet-aside {
+.ds-servers-fleet-actions {
   display: flex;
-  width: 100%;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
+  gap: 0.5rem;
+}
+
+.ds-servers-fleet-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding: 1rem 1.15rem 1.15rem;
 }
 
 @media (min-width: 640px) {
-  .ds-servers-fleet-aside {
-    width: auto;
-    justify-content: flex-end;
+  .ds-servers-fleet-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 1.05rem 1.45rem 1.3rem;
   }
 }
 
-.ds-servers-fleet-tools {
+.ds-servers-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+}
+
+.ds-servers-stat:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  transform: translateY(-1px);
+}
+
+.ds-servers-stat.is-active {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  background: var(--accent-muted);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.ds-servers-stat-value {
+  font-size: 1.4rem;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-servers-stat-label {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-servers-stat--success .ds-servers-stat-value {
+  color: var(--success-fg);
+}
+
+.ds-servers-stat--info .ds-servers-stat-value {
+  color: var(--info-fg);
+}
+
+.ds-servers-stat--warn .ds-servers-stat-value {
+  color: var(--warning-fg);
+}
+
+/* Attention callout */
+.ds-servers-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.9rem 1.05rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--surface-muted) 80%, transparent), transparent 55%),
+    var(--surface);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+
+.ds-servers-callout:hover {
+  transform: translateY(-1px);
+}
+
+.ds-servers-callout--warn {
+  border-color: color-mix(in srgb, var(--warning-fg) 28%, var(--border));
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--warning-bg) 70%, transparent), transparent 55%),
+    var(--surface);
+}
+
+.ds-servers-callout--warn:hover {
+  border-color: color-mix(in srgb, var(--warning-fg) 45%, var(--border));
+}
+
+.ds-servers-callout--info {
+  border-color: color-mix(in srgb, var(--info-fg) 28%, var(--border));
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--info-bg) 70%, transparent), transparent 55%),
+    var(--surface);
+}
+
+.ds-servers-callout--info:hover {
+  border-color: color-mix(in srgb, var(--info-fg) 45%, var(--border));
+}
+
+.ds-servers-callout--muted {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.ds-servers-callout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  color: var(--text);
+}
+
+.ds-servers-callout--warn .ds-servers-callout-icon {
+  border-color: color-mix(in srgb, var(--warning-fg) 30%, var(--border));
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+.ds-servers-callout--info .ds-servers-callout-icon {
+  border-color: color-mix(in srgb, var(--info-fg) 30%, var(--border));
+  background: var(--info-bg);
+  color: var(--info-fg);
+}
+
+.ds-servers-callout-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ds-servers-callout-body strong {
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.ds-servers-callout-body span {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-servers-callout-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* Fleet panel — tools + list */
+.ds-servers-panel {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: var(--radius-xl, var(--ds-radius-xl, 0.9rem));
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+.ds-servers-panel-tools {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 35%, transparent);
-  padding: 0.85rem 1.15rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+  padding: 0.9rem 1rem;
 }
 
 @media (min-width: 640px) {
-  .ds-servers-fleet-tools {
-    padding-left: 1.35rem;
-    padding-right: 1.35rem;
+  .ds-servers-panel-tools {
+    padding: 1rem 1.2rem;
   }
 }
 
 @media (min-width: 1024px) {
-  .ds-servers-fleet-tools {
+  .ds-servers-panel-tools {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
@@ -207,7 +385,7 @@
 
 @media (min-width: 640px) {
   .ds-servers-fleet-search {
-    max-width: 18rem;
+    max-width: 20rem;
   }
 }
 
@@ -230,13 +408,19 @@
   color: var(--text);
 }
 
-.ds-servers-fleet-meta {
+.ds-servers-panel-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.95rem;
+  padding: 0.7rem 1rem 0;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-panel-meta {
+    padding: 0.8rem 1.2rem 0;
+  }
 }
 
 .ds-servers-fleet-meta-text {
@@ -250,9 +434,31 @@
   color: var(--text);
 }
 
+.ds-servers-panel-body {
+  padding: 0.85rem 1rem 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .ds-servers-panel-body {
+    padding: 0.95rem 1.2rem 1.25rem;
+  }
+}
+
 @media (max-width: 639px) {
-  .ds-servers-fleet-tools {
-    padding: 0.7rem 0.85rem 0.85rem;
+  .ds-servers-fleet-top {
+    padding: 1rem 0.95rem 0.15rem;
+  }
+
+  .ds-servers-fleet-title {
+    font-size: 1.25rem;
+  }
+
+  .ds-servers-fleet-stats {
+    padding: 0.85rem 0.95rem 1rem;
+  }
+
+  .ds-servers-panel-tools {
+    padding: 0.75rem 0.85rem;
     gap: 0.6rem;
   }
 
@@ -265,12 +471,10 @@
     max-width: none;
   }
 
-  .ds-servers-fleet-top {
-    padding: 0.9rem 0.9rem 0.75rem;
-  }
-
-  .ds-servers-fleet-title {
-    font-size: 1.2rem;
+  .ds-servers-panel-meta,
+  .ds-servers-panel-body {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
   }
 }
 
@@ -278,6 +482,18 @@
   display: grid;
   grid-auto-rows: 1fr;
   gap: 1rem;
+  animation: ds-servers-fade-in 0.28s ease both;
+}
+
+@keyframes ds-servers-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @media (min-width: 640px) {
@@ -289,5 +505,21 @@
 @media (min-width: 1280px) {
   .ds-servers-fleet-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-servers-stat,
+  .ds-servers-callout {
+    transition: none;
+  }
+
+  .ds-servers-stat:hover,
+  .ds-servers-callout:hover {
+    transform: none;
+  }
+
+  .ds-servers-fleet-grid {
+    animation: none;
   }
 }

@@ -1,6 +1,7 @@
 import type { AdminUserDetail } from '../../../../lib/api';
 import {
   isServerEffectivelyInstalling,
+  isServerEffectivelyOffline,
   isServerEffectivelyRunning,
   matchesServerStatusFilter,
 } from '../../../../lib/server-runtime';
@@ -29,17 +30,13 @@ export interface UserServerStatusRow {
 }
 
 export function isServerOffline(server: UserOwnedServer): boolean {
-  if (server.suspended) return false;
-  if (isServerEffectivelyInstalling(server)) return false;
-  return !isServerEffectivelyRunning(server);
+  return isServerEffectivelyOffline(server);
 }
 
 export function matchesUserServerStatusFilter(
   server: UserOwnedServer,
   filter: UserServerStatusFilter,
 ): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'offline') return isServerOffline(server);
   return matchesServerStatusFilter(server, filter);
 }
 

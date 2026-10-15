@@ -6,7 +6,6 @@ import {
   Cpu,
   FolderOpen,
   HardDrive,
-  MapPin,
   MemoryStick,
   Terminal,
 } from 'lucide-react';
@@ -51,7 +50,7 @@ export function ServerCard({ server }: ServerCardProps) {
 
   return (
     <article
-      className={`server-card server-card--${cardStyle} group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border)]`}
+      className={`server-card server-card--${cardStyle} group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border)] transition duration-150 hover:-translate-y-0.5 hover:border-[var(--accent)]/35`}
       style={cardVars}
     >
       {cardStyle === 'neon' && <div className="server-card-neon-mesh" aria-hidden />}
@@ -74,16 +73,17 @@ export function ServerCard({ server }: ServerCardProps) {
             onCopyAddress={copyAddress}
           />
 
-          <div className="mt-2.5 flex items-center justify-end px-0.5">
-            <span className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-[var(--muted)] transition group-hover:text-[var(--accent)]">
-              Manage
+          <div className="mt-3 flex items-center justify-between gap-2 px-0.5">
+            <span className="truncate text-[11px] text-[var(--muted)]">{server.node.name}</span>
+            <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]">
+              Open
               <ChevronRight className="h-4 w-4" />
             </span>
           </div>
         </div>
       </Link>
 
-      <div className="relative flex gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)]/40 px-4 py-2.5">
+      <div className="relative flex gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)]/50 px-4 py-2.5">
         <QuickLink to={`/servers/${server.id}/console`} icon={Terminal} label="Console" />
         <QuickLink to={`/servers/${server.id}/files`} icon={FolderOpen} label="Files" />
       </div>
@@ -306,10 +306,6 @@ function CardBody({
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--border)] pt-2.5 text-[11px] leading-snug text-[var(--muted)]">
-        <span className="inline-flex items-center gap-1">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {server.node.name}
-        </span>
         <span className="inline-flex items-center gap-1">
           <MemoryStick className="h-3 w-3 shrink-0" />
           {formatResource(server.memory ?? 0, 'MiB')}
