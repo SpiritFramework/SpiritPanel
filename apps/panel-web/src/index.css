@@ -4018,18 +4018,10 @@ body {
 .startup-panel,
 .network-panel,
 .database-panel,
-.schedule-panel,
-.server-panel {
+.schedule-panel {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, var(--border)),
     0 12px 32px -20px rgba(0, 0, 0, 0.45);
-}
-
-.server-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
 }
 
 .server-page {
@@ -7177,19 +7169,6 @@ body {
     display: none;
   }
 
-  .server-panel > div:first-child {
-    align-items: flex-start;
-  }
-
-  .server-panel-actions {
-    width: 100%;
-  }
-
-  .server-panel-actions > button {
-    width: 100%;
-    justify-content: center;
-  }
-
   .ds-modal-overlay:has(.ds-modal--wide) {
     align-items: flex-end;
     padding: 0;
@@ -7279,17 +7258,8 @@ body {
     padding: 0.45rem 0.75rem;
   }
 
-  /* Server panel nesting */
-  .server-panel > div:last-child {
-    padding: 0.75rem;
-  }
-
   .server-page {
     gap: 1rem;
-  }
-
-  .server-page-header {
-    gap: 0.625rem;
   }
 
   /* Admin dashboard */

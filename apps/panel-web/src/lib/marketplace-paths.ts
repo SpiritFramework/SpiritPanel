@@ -65,25 +65,3 @@ export function useMarketplacePaths() {
     isAdminManage,
   };
 }
-export function parseGithubOwnerRepo(input: string): { owner: string; repo: string } | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  try {
-    if (trimmed.includes('github.com') || trimmed.startsWith('http')) {
-      const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
-      const parts = url.pathname.split('/').filter(Boolean);
-      if (parts.length < 2) return null;
-      return { owner: parts[0]!, repo: parts[1]!.replace(/\.git$/, '') };
-    }
-  } catch {
-    // fall through
-  }
-
-  const slash = trimmed.replace(/^@/, '').split('/');
-  if (slash.length === 2 && slash[0] && slash[1]) {
-    return { owner: slash[0], repo: slash[1].replace(/\.git$/, '') };
-  }
-
-  return null;
-}

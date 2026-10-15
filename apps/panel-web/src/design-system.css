@@ -15563,17 +15563,6 @@ button.ds-nodes-stat:hover {
     gap: 0.9rem;
   }
 
-  .server-page-header h2 {
-    font-size: 0.9375rem;
-    line-height: 1.35;
-  }
-
-  .server-page-header p {
-    font-size: 0.75rem;
-    line-height: 1.45;
-    margin-top: 0.2rem;
-  }
-
   .server-card .text-\[10px\] {
     font-size: 0.6875rem;
     line-height: 1.35;

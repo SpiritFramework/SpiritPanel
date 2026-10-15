@@ -1,5 +1,3 @@
-import type { GithubSearchResult } from './api';
-
 export interface MarketplaceScriptPreview {
   owner: string;
   repo: string;
@@ -17,22 +15,3 @@ export interface MarketplaceScriptPreview {
 export type MarketplaceScriptLocationState = {
   preview?: MarketplaceScriptPreview;
 };
-
-export function previewFromSearchResult(
-  item: GithubSearchResult,
-  extras?: { blurb?: string; category?: string },
-): MarketplaceScriptPreview {
-  return {
-    owner: item.owner,
-    repo: item.repo,
-    ownerAvatarUrl: item.ownerAvatarUrl ?? null,
-    name: item.name,
-    description: extras?.blurb || item.description,
-    stars: item.stars,
-    forks: item.forks,
-    language: item.language,
-    topics: item.topics,
-    blurb: extras?.blurb,
-    category: extras?.category,
-  };
-}
