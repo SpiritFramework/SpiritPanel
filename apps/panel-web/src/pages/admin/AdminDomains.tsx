@@ -5,7 +5,6 @@ import {
   Globe,
   LayoutGrid,
   List,
-  RefreshCw,
   Search,
   Settings,
 } from 'lucide-react';
@@ -22,8 +21,9 @@ import {
 } from '../../components/admin/domains/domain-fleet-utils';
 import { DomainsFleetOverview } from '../../components/admin/domains/DomainsFleetOverview';
 import { DomainsFleetStats } from '../../components/admin/domains/DomainsFleetStats';
+import { DomainsHeader } from '../../components/admin/domains/DomainsHeader';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton } from '../../components/ui';
+import { AlertBanner, EmptyState, Skeleton } from '../../components/ui';
 
 const FILTER_OPTIONS: { id: DomainFleetFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -132,34 +132,11 @@ export function AdminDomainsPage() {
   return (
     <AdminLayout>
       <Page>
-        <PageHeader
-          title="Subdomains"
-          description="Cloudflare DNS records created for game servers — one subdomain per server"
-          icon={<DsIcon icon={Globe} className="ds-icon--muted" />}
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void refresh()}
-                disabled={refreshing || initialLoading}
-                aria-label="Refresh subdomains"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`}
-                  aria-hidden
-                />
-                Refresh
-              </Button>
-              <Link to="/admin/settings">
-                <Button type="button" variant="secondary" size="sm">
-                  <Settings className="h-3.5 w-3.5" aria-hidden />
-                  Cloudflare DNS
-                </Button>
-              </Link>
-            </div>
-          }
+        <DomainsHeader
+          stats={fleetStats}
+          refreshing={refreshing}
+          loading={initialLoading}
+          onRefresh={() => void refresh()}
         />
 
         {error ? (

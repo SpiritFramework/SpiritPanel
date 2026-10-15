@@ -5,9 +5,7 @@ import {
   HardDrive,
   LayoutGrid,
   List,
-  MapPin,
   Plus,
-  RefreshCw,
   Search,
 } from 'lucide-react';
 import { api, type AdminLocationSummary, type AdminNodeSummary } from '../../lib/api';
@@ -16,6 +14,7 @@ import { AdminLayout, Button, Card, FilterSelect, Page } from '../../components/
 import { NodeFleetCard } from '../../components/admin/nodes/NodeFleetCard';
 import { NodesFleetOverview } from '../../components/admin/nodes/NodesFleetOverview';
 import { NodesFleetStats } from '../../components/admin/nodes/NodesFleetStats';
+import { NodesHeader } from '../../components/admin/nodes/NodesHeader';
 import {
   computeFleetStats,
   groupNodesByLocation,
@@ -24,7 +23,7 @@ import {
 } from '../../components/admin/nodes/node-fleet-utils';
 import { useAuth } from '../../context/AuthContext';
 import { isFullPanelAdmin } from '../../lib/roles';
-import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, Skeleton } from '../../components/ui';
 
 const FILTER_OPTIONS: { id: NodeFleetFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -162,39 +161,12 @@ export function AdminNodes() {
   return (
     <AdminLayout>
       <Page>
-        <PageHeader
-          title="Nodes"
-          description="Wings daemons across your locations — reachability, capacity, and port inventory"
-          icon={<DsIcon icon={HardDrive} className="ds-icon--muted" />}
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void refresh()}
-                disabled={refreshing || nodes.loading}
-                aria-label="Refresh nodes"
-              >
-                <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
-                Refresh
-              </Button>
-              <Link to="/admin/locations">
-                <Button type="button" variant="secondary" size="sm">
-                  <MapPin className="h-3.5 w-3.5" aria-hidden />
-                  Locations
-                </Button>
-              </Link>
-              {fullAdmin ? (
-                <Link to="/admin/nodes/new">
-                  <Button size="sm">
-                    <Plus className="h-3.5 w-3.5" aria-hidden />
-                    Add node
-                  </Button>
-                </Link>
-              ) : null}
-            </div>
-          }
+        <NodesHeader
+          stats={fleetStats}
+          refreshing={refreshing}
+          loading={nodes.loading}
+          fullAdmin={fullAdmin}
+          onRefresh={() => void refresh()}
         />
 
         {locations.error ? (

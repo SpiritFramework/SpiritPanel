@@ -1,6 +1,7 @@
 import { resolveAllocationHost } from '@spirit/shared';
 import { GameDig } from 'gamedig';
 import { isFiveMEgg, type FiveMEggLike } from '../lib/fivem-egg.js';
+import { isUnsafeGameQueryHost } from '../lib/network-guard.js';
 
 export interface GameQueryEgg extends FiveMEggLike {
   nest?: { name: string } | null;
@@ -208,6 +209,15 @@ export async function queryServerPlayerCount(input: QueryServerPlayerCountInput)
   }
 
   const host = resolveAllocationHost(input.allocation, input.node);
+  if (isUnsafeGameQueryHost(host)) {
+    const result = emptyResult({
+      supported: false,
+      error: 'Player query blocked for this host address',
+    });
+    cache.set(input.serverId, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
+  }
+
   const port = input.allocation.port;
   const types = resolveQueryTypes(input.egg, port);
 

@@ -15,11 +15,58 @@ function isPrivateOrReservedIpv4(parts: number[]): boolean {
   return false;
 }
 
+/** Loopback / link-local / metadata — never safe as an outbound query target. */
+function isLoopbackOrLinkLocalIpv4(parts: number[]): boolean {
+  const [a, b] = parts;
+  if (a === 127) return true;
+  if (a === 0) return true;
+  if (a === 169 && b === 254) return true;
+  return false;
+}
+
+function extractIpv4Mapped(normalized: string): string | null {
+  const lower = normalized.toLowerCase();
+  // ::ffff:127.0.0.1 or ::ffff:7f00:1
+  const dotted = lower.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (dotted) return dotted[1];
+  const hex = lower.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const hi = Number.parseInt(hex[1], 16);
+    const lo = Number.parseInt(hex[2], 16);
+    if (Number.isNaN(hi) || Number.isNaN(lo)) return null;
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return null;
+}
+
 function isPrivateOrReservedIpv6(normalized: string): boolean {
   const lower = normalized.toLowerCase();
   if (lower === '::1' || lower === '::') return true;
   if (lower.startsWith('fe80:')) return true; // link-local
   if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // ULA
+
+  const mapped = extractIpv4Mapped(lower);
+  if (mapped) {
+    const parts = mapped.split('.').map((n) => Number(n));
+    if (parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+      return isPrivateOrReservedIpv4(parts);
+    }
+  }
+  return false;
+}
+
+function isLoopbackOrLinkLocalIpv6(normalized: string): boolean {
+  const lower = normalized.toLowerCase();
+  if (lower === '::1' || lower === '::') return true;
+  if (lower.startsWith('fe80:')) return true;
+
+  const mapped = extractIpv4Mapped(lower);
+  if (mapped) {
+    const parts = mapped.split('.').map((n) => Number(n));
+    if (parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
+      return isLoopbackOrLinkLocalIpv4(parts);
+    }
+  }
   return false;
 }
 
@@ -122,4 +169,25 @@ export async function assertPublicOutboundHostResolved(host: string, label = 'Ho
     }
     throw err;
   }
+}
+
+/**
+ * Game player queries may target RFC1918 allocation IPs on the node LAN.
+ * Still block loopback, link-local, and cloud metadata hostnames (SSRF).
+ */
+export function isUnsafeGameQueryHost(host: string): boolean {
+  const trimmed = host.trim().toLowerCase();
+  if (!trimmed) return true;
+  if (BLOCKED_HOSTNAMES.has(trimmed)) return true;
+  if (trimmed.endsWith('.local') || trimmed.endsWith('.internal')) return true;
+
+  const ipVersion = isIP(trimmed);
+  if (ipVersion === 4) {
+    const parts = trimmed.split('.').map((n) => Number(n));
+    return isLoopbackOrLinkLocalIpv4(parts);
+  }
+  if (ipVersion === 6) {
+    return isLoopbackOrLinkLocalIpv6(trimmed);
+  }
+  return false;
 }
