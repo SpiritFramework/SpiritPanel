@@ -1,5 +1,6 @@
 import {
   Activity,
+  ClipboardCopy,
   Cpu,
   Download,
   Fingerprint,
@@ -31,6 +32,7 @@ type OverviewNav = {
   onServers: () => void;
   onAnalytics: () => void;
   downloadConfig: () => void;
+  copyJoinData: () => void;
   copyText: (text: string) => void;
   copied: boolean;
 };
@@ -56,6 +58,7 @@ export function NodeOverviewDashboard({
     : undefined;
 
   const dockItems = [
+    { icon: ClipboardCopy, label: 'Join-data', hint: 'For featherwings configure', onClick: nav.copyJoinData },
     { icon: Download, label: 'Wings config', hint: 'Download YAML', onClick: nav.downloadConfig },
     { icon: ShieldCheck, label: 'Diagnostics', hint: 'Test connectivity', onClick: nav.onDiagnostics },
     {
@@ -131,6 +134,7 @@ export function NodeOverviewDashboard({
             installedVersion={wingsVersion}
             online={detail.online}
             onDownloadConfig={nav.downloadConfig}
+            onCopyJoinData={nav.copyJoinData}
           />
         </div>
       </div>
@@ -209,7 +213,13 @@ export function NodeOverviewDashboard({
         </NodeOverviewSection>
       </div>
 
-      {!detail.online ? <NodeOverviewOfflineBanner detail={detail} onDownloadConfig={nav.downloadConfig} /> : null}
+      {!detail.online ? (
+        <NodeOverviewOfflineBanner
+          detail={detail}
+          onDownloadConfig={nav.downloadConfig}
+          onCopyJoinData={nav.copyJoinData}
+        />
+      ) : null}
     </div>
   );
 }

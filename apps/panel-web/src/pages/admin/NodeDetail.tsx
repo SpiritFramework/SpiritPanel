@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { ClipboardCopy, Download } from 'lucide-react';
 import { NodeDetailHeader, NodeDetailTabNav } from '../../components/admin/node-detail/NodeDetailShell';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AdminDetailNotFound } from '../../components/AdminDetailLayout';
@@ -28,6 +28,7 @@ export function AdminNodeDetail() {
     error,
     save,
     downloadConfig,
+    copyJoinData,
     runDiagnostics,
     diagLoading,
     diagnostics,
@@ -109,6 +110,7 @@ export function AdminNodeDetail() {
             wingsVersion={wingsVersion}
             freeAllocations={freeAllocations}
             onDownloadConfig={downloadConfig}
+            onCopyJoinData={() => void copyJoinData()}
             onDiagnostics={() => {
               changeTab('diagnostics');
               void runDiagnostics();
@@ -124,12 +126,16 @@ export function AdminNodeDetail() {
             <div>
               <p className="ds-text-sm font-semibold text-cyan-100">Node created — finish setup</p>
               <p className="mt-1 ds-text-xs text-cyan-200/80">
-                Download the Wings config, install FeatherWings on your host, run diagnostics, then create port
-                allocations.
+                Copy join-data into <code className="text-[11px]">featherwings configure</code> on the host (or
+                download the YAML), run diagnostics, then create port allocations.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={downloadConfig}>
+              <Button type="button" size="sm" onClick={() => void copyJoinData()}>
+                <ClipboardCopy className="h-3.5 w-3.5" />
+                {copied ? 'Copied' : 'Copy join-data'}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={downloadConfig}>
                 <Download className="h-3.5 w-3.5" />
                 Download config
               </Button>

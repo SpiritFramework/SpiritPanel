@@ -10,7 +10,7 @@ import {
   buildInstallScript,
   buildServerListItem,
 } from '../services/server-configuration.js';
-import { getNodeServers, getServerFull } from '../services/server-helpers.js';
+import { buildWingsConfig, getNodeServers, getServerFull } from '../services/server-helpers.js';
 import { logActivityBatch } from '../services/activity.js';
 import {
   applyContainerStatusUpdate,
@@ -29,6 +29,18 @@ import { handleTransferFailure, handleTransferSuccess } from '../services/server
 
 export async function remoteRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireDaemon);
+
+  /** FeatherWings 1.4+ join-data / configure verifies the node token here. */
+  app.get('/health', async (request) => ({
+    ok: true,
+    node: request.node!.uuid,
+  }));
+
+  /** FeatherWings 1.4+ join-data fetches runtime config.yml after health check. */
+  app.get('/config', async (request, reply) => {
+    reply.type('text/yaml');
+    return buildWingsConfig(request.node!);
+  });
 
   app.post('/sftp/auth', async (request, reply) => {
     const body = request.body as {

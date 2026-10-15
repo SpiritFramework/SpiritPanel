@@ -17,7 +17,7 @@ import {
 import { applicationScopeZod } from '../lib/application-scopes.js';
 import { generateDaemonToken, isValidBindIp, parseAllocationPorts } from '@spirit/shared';
 import { parseEggJson } from '@spirit/shared';
-import { buildWingsConfig, serverInclude } from '../services/server-helpers.js';
+import { buildWingsConfig, buildWingsJoinData, serverInclude } from '../services/server-helpers.js';
 import { wingsForNode } from '../services/wings-client.js';
 import { getNodeHealthSnapshot } from '../lib/node-health-cache.js';
 import { probeNodeHealth, sanitizeAdminNode, probeNodesReachability, stripServerNodeSecrets } from '../lib/node-health.js';
@@ -995,6 +995,25 @@ export async function adminRoutes(app: FastifyInstance) {
     });
     reply.type('text/yaml');
     return buildWingsConfig(node);
+  });
+
+  /** Base64 join-data for FeatherWings 1.4+ `featherwings configure` (works for existing nodes too). */
+  app.get('/nodes/:id/join-data', { preHandler: requireFullAdmin }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const node = await prisma.node.findUnique({ where: { id } });
+    if (!node) return reply.status(404).send({ error: 'Not found' });
+    const joinData = buildWingsJoinData(node);
+    await logAdminActivity(request, {
+      event: 'admin.node.join_data_copied',
+      description: `Generated FeatherWings join-data for ${node.name}`,
+      nodeId: node.id,
+    });
+    return {
+      joinData,
+      node: { id: node.id, name: node.name, uuid: node.uuid },
+      command: `sudo featherwings configure --join-data '${joinData}'`,
+      hint: 'Paste join-data into `sudo featherwings configure`, or run the command above on the game node.',
+    };
   });
 
   app.get('/nodes/:id/system', async (request, reply) => {

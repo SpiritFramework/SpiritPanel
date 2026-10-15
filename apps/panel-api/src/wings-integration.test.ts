@@ -7,26 +7,39 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildWingsConfig } from './services/server-helpers.js';
+import { buildWingsConfig, buildWingsJoinBootstrap, buildWingsJoinData } from './services/server-helpers.js';
+
+const sampleNode = {
+  uuid: 'node-uuid',
+  name: 'Test Node',
+  fqdn: 'node.test.com',
+  scheme: 'https' as const,
+  behindProxy: false,
+  daemonListen: 8080,
+  daemonSftp: 2022,
+  daemonBase: '/var/lib/pterodactyl/volumes',
+  daemonTokenId: 'abc123',
+  daemonTokenSecret: 'secret456',
+  uploadSize: 100,
+};
 
 describe('wings config generation', () => {
   it('generates valid yaml with remote url', () => {
-    const yaml = buildWingsConfig({
-      uuid: 'node-uuid',
-      name: 'Test Node',
-      fqdn: 'node.test.com',
-      scheme: 'https',
-      behindProxy: false,
-      daemonListen: 8080,
-      daemonSftp: 2022,
-      daemonBase: '/var/lib/pterodactyl/volumes',
-      daemonTokenId: 'abc123',
-      daemonTokenSecret: 'secret456',
-      uploadSize: 100,
-    });
+    const yaml = buildWingsConfig(sampleNode);
     assert.match(yaml, /remote:/);
     assert.match(yaml, /token_id: abc123/);
     assert.match(yaml, /FeatherWings|Spirit-Panel/);
+  });
+
+  it('builds FeatherWings join-data bootstrap (base64 YAML)', () => {
+    const yaml = buildWingsJoinBootstrap(sampleNode);
+    assert.match(yaml, /^uuid: node-uuid$/m);
+    assert.match(yaml, /^token_id: abc123$/m);
+    assert.match(yaml, /^token: secret456$/m);
+    assert.match(yaml, /^remote: /m);
+    const joinData = buildWingsJoinData(sampleNode);
+    const decoded = Buffer.from(joinData, 'base64').toString('utf8');
+    assert.equal(decoded, yaml);
   });
 });
 

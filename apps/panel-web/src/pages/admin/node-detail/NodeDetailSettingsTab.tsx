@@ -22,6 +22,7 @@ export function NodeDetailSettingsTab({ ctrl }: { ctrl: NodeDetailController }) 
         copied: ctrl.copied,
         resetForm: ctrl.resetForm,
         downloadConfig: ctrl.downloadConfig,
+        copyJoinData: ctrl.copyJoinData,
         rotateToken: ctrl.rotateToken,
         deleteNode: ctrl.deleteNode,
         copyText: ctrl.copyText,

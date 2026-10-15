@@ -32,7 +32,7 @@ export async function getNodeServers(prisma: import('@prisma/client').PrismaClie
   });
 }
 
-export function buildWingsConfig(node: {
+export type WingsConfigNode = {
   uuid: string;
   name: string;
   fqdn: string;
@@ -44,7 +44,31 @@ export function buildWingsConfig(node: {
   daemonTokenId: string;
   daemonTokenSecret: string;
   uploadSize: number;
-}) {
+};
+
+/** Minimal bootstrap YAML for FeatherWings `configure --join-data` (base64-encoded). */
+export function buildWingsJoinBootstrap(node: Pick<WingsConfigNode, 'uuid' | 'daemonListen' | 'daemonTokenId' | 'daemonTokenSecret'>) {
+  const panelUrl = (getConfig().panelUrl || getConfig().apiUrl).replace(/\/$/, '');
+  return [
+    `# Spirit-Panel join bootstrap for FeatherWings configure`,
+    `uuid: ${node.uuid}`,
+    `token_id: ${node.daemonTokenId}`,
+    `token: ${node.daemonTokenSecret}`,
+    `remote: ${panelUrl}`,
+    `api:`,
+    `  port: ${node.daemonListen}`,
+    `remote_query:`,
+    `  timeout: 30`,
+    ``,
+  ].join('\n');
+}
+
+/** Base64 join-data blob for `sudo featherwings configure --join-data …`. */
+export function buildWingsJoinData(node: Pick<WingsConfigNode, 'uuid' | 'daemonListen' | 'daemonTokenId' | 'daemonTokenSecret'>) {
+  return Buffer.from(buildWingsJoinBootstrap(node), 'utf8').toString('base64');
+}
+
+export function buildWingsConfig(node: WingsConfigNode) {
   const panelUrl = getConfig().panelUrl || getConfig().apiUrl;
 
   // Wings serves TLS itself only when the node uses HTTPS and is NOT behind a

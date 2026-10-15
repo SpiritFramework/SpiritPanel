@@ -14,7 +14,7 @@ export function NodeDetailOverviewTab({
   onServers: () => void;
   onAnalytics: () => void;
 }) {
-  const { detail, copied, copyText, downloadConfig } = ctrl;
+  const { detail, copied, copyText, downloadConfig, copyJoinData } = ctrl;
   if (!detail) return null;
 
   return (
@@ -26,6 +26,7 @@ export function NodeDetailOverviewTab({
         onServers,
         onAnalytics,
         downloadConfig,
+        copyJoinData: () => void copyJoinData(),
         copyText: (text) => void copyText(text),
         copied,
       }}

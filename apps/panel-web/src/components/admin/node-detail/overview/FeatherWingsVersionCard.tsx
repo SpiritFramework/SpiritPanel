@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, CheckCircle2, Download, ExternalLink, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  ClipboardCopy,
+  Download,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 import { compareVersionStatus } from '@spirit/shared';
 import { api, type FeatherWingsReleaseInfo } from '../../../../lib/api';
 import { Button } from '../../../Layout';
@@ -22,10 +31,12 @@ export function FeatherWingsVersionCard({
   installedVersion,
   online,
   onDownloadConfig,
+  onCopyJoinData,
 }: {
   installedVersion: string | null;
   online: boolean;
   onDownloadConfig: () => void;
+  onCopyJoinData?: () => void;
 }) {
   const [release, setRelease] = useState<FeatherWingsReleaseInfo | null>(releaseCache);
   const [loading, setLoading] = useState(!releaseCache);
@@ -151,7 +162,13 @@ export function FeatherWingsVersionCard({
               <ExternalLink className="ds-icon ds-icon--sm" aria-hidden />
               View release
             </a>
-            <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
+            {onCopyJoinData ? (
+              <Button type="button" variant="secondary" size="sm" onClick={onCopyJoinData}>
+                <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+                Join-data
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
             </Button>
@@ -161,7 +178,8 @@ export function FeatherWingsVersionCard({
 
       {!online && !installedVersion ? (
         <p className="ds-nd-ov-fw-hint">
-          Install FeatherWings on this host and use the downloaded config so the panel can report the running version.
+          Install FeatherWings, then paste join-data into <code className="text-[11px]">featherwings configure</code>{' '}
+          (or download the YAML) so the panel can report the running version.
         </p>
       ) : null}
     </section>

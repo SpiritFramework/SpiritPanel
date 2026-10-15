@@ -405,12 +405,16 @@ panel-api :3000 (local)    ◄────────  remote: https://panel...
 1. Log in at `https://panel.example.com/admin`
 2. **Locations → Add Location**
 3. **Nodes → Add Node** — set FQDN, scheme, daemon listen (8080), SFTP port (2022)
-4. Click **Wings Config** — download YAML or copy token
+4. Open the node → **Copy join-data** (or **Download config** for a manual YAML)
 5. **Allocations** — add IP + port range
 
-Confirm `API_URL` in `apps/panel-api/.env` matches Wings `remote:` exactly.
+Confirm `API_URL` / `PANEL_URL` in `apps/panel-api/.env` matches the public panel URL Wings will use as `remote:` (HTTPS, no trailing slash).
+
+Existing nodes get the same **Join-data** button — credentials are generated from the node already in the database (rotate the token first if you need new secrets).
 
 ### Step 2 — Game node: install Docker + FeatherWings
+
+Prefer the MythicalSystems APT package (FeatherWings 1.4+) so `featherwings configure` is available — see the [FeatherWings README](https://github.com/MythicalLTD/FeatherWings). Or install a binary:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
@@ -423,11 +427,25 @@ sudo chmod +x /usr/local/bin/featherwings
 sudo mkdir -p /var/lib/pterodactyl/volumes
 ```
 
+### Step 3 — Configure Wings (join-data)
 
+**Recommended (FeatherWings 1.4+):** on the game node:
 
-### Step 3 — Wings config
+```bash
+sudo featherwings configure
+# When prompted for join-data, paste from Admin → Nodes → Join-data
+sudo systemctl enable --now featherwings
+```
 
-Save to `/etc/featherpanel/config.yml` using values from **Admin → Nodes → Wings Config**:
+Or non-interactive:
+
+```bash
+sudo featherwings configure --join-data 'PASTE_BASE64_FROM_PANEL'
+```
+
+Spirit Panel exposes `/api/remote/health` and `/api/remote/config` so configure can verify the token and write `/etc/featherpanel/config.yml`.
+
+**Manual YAML (any Wings version):** download **Wings config** from the node page and save it to `/etc/featherpanel/config.yml`:
 
 ```yaml
 debug: false

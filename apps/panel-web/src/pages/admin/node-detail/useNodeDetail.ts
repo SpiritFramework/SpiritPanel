@@ -124,6 +124,16 @@ export function useNodeDetail(nodeId: string) {
     URL.revokeObjectURL(url);
   }
 
+  async function copyJoinData() {
+    if (!detail) return;
+    try {
+      const { joinData } = await api.admin.nodeJoinData(nodeId);
+      await copyText(joinData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate join-data');
+    }
+  }
+
   async function rotateToken() {
     setSaving(true);
     setError('');
@@ -330,6 +340,7 @@ export function useNodeDetail(nodeId: string) {
     resetForm,
     save,
     downloadConfig,
+    copyJoinData,
     rotateToken,
     deleteNode,
     createAllocations,

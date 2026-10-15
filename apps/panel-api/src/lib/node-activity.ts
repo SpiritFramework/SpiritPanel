@@ -7,6 +7,7 @@ export const NODE_PANEL_ACTIVITY_EVENTS = [
   'admin.node.deleted',
   'admin.node.token_rotated',
   'admin.node.config_downloaded',
+  'admin.node.join_data_copied',
   'admin.allocation.created',
   'admin.allocation.updated',
   'admin.allocation.deleted',

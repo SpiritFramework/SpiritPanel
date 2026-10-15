@@ -61,6 +61,7 @@ const EVENT_META: Record<string, { label: string; icon: LucideIcon; color: strin
   'admin.node.deleted': { label: 'Node deleted', icon: HardDrive, color: 'text-red-400 bg-red-500/15' },
   'admin.node.token_rotated': { label: 'Node token rotated', icon: Shield, color: 'text-amber-400 bg-amber-500/15' },
   'admin.node.config_downloaded': { label: 'Wings config downloaded', icon: Download, color: 'text-sky-400 bg-sky-500/15' },
+  'admin.node.join_data_copied': { label: 'Wings join-data generated', icon: Download, color: 'text-sky-400 bg-sky-500/15' },
   'admin.allocation.bulk_deleted': { label: 'Allocations removed', icon: Network, color: 'text-orange-400 bg-orange-500/15' },
   'admin.allocation.updated': { label: 'Allocation updated', icon: Network, color: 'text-blue-400 bg-blue-500/15' },
   'admin.location.created': { label: 'Location created', icon: MapPin, color: 'text-green-400 bg-green-500/15' },

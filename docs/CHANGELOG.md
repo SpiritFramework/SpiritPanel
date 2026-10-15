@@ -23,6 +23,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 - **Delete alerts** from the inbox (one message or clear all, with confirm on clear).
 - **Installer progress UX** (`spirit.sh` 2.0.7): fixed-phase `[n/total · %]` lines for install/update, an “Almost done” notice from 80% onward, and TTY heartbeats during long silent work (apt, clone, pnpm, certbot, health wait).
+- **FeatherWings join-data** for 1.4+ `featherwings configure`: Admin → Nodes → **Copy join-data** (new and existing nodes), plus `GET /api/remote/health` and `GET /api/remote/config` so Wings can verify the token and pull `config.yml`.
 
 ### Changed
 

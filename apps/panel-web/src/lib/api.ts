@@ -496,6 +496,13 @@ export const api = {
       request<NodeStatsResponse>(`/admin/nodes/${id}/stats?range=${encodeURIComponent(range)}`),
     nodeConfig: (id: string) =>
       fetch(`${API}/admin/nodes/${id}/config`, { headers: requestHeaders() }).then((r) => r.text()),
+    nodeJoinData: (id: string) =>
+      request<{
+        joinData: string;
+        command: string;
+        hint: string;
+        node: { id: string; name: string; uuid: string };
+      }>(`/admin/nodes/${id}/join-data`),
     nodeSystem: (id: string) => request(`/admin/nodes/${id}/system`),
     deleteNode: (id: string) => request(`/admin/nodes/${id}`, { method: 'DELETE' }),
     locations: (params?: { search?: string }) => {

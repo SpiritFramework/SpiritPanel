@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import {
   AlertTriangle,
+  ClipboardCopy,
   Download,
   Globe,
   HardDrive,
@@ -38,6 +39,7 @@ export type NodeSettingsController = {
   copied: boolean;
   resetForm: () => void;
   downloadConfig: () => void;
+  copyJoinData: () => Promise<void>;
   rotateToken: () => Promise<void>;
   deleteNode: () => Promise<void>;
   copyText: (text: string) => Promise<void>;
@@ -60,6 +62,7 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
     copied,
     resetForm,
     downloadConfig,
+    copyJoinData,
     rotateToken,
     deleteNode,
     copyText,
@@ -309,13 +312,17 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
               <NodeOverviewEndpoint label="Token ID" value={detail.daemonTokenId} mono />
             </div>
             <div className="ds-nd-st-wings-actions">
-              <Button type="button" variant="secondary" size="sm" onClick={downloadConfig}>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void copyJoinData()}>
+                <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+                {copied ? 'Copied join-data' : 'Copy join-data'}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={downloadConfig}>
                 <Download className="h-3.5 w-3.5" aria-hidden />
                 Download config
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => void copyText(detail.daemonTokenId)}>
                 <Shield className="h-3.5 w-3.5" aria-hidden />
-                {copied ? 'Copied' : 'Copy token ID'}
+                Copy token ID
               </Button>
               {!confirmRotate ? (
                 <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmRotate(true)}>

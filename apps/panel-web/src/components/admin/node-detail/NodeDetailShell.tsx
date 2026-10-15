@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   ChevronRight,
+  ClipboardCopy,
   Copy,
   Download,
   Gauge,
@@ -53,6 +54,7 @@ export function NodeDetailHeader({
   wingsVersion,
   freeAllocations,
   onDownloadConfig,
+  onCopyJoinData,
   onDiagnostics,
   onCopyFqdn,
   copied,
@@ -61,6 +63,7 @@ export function NodeDetailHeader({
   wingsVersion: string | null;
   freeAllocations: number;
   onDownloadConfig: () => void;
+  onCopyJoinData?: () => void;
   onDiagnostics: () => void;
   onCopyFqdn?: () => void;
   copied?: boolean;
@@ -154,7 +157,13 @@ export function NodeDetailHeader({
           </div>
 
           <div className="ds-nd-header-actions">
-            <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
+            {onCopyJoinData ? (
+              <Button type="button" variant="secondary" size="sm" onClick={onCopyJoinData}>
+                <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+                {copied ? 'Copied' : 'Join-data'}
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
             </Button>
@@ -319,9 +328,11 @@ export function NodeOverviewSpec({
 export function NodeOverviewOfflineBanner({
   detail,
   onDownloadConfig,
+  onCopyJoinData,
 }: {
   detail: AdminNodeDetail;
   onDownloadConfig: () => void;
+  onCopyJoinData?: () => void;
 }) {
   return (
     <div className="ds-nd-ov-offline">
@@ -331,14 +342,23 @@ export function NodeOverviewOfflineBanner({
       <div className="min-w-0 flex-1">
         <p className="ds-nd-ov-offline-title">FeatherWings is not reachable</p>
         <p className="ds-nd-ov-offline-text">
-          Install and start FeatherWings on this host, then open ports{' '}
-          <strong>{detail.daemonListen}</strong> (API) and <strong>{detail.daemonSftp}</strong> (SFTP).
+          On the host run <code className="text-[11px]">sudo featherwings configure</code> and paste join-data,
+          or download the YAML. Open ports <strong>{detail.daemonListen}</strong> (API) and{' '}
+          <strong>{detail.daemonSftp}</strong> (SFTP).
         </p>
       </div>
-      <Button type="button" size="sm" onClick={onDownloadConfig}>
-        <Download className="h-3.5 w-3.5" aria-hidden />
-        Download config
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {onCopyJoinData ? (
+          <Button type="button" size="sm" onClick={onCopyJoinData}>
+            <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+            Copy join-data
+          </Button>
+        ) : null}
+        <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          Download config
+        </Button>
+      </div>
     </div>
   );
 }

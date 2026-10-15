@@ -78,7 +78,13 @@ export function getNodeActivityChangeTags(
 export type NodeActivityCategory = 'settings' | 'config' | 'network' | 'lifecycle';
 
 export function getNodeActivityCategory(event: string): NodeActivityCategory {
-  if (event === 'admin.node.config_downloaded' || event === 'admin.node.token_rotated') return 'config';
+  if (
+    event === 'admin.node.config_downloaded' ||
+    event === 'admin.node.join_data_copied' ||
+    event === 'admin.node.token_rotated'
+  ) {
+    return 'config';
+  }
   if (event.startsWith('admin.allocation.')) return 'network';
   if (event === 'admin.node.created' || event === 'admin.node.deleted') return 'lifecycle';
   return 'settings';

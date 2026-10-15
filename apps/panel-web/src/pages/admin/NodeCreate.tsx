@@ -137,11 +137,12 @@ export function AdminNodeCreate() {
                       <ol className="space-y-2 text-[11px] leading-relaxed text-[var(--muted)]">
                         <li className="flex gap-2">
                           <span className="font-semibold text-[var(--text)]">1.</span>
-                          Download the generated Wings config from the node page.
+                          On the node page, copy join-data (or download the Wings YAML).
                         </li>
                         <li className="flex gap-2">
                           <span className="font-semibold text-[var(--text)]">2.</span>
-                          Install FeatherWings on the host and place the config at <code className="text-[10px]">/etc/pterodactyl/config.yml</code>.
+                          Install FeatherWings, then run{' '}
+                          <code className="text-[10px]">sudo featherwings configure</code> and paste join-data.
                         </li>
                         <li className="flex gap-2">
                           <span className="font-semibold text-[var(--text)]">3.</span>
