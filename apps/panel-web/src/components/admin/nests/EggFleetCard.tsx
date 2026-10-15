@@ -33,7 +33,7 @@ export function EggFleetCard({ egg }: { egg: AdminEggSummary }) {
           style={{ background: theme.gradient ?? EGG_GRADIENT }}
           aria-hidden
         >
-          <ServerEggIcon eggName={egg.name} className="h-4 w-4" />
+          <ServerEggIcon eggName={egg.name} logoUrl={egg.logoUrl} className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="ds-adm-nest-card-title truncate">{egg.name}</h3>

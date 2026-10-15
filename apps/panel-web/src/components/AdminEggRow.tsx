@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Egg, Layers, Server, Variable } from 'lucide-react';
+import { ChevronRight, Layers, Server, Variable } from 'lucide-react';
 import type { AdminEggSummary } from '../lib/api';
-
-const EGG_GRADIENT = 'linear-gradient(135deg, #78350f 0%, #d97706 45%, #451a03 100%)';
+import { ServerEggIcon } from './ServerEggIcon';
+import { getServerTheme } from '../lib/server-theme';
 
 const USAGE_LABELS = [
   { key: 'variables' as const, icon: Variable, title: 'Startup variables' },
@@ -40,6 +40,7 @@ export function AdminEggTable({ eggs }: { eggs: AdminEggSummary[] }) {
 
 function AdminEggRow({ egg }: { egg: AdminEggSummary }) {
   const navigate = useNavigate();
+  const theme = getServerTheme(egg.name);
   const created = new Date(egg.createdAt).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -56,9 +57,9 @@ function AdminEggRow({ egg }: { egg: AdminEggSummary }) {
         <div className="flex min-w-[200px] items-center gap-3">
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
-            style={{ background: EGG_GRADIENT }}
+            style={{ background: theme.gradient }}
           >
-            <Egg className="h-4 w-4 text-white/90" />
+            <ServerEggIcon eggName={egg.name} logoUrl={egg.logoUrl} className="h-4 w-4" />
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium group-hover:accent-text">{egg.name}</p>

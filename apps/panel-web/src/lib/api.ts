@@ -1401,6 +1401,7 @@ export interface AdminNestDetail {
     author: string;
     description: string;
     enabled: boolean;
+    logoUrl: string | null;
     variableCount: number;
     serverCount: number;
   }>;
@@ -1425,6 +1426,7 @@ export interface AdminEggSummary {
   author: string;
   description: string;
   enabled: boolean;
+  logoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   nest: { id: string; name: string };

@@ -27104,7 +27104,7 @@ button.ds-nodes-stat:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 0.6rem;
+  gap: 0.5rem 0.75rem;
 }
 
 .ds-adm-nest-header-title,
@@ -27113,7 +27113,8 @@ button.ds-nodes-stat:hover {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
 .ds-adm-nest-header-meta,
@@ -27121,8 +27122,9 @@ button.ds-nodes-stat:hover {
 .ds-nst-header-meta,
 .ds-egg-header-sub,
 .ds-egg-header-meta {
-  margin: 0.2rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.75rem;
+  line-height: 1.45;
   color: var(--muted);
 }
 
@@ -27583,12 +27585,20 @@ button.ds-nodes-stat:hover {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 650;
+  line-height: 1.35;
 }
 
 .ds-adm-nest-card-subtitle {
-  margin: 0.1rem 0 0;
-  font-size: 0.625rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
   color: var(--muted);
+}
+
+.ds-adm-nest-card-icon-wrap img {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
 }
 
 .ds-adm-nest-card-arrow {
@@ -27801,12 +27811,14 @@ button.ds-nodes-stat:hover {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 650;
+  line-height: 1.35;
 }
 
 .ds-nst-panel-desc,
 .ds-egg-panel-desc {
-  margin: 0.1rem 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.6875rem;
+  line-height: 1.45;
   color: var(--muted);
 }
 
@@ -27956,7 +27968,7 @@ button.ds-nodes-stat:hover {
 .ds-nst-egg-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -27966,8 +27978,8 @@ button.ds-nodes-stat:hover {
 .ds-nst-egg-list-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.45rem 0.35rem;
+  gap: 0.7rem;
+  padding: 0.55rem 0.45rem;
   border-radius: var(--radius-md);
   text-decoration: none;
   color: inherit;
@@ -27983,24 +27995,34 @@ button.ds-nodes-stat:hover {
 .ds-nst-egg-list-icon {
   display: grid;
   place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   flex-shrink: 0;
-  border-radius: 0.45rem;
+  border-radius: 0.5rem;
   color: white;
+  overflow: hidden;
+}
+
+.ds-nst-egg-preview-icon img,
+.ds-nst-egg-list-icon img {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
 }
 
 .ds-nst-egg-preview-name,
 .ds-nst-egg-list-name {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .ds-nst-egg-preview-meta,
 .ds-nst-egg-list-meta {
-  margin: 0.1rem 0 0;
-  font-size: 0.625rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
   color: var(--muted);
 }
 

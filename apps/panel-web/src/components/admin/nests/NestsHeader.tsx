@@ -42,7 +42,7 @@ export function NestsHeader({
         <nav className="ds-adm-nest-header-crumb" aria-label="Breadcrumb">
           <Link to="/admin">Admin</Link>
           <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
-          <span>Nests &amp; eggs</span>
+          <span>Nests & eggs</span>
         </nav>
 
         <div className="ds-adm-nest-header-body">
@@ -61,7 +61,7 @@ export function NestsHeader({
 
               <div className="min-w-0 flex-1">
                 <div className="ds-adm-nest-header-title-row">
-                  <h1 className="ds-adm-nest-header-title">Nests &amp; eggs</h1>
+                  <h1 className="ds-adm-nest-header-title">Nests & eggs</h1>
                   <StatusPill
                     label={statusLabel}
                     tone={tone === 'warning' ? 'warning' : tone === 'healthy' ? 'success' : 'neutral'}

@@ -90,15 +90,24 @@ export function NestOverviewDashboard({
               <ul className="ds-nst-egg-preview">
                 {detail.eggs.slice(0, 5).map((egg) => {
                   const theme = getServerTheme(egg.name);
+                  const hasLogo = Boolean(egg.logoUrl?.trim());
                   return (
                     <li key={egg.id}>
                       <Link to={`/admin/eggs/${egg.id}`} className="ds-nst-egg-preview-row">
                         <span
                           className="ds-nst-egg-preview-icon"
-                          style={{ background: theme.gradient }}
+                          style={{
+                            background: hasLogo
+                              ? 'color-mix(in srgb, var(--surface) 70%, transparent)'
+                              : theme.gradient,
+                          }}
                           aria-hidden
                         >
-                          <ServerEggIcon eggName={egg.name} className="h-3.5 w-3.5" />
+                          <ServerEggIcon
+                            eggName={egg.name}
+                            logoUrl={egg.logoUrl}
+                            className="h-3.5 w-3.5"
+                          />
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="ds-nst-egg-preview-name truncate">{egg.name}</p>

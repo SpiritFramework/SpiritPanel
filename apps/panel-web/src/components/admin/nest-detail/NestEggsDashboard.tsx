@@ -46,15 +46,24 @@ export function NestEggsDashboard({
           <ul className="ds-nst-egg-list">
             {detail.eggs.map((egg) => {
               const theme = getServerTheme(egg.name);
+              const hasLogo = Boolean(egg.logoUrl?.trim());
               return (
                 <li key={egg.id}>
                   <Link to={`/admin/eggs/${egg.id}`} className="ds-nst-egg-list-row">
                     <span
                       className="ds-nst-egg-list-icon"
-                      style={{ background: theme.gradient }}
+                      style={{
+                        background: hasLogo
+                          ? 'color-mix(in srgb, var(--surface) 70%, transparent)'
+                          : theme.gradient,
+                      }}
                       aria-hidden
                     >
-                      <ServerEggIcon eggName={egg.name} className="h-4 w-4" />
+                      <ServerEggIcon
+                        eggName={egg.name}
+                        logoUrl={egg.logoUrl}
+                        className="h-4 w-4"
+                      />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="ds-nst-egg-list-name truncate">{egg.name}</p>
