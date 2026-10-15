@@ -19,6 +19,16 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Security
+
+- **Session-only** for profile/2FA/PAT/SSH key changes; email change requires current password.
+- **Application API keys** require explicit permission scopes (no silent full-access default).
+- **Admin node detail** no longer returns `daemonTokenId` / daemon secrets.
+- **Database hosts** never return stored passwords; host create/update/delete require full admin.
+- **Plugin catalog mutations** require full admin.
+- **Local backup download** path jail hardened (UUID-only segments, no symlink follow).
+- **Discord ticket webhooks** re-validated at send time; email headings HTML-escaped.
+
 ### Added
 
 - **Delete alerts** from the inbox (one message or clear all, with confirm on clear).

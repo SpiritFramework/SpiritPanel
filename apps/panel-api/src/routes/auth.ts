@@ -615,7 +615,7 @@ export async function authRoutes(app: FastifyInstance) {
     return sanitizeUser(request.user!);
   });
 
-  app.patch('/me', { preHandler: requireAuth }, async (request, reply) => {
+  app.patch('/me', { preHandler: requireSession }, async (request, reply) => {
     const minPasswordLength = await getPasswordMinLength();
     const body = z
       .object({
@@ -655,6 +655,13 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     if (body.email && body.email !== user.email) {
+      if (!body.currentPassword) {
+        return reply.status(422).send({ error: 'Current password is required to change email' });
+      }
+      if (!body.newPassword) {
+        const valid = await verifyPassword(body.currentPassword, user.passwordHash);
+        if (!valid) return reply.status(403).send({ error: 'Current password is incorrect' });
+      }
       const taken = await prisma.user.findFirst({
         where: { email: body.email, id: { not: user.id } },
       });
@@ -715,7 +722,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // ---- Two-factor authentication ----
-  app.get('/me/2fa', { preHandler: requireAuth }, async (request) => {
+  app.get('/me/2fa', { preHandler: requireSession }, async (request) => {
     const user = request.user!;
     let recoveryRemaining = 0;
     if (user.totpRecoveryCodes) {
@@ -728,7 +735,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { enabled: user.totpEnabled, recoveryRemaining };
   });
 
-  app.post('/me/2fa/setup', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/me/2fa/setup', { preHandler: requireSession }, async (request, reply) => {
     const user = request.user!;
     if (user.totpEnabled) {
       return reply.status(409).send({ error: 'Two-factor authentication is already enabled' });
@@ -748,7 +755,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { secret, otpauth, qr };
   });
 
-  app.post('/me/2fa/enable', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/me/2fa/enable', { preHandler: requireSession }, async (request, reply) => {
     const body = z.object({ code: z.string().min(4).max(10) }).parse(request.body);
     const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
     if (!user) return reply.status(404).send({ error: 'Not found' });
@@ -785,7 +792,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { success: true, recoveryCodes: codes };
   });
 
-  app.post('/me/2fa/disable', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/me/2fa/disable', { preHandler: requireSession }, async (request, reply) => {
     const body = z.object({ password: z.string().min(1) }).parse(request.body);
     const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
     if (!user) return reply.status(404).send({ error: 'Not found' });
@@ -817,7 +824,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { success: true };
   });
 
-  app.post('/me/2fa/recovery-codes', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/me/2fa/recovery-codes', { preHandler: requireSession }, async (request, reply) => {
     const body = z.object({ password: z.string().min(1) }).parse(request.body);
     const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
     if (!user) return reply.status(404).send({ error: 'Not found' });
@@ -834,7 +841,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // ---- GitHub PAT (marketplace rate limits) ----
-  app.get('/me/github-pat', { preHandler: requireAuth }, async (request) => {
+  app.get('/me/github-pat', { preHandler: requireSession }, async (request) => {
     const user = await prisma.user.findUnique({
       where: { id: request.user!.id },
       select: { githubPatEnc: true },
@@ -842,7 +849,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { configured: Boolean(user?.githubPatEnc) };
   });
 
-  app.put('/me/github-pat', { preHandler: requireAuth }, async (request, reply) => {
+  app.put('/me/github-pat', { preHandler: requireSession }, async (request, reply) => {
     const body = z.object({ token: z.string().min(1).max(512) }).parse(request.body);
     const trimmed = body.token.trim();
     let login: string;
@@ -866,7 +873,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { configured: true, login };
   });
 
-  app.delete('/me/github-pat', { preHandler: requireAuth }, async (request) => {
+  app.delete('/me/github-pat', { preHandler: requireSession }, async (request) => {
     await prisma.user.update({
       where: { id: request.user!.id },
       data: { githubPatEnc: null },
@@ -961,7 +968,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // ---- SSH keys ----
-  app.get('/me/ssh-keys', { preHandler: requireAuth }, async (request) => {
+  app.get('/me/ssh-keys', { preHandler: requireSession }, async (request) => {
     const keys = await prisma.userSshKey.findMany({
       where: { userId: request.user!.id },
       orderBy: { createdAt: 'desc' },
@@ -969,7 +976,7 @@ export async function authRoutes(app: FastifyInstance) {
     return keys.map(serializeSshKey);
   });
 
-  app.post('/me/ssh-keys', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/me/ssh-keys', { preHandler: requireSession }, async (request, reply) => {
     const body = z.object({ name: sshKeyName, publicKey: z.string().min(1).max(16384) }).parse(request.body);
     const parsed = parsePublicKey(body.publicKey);
     if (!parsed.ok) return reply.status(422).send({ error: parsed.error });
@@ -992,7 +999,7 @@ export async function authRoutes(app: FastifyInstance) {
     return serializeSshKey(key);
   });
 
-  app.delete('/me/ssh-keys/:id', { preHandler: requireAuth }, async (request, reply) => {
+  app.delete('/me/ssh-keys/:id', { preHandler: requireSession }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const key = await prisma.userSshKey.findFirst({ where: { id, userId: request.user!.id } });
     if (!key) return reply.status(404).send({ error: 'SSH key not found' });

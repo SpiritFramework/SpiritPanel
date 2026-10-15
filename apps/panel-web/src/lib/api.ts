@@ -731,21 +731,29 @@ export const api = {
         method: 'DELETE',
       }),
     apiKeys: () => request<ApiKeySummary[]>('/admin/api-keys'),
-    createApiKey: (memo: string) =>
+    createApiKey: (memo: string, permissions: string[] = ['application.*']) =>
       request<CreatedApiKey>('/admin/api-keys', {
         method: 'POST',
-        body: JSON.stringify({ memo }),
+        body: JSON.stringify({ memo, permissions }),
       }),
     deleteApiKey: (id: string) =>
       request<{ deleted: boolean }>(`/admin/api-keys/${id}`, { method: 'DELETE' }),
     userApiKeys: (userId: string) => request<ApiKeySummary[]>(`/admin/users/${userId}/api-keys`),
     createUserApiKey: (
       userId: string,
-      data: { memo?: string; keyType?: 'account' | 'application' },
+      data: {
+        memo?: string;
+        keyType?: 'account' | 'application';
+        permissions?: string[];
+      },
     ) =>
       request<CreatedApiKey>(`/admin/users/${userId}/api-keys`, {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(
+          data.keyType === 'application'
+            ? { ...data, permissions: data.permissions?.length ? data.permissions : ['application.*'] }
+            : data,
+        ),
       }),
     deleteUserApiKey: (userId: string, keyId: string) =>
       request<{ deleted: boolean }>(`/admin/users/${userId}/api-keys/${keyId}`, {

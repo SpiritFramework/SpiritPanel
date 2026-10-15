@@ -141,8 +141,21 @@ function bindControllerChangeReload() {
 
 export function registerServiceWorker(version: string) {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-  // Caching the shell in dev fights Vite's HMR.
-  if (import.meta.env.DEV) return;
+  // Caching the shell in dev fights Vite's HMR. Also drop any worker left over
+  // from a prior `pnpm … preview` / production build — those can keep serving a
+  // cached document that still carries a production Content-Security-Policy and
+  // white-screen the Vite React Refresh preamble.
+  if (import.meta.env.DEV) {
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const reg of regs) void reg.unregister();
+    });
+    if (typeof caches !== 'undefined') {
+      void caches.keys().then((keys) => {
+        for (const key of keys) void caches.delete(key);
+      });
+    }
+    return;
+  }
 
   bindControllerChangeReload();
 

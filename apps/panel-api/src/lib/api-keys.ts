@@ -52,13 +52,24 @@ export async function createApiKeyForUser(
       ? new Date(Date.now() + APPLICATION_KEY_TTL_MS)
       : null;
 
-  // Omitted permissions → store full scopes explicitly. null/[] stay empty (deny at auth).
-  const permissions =
-    data.keyType === API_KEY_TYPE_APPLICATION
-      ? normalizeApplicationPermissions(
-          data.permissions === undefined ? [APPLICATION_SCOPE_ALL] : data.permissions,
-        )
-      : null;
+  // Application keys must declare scopes explicitly — never default to full access.
+  // null/[] normalize to empty and are denied at auth.
+  let permissions: string[] | null = null;
+  if (data.keyType === API_KEY_TYPE_APPLICATION) {
+    if (data.permissions === undefined) {
+      throw Object.assign(
+        new Error('Application API keys require an explicit permissions array'),
+        { statusCode: 422 },
+      );
+    }
+    permissions = normalizeApplicationPermissions(data.permissions);
+    if (!permissions || permissions.length === 0) {
+      throw Object.assign(
+        new Error('Application API keys require at least one permission scope'),
+        { statusCode: 422 },
+      );
+    }
+  }
 
   const allowedIps =
     data.allowedIps && data.allowedIps.length > 0

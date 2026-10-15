@@ -114,7 +114,9 @@ interface RenderEmailLayoutInput {
 }
 
 function renderEmailLayout(input: RenderEmailLayoutInput): string {
-  const heading = replacePlaceholders(input.heading, input.vars);
+  // Escape template literals first so admin-authored heading HTML cannot inject;
+  // placeholders still substitute escaped vars via replacePlaceholders.
+  const heading = replacePlaceholders(escapeHtml(input.heading), input.vars);
   const body = replacePlaceholders(input.bodyHtml, input.vars);
   const panelName = escapeHtml(input.vars.panelName ?? 'Panel');
   const company = escapeHtml(input.vars.companyName ?? input.vars.panelName ?? 'Panel');

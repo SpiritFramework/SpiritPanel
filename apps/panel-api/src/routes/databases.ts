@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, requireFullAdmin } from '../middleware/auth.js';
 import { getServerAccess, hasClientPermission, logServerActivity } from '../lib/client-server.js';
 import { decryptSecret, encryptSecret } from '../lib/secret-crypto.js';
 import {
@@ -27,15 +27,24 @@ function sanitizeDatabaseHost(host: {
   host: string;
   port: number;
   username: string;
+  password?: string;
   maxDatabases: number;
   createdAt: Date;
   updatedAt: Date;
   _count?: { databases: number };
 }) {
-  const { _count, ...rest } = host;
   return {
-    ...rest,
-    databaseCount: _count?.databases ?? 0,
+    id: host.id,
+    nodeId: host.nodeId,
+    name: host.name,
+    host: host.host,
+    port: host.port,
+    username: host.username,
+    maxDatabases: host.maxDatabases,
+    createdAt: host.createdAt,
+    updatedAt: host.updatedAt,
+    passwordSet: Boolean(host.password),
+    databaseCount: host._count?.databases ?? 0,
   };
 }
 
@@ -295,7 +304,7 @@ function parseDatabaseHostError(err: unknown): string {
 export async function adminDatabaseRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAdmin);
 
-  app.post('/nodes/:nodeId/database-hosts/test-connection', async (request, reply) => {
+  app.post('/nodes/:nodeId/database-hosts/test-connection', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { nodeId } = request.params as { nodeId: string };
     const body = databaseHostConnectionBody.parse(request.body);
 
@@ -335,7 +344,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     return hosts.map(sanitizeDatabaseHost);
   });
 
-  app.post('/nodes/:nodeId/database-hosts', async (request, reply) => {
+  app.post('/nodes/:nodeId/database-hosts', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { nodeId } = request.params as { nodeId: string };
 
     let body: z.infer<typeof databaseHostBody>;
@@ -389,7 +398,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     }
   });
 
-  app.patch('/nodes/:nodeId/database-hosts/:hostId', async (request, reply) => {
+  app.patch('/nodes/:nodeId/database-hosts/:hostId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { nodeId, hostId } = request.params as { nodeId: string; hostId: string };
     const body = z
       .object({
@@ -445,7 +454,7 @@ export async function adminDatabaseRoutes(app: FastifyInstance) {
     return sanitizeDatabaseHost(updated);
   });
 
-  app.delete('/nodes/:nodeId/database-hosts/:hostId', async (request, reply) => {
+  app.delete('/nodes/:nodeId/database-hosts/:hostId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { nodeId, hostId } = request.params as { nodeId: string; hostId: string };
     const existing = await prisma.databaseHost.findFirst({
       where: { id: hostId, nodeId },

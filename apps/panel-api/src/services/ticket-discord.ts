@@ -1,4 +1,5 @@
 import type { TicketPriority } from '@prisma/client';
+import { isDiscordWebhookUrl } from '../lib/discord-webhook.js';
 import { getConfig } from '../lib/env.js';
 import { ticketCategoryLabel } from '../lib/ticket-categories.js';
 import { getBrandingSettings, getTicketsSettings } from '../lib/panel-settings.js';
@@ -78,6 +79,13 @@ export async function notifyTicketDiscordEvent(
   const settings = await getTicketsSettings();
   if (!settings.discordWebhookEnabled || !settings.discordWebhookUrl) return;
 
+  // Re-validate at send time in case a stored URL was poisoned or bypassed save-time checks.
+  const webhookUrl = settings.discordWebhookUrl.trim();
+  if (!isDiscordWebhookUrl(webhookUrl)) {
+    log.warn({ ticketId: ticket.id, kind }, 'Discord ticket webhook URL failed validation');
+    return;
+  }
+
   const branding = await getBrandingSettings();
   const panelUrl = getConfig().panelUrl;
   const ticketUrl = `${panelUrl}/admin/tickets/${ticket.id}`;
@@ -111,7 +119,7 @@ export async function notifyTicketDiscordEvent(
     ],
   };
 
-  const res = await fetch(settings.discordWebhookUrl, {
+  const res = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

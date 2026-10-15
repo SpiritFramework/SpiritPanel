@@ -4,8 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PANEL_CSP } from './csp.mjs';
-
 const monorepoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '../..');
 const panelVersion = JSON.parse(readFileSync(path.join(monorepoRoot, 'package.json'), 'utf8')).version as string;
 
@@ -48,8 +46,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // hmr:false skips the inline React Refresh <script type="module"> preamble.
+    // That preamble is blocked by production CSP (and by any cached copy of it),
+    // which white-screens local login. File changes still trigger a full reload.
+    // Do not set Content-Security-Policy here — production CSP is nginx-only.
+    hmr: false,
     headers: {
-      'Content-Security-Policy': PANEL_CSP,
+      'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'X-Frame-Options': 'DENY',

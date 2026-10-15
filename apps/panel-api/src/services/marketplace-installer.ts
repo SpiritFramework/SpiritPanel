@@ -119,6 +119,26 @@ export async function removePathIfExists(wings: WingsClient, uuid: string, fullP
   }
 }
 
+async function cleanupStagingPath(wings: WingsClient, uuid: string, stagingPath: string) {
+  const { parent, name } = parentAndName(stagingPath);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await removePathIfExists(wings, uuid, stagingPath);
+      const remaining = (await wings.listFiles(uuid, parent)).some((entry) => entry.name === name);
+      if (!remaining) return;
+      lastError = new Error('Staging folder still exists after delete request');
+    } catch (err) {
+      lastError = err;
+    }
+
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  console.error(`Failed to remove marketplace staging folder ${stagingPath} for server ${uuid}:`, lastError);
+}
+
 async function dirHasResourceManifest(wings: WingsClient, uuid: string, dirPath: string): Promise<boolean> {
   const entries = await wings.listFiles(uuid, dirPath);
   return entries.some((e) => e.name === 'fxmanifest.lua' || e.name === '__resource.lua');
@@ -284,7 +304,7 @@ export async function deployGithubArchive(
     await removePathIfExists(wings, serverUuid, installPath);
     await wings.renameFiles(serverUuid, '/', [{ from: sourcePath.slice(1), to: installPath.slice(1) }]);
   } finally {
-    await removePathIfExists(wings, serverUuid, stagingPath).catch(() => undefined);
+    await cleanupStagingPath(wings, serverUuid, stagingPath);
   }
 }
 

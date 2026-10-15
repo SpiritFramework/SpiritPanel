@@ -783,11 +783,11 @@ export async function adminRoutes(app: FastifyInstance) {
       properties: sanitizeNodeActivityProperties(entry.event, entry.properties),
     }));
 
-    const { daemonTokenSecret: _secret, allocations, servers, ...safeNode } = node;
+    const { allocations, servers, ...nodeRest } = node;
     const serversLive = await enrichServerRefsWithLiveState(servers);
 
     return {
-      ...safeNode,
+      ...sanitizeAdminNode(nodeRest),
       servers: serversLive,
       serverCount: node._count.servers,
       allocationCount: node._count.allocations,
@@ -2815,7 +2815,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const body = z
       .object({
         memo: z.string().trim().min(1).max(255),
-        permissions: z.array(applicationScopeZod).optional(),
+        permissions: z.array(applicationScopeZod).min(1),
         allowedIps: z.array(z.string().min(3).max(45)).optional(),
       })
       .parse(request.body ?? {});
@@ -2881,6 +2881,13 @@ export async function adminRoutes(app: FastifyInstance) {
             code: z.ZodIssueCode.custom,
             message: 'Application API keys require a memo describing their use',
             path: ['memo'],
+          });
+        }
+        if (data.keyType === 'application' && (!data.permissions || data.permissions.length === 0)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Application API keys require at least one permission scope',
+            path: ['permissions'],
           });
         }
       })

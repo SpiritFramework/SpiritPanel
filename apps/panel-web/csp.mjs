@@ -1,4 +1,4 @@
-/** Shared UI Content-Security-Policy (Nginx + Vite dev server). */
+/** Production UI Content-Security-Policy (Nginx + Vite preview). */
 export const PANEL_CSP = [
   "default-src 'self'",
   "script-src 'self' https://challenges.cloudflare.com",

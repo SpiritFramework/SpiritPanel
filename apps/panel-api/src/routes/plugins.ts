@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { requireAdmin, requireAuth, requireSession } from '../middleware/auth.js';
+import { requireAdmin, requireAuth, requireFullAdmin, requireSession } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import {
   databaseManagerSettingsSchema,
@@ -94,7 +94,7 @@ export async function adminPluginRoutes(app: FastifyInstance) {
     return { plugin };
   });
 
-  app.patch('/plugins/:id', async (request, reply) => {
+  app.patch('/plugins/:id', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = z
       .object({
@@ -215,7 +215,7 @@ export async function adminPluginRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post('/plugins/fivem-marketplace/catalog', async (request, reply) => {
+  app.post('/plugins/fivem-marketplace/catalog', { preHandler: requireFullAdmin }, async (request, reply) => {
     const body = catalogBodySchema.parse(request.body);
     const existing = await prisma.marketplacePlugin.findUnique({ where: { slug: body.slug } });
     if (existing) {
@@ -233,7 +233,7 @@ export async function adminPluginRoutes(app: FastifyInstance) {
     return reply.status(201).send({ plugin: serializeMarketplacePlugin(plugin) });
   });
 
-  app.patch('/plugins/fivem-marketplace/catalog/:pluginId', async (request, reply) => {
+  app.patch('/plugins/fivem-marketplace/catalog/:pluginId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { pluginId } = request.params as { pluginId: string };
     const body = catalogBodySchema.partial().parse(request.body);
     const existing = await prisma.marketplacePlugin.findUnique({ where: { id: pluginId } });
@@ -255,7 +255,7 @@ export async function adminPluginRoutes(app: FastifyInstance) {
     return { plugin: serializeMarketplacePlugin(plugin) };
   });
 
-  app.delete('/plugins/fivem-marketplace/catalog/:pluginId', async (request, reply) => {
+  app.delete('/plugins/fivem-marketplace/catalog/:pluginId', { preHandler: requireFullAdmin }, async (request, reply) => {
     const { pluginId } = request.params as { pluginId: string };
     const installCount = await prisma.marketplaceInstall.count({ where: { pluginId } });
     if (installCount > 0) {
