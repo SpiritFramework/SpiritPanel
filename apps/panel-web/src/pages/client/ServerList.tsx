@@ -3,11 +3,9 @@ import { useAsyncData } from '../../hooks/useAsyncData';
 import {
   Ban,
   ChevronRight,
-  CircleOff,
   LayoutGrid,
   List,
   Loader2,
-  Play,
   Power,
   RefreshCw,
   Search,
@@ -177,14 +175,6 @@ export function ServerListPage() {
     });
   }, [list, search, statusFilter, sortKey]);
 
-  const filterPills: { id: StatusFilter; label: string; count: number; icon: typeof Server }[] = [
-    { id: 'all', label: 'All', count: stats.total, icon: Server },
-    { id: 'running', label: 'Online', count: stats.running, icon: Play },
-    { id: 'offline', label: 'Offline', count: stats.offline, icon: CircleOff },
-    { id: 'installing', label: 'Installing', count: stats.installing, icon: Loader2 },
-    { id: 'suspended', label: 'Suspended', count: stats.suspended, icon: Ban },
-  ];
-
   const sortOptions: { value: SortKey; label: string }[] = [
     { value: 'name', label: 'Sort by name' },
     { value: 'status', label: 'Sort by status' },
@@ -316,6 +306,13 @@ export function ServerListPage() {
                   onClick={() => toggleFilter('installing')}
                 />
                 <FleetStat
+                  label="Suspended"
+                  value={stats.suspended}
+                  tone="warn"
+                  active={statusFilter === 'suspended'}
+                  onClick={() => toggleFilter('suspended')}
+                />
+                <FleetStat
                   label="Total"
                   value={stats.total}
                   active={statusFilter === 'all'}
@@ -369,29 +366,7 @@ export function ServerListPage() {
           ) : (
             <div className="ds-servers-panel">
               <div className="ds-servers-panel-tools">
-                <div className="ds-servers-fleet-pills" role="toolbar" aria-label="Filter by status">
-                  {filterPills.map((pill) => {
-                    const Icon = pill.icon;
-                    const isActive = statusFilter === pill.id;
-                    return (
-                      <button
-                        key={pill.id}
-                        type="button"
-                        onClick={() => setStatusFilter(pill.id)}
-                        className={`ds-filter-pill ${isActive ? 'is-active' : ''}`}
-                        aria-pressed={isActive}
-                      >
-                        <Icon
-                          className={`ds-icon ${pill.id === 'installing' && isActive ? 'animate-spin' : ''}`}
-                        />
-                        {pill.label}
-                        <span className="ds-filter-pill-count">{pill.count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="ds-servers-fleet-controls">
+                <div className="ds-servers-fleet-controls ds-servers-fleet-controls--solo">
                   <div className="ds-servers-fleet-search">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
                     <input

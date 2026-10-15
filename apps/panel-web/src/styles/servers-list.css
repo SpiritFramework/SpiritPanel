@@ -146,8 +146,14 @@
 
 @media (min-width: 640px) {
   .ds-servers-fleet-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     padding: 1.05rem 1.45rem 1.3rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .ds-servers-fleet-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -369,10 +375,20 @@
   gap: 0.45rem;
 }
 
+.ds-servers-fleet-controls--solo {
+  flex: 1 1 100%;
+  width: 100%;
+}
+
 @media (min-width: 1024px) {
   .ds-servers-fleet-controls {
     flex: 0 1 auto;
     justify-content: flex-end;
+  }
+
+  .ds-servers-fleet-controls--solo {
+    flex: 1 1 100%;
+    justify-content: flex-start;
   }
 }
 
