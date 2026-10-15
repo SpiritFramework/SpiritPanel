@@ -184,13 +184,6 @@ export function ServerListPage() {
     { value: 'node', label: 'Sort by node' },
   ];
 
-  const summaryText =
-    stats.total === 0
-      ? 'No servers on your account yet — contact your host to get started.'
-      : stats.running > 0
-        ? `${stats.running} of ${stats.total} online · tap a stat to filter`
-        : `${stats.total} server${stats.total === 1 ? '' : 's'} — none running right now`;
-
   const attentionCallout = useMemo(() => {
     if (stats.suspended > 0 && statusFilter !== 'suspended') {
       const first = list.find((s) => s.suspended);
@@ -266,9 +259,7 @@ export function ServerListPage() {
                       <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
                       Loading your servers…
                     </p>
-                  ) : (
-                    <p className="ds-servers-fleet-summary">{summaryText}</p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -508,7 +499,7 @@ function FleetStat({
     >
       <span className="ds-servers-stat-top">
         <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className={`h-3.5 w-3.5${spin ? ' animate-spin' : ''}`} />
+          <Icon className={`h-3 w-3${spin ? ' animate-spin' : ''}`} />
         </span>
         <span className="ds-servers-stat-label">{label}</span>
       </span>

@@ -9,16 +9,15 @@
 .ds-servers-fleet {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: var(--radius-xl, var(--ds-radius-xl, 0.9rem));
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: calc(var(--radius-xl, 0.9rem) + 0.1rem);
   background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--accent) 8%, transparent) 0%,
-      transparent 48%
-    ),
-    color-mix(in srgb, var(--surface) 94%, transparent);
-  box-shadow: var(--ds-shadow-card, 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent));
+    radial-gradient(ellipse 80% 70% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 70%, transparent), transparent 70%),
+    color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset,
+    var(--ds-shadow-card, 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent));
 }
 
 .ds-servers-fleet .ds-hero-stripe {
@@ -28,15 +27,16 @@
 .ds-servers-fleet-top {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem 1.25rem;
-  padding: 1.15rem 1.15rem 0.25rem;
+  gap: 0.85rem 1.25rem;
+  padding: 1.2rem 1.15rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 @media (min-width: 640px) {
   .ds-servers-fleet-top {
-    padding: 1.3rem 1.45rem 0.35rem;
+    padding: 1.35rem 1.4rem 1.1rem;
   }
 }
 
@@ -44,32 +44,34 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.95rem;
 }
 
 .ds-servers-fleet-mark {
   display: flex;
-  height: 3rem;
-  width: 3rem;
+  height: 3.25rem;
+  width: 3.25rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+    0 8px 20px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .ds-servers-fleet-mark img {
   height: 100%;
   width: 100%;
   object-fit: contain;
-  padding: 0.4rem;
+  padding: 0.45rem;
 }
 
 .ds-servers-fleet-mark-fallback {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #fff;
 }
@@ -80,25 +82,25 @@
 
 .ds-servers-fleet-greeting {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.6875rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .ds-servers-fleet-title {
-  margin: 0.2rem 0 0;
-  font-size: 1.4rem;
+  margin: 0.15rem 0 0;
+  font-size: 1.5rem;
   font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
   color: var(--text);
 }
 
 @media (min-width: 640px) {
   .ds-servers-fleet-title {
-    font-size: 1.65rem;
+    font-size: 1.75rem;
   }
 }
 
@@ -107,10 +109,11 @@
   min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.55rem;
-  margin-top: 0.4rem;
-  font-size: 0.75rem;
-  line-height: 1.4;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.92;
 }
 
 .ds-servers-fleet-tagline {
@@ -118,7 +121,7 @@
 }
 
 .ds-servers-fleet-summary {
-  margin: 0.55rem 0 0;
+  margin: 0.45rem 0 0;
   max-width: 34rem;
   font-size: 0.8125rem;
   line-height: 1.45;
@@ -140,14 +143,14 @@
 .ds-servers-fleet-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-  padding: 1rem 1.15rem 1.15rem;
+  gap: 0.4rem;
+  padding: 0.75rem 1rem 0.9rem;
 }
 
 @media (min-width: 640px) {
   .ds-servers-fleet-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 1.05rem 1.45rem 1.3rem;
+    padding: 0.8rem 1.25rem 1rem;
   }
 }
 
@@ -161,10 +164,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.55rem;
+  gap: 0.35rem;
   width: 100%;
-  padding: 0.85rem 0.95rem;
-  border-radius: 0.85rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
   border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
   text-align: left;
@@ -191,7 +194,7 @@
 .ds-servers-stat-top {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   min-width: 0;
   width: 100%;
 }
@@ -199,17 +202,22 @@
 .ds-servers-stat-icon {
   display: grid;
   place-items: center;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.35rem;
+  height: 1.35rem;
   flex-shrink: 0;
-  border-radius: 0.45rem;
+  border-radius: 0.35rem;
   color: var(--muted);
   background: color-mix(in srgb, var(--surface) 70%, transparent);
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
+.ds-servers-stat-icon svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
 .ds-servers-stat-value {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 750;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -218,9 +226,9 @@
 }
 
 .ds-servers-stat-label {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 650;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
 }
