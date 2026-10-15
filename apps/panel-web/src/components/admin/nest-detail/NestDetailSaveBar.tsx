@@ -1,12 +1,13 @@
+import { Save } from 'lucide-react';
 import { Button } from '../../Layout';
 import type { NestDetailController } from '../../../pages/admin/nest-detail/useNestDetail';
 
 export function NestDetailSaveBar({ ctrl }: { ctrl: NestDetailController }) {
-  const { hasChanges, saving, error, saved, resetForm } = ctrl;
+  const { hasChanges, saving, error, saved, resetForm, save } = ctrl;
 
   return (
     <div
-      className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : ''}${saved ? ' ds-nd-st-savebar--saved' : ''}`}
+      className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : ''}${saved && !hasChanges ? ' ds-nd-st-savebar--saved' : ''}`}
       role="status"
       aria-live="polite"
     >
@@ -28,7 +29,8 @@ export function NestDetailSaveBar({ ctrl }: { ctrl: NestDetailController }) {
         <Button type="button" variant="ghost" disabled={!hasChanges || saving} onClick={resetForm}>
           Reset
         </Button>
-        <Button type="submit" disabled={!hasChanges || saving}>
+        <Button type="button" disabled={!hasChanges || saving} onClick={() => void save()}>
+          <Save className="h-3.5 w-3.5" aria-hidden />
           {saving ? 'Saving…' : 'Save changes'}
         </Button>
       </div>

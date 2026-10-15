@@ -27,7 +27,7 @@ export function NestsHeader({
         ? `${stats.empty} empty nest${stats.empty === 1 ? '' : 's'}`
         : stats.disabled > 0
           ? `${stats.disabled} disabled egg${stats.disabled === 1 ? '' : 's'}`
-          : `${stats.eggs} eggs`;
+          : `${stats.eggs} egg${stats.eggs === 1 ? '' : 's'} ready`;
 
   const headerStats = [
     { icon: Layers, label: 'Nests', value: String(stats.nests) },
@@ -50,14 +50,18 @@ export function NestsHeader({
 
           <div className="ds-adm-nest-header-main">
             <div className="ds-adm-nest-header-identity">
-              <div className="ds-adm-nest-header-icon-wrap" aria-hidden>
+              <div
+                className="ds-adm-nest-header-icon-wrap"
+                style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 45%, #2e1065 100%)' }}
+                aria-hidden
+              >
                 <Layers className="ds-icon" />
                 <span className={`ds-adm-nest-header-pulse ds-adm-nest-header-pulse--${tone}`} />
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="ds-adm-nest-header-title-row">
-                  <h1 className="ds-adm-nest-header-title">Service templates</h1>
+                  <h1 className="ds-adm-nest-header-title">Nests &amp; eggs</h1>
                   <StatusPill
                     label={statusLabel}
                     tone={tone === 'warning' ? 'warning' : tone === 'healthy' ? 'success' : 'neutral'}
@@ -65,7 +69,7 @@ export function NestsHeader({
                   />
                 </div>
                 <p className="ds-adm-nest-header-meta">
-                  Nests group eggs — import PTDL_v2 JSON to provision new server types
+                  Group PTDL eggs into nests, tune startup variables, and keep templates ready to provision
                 </p>
               </div>
             </div>

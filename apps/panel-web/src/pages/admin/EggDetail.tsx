@@ -20,7 +20,7 @@ export function AdminEggDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const ctrl = useEggDetail(eggId);
-  const { detail, loading, error } = ctrl;
+  const { detail, loading, error, hasChanges, saved } = ctrl;
 
   const tab = readEggDetailTab(searchParams.get('tab'));
 
@@ -87,16 +87,15 @@ export function AdminEggDetail() {
           />
         ) : null}
 
-        {tab === 'manage' ? (
-          <>
-            <EggManageDashboard ctrl={ctrl} />
-            <EggDetailSaveBar ctrl={ctrl} />
-          </>
-        ) : null}
+        {tab === 'manage' ? <EggManageDashboard ctrl={ctrl} /> : null}
 
         {tab === 'variables' ? <EggVariablesDashboard ctrl={ctrl} /> : null}
 
         {tab === 'config' ? <EggConfigDashboard ctrl={ctrl} /> : null}
+
+        {tab !== 'variables' && (tab === 'manage' || hasChanges || saved) ? (
+          <EggDetailSaveBar ctrl={ctrl} />
+        ) : null}
       </div>
     </AdminLayout>
   );

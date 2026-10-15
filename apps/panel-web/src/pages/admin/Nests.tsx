@@ -89,6 +89,8 @@ export function AdminNests() {
 
         <NestsFleetStats
           stats={fleetStats}
+          onShowNests={() => changeView('nests')}
+          onShowEggs={() => changeView('eggs')}
           onShowEmpty={() => {
             changeView('nests');
             setNestStatusFilter('empty');

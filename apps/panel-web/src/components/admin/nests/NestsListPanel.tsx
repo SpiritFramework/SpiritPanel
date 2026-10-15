@@ -84,7 +84,7 @@ export function NestsListPanel({
   const activeFilter = isNests ? nestStatusFilter : eggStatusFilter;
 
   return (
-    <Card title={isNests ? 'All nests' : 'All eggs'}>
+    <Card title={isNests ? 'Browse nests' : 'Browse eggs'}>
       <div className="ds-adm-nest-list-panel">
         <div className="ds-adm-nest-view-tabs" role="tablist" aria-label="Template view">
           <button

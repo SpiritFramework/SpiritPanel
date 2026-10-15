@@ -8,26 +8,31 @@ export function useNestDetail(nestId: string) {
 
   const [detail, setDetail] = useState<AdminNestDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<UpdateAdminNestInput>({});
+  const [form, setFormState] = useState<UpdateAdminNestInput>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState<'id' | 'uuid' | null>(null);
 
-  const load = useCallback(async () => {
+  function setForm(next: UpdateAdminNestInput | ((prev: UpdateAdminNestInput) => UpdateAdminNestInput)) {
+    setFormState(next);
+    setSaved(false);
+  }
+
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!nestId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     setError('');
     try {
       const nest = await api.admin.nest(nestId);
       setDetail(nest);
-      setForm(formFromNestDetail(nest));
+      setFormState(formFromNestDetail(nest));
     } catch {
-      setDetail(null);
+      if (!opts?.silent) setDetail(null);
       setError('Failed to load nest');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [nestId]);
 
@@ -42,20 +47,19 @@ export function useNestDetail(nestId: string) {
 
   function resetForm() {
     if (!detail) return;
-    setForm(formFromNestDetail(detail));
+    setFormState(formFromNestDetail(detail));
     setError('');
     setSaved(false);
   }
 
-  async function save(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!detail) return;
+  async function save() {
+    if (!detail || saving || !hasChanges) return;
     setSaving(true);
     setError('');
     setSaved(false);
     try {
       await api.admin.updateNest(nestId, form);
-      await load();
+      await load({ silent: true });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update nest');

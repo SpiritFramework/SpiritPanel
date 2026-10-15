@@ -8,7 +8,7 @@ export function useEggDetail(eggId: string) {
 
   const [detail, setDetail] = useState<AdminEggDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<UpdateAdminEggInput>({});
+  const [form, setFormState] = useState<UpdateAdminEggInput>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -19,19 +19,24 @@ export function useEggDetail(eggId: string) {
   const [reimportError, setReimportError] = useState('');
   const [reimported, setReimported] = useState(false);
 
-  const load = useCallback(async () => {
+  function setForm(next: UpdateAdminEggInput | ((prev: UpdateAdminEggInput) => UpdateAdminEggInput)) {
+    setFormState(next);
+    setSaved(false);
+  }
+
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!eggId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     setError('');
     try {
       const egg = await api.admin.egg(eggId);
       setDetail(egg);
-      setForm(formFromEggDetail(egg));
+      setFormState(formFromEggDetail(egg));
     } catch {
-      setDetail(null);
+      if (!opts?.silent) setDetail(null);
       setError('Failed to load egg');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [eggId]);
 
@@ -55,20 +60,19 @@ export function useEggDetail(eggId: string) {
 
   function resetForm() {
     if (!detail) return;
-    setForm(formFromEggDetail(detail));
+    setFormState(formFromEggDetail(detail));
     setError('');
     setSaved(false);
   }
 
-  async function save(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!detail) return;
+  async function save() {
+    if (!detail || saving || !hasChanges) return;
     setSaving(true);
     setError('');
     setSaved(false);
     try {
       await api.admin.updateEgg(eggId, form);
-      await load();
+      await load({ silent: true });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update egg');
@@ -106,7 +110,7 @@ export function useEggDetail(eggId: string) {
       await api.admin.reimportEgg(eggId, parsed);
       setReimportJson('');
       setReimported(true);
-      await load();
+      await load({ silent: true });
     } catch (err) {
       setReimportError(
         err instanceof SyntaxError

@@ -18,6 +18,20 @@ function emptyVariable(): EggVariableInput {
   };
 }
 
+function toFormRows(variables: AdminEggVariable[]): EggVariableInput[] {
+  return variables.map((v) => ({
+    id: v.id,
+    name: v.name,
+    description: v.description,
+    envVariable: v.envVariable,
+    defaultValue: v.defaultValue,
+    userViewable: v.userViewable,
+    userEditable: v.userEditable,
+    rules: v.rules,
+    fieldType: v.fieldType,
+  }));
+}
+
 export function EggVariablesEditor({
   eggId,
   variables,
@@ -27,20 +41,23 @@ export function EggVariablesEditor({
   variables: AdminEggVariable[];
   onSaved: (variables: AdminEggVariable[]) => void;
 }) {
-  const [form, setForm] = useState<EggVariableInput[]>(variables);
+  const [form, setForm] = useState<EggVariableInput[]>(() => toFormRows(variables));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setForm(variables);
+    setForm(toFormRows(variables));
     setError('');
   }, [variables]);
 
-  const hasChanges = useMemo(() => JSON.stringify(form) !== JSON.stringify(variables), [form, variables]);
+  const hasChanges = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(toFormRows(variables)),
+    [form, variables],
+  );
 
   function resetForm() {
-    setForm(variables);
+    setForm(toFormRows(variables));
     setError('');
     setSaved(false);
   }
@@ -55,8 +72,8 @@ export function EggVariablesEditor({
     setSaved(false);
   }
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function save() {
+    if (saving || !hasChanges) return;
     setSaving(true);
     setError('');
     setSaved(false);
@@ -78,31 +95,31 @@ export function EggVariablesEditor({
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
+    <div className="ds-egg-vars-editor">
       {form.length === 0 ? (
         <EmptyState title="No variables" description="Add environment variables for this egg." />
       ) : (
-        <div className="space-y-3">
+        <div className="ds-egg-vars-list">
           {form.map((variable, index) => (
-            <div
-              key={variable.id ?? `new-${index}`}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/25 p-4"
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  Variable {index + 1}
-                </p>
+            <article key={variable.id ?? `new-${index}`} className="ds-egg-var-card">
+              <header className="ds-egg-var-card-head">
+                <div className="min-w-0">
+                  <p className="ds-egg-var-card-index">Variable {index + 1}</p>
+                  <p className="ds-egg-var-card-env truncate font-mono">
+                    {variable.envVariable || 'ENV_VARIABLE'}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => removeRow(index)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted)] transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+                  className="ds-egg-var-remove"
                   aria-label="Remove variable"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
-              </div>
+              </header>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="ds-egg-var-grid">
                 <Input
                   label="Name"
                   value={variable.name}
@@ -132,16 +149,13 @@ export function EggVariablesEditor({
                 />
               </div>
 
-              <div className="mt-3">
+              <div className="ds-egg-var-stack">
                 <Input
                   label="Description"
                   value={variable.description}
                   onChange={(e) => updateRow(index, { description: e.target.value })}
                   placeholder="Optional help text shown to users"
                 />
-              </div>
-
-              <div className="mt-3">
                 <Input
                   label="Validation rules"
                   value={variable.rules}
@@ -150,67 +164,85 @@ export function EggVariablesEditor({
                 />
               </div>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className="ds-egg-var-flags">
                 <Checkbox
                   checked={variable.userViewable}
-                  onChange={(checked) => updateRow(index, { userViewable: checked, ...(checked ? {} : { userEditable: false }) })}
+                  onChange={(checked) =>
+                    updateRow(index, {
+                      userViewable: checked,
+                      ...(checked ? {} : { userEditable: false }),
+                    })
+                  }
                   label="User can view"
                   description="Show on the server Startup tab"
                 />
                 <Checkbox
                   checked={variable.userEditable}
-                  onChange={(checked) => updateRow(index, { userEditable: checked, ...(checked ? { userViewable: true } : {}) })}
+                  onChange={(checked) =>
+                    updateRow(index, {
+                      userEditable: checked,
+                      ...(checked ? { userViewable: true } : {}),
+                    })
+                  }
                   label="User can edit"
                   description="Allow changes from the Startup tab"
                   disabled={!variable.userViewable}
                 />
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
 
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => {
-          setForm((rows) => [...rows, emptyVariable()]);
-          setSaved(false);
-        }}
+      <div className="ds-egg-vars-toolbar">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setForm((rows) => [...rows, emptyVariable()]);
+            setSaved(false);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add variable
+        </Button>
+        <p className="ds-egg-vars-hint">
+          View/edit flags control the server Startup tab. Hidden variables stay admin-only.
+        </p>
+      </div>
+
+      {error ? <div className="ds-egg-form-error">{error}</div> : null}
+
+      <div
+        className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : ''}${saved && !hasChanges ? ' ds-nd-st-savebar--saved' : ''}`}
+        role="status"
+        aria-live="polite"
       >
-        <Plus className="h-3.5 w-3.5" />
-        Add variable
-      </Button>
-
-      <p className="text-[11px] text-[var(--muted)]">
-        User view/edit flags control what server owners and subusers see on their Startup tab. Hidden variables are admin-only.
-      </p>
-
-      {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
-      )}
-
-      {(hasChanges || saved) && (
-        <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur-sm">
-          <p className="text-xs">
-            {saved && !hasChanges ? (
-              <span className="text-green-400">Variables saved</span>
-            ) : (
-              <span className="text-[var(--muted)]">Unsaved variable changes</span>
-            )}
-          </p>
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" disabled={!hasChanges || saving} onClick={resetForm}>
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </Button>
-            <Button type="submit" disabled={!hasChanges || saving}>
-              <Save className="h-3.5 w-3.5" />
-              {saving ? 'Saving…' : 'Save variables'}
-            </Button>
-          </div>
+        <div className="ds-nd-st-savebar-status">
+          {error && hasChanges ? (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--error">{error}</span>
+          ) : saved && !hasChanges ? (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--success">Variables saved</span>
+          ) : hasChanges ? (
+            <span className="ds-nd-st-savebar-msg">
+              <span className="ds-nd-st-savebar-dot" aria-hidden />
+              Unsaved variable changes
+            </span>
+          ) : (
+            <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--idle">All variables saved</span>
+          )}
         </div>
-      )}
-    </form>
+        <div className="ds-nd-st-savebar-actions">
+          <Button type="button" variant="ghost" disabled={!hasChanges || saving} onClick={resetForm}>
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </Button>
+          <Button type="button" disabled={!hasChanges || saving} onClick={() => void save()}>
+            <Save className="h-3.5 w-3.5" />
+            {saving ? 'Saving…' : 'Save variables'}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

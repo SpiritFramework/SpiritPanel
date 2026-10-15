@@ -25,7 +25,7 @@ export function AdminNestDetail() {
   const [showImport, setShowImport] = useState(false);
 
   const ctrl = useNestDetail(nestId);
-  const { detail, loading, error, load } = ctrl;
+  const { detail, loading, error, load, hasChanges, saved } = ctrl;
 
   const tab = readNestDetailTab(searchParams.get('tab'));
 
@@ -74,7 +74,7 @@ export function AdminNestDetail() {
 
   return (
     <AdminLayout>
-      <form onSubmit={(e) => void ctrl.save(e)} className="ds-nst-page">
+      <div className="ds-nst-page">
         <div className="ds-nst-header-wrap">
           <NestDetailHeader
             detail={detail}
@@ -94,12 +94,7 @@ export function AdminNestDetail() {
           />
         ) : null}
 
-        {tab === 'manage' ? (
-          <>
-            <NestManageDashboard ctrl={ctrl} fullAdmin={fullAdmin} />
-            {fullAdmin ? <NestDetailSaveBar ctrl={ctrl} /> : null}
-          </>
-        ) : null}
+        {tab === 'manage' ? <NestManageDashboard ctrl={ctrl} fullAdmin={fullAdmin} /> : null}
 
         {tab === 'eggs' ? (
           <NestEggsDashboard
@@ -108,7 +103,11 @@ export function AdminNestDetail() {
             onImport={() => setShowImport(true)}
           />
         ) : null}
-      </form>
+
+        {fullAdmin && (tab === 'manage' || hasChanges || saved) ? (
+          <NestDetailSaveBar ctrl={ctrl} />
+        ) : null}
+      </div>
 
       {fullAdmin && showImport ? (
         <ImportEggModal
@@ -116,7 +115,7 @@ export function AdminNestDetail() {
           onClose={() => setShowImport(false)}
           onImported={() => {
             setShowImport(false);
-            void load();
+            void load({ silent: true });
           }}
         />
       ) : null}

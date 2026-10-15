@@ -1,5 +1,6 @@
-import { Card } from '../../Layout';
+import { Variable } from 'lucide-react';
 import { EggVariablesEditor } from '../../EggVariablesEditor';
+import { EggDetailPanel } from './EggDetailShell';
 import type { EggDetailController } from '../../../pages/admin/egg-detail/useEggDetail';
 
 export function EggVariablesDashboard({ ctrl }: { ctrl: EggDetailController }) {
@@ -8,9 +9,14 @@ export function EggVariablesDashboard({ ctrl }: { ctrl: EggDetailController }) {
 
   return (
     <div className="ds-egg-vars">
-      <Card title={`Variables (${detail.variables.length})`}>
+      <EggDetailPanel
+        icon={Variable}
+        title="Startup variables"
+        description="Environment keys exposed on the server Startup tab. Save here is separate from Manage."
+        badge={String(detail.variables.length)}
+      >
         <EggVariablesEditor eggId={detail.id} variables={detail.variables} onSaved={updateVariables} />
-      </Card>
+      </EggDetailPanel>
     </div>
   );
 }
