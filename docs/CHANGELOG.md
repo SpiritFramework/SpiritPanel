@@ -29,6 +29,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 - **Console auto-scroll** stays on by default and no longer flips off when re-enabled or when new lines arrive (only turns off if you scroll away or toggle it off).
 - **My Servers** no longer shows Online / Offline / Installing / Total twice (hero stats and filter pills). Status filters live on the hero only; Suspended is included there too.
+- **My Servers** hero stats have status icons, and list/row view uses denser server rows (egg logo, copyable address, node, resources, status).
 
 ### Changed
 

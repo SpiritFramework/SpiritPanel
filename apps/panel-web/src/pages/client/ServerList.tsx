@@ -3,14 +3,17 @@ import { useAsyncData } from '../../hooks/useAsyncData';
 import {
   Ban,
   ChevronRight,
+  CircleOff,
   LayoutGrid,
   List,
   Loader2,
+  Play,
   Power,
   RefreshCw,
   Search,
   Server,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
 import { PanelAnnouncementBanner } from '../../components/PanelAnnouncementBanner';
@@ -286,6 +289,7 @@ export function ServerListPage() {
             {!loading && stats.total > 0 ? (
               <div className="ds-servers-fleet-stats" role="list" aria-label="Fleet summary">
                 <FleetStat
+                  icon={Play}
                   label="Online"
                   value={stats.running}
                   tone="success"
@@ -293,19 +297,23 @@ export function ServerListPage() {
                   onClick={() => toggleFilter('running')}
                 />
                 <FleetStat
+                  icon={CircleOff}
                   label="Offline"
                   value={stats.offline}
                   active={statusFilter === 'offline'}
                   onClick={() => toggleFilter('offline')}
                 />
                 <FleetStat
+                  icon={Loader2}
                   label="Installing"
                   value={stats.installing}
                   tone="info"
+                  spin={stats.installing > 0}
                   active={statusFilter === 'installing'}
                   onClick={() => toggleFilter('installing')}
                 />
                 <FleetStat
+                  icon={Ban}
                   label="Suspended"
                   value={stats.suspended}
                   tone="warn"
@@ -313,6 +321,7 @@ export function ServerListPage() {
                   onClick={() => toggleFilter('suspended')}
                 />
                 <FleetStat
+                  icon={Server}
                   label="Total"
                   value={stats.total}
                   active={statusFilter === 'all'}
@@ -464,15 +473,19 @@ export function ServerListPage() {
 }
 
 function FleetStat({
+  icon: Icon,
   label,
   value,
   tone,
+  spin,
   active,
   onClick,
 }: {
+  icon: LucideIcon;
   label: string;
   value: number;
   tone?: 'success' | 'info' | 'warn';
+  spin?: boolean;
   active?: boolean;
   onClick: () => void;
 }) {
@@ -493,8 +506,13 @@ function FleetStat({
       onClick={onClick}
       aria-pressed={active}
     >
+      <span className="ds-servers-stat-top">
+        <span className="ds-servers-stat-icon" aria-hidden>
+          <Icon className={`h-3.5 w-3.5${spin ? ' animate-spin' : ''}`} />
+        </span>
+        <span className="ds-servers-stat-label">{label}</span>
+      </span>
       <span className="ds-servers-stat-value">{value}</span>
-      <span className="ds-servers-stat-label">{label}</span>
     </button>
   );
 }

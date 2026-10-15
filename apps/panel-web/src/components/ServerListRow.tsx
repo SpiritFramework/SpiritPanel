@@ -1,5 +1,15 @@
-import { Link } from 'react-router-dom';
-import { ChevronRight, Cpu, HardDrive, MemoryStick } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Check,
+  ChevronRight,
+  Copy,
+  Cpu,
+  HardDrive,
+  MapPin,
+  MemoryStick,
+  Network,
+} from 'lucide-react';
+import { useState } from 'react';
 import type { ServerSummary } from '../lib/api';
 import { formatAllocationAddress } from '../lib/allocation';
 import { useBranding } from '../context/BrandingContext';
@@ -10,115 +20,127 @@ import { ServerStatusBadge } from './ServerStatusBadge';
 
 export function ServerListTable({ servers }: { servers: ServerSummary[] }) {
   return (
-    <div className="ds-table-wrap overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]/50">
-      <table className="ds-table">
-        <thead>
-          <tr>
-            <th>Server</th>
-            <th className="hidden md:table-cell">Address</th>
-            <th className="hidden lg:table-cell">Node</th>
-            <th className="hidden sm:table-cell">Resources</th>
-            <th>Status</th>
-            <th className="w-10" aria-hidden />
-          </tr>
-        </thead>
-        <tbody>
-          {servers.map((server) => (
-            <ServerListRow key={server.id} server={server} />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="ds-servers-rows" aria-label="Server list">
+      {servers.map((server) => (
+        <li key={server.id}>
+          <ServerListRow server={server} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function ServerListRow({ server }: { server: ServerSummary }) {
+  const navigate = useNavigate();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const theme = getServerTheme(server.egg.name);
   const cardStyle = resolveServerCardStyle(appearance.serverCardStyle);
+  const [copied, setCopied] = useState(false);
+  const href = `/servers/${server.id}`;
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
 
-  const rowClass =
-    cardStyle === 'edge'
-      ? 'server-list-row--edge'
-      : cardStyle === 'stripe'
-        ? 'server-list-row--stripe'
-        : '';
-
-  const iconClass =
-    cardStyle === 'glass'
-      ? 'server-list-icon--glass'
-      : cardStyle === 'neon'
-        ? 'server-list-icon--neon'
-        : '';
-
   const iconStyle = {
     '--row-accent': theme.accent,
-    '--row-glow': theme.glow,
-    background: cardStyle === 'banner' || cardStyle === 'edge' ? theme.gradient : undefined,
+    background:
+      cardStyle === 'banner' || cardStyle === 'edge' || cardStyle === 'poster'
+        ? theme.gradient
+        : `color-mix(in srgb, ${theme.accent} 22%, var(--surface))`,
   } as React.CSSProperties;
 
+  async function copyAddress(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function openServer() {
+    navigate(href);
+  }
+
   return (
-    <tr
-      className={`group ${rowClass}`}
+    <div
+      className="ds-servers-row group"
       style={{ '--row-accent': theme.accent, '--row-glow': theme.glow } as React.CSSProperties}
+      role="link"
+      tabIndex={0}
+      onClick={openServer}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openServer();
+        }
+      }}
     >
-      <td>
-        <Link to={`/servers/${server.id}`} className="flex items-center gap-3">
-          <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10 ${iconClass}`}
-            style={iconStyle}
-          >
-            <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate font-medium transition group-hover:text-[var(--accent)]">{server.name}</span>
-            <span className="block truncate text-[11px] text-[var(--muted)]">{server.egg.name}</span>
-          </span>
-        </Link>
-      </td>
-      <td className="hidden md:table-cell">
-        <span className="font-mono text-xs text-[var(--muted)]">{address}</span>
-      </td>
-      <td className="hidden lg:table-cell">
-        <span className="text-xs text-[var(--muted)]">{server.node.name}</span>
-      </td>
-      <td className="hidden sm:table-cell">
-        <div className="flex flex-wrap gap-2 text-[11px] text-[var(--muted)]">
-          <span className="inline-flex items-center gap-1">
-            <MemoryStick className="h-3 w-3" />
-            {formatResource(server.memory ?? 0, 'MiB')}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <HardDrive className="h-3 w-3" />
-            {formatResource(server.disk ?? 0, 'MiB')}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Cpu className="h-3 w-3" />
-            {server.cpu ?? 0}%
-          </span>
-        </div>
-      </td>
-      <td>
-        <div className="flex flex-col gap-0.5">
-          <ServerStatusBadge
-            status={server.status}
-            suspended={server.suspended}
-            installStatus={server.installStatus}
-            containerState={server.containerState}
-            compact
-          />
-          {server.nodeReachable === false ? (
-            <span className="text-[10px] text-[var(--warning-fg)]">Node unreachable</span>
-          ) : null}
-        </div>
-      </td>
-      <td>
-        <ChevronRight className="h-4 w-4 text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
-      </td>
-    </tr>
+      <span className="ds-servers-row-accent" aria-hidden />
+
+      <span className="ds-servers-row-icon" style={iconStyle} aria-hidden>
+        <ServerEggIcon
+          eggName={server.egg.name}
+          logoUrl={server.egg.logoUrl}
+          className="h-5 w-5"
+          iconClassName="h-5 w-5 text-white/90"
+        />
+      </span>
+
+      <span className="ds-servers-row-main">
+        <span className="ds-servers-row-title truncate">{server.name}</span>
+        <span className="ds-servers-row-sub truncate">{server.egg.name}</span>
+      </span>
+
+      <span className="ds-servers-row-meta">
+        <button
+          type="button"
+          className="ds-servers-row-chip ds-servers-row-chip--action"
+          onClick={copyAddress}
+          title={copied ? 'Copied' : 'Copy address'}
+          aria-label={copied ? 'Address copied' : `Copy address ${address}`}
+        >
+          {copied ? <Check className="h-3 w-3" aria-hidden /> : <Network className="h-3 w-3" aria-hidden />}
+          <span className="truncate font-mono">{address}</span>
+          {!copied ? <Copy className="h-3 w-3 shrink-0 opacity-50" aria-hidden /> : null}
+        </button>
+        <span className="ds-servers-row-chip">
+          <MapPin className="h-3 w-3" aria-hidden />
+          <span className="truncate">{server.node.name}</span>
+        </span>
+      </span>
+
+      <span className="ds-servers-row-resources" aria-label="Resources">
+        <span className="ds-servers-row-resource">
+          <MemoryStick className="h-3 w-3" aria-hidden />
+          {formatResource(server.memory ?? 0, 'MiB')}
+        </span>
+        <span className="ds-servers-row-resource">
+          <HardDrive className="h-3 w-3" aria-hidden />
+          {formatResource(server.disk ?? 0, 'MiB')}
+        </span>
+        <span className="ds-servers-row-resource">
+          <Cpu className="h-3 w-3" aria-hidden />
+          {server.cpu ?? 0}%
+        </span>
+      </span>
+
+      <span className="ds-servers-row-status">
+        <ServerStatusBadge
+          status={server.status}
+          suspended={server.suspended}
+          installStatus={server.installStatus}
+          containerState={server.containerState}
+          compact
+        />
+        {server.nodeReachable === false ? (
+          <span className="ds-servers-row-warn">Node unreachable</span>
+        ) : null}
+      </span>
+
+      <span className="ds-servers-row-go" aria-hidden>
+        <ChevronRight className="h-4 w-4" />
+      </span>
+    </div>
   );
 }
