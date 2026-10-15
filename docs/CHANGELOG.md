@@ -60,6 +60,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Removed
 
 - Client alert presets and rule CRUD (API + UI). Built-in watches are automatic.
+- Unused `NodeFleetSidebar` component and its orphaned fleet-sidebar CSS (no remaining imports).
+- Ignore local Redis `dump.rdb` so it is not tracked.
 
 ## [1.3.4.3] - 2026-09-13
 
