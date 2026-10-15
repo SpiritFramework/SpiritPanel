@@ -48,10 +48,11 @@ export function ConsoleTerminal({
 }) {
   const [command, setCommand] = useState('');
   const { pushHistory, resetCursor, navigateHistory } = useCommandHistory();
-  const { outputRef, showJump, scrollToLatest, updateJumpVisibility } = useConsoleScroll({
-    followScroll,
-    onFollowScrollChange,
-  });
+  const { outputRef, showJump, scrollToLatest, updateJumpVisibility, markUserScrollIntent } =
+    useConsoleScroll({
+      followScroll,
+      onFollowScrollChange,
+    });
 
   const connected = connectionStatus === 'connected';
 
@@ -105,8 +106,11 @@ export function ConsoleTerminal({
         onClear={onClear}
         onDownload={downloadLog}
         onToggleFollow={() => {
-          if (followScroll) onFollowScrollChange(false);
-          else scrollToLatest();
+          if (followScroll) {
+            onFollowScrollChange(false);
+            return;
+          }
+          scrollToLatest();
         }}
       />
 
@@ -118,6 +122,7 @@ export function ConsoleTerminal({
         connectionStatus={connectionStatus}
         emptyMessage={emptyMessage}
         onScroll={updateJumpVisibility}
+        onUserScrollIntent={markUserScrollIntent}
         onJumpToLatest={scrollToLatest}
       />
 

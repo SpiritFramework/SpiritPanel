@@ -4,6 +4,12 @@ import type { ConsoleLine } from '../../lib/console-buffer';
 import { ConsoleLineRow } from './ConsoleLineRow';
 import type { NodeConnectionStatus } from '../../context/ServerLiveContext';
 
+const NEAR_BOTTOM_PX = 56;
+
+function isNearBottom(el: HTMLElement) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+}
+
 export function ConsoleOutputPane({
   outputRef,
   consoleLines,
@@ -12,6 +18,7 @@ export function ConsoleOutputPane({
   connectionStatus,
   emptyMessage,
   onScroll,
+  onUserScrollIntent,
   onJumpToLatest,
 }: {
   outputRef: React.RefObject<HTMLDivElement | null>;
@@ -21,6 +28,7 @@ export function ConsoleOutputPane({
   connectionStatus: NodeConnectionStatus;
   emptyMessage: string;
   onScroll: () => void;
+  onUserScrollIntent: () => void;
   onJumpToLatest: () => void;
 }) {
   useEffect(() => {
@@ -41,7 +49,11 @@ export function ConsoleOutputPane({
     <div className="ds-con-viewport-wrap">
       <div
         ref={outputRef}
-        onWheel={(e) => e.stopPropagation()}
+        onWheel={(e) => {
+          e.stopPropagation();
+          onUserScrollIntent();
+        }}
+        onTouchMove={onUserScrollIntent}
         className="ds-con-viewport"
         role="log"
         aria-live="polite"
@@ -93,21 +105,44 @@ export function useConsoleScroll({
 }) {
   const outputRef = useRef<HTMLDivElement>(null);
   const [showJump, setShowJump] = useState(false);
+  const userScrollIntentRef = useRef(false);
+  const programmaticScrollRef = useRef(false);
+
+  const markUserScrollIntent = useCallback(() => {
+    userScrollIntentRef.current = true;
+  }, []);
 
   const scrollToLatest = useCallback(() => {
     const el = outputRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    programmaticScrollRef.current = true;
+    userScrollIntentRef.current = false;
+    el.scrollTop = el.scrollHeight;
     onFollowScrollChange(true);
     setShowJump(false);
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
   }, [onFollowScrollChange]);
 
   const updateJumpVisibility = useCallback(() => {
     const el = outputRef.current;
     if (!el) return;
-    const atLatest = el.scrollHeight - el.scrollTop - el.clientHeight < 56;
+    const atLatest = isNearBottom(el);
     setShowJump(!atLatest);
-    if (!atLatest && followScroll) onFollowScrollChange(false);
+
+    if (programmaticScrollRef.current) return;
+
+    // Only detach auto-scroll when the user scrolled away from the bottom
+    if (!atLatest && followScroll && userScrollIntentRef.current) {
+      onFollowScrollChange(false);
+      userScrollIntentRef.current = false;
+      return;
+    }
+
+    if (atLatest) {
+      userScrollIntentRef.current = false;
+    }
   }, [followScroll, onFollowScrollChange]);
 
   return {
@@ -115,5 +150,6 @@ export function useConsoleScroll({
     showJump,
     scrollToLatest,
     updateJumpVisibility,
+    markUserScrollIntent,
   };
 }

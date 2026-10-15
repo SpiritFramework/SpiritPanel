@@ -25,6 +25,10 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **Installer progress UX** (`spirit.sh` 2.0.7): fixed-phase `[n/total · %]` lines for install/update, an “Almost done” notice from 80% onward, and TTY heartbeats during long silent work (apt, clone, pnpm, certbot, health wait).
 - **FeatherWings join-data** for 1.4+ `featherwings configure`: Admin → Nodes → **Copy join-data** (new and existing nodes), plus `GET /api/remote/health` and `GET /api/remote/config` so Wings can verify the token and pull `config.yml`.
 
+### Fixed
+
+- **Console auto-scroll** stays on by default and no longer flips off when re-enabled or when new lines arrive (only turns off if you scroll away or toggle it off).
+
 ### Changed
 
 - **Nests & eggs redesigned** to match Admin Servers: clearer hero, clickable fleet stats, and a refreshed variables editor. Nest/egg **Save changes** now uses an explicit save action (egg manage previously used `type="submit"` with no form, so saves never fired). Nest detail and egg lists now return/show egg `logoUrl`s, with tighter typography spacing on those pages.
