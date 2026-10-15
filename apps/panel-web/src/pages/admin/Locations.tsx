@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
-  Globe,
-  HardDrive,
   LayoutGrid,
   List,
-  Plus,
-  RefreshCw,
   Search,
 } from 'lucide-react';
 import { api, type AdminLocationSummary, type AdminNodeSummary } from '../../lib/api';
@@ -22,11 +17,12 @@ import {
 } from '../../components/admin/locations/location-fleet-utils';
 import { LocationsFleetOverview } from '../../components/admin/locations/LocationsFleetOverview';
 import { LocationsFleetStats } from '../../components/admin/locations/LocationsFleetStats';
+import { LocationsHeader } from '../../components/admin/locations/LocationsHeader';
 import { CreateLocationModal } from '../../components/CreateLocationModal';
-import { AdminLayout, Button, Card, Page } from '../../components/Layout';
+import { AdminLayout, Card, Page } from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { isFullPanelAdmin } from '../../lib/roles';
-import { AlertBanner, DsIcon, EmptyState, PageHeader, Skeleton } from '../../components/ui';
+import { AlertBanner, EmptyState, Skeleton } from '../../components/ui';
 
 const FILTER_OPTIONS: { id: LocationFleetFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -156,40 +152,13 @@ export function AdminLocations() {
   return (
     <AdminLayout>
       <Page>
-        <PageHeader
-          title="Locations"
-          description="Geographic regions that group your Wings nodes and server fleet"
-          icon={<DsIcon icon={Globe} className="ds-icon--muted" />}
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => void refresh()}
-                disabled={refreshing || loading}
-                aria-label="Refresh locations"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`}
-                  aria-hidden
-                />
-                Refresh
-              </Button>
-              <Link to="/admin/nodes">
-                <Button type="button" variant="secondary" size="sm">
-                  <HardDrive className="h-3.5 w-3.5" aria-hidden />
-                  Nodes
-                </Button>
-              </Link>
-              {fullAdmin ? (
-                <Button size="sm" onClick={() => setShowCreate(true)}>
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Add location
-                </Button>
-              ) : null}
-            </div>
-          }
+        <LocationsHeader
+          stats={fleetStats}
+          refreshing={refreshing}
+          loading={loading}
+          fullAdmin={fullAdmin}
+          onRefresh={() => void refresh()}
+          onCreate={() => setShowCreate(true)}
         />
 
         {locations.error ? (

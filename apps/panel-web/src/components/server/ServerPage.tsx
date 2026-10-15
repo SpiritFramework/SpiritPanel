@@ -31,10 +31,12 @@ export function ServerPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="server-page-header flex flex-wrap items-start justify-between gap-3">
+    <div className="server-page-header mb-3 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-        {description && <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--muted)]">{description}</p>}
+        <h2 className="text-[15px] font-semibold tracking-tight text-[var(--fg)]">{title}</h2>
+        {description && (
+          <p className="mt-0.5 max-w-2xl text-[12px] leading-relaxed text-[var(--muted)]">{description}</p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-1.5">{actions}</div>}
     </div>

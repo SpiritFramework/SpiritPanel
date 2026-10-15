@@ -11,6 +11,8 @@ import {
   User,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useBranding } from '../../context/BrandingContext';
+import { normalizeAppearance } from '../../lib/branding-appearance';
 import { StatusPill } from '../ui';
 
 export const PROFILE_TABS = [
@@ -52,6 +54,8 @@ export function ProfileHeader({
   suspended?: boolean;
   adminLink?: boolean;
 }) {
+  const { branding } = useBranding();
+  const appearance = normalizeAppearance(branding);
   const tone = suspended ? 'warn' : 'good';
   const statusLabel = suspended ? 'Suspended' : 'Active';
   const statusPillTone = suspended ? 'warning' : 'success';
@@ -64,6 +68,7 @@ export function ProfileHeader({
 
   return (
     <div className="ds-prof-header-wrap">
+      {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
       <header className={`ds-prof-header ds-prof-header--${tone}`}>
         <nav className="ds-prof-header-crumb" aria-label="Breadcrumb">
           <Link to="/servers">Account</Link>
