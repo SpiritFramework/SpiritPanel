@@ -31,14 +31,16 @@ export function useAsyncData<T>(
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (force = false) => {
     const gen = ++generation.current;
     const hasData = dataRef.current !== null;
     if (!hasData) setLoading(true);
     setValidating(true);
     setError(null);
 
-    let promise = inflight.get(key) as Promise<T> | undefined;
+    // Deduplicate StrictMode double-mount / overlapping mounts. Explicit refetch
+    // always starts a fresh request so callers can change fetcher params (e.g. live stats).
+    let promise = (!force ? (inflight.get(key) as Promise<T> | undefined) : undefined);
     if (!promise) {
       promise = fetcherRef.current().finally(() => {
         inflight.delete(key);
@@ -64,6 +66,8 @@ export function useAsyncData<T>(
     }
   }, [key]);
 
+  const refetch = useCallback(() => run(true), [run]);
+
   const prevKey = useRef(key);
   useEffect(() => {
     if (prevKey.current !== key) {
@@ -71,12 +75,12 @@ export function useAsyncData<T>(
       setData(null);
       setLoading(true);
     }
-    void run();
+    void run(false);
     return () => {
       generation.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key + explicit deps
   }, [key, run, ...deps]);
 
-  return { data, loading, validating, error, refetch: run };
+  return { data, loading, validating, error, refetch };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -181,7 +181,11 @@ export function AlertsPage() {
   const [clearing, setClearing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
+  const loadInFlightRef = useRef(false);
+
   const load = useCallback(async (opts?: { soft?: boolean }) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     if (opts?.soft) setRefreshing(true);
     else setLoading(true);
     setError('');
@@ -193,6 +197,7 @@ export function AlertsPage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 

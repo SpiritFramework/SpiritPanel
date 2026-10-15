@@ -254,7 +254,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
         />
       }
     >
-      {children}
+      <RouteErrorBoundary fallbackTitle="This page failed to load">{children}</RouteErrorBoundary>
     </MobileShell>
   );
 }

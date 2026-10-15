@@ -107,9 +107,21 @@ export function ServerLiveProvider({
   const connectionStatusRef = useRef<NodeConnectionStatus>('connecting');
   const uptimeAnchorRef = useRef<{ ms: number; at: number } | null>(null);
   const reconnectTimer = useRef<number | null>(null);
+  const reconnectAttempt = useRef(0);
   const statsTimer = useRef<number | null>(null);
   const connectGen = useRef(0);
   const installLogsHydrated = useRef(false);
+
+  const scheduleReconnect = useCallback((connectFn: () => void, baseMs: number) => {
+    if (reconnectTimer.current) {
+      window.clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+    const attempt = reconnectAttempt.current;
+    const delay = Math.min(baseMs * 2 ** Math.min(attempt, 4), 30_000);
+    reconnectAttempt.current = attempt + 1;
+    reconnectTimer.current = window.setTimeout(connectFn, delay);
+  }, []);
 
   const flushTimer = useRef<number | null>(null);
 
@@ -201,8 +213,8 @@ export function ServerLiveProvider({
           statsTimer.current = null;
         }
         setConnectionStatus('disconnected');
-        reconnectTimer.current = window.setTimeout(() => {
-          connect();
+        scheduleReconnect(() => {
+          void connect();
         }, 4000);
       };
 
@@ -212,6 +224,7 @@ export function ServerLiveProvider({
           const event = msg.event as string;
 
           if (event === 'auth success') {
+            reconnectAttempt.current = 0;
             setConnectionStatus('connected');
             refresh().catch(() => {});
             requestWingsLogs(ws);
@@ -316,9 +329,11 @@ export function ServerLiveProvider({
         `Unable to connect to the node daemon.${e instanceof Error ? ` ${e.message}` : ''}`,
         'error',
       );
-      reconnectTimer.current = window.setTimeout(() => connect(), 8000);
+      scheduleReconnect(() => {
+        void connect();
+      }, 8000);
     }
-  }, [handleRuntimeState, id, liveApi, refresh, syncLines]);
+  }, [handleRuntimeState, id, liveApi, refresh, scheduleReconnect, syncLines]);
 
   useEffect(() => {
     if (!id) return;

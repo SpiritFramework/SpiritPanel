@@ -89,13 +89,19 @@ export function ServerListPage() {
   const list = servers ?? [];
   const refreshing = validating && list.length > 0;
 
+  const pollTickRef = useRef(0);
+  const pollInFlightRef = useRef(false);
+
   const pollServers = useCallback(() => {
+    if (pollInFlightRef.current || validating) return Promise.resolve();
+    pollInFlightRef.current = true;
     pollTickRef.current += 1;
     wantLiveRef.current = pollTickRef.current % 3 === 0;
     return refetch().finally(() => {
       wantLiveRef.current = false;
+      pollInFlightRef.current = false;
     });
-  }, [refetch]);
+  }, [refetch, validating]);
 
   const refreshServersLive = useCallback(async () => {
     wantLiveRef.current = true;
@@ -108,7 +114,6 @@ export function ServerListPage() {
 
   const pollRef = useRef(pollServers);
   pollRef.current = pollServers;
-  const pollTickRef = useRef(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => void pollRef.current(), 15_000);

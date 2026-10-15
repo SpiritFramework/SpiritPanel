@@ -29,6 +29,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **Local backup download** path jail hardened (UUID-only segments, no symlink follow).
 - **Discord ticket webhooks** re-validated at send time; email headings HTML-escaped.
 
+### Performance
+
+- **My Servers list** API selects only list fields (no startup/image blobs); admin users list no longer loads password hashes.
+- **Polling** skips overlapping My Servers / Alerts refreshes; `useAsyncData` refetch always fetches fresh (live stats not stuck on a stale in-flight response).
+- **Console WebSocket** reconnect uses exponential backoff (capped at 30s); client shell routes have an error boundary.
+
 ### Added
 
 - **Delete alerts** from the inbox (one message or clear all, with confirm on clear).

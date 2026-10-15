@@ -240,7 +240,22 @@ export async function adminRoutes(app: FastifyInstance) {
             }
           : {}),
       },
-      include: { _count: { select: { servers: true, subusers: true, apiKeys: true } } },
+      select: {
+        id: true,
+        uuid: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        role: true,
+        rootAdmin: true,
+        enabled: true,
+        createdAt: true,
+        discordId: true,
+        discordUsername: true,
+        _count: { select: { servers: true, subusers: true, apiKeys: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return users.map((u) => ({

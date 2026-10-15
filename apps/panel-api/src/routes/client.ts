@@ -110,16 +110,30 @@ export async function clientRoutes(app: FastifyInstance) {
   app.get('/servers', async (request) => {
     const userId = request.user!.id;
     const refresh = parseRefreshQuery(request.query as Record<string, unknown>);
-    const include = {
-      egg: { select: { name: true, logoUrl: true } },
-      node: { select: { name: true, fqdn: true, location: { select: { short: true, flagUrl: true } } } },
-      defaultAllocation: true,
-    };
     const all = await prisma.server.findMany({
       where: {
         OR: [{ ownerId: userId }, { subusers: { some: { userId } } }],
       },
-      include,
+      select: {
+        id: true,
+        uuid: true,
+        uuidShort: true,
+        name: true,
+        description: true,
+        status: true,
+        containerState: true,
+        suspended: true,
+        installStatus: true,
+        ownerId: true,
+        nodeId: true,
+        memory: true,
+        disk: true,
+        cpu: true,
+        egg: { select: { name: true, logoUrl: true } },
+        node: { select: { name: true, fqdn: true, location: { select: { short: true, flagUrl: true } } } },
+        defaultAllocation: { select: { ip: true, port: true, alias: true } },
+      },
+      orderBy: { name: 'asc' },
     });
     const enriched = await enrichServerRefsWithLiveState(
       all.map((server) => ({
@@ -132,16 +146,14 @@ export async function clientRoutes(app: FastifyInstance) {
     );
     const stateById = new Map(enriched.map((row) => [row.id, row.containerState]));
     const nodeReachability = await probeNodesReachability(all.map((s) => s.nodeId));
-    return all.map(({ memory, disk, cpu, uuid, containerState, status, installStatus, ...rest }) => {
+    return all.map((server) => {
+      const { nodeId, containerState, status, installStatus, ...rest } = server;
       const liveState = stateById.get(rest.id) ?? containerState;
       const reconciled = reconcilePanelFieldsForContainerState(liveState ?? 'offline');
-      const nodeProbe = nodeReachability.get(rest.nodeId);
+      const nodeProbe = nodeReachability.get(nodeId);
       return {
         ...rest,
-        uuid,
-        memory,
-        disk,
-        cpu,
+        nodeId,
         containerState: liveState,
         status: reconciled.status ?? status,
         installStatus: reconciled.installStatus ?? installStatus,
