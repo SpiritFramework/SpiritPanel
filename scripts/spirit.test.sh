@@ -290,6 +290,24 @@ done_test
 teardown_sandbox
 
 # ---------------------------------------------------------------------------
+section "Progress helpers"
+setup_sandbox
+# shellcheck disable=SC1090
+eval "$(sed -n '/^phase_begin()/,/^}/p;/^phase()/,/^}/p' "$TARGET")"
+C_RESET=""; C_BOLD=""; C_DIM=""; C_CYAN=""; C_GREEN=""; C_YELLOW=""; C_RED=""
+it "phase prints percent and almost-done once at 80%"
+phase_begin 5 "wrapping up"
+out="$(phase 'one'; phase 'two'; phase 'three'; phase 'four')"
+expect_contains "$out" "[1/5 · 20%] one" "phase1"
+expect_contains "$out" "[4/5 · 80%] four" "phase4"
+expect_contains "$out" "Almost done — wrapping up" "almost"
+# almost-done must appear once
+almost_count="$(printf '%s\n' "$out" | grep -c 'Almost done' || true)"
+expect_eq "$almost_count" "1" "almost once"
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
 section "env_get / DATABASE_URL"
 setup_sandbox
 INSTALL_DIR="$SANDBOX/panel"
@@ -403,6 +421,8 @@ out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
   run_spirit update -y < /dev/null)"
 expect_contains "$out" "Update complete" "output"
 expect_contains "$out" "Dumped database" "output"
+expect_contains "$out" "[1/7 ·" "progress"
+expect_contains "$out" "Almost done" "almost done"
 done_test
 teardown_sandbox
 

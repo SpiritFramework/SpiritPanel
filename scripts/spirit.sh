@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.6"
+SCRIPT_VERSION="2.0.7"
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -48,6 +48,68 @@ ok()   { printf '    %s+%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
 info() { printf '    %s-%s %s\n' "$C_DIM" "$C_RESET" "$*"; }
 warn() { printf '    %s!%s %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 die()  { printf '\n%sError:%s %s\n\n' "$C_RED" "$C_RESET" "$*" >&2; exit 1; }
+
+# Fixed-phase progress for install / update (percent + "almost done").
+PHASE_INDEX=0
+PHASE_TOTAL=0
+PHASE_ALMOST_DONE=0
+PHASE_ALMOST_MSG="finishing up"
+
+phase_begin() {
+  PHASE_TOTAL="${1:-0}"
+  PHASE_INDEX=0
+  PHASE_ALMOST_DONE=0
+  PHASE_ALMOST_MSG="${2:-finishing up}"
+  STEP=0
+}
+
+phase() {
+  PHASE_INDEX=$((PHASE_INDEX + 1))
+  local pct=0
+  if [[ "$PHASE_TOTAL" -gt 0 ]]; then
+    pct=$((PHASE_INDEX * 100 / PHASE_TOTAL))
+    [[ "$pct" -gt 100 ]] && pct=100
+  fi
+  printf '%s==>%s %s[%s/%s · %s%%] %s%s\n' \
+    "$C_CYAN" "$C_RESET" "$C_BOLD" "$PHASE_INDEX" "$PHASE_TOTAL" "$pct" "$*" "$C_RESET"
+  if [[ "$PHASE_ALMOST_DONE" -eq 0 && "$pct" -ge 80 ]]; then
+    PHASE_ALMOST_DONE=1
+    printf '    %sAlmost done — %s%s\n' "$C_DIM" "$PHASE_ALMOST_MSG" "$C_RESET"
+  fi
+}
+
+phase_note() { info "$*"; }
+
+is_tty_out() {
+  [[ -t 1 && -z "${NO_COLOR:-}" && -z "${SPIRIT_NO_HEARTBEAT:-}" ]]
+}
+
+_heartbeat_clear() {
+  if is_tty_out; then
+    printf '\r\033[K' >/dev/tty 2>/dev/null || printf '\r\033[K' || true
+  fi
+}
+
+# Run a command with a TTY heartbeat while it is silent. Non-TTY: run as-is.
+run_with_heartbeat() {
+  local label="$1"
+  shift
+  if ! is_tty_out; then
+    "$@"
+    return $?
+  fi
+
+  local start=$SECONDS pid rc=0
+  "$@" &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    printf '\r    %s%s — %ss%s' "$C_DIM" "$label" "$((SECONDS - start))" "$C_RESET" >/dev/tty 2>/dev/null || true
+    sleep 2
+  done
+  wait "$pid" || rc=$?
+  _heartbeat_clear
+  return "$rc"
+}
 
 cleanup() {
   rm -f "$SUDOERS_FILE" 2>/dev/null || true
@@ -242,8 +304,9 @@ install_node() {
     ok "Node.js $(node -v)"
     return
   fi
-  step "Installing Node.js ${NODE_MAJOR}.x"
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - >/dev/null 2>&1 ||
+  info "Installing Node.js ${NODE_MAJOR}.x"
+  run_with_heartbeat "Adding NodeSource repo" \
+    bash -c "curl -fsSL 'https://deb.nodesource.com/setup_${NODE_MAJOR}.x' | bash - >/dev/null 2>&1" ||
     die "Failed to add the NodeSource repository"
   apt_install nodejs || die "Failed to install Node.js"
   [[ "$(node_major)" -ge "$NODE_MAJOR" ]] || die "Node.js ${NODE_MAJOR}+ required"
@@ -313,7 +376,7 @@ install_pnpm_standalone() {
   chmod a+rx /usr/local /usr/local/bin 2>/dev/null || true
   tmp="$(mktemp)"
   info "Downloading ${asset}"
-  if ! curl -fsSL "$url" -o "$tmp"; then
+  if ! run_with_heartbeat "Downloading pnpm" curl -fsSL "$url" -o "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
@@ -396,12 +459,13 @@ Fix manually, then re-run update:
 # ---------------------------------------------------------------------------
 
 apt_install() {
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -q "$@" >/dev/null
+  run_with_heartbeat "Installing packages" \
+    bash -c 'DEBIAN_FRONTEND=noninteractive apt-get install -y -q "$@" >/dev/null' _ "$@"
 }
 
 install_prerequisites() {
-  step "Installing system packages"
-  apt-get update -qq >/dev/null 2>&1 || true
+  run_with_heartbeat "Updating apt indexes" \
+    bash -c 'apt-get update -qq >/dev/null 2>&1' || true
   apt_install ca-certificates curl git gnupg unzip rsync openssl \
     mariadb-server mariadb-client redis-server nginx \
     certbot python3-certbot-nginx ||
@@ -415,7 +479,6 @@ install_prerequisites() {
 }
 
 create_app_user() {
-  step "Preparing the ${APP_USER} user"
   if id "$APP_USER" >/dev/null 2>&1; then
     ok "User ${APP_USER} already exists"
   else
@@ -427,7 +490,6 @@ create_app_user() {
 }
 
 fetch_source() {
-  step "Fetching Spirit-Panel"
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     ok "Existing checkout at ${INSTALL_DIR}"
     return
@@ -439,8 +501,15 @@ fetch_source() {
   mkdir -p "$(dirname "$INSTALL_DIR")"
   local ref_args=()
   [[ -n "$GIT_REF" ]] && ref_args=(--branch "$GIT_REF")
-  git clone --depth 1 "${ref_args[@]}" "$REPO_URL" "$INSTALL_DIR" >/dev/null 2>&1 ||
-    die "git clone failed from ${REPO_URL}"
+  if [[ ${#ref_args[@]} -gt 0 ]]; then
+    run_with_heartbeat "Cloning repository" \
+      git clone --depth 1 "${ref_args[@]}" "$REPO_URL" "$INSTALL_DIR" 2>/dev/null ||
+      die "git clone failed from ${REPO_URL}"
+  else
+    run_with_heartbeat "Cloning repository" \
+      git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null ||
+      die "git clone failed from ${REPO_URL}"
+  fi
   chown -R "${APP_USER}:${APP_USER}" "$INSTALL_DIR"
   ok "Cloned to ${INSTALL_DIR}"
 }
@@ -450,7 +519,6 @@ fetch_source() {
 # ---------------------------------------------------------------------------
 
 configure_redis() {
-  step "Securing Redis"
   local conf="/etc/redis/redis.conf"
   if [[ ! -f "$conf" ]]; then
     warn "No ${conf} — schedule worker will be disabled"
@@ -501,7 +569,6 @@ set_env_value() {
 }
 
 write_env_file() {
-  step "Writing the environment file"
   local env_file="${INSTALL_DIR}/apps/panel-api/.env"
   local template="${INSTALL_DIR}/deploy/env/production.example"
 
@@ -550,23 +617,25 @@ write_env_file() {
 }
 
 run_panel_installer() {
-  step "Installing dependencies"
   ensure_app_home
   install_pnpm
 
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
-  as_app "${base} pnpm install --no-frozen-lockfile" ||
+  phase_note "pnpm install (this can take several minutes)"
+  run_with_heartbeat "Installing npm dependencies" \
+    as_app "${base} pnpm install --no-frozen-lockfile" ||
     die "pnpm install failed"
   ok "Dependencies installed"
 
-  step "Configuring the panel"
+  phase_note "Database, env sync, and production build"
   local args="--production --api-url 'https://${PANEL_DOMAIN}'"
   [[ -n "$ADMIN_PASSWORD" ]] && args+=" --admin-password '${ADMIN_PASSWORD}'"
 
   printf '%s ALL=(root) NOPASSWD: /usr/bin/mysql, /usr/bin/mariadb\n' "$APP_USER" > "$SUDOERS_FILE"
   chmod 440 "$SUDOERS_FILE"
   local rc=0
-  as_app "${base} pnpm spirit-install ${args}" || rc=$?
+  run_with_heartbeat "Configuring panel (migrate + build)" \
+    as_app "${base} pnpm spirit-install ${args}" || rc=$?
   rm -f "$SUDOERS_FILE"
   [[ "$rc" -eq 0 ]] || die "Panel configuration failed (exit ${rc})"
   ok "Database, environment, and build ready"
@@ -577,7 +646,6 @@ run_panel_installer() {
 # ---------------------------------------------------------------------------
 
 install_systemd() {
-  step "Installing the systemd service"
   local src="${INSTALL_DIR}/deploy/systemd/${SERVICE_NAME}.service"
   local dest="/etc/systemd/system/${SERVICE_NAME}.service"
   [[ -f "$src" ]] || die "Missing ${src}"
@@ -666,7 +734,7 @@ PY
     return 0
   fi
 
-  step "Syncing nginx Content-Security-Policy"
+  info "Syncing nginx Content-Security-Policy"
   local bak="${dest}.spirit-csp.bak"
   cp -a "$dest" "$bak" || true
   if ! python3 - "$src" "$dest" <<'PY'
@@ -708,7 +776,6 @@ PY
 }
 
 install_nginx() {
-  step "Configuring nginx"
   local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
   local dest="/etc/nginx/sites-available/${NGINX_SITE}"
   [[ -f "$src" ]] || die "Missing ${src}"
@@ -745,9 +812,10 @@ install_tls() {
     return
   fi
 
-  step "Requesting Let's Encrypt certificate"
+  info "Requesting Let's Encrypt certificate"
   local email="${LETSENCRYPT_EMAIL:-${ADMIN_EMAIL:-admin@${PANEL_DOMAIN}}}"
-  if certbot --nginx -d "$PANEL_DOMAIN" --non-interactive --agree-tos -m "$email" >/dev/null 2>&1; then
+  if run_with_heartbeat "Requesting TLS certificate" \
+    certbot --nginx -d "$PANEL_DOMAIN" --non-interactive --agree-tos -m "$email" >/dev/null 2>&1; then
     # Re-apply full config now that certs exist.
     local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
     local dest="/etc/nginx/sites-available/${NGINX_SITE}"
@@ -785,9 +853,16 @@ fix_permissions() {
 health_check() {
   local tries="${1:-20}" i
   for ((i = 1; i <= tries; i++)); do
-    curl -fsS --max-time 3 http://127.0.0.1:3000/health >/dev/null 2>&1 && return 0
+    if is_tty_out; then
+      printf '\r    %sWaiting for API… attempt %s/%s%s' "$C_DIM" "$i" "$tries" "$C_RESET" >/dev/tty 2>/dev/null || true
+    fi
+    if curl -fsS --max-time 3 http://127.0.0.1:3000/health >/dev/null 2>&1; then
+      _heartbeat_clear
+      return 0
+    fi
     sleep 2
   done
+  _heartbeat_clear
   return 1
 }
 
@@ -813,7 +888,6 @@ print_install_summary() {
 # ---------------------------------------------------------------------------
 
 backup_before_update() {
-  step "Backing up"
   mkdir -p "$BACKUP_DIR"
   chmod 700 "$BACKUP_DIR"
   local stamp
@@ -963,7 +1037,8 @@ update_source_tarball() {
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" RETURN
 
-  curl -fsSL "https://codeload.github.com/${REPO_SLUG}/tar.gz/${ref}" -o "${tmp}/src.tar.gz" ||
+  run_with_heartbeat "Downloading panel tarball" \
+    curl -fsSL "https://codeload.github.com/${REPO_SLUG}/tar.gz/${ref}" -o "${tmp}/src.tar.gz" ||
     die "Download failed for ref ${ref}"
   tar -xzf "${tmp}/src.tar.gz" -C "$tmp" || die "Could not extract the tarball"
   src="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
@@ -1029,19 +1104,38 @@ Example: sudo bash $0 install --domain panel.example.com --admin-email you@examp
 
   printf '\n  %sInstalling Spirit-Panel%s for %s\n\n' "$C_BOLD" "$C_RESET" "$PANEL_DOMAIN"
 
+  phase_begin 10 "wrapping up nginx, TLS, and health check"
+
+  phase "Installing system packages"
   install_prerequisites
+
+  phase "Preparing the ${APP_USER} user"
   create_app_user
+
+  phase "Fetching Spirit-Panel"
   fetch_source
+
+  phase "Securing Redis"
   configure_redis
+
+  phase "Writing the environment file"
   write_env_file
+
+  phase "Installing dependencies and configuring the panel"
   run_panel_installer
   fix_permissions
+
+  phase "Installing the systemd service"
   install_systemd
+
+  phase "Configuring nginx"
   install_nginx
+
+  phase "Configuring TLS"
   install_tls
   fix_permissions
 
-  step "Verifying"
+  phase "Verifying"
   if health_check; then
     ok "API healthy"
   else
@@ -1066,30 +1160,36 @@ action_update() {
   confirm "Continue?" "y" || die "Cancelled."
   printf '\n'
 
+  phase_begin 7 "restarting services and verifying health"
+
+  phase "Backing up"
   backup_before_update
 
-  step "Updating source"
+  phase "Updating source"
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     update_source_git
   else
     update_source_tarball
   fi
 
-  step "Installing dependencies"
+  phase "Installing dependencies"
   ensure_app_home
   install_pnpm
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
-  as_app "${base} pnpm install --no-frozen-lockfile" ||
+  run_with_heartbeat "Installing npm dependencies" \
+    as_app "${base} pnpm install --no-frozen-lockfile" ||
     die "pnpm install failed. Nothing was restarted — the running version is untouched."
   ok "Dependencies up to date"
 
-  step "Building"
-  as_app "${base} pnpm build" ||
+  phase "Building"
+  run_with_heartbeat "Building applications" \
+    as_app "${base} pnpm build" ||
     die "Build failed. The old build is still in place; nothing was restarted."
   ok "Build complete"
 
-  step "Applying database migrations"
-  if as_app "cd '${INSTALL_DIR}/apps/panel-api' && unset NODE_ENV && pnpm exec prisma migrate deploy"; then
+  phase "Applying database migrations"
+  if run_with_heartbeat "Applying migrations" \
+    as_app "cd '${INSTALL_DIR}/apps/panel-api' && unset NODE_ENV && pnpm exec prisma migrate deploy"; then
     ok "Migrations applied"
   else
     warn "prisma migrate deploy failed"
@@ -1099,13 +1199,13 @@ action_update() {
 
   sync_nginx_csp
 
-  step "Restarting services"
+  phase "Restarting services"
   fix_permissions >/dev/null
   systemctl restart "$SERVICE_NAME" || die "Failed to restart ${SERVICE_NAME}"
   systemctl reload nginx 2>/dev/null || true
   ok "${SERVICE_NAME} restarted"
 
-  step "Verifying"
+  phase "Verifying"
   if health_check; then
     ok "API healthy"
   else
