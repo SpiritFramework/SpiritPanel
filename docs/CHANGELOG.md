@@ -39,6 +39,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Added
 
+- **Ticket staff alerts:** when a user opens a ticket or replies, staff/admins get an unread Alerts inbox event (`ticket_opened` / `ticket_user_reply`) with a deep link to the ticket, plus live toast popups (~12s poll) while the panel is open.
 - **Delete alerts** from the inbox (one message or clear all, with confirm on clear).
 - **Installer progress UX** (`spirit.sh` 2.0.7): fixed-phase `[n/total · %]` lines for install/update, an “Almost done” notice from 80% onward, and TTY heartbeats during long silent work (apt, clone, pnpm, certbot, health wait).
 - **FeatherWings join-data** for 1.4+ `featherwings configure`: Admin → Nodes → **Copy join-data** (new and existing nodes), plus `GET /api/remote/health` and `GET /api/remote/config` so Wings can verify the token and pull `config.yml`.

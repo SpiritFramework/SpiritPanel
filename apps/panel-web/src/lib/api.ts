@@ -320,7 +320,9 @@ export type AlertMetric =
   | 'account_password_changed'
   | 'account_2fa_changed'
   | 'account_api_key'
-  | 'server_subuser';
+  | 'server_subuser'
+  | 'ticket_opened'
+  | 'ticket_user_reply';
 
 export interface AlertEventSummary {
   id: string;
@@ -328,6 +330,7 @@ export interface AlertEventSummary {
   userId: string;
   serverId: string | null;
   nodeId: string | null;
+  ticketId: string | null;
   metric: AlertMetric;
   severity: string;
   title: string;

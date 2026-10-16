@@ -10,6 +10,7 @@ import {
   HardDrive,
   Inbox,
   KeyRound,
+  LifeBuoy,
   LogIn,
   RefreshCw,
   Search,
@@ -24,13 +25,14 @@ import { api, type AlertEventSummary, type AlertMetric } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { normalizeAppearance } from '../../lib/branding-appearance';
+import { isStaffOrPanelAdmin } from '../../lib/roles';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
 import { sanitizeImageSrc } from '../../lib/safe-url';
 import { ClientLayout, Button, Page } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertBanner, DsIcon, EmptyState, PageLoading } from '../../components/ui';
 
-type InboxFilter = 'all' | 'unread' | 'critical' | 'servers' | 'security' | 'nodes';
+type InboxFilter = 'all' | 'unread' | 'critical' | 'servers' | 'security' | 'tickets' | 'nodes';
 
 const SECURITY_METRICS = new Set<AlertMetric>([
   'account_login_failed',
@@ -49,6 +51,8 @@ const SERVER_METRICS = new Set<AlertMetric>([
   'server_offline',
   'install_failed',
 ]);
+
+const TICKET_METRICS = new Set<AlertMetric>(['ticket_opened', 'ticket_user_reply']);
 
 function notifyAlertsChanged() {
   window.dispatchEvent(new Event('spirit-alerts-changed'));
@@ -77,19 +81,24 @@ function metricIcon(metric: AlertMetric): LucideIcon {
       return UserPlus;
     case 'node_offline':
       return Activity;
+    case 'ticket_opened':
+    case 'ticket_user_reply':
+      return LifeBuoy;
     default:
       return Bell;
   }
 }
 
-function metricKind(metric: AlertMetric): 'servers' | 'security' | 'nodes' {
+function metricKind(metric: AlertMetric): 'servers' | 'security' | 'tickets' | 'nodes' {
   if (SECURITY_METRICS.has(metric)) return 'security';
+  if (TICKET_METRICS.has(metric)) return 'tickets';
   if (metric === 'node_offline') return 'nodes';
   return 'servers';
 }
 
-function kindLabel(kind: 'servers' | 'security' | 'nodes') {
+function kindLabel(kind: 'servers' | 'security' | 'tickets' | 'nodes') {
   if (kind === 'security') return 'Security';
+  if (kind === 'tickets') return 'Ticket';
   if (kind === 'nodes') return 'Node';
   return 'Server';
 }
@@ -133,7 +142,16 @@ function groupLabel(iso: string) {
   return 'Earlier';
 }
 
-function eventAction(event: AlertEventSummary): { to: string; label: string } | null {
+function eventAction(
+  event: AlertEventSummary,
+  opts?: { staff?: boolean },
+): { to: string; label: string } | null {
+  if (TICKET_METRICS.has(event.metric) && event.ticketId && opts?.staff) {
+    return { to: `/admin/tickets/${event.ticketId}`, label: 'Open ticket' };
+  }
+  if (TICKET_METRICS.has(event.metric) && opts?.staff) {
+    return { to: '/admin/tickets', label: 'View tickets' };
+  }
   if (SECURITY_METRICS.has(event.metric) && event.metric !== 'server_subuser') {
     return { to: '/profile?tab=security', label: 'Open security' };
   }
@@ -166,6 +184,7 @@ function displayName(user: { firstName?: string | null; username: string }) {
 
 export function AlertsPage() {
   const { user } = useAuth();
+  const staff = isStaffOrPanelAdmin(user);
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const logoSrc = sanitizeImageSrc(branding.logoUrl);
@@ -218,6 +237,7 @@ export function AlertsPage() {
   );
   const serverCount = useMemo(() => events.filter((e) => SERVER_METRICS.has(e.metric)).length, [events]);
   const securityCount = useMemo(() => events.filter((e) => SECURITY_METRICS.has(e.metric)).length, [events]);
+  const ticketCount = useMemo(() => events.filter((e) => TICKET_METRICS.has(e.metric)).length, [events]);
   const nodeCount = useMemo(() => events.filter((e) => e.metric === 'node_offline').length, [events]);
 
   const filteredEvents = useMemo(() => {
@@ -227,6 +247,7 @@ export function AlertsPage() {
       if (inboxFilter === 'critical' && event.severity !== 'critical') return false;
       if (inboxFilter === 'servers' && !SERVER_METRICS.has(event.metric)) return false;
       if (inboxFilter === 'security' && !SECURITY_METRICS.has(event.metric)) return false;
+      if (inboxFilter === 'tickets' && !TICKET_METRICS.has(event.metric)) return false;
       if (inboxFilter === 'nodes' && event.metric !== 'node_offline') return false;
       if (!q) return true;
       return (
@@ -327,6 +348,9 @@ export function AlertsPage() {
     { id: 'critical', label: 'Critical', count: criticalCount, icon: Activity },
     { id: 'servers', label: 'Servers', count: serverCount, icon: Server },
     { id: 'security', label: 'Security', count: securityCount, icon: Shield },
+    ...(ticketCount > 0 || staff
+      ? [{ id: 'tickets' as const, label: 'Tickets', count: ticketCount, icon: LifeBuoy }]
+      : []),
     ...(nodeCount > 0 ? [{ id: 'nodes' as const, label: 'Nodes', count: nodeCount, icon: HardDrive }] : []),
   ];
 
@@ -592,6 +616,7 @@ export function AlertsPage() {
                               {selected ? (
                                 <AlertLetter
                                   event={event}
+                                  staff={staff}
                                   busy={busyId === event.id}
                                   onDelete={() => void deleteOne(event.id)}
                                   onMarkRead={() => void markRead(event.id)}
@@ -627,16 +652,18 @@ export function AlertsPage() {
 
 function AlertLetter({
   event,
+  staff,
   busy,
   onDelete,
   onMarkRead,
 }: {
   event: AlertEventSummary;
+  staff?: boolean;
   busy: boolean;
   onDelete: () => void;
   onMarkRead: () => void;
 }) {
-  const action = eventAction(event);
+  const action = eventAction(event, { staff });
   const unreadItem = !event.readAt;
 
   return (

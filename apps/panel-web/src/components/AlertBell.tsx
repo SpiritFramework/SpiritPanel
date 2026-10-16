@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { api } from '../lib/api';
 
-/** Compact unread badge linking to /alerts. Polls every 45s. */
+/** Compact unread badge linking to /alerts. Polls every 15s. */
 export function AlertBell({ to = '/alerts' }: { to?: string }) {
   const [unread, setUnread] = useState(0);
 
@@ -18,7 +18,7 @@ export function AlertBell({ to = '/alerts' }: { to?: string }) {
 
   useEffect(() => {
     void refresh();
-    const id = window.setInterval(() => void refresh(), 45_000);
+    const id = window.setInterval(() => void refresh(), 15_000);
     const onFocus = () => void refresh();
     window.addEventListener('focus', onFocus);
     window.addEventListener('spirit-alerts-changed', onFocus);

@@ -17,6 +17,7 @@ import {
   parseTicketMessageRequest,
   reloadTicketDetail,
 } from '../services/ticket-messages.js';
+import { notifyStaffTicketAlert } from '../services/alerts.js';
 import { notifyTicketDiscordEvent } from '../services/ticket-discord.js';
 import {
   assertAssigneeIsStaff,
@@ -166,6 +167,15 @@ export async function clientTicketRoutes(app: FastifyInstance) {
       });
 
       void notifyTicketDiscordEvent(request.log, 'opened', ticket, body.message, 0).catch(() => {});
+      void notifyStaffTicketAlert({
+        metric: 'ticket_opened',
+        ticketId: ticket.id,
+        ticketNumber: ticket.number,
+        subject: ticket.subject,
+        username: request.user!.username,
+        serverId: ticket.serverId,
+        severity: ticket.priority === 'urgent' ? 'critical' : 'info',
+      }).catch(() => {});
 
       return reply.status(201).send({
         ...serializeTicketSummary({ ...ticket, messages: ticket.messages.slice(-1) }),
@@ -247,6 +257,15 @@ export async function clientTicketRoutes(app: FastifyInstance) {
         payload.body,
         payload.images.length,
       ).catch(() => {});
+      void notifyStaffTicketAlert({
+        metric: 'ticket_user_reply',
+        ticketId: updated.id,
+        ticketNumber: updated.number,
+        subject: updated.subject,
+        username: request.user!.username,
+        serverId: updated.serverId,
+        severity: updated.priority === 'urgent' ? 'critical' : 'warning',
+      }).catch(() => {});
 
       return serializeTicketDetail(updated);
     } catch (err) {

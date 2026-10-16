@@ -175,11 +175,34 @@ button.tickets-inbox__stat:hover {
   color: var(--muted);
 }
 
+.tickets-inbox__stat--success .tickets-inbox__stat-value,
+.tickets-inbox__stat--success .tickets-inbox__stat-icon {
+  color: var(--success-fg);
+}
+
+.tickets-inbox__stat--success .tickets-inbox__stat-icon {
+  background: color-mix(in srgb, var(--success-fg) 12%, transparent);
+  border-color: color-mix(in srgb, var(--success-fg) 28%, var(--border));
+}
+
+.tickets-inbox__stat--info .tickets-inbox__stat-value,
+.tickets-inbox__stat--info .tickets-inbox__stat-icon {
+  color: var(--info-fg);
+}
+
+.tickets-inbox__stat--info .tickets-inbox__stat-icon {
+  background: color-mix(in srgb, var(--info-fg) 12%, transparent);
+  border-color: color-mix(in srgb, var(--info-fg) 28%, var(--border));
+}
+
+.tickets-inbox__stat--warn .tickets-inbox__stat-value,
+.tickets-inbox__stat--warn .tickets-inbox__stat-icon,
 .tickets-inbox__stat--warning .tickets-inbox__stat-value,
 .tickets-inbox__stat--warning .tickets-inbox__stat-icon {
   color: var(--warning-fg);
 }
 
+.tickets-inbox__stat--warn .tickets-inbox__stat-icon,
 .tickets-inbox__stat--warning .tickets-inbox__stat-icon {
   background: color-mix(in srgb, var(--warning-fg) 12%, transparent);
   border-color: color-mix(in srgb, var(--warning-fg) 28%, var(--border));
@@ -195,9 +218,18 @@ button.tickets-inbox__stat:hover {
   border-color: color-mix(in srgb, var(--danger-fg) 28%, var(--border));
 }
 
+.tickets-inbox__stat--accent .tickets-inbox__stat-value,
+.tickets-inbox__stat--accent .tickets-inbox__stat-icon {
+  color: var(--accent-hover);
+}
+
+.tickets-inbox__stat--accent .tickets-inbox__stat-icon {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
 .tickets-inbox__stat.is-active .tickets-inbox__stat-icon {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  color: var(--accent-hover);
 }
 
 .tickets-inbox__callout {

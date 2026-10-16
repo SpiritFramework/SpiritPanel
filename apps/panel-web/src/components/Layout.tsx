@@ -34,6 +34,7 @@ import { SelectControl } from './SelectControl';
 import { AuthorAttribution } from './AuthorAttribution';
 import { InstallAppButton } from './InstallAppButton';
 import { AlertBell } from './AlertBell';
+import { LiveAlertToasts } from './LiveAlertToasts';
 import { RouteErrorBoundary } from './ErrorBoundary';
 
 export { SelectControl } from './SelectControl';
@@ -129,6 +130,7 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
           <div className="flex items-center gap-1.5">
             <AlertBell />
+            <LiveAlertToasts />
             <ThemeToggle compact />
           </div>
         </div>
@@ -208,6 +210,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
           <div className="flex items-center gap-1.5">
             <AlertBell />
+            <LiveAlertToasts />
             <ThemeToggle compact />
           </div>
         </div>

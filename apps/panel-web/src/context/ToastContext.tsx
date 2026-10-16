@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Info, TriangleAlert, X, XCircle } from 'lucide-react';
 
 export type ToastTone = 'success' | 'error' | 'warning' | 'info';
@@ -8,14 +9,17 @@ interface Toast {
   tone: ToastTone;
   title: string;
   description?: string;
+  to?: string;
 }
 
+type ToastFn = (title: string, description?: string, to?: string) => void;
+
 interface ToastContextValue {
-  toast: (tone: ToastTone, title: string, description?: string) => void;
-  success: (title: string, description?: string) => void;
-  error: (title: string, description?: string) => void;
-  warning: (title: string, description?: string) => void;
-  info: (title: string, description?: string) => void;
+  toast: (tone: ToastTone, title: string, description?: string, to?: string) => void;
+  success: ToastFn;
+  error: ToastFn;
+  warning: ToastFn;
+  info: ToastFn;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -36,9 +40,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toast = useCallback(
-    (tone: ToastTone, title: string, description?: string) => {
+    (tone: ToastTone, title: string, description?: string, to?: string) => {
       const id = ++idRef.current;
-      setToasts((prev) => [...prev, { id, tone, title, description }]);
+      setToasts((prev) => [...prev, { id, tone, title, description, to }]);
       window.setTimeout(() => dismiss(id), 5000);
     },
     [dismiss],
@@ -47,10 +51,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ToastContextValue>(
     () => ({
       toast,
-      success: (t, d) => toast('success', t, d),
-      error: (t, d) => toast('error', t, d),
-      warning: (t, d) => toast('warning', t, d),
-      info: (t, d) => toast('info', t, d),
+      success: (t, d, to) => toast('success', t, d, to),
+      error: (t, d, to) => toast('error', t, d, to),
+      warning: (t, d, to) => toast('warning', t, d, to),
+      info: (t, d, to) => toast('info', t, d, to),
     }),
     [toast],
   );
@@ -62,16 +66,36 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => {
           const meta = TONE_META[t.tone];
           const Icon = meta.icon;
+          const body = (
+            <>
+              <Icon size={18} style={{ color: meta.color }} className="mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--text)]">{t.title}</p>
+                {t.description && <p className="mt-0.5 text-xs text-[var(--muted)]">{t.description}</p>}
+                {t.to ? (
+                  <p className="mt-1 text-xs font-medium text-[var(--accent)]">
+                    {t.to.startsWith('/admin/tickets') ? 'Open ticket' : 'View alerts'}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          );
           return (
             <div
               key={t.id}
               className="toast-enter pointer-events-auto flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-lg)]"
             >
-              <Icon size={18} style={{ color: meta.color }} className="mt-0.5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--text)]">{t.title}</p>
-                {t.description && <p className="mt-0.5 text-xs text-[var(--muted)]">{t.description}</p>}
-              </div>
+              {t.to ? (
+                <Link
+                  to={t.to}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-inherit no-underline"
+                  onClick={() => dismiss(t.id)}
+                >
+                  {body}
+                </Link>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-start gap-3">{body}</div>
+              )}
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}

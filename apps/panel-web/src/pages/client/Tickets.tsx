@@ -168,7 +168,7 @@ export function TicketsPage() {
               </div>
 
               <div className="tickets-inbox__stats" role="list" aria-label="Ticket summary">
-                <div className="tickets-inbox__stat" role="listitem">
+                <div className="tickets-inbox__stat tickets-inbox__stat--info" role="listitem">
                   <span className="tickets-inbox__stat-top">
                     <span className="tickets-inbox__stat-icon" aria-hidden>
                       <Inbox className="h-3.5 w-3.5" />
@@ -180,7 +180,7 @@ export function TicketsPage() {
                 <button
                   type="button"
                   role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action${stats.awaiting ? ' tickets-inbox__stat--warning' : ''}${filter === 'awaiting' ? ' is-active' : ''}`}
+                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--warn${filter === 'awaiting' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'awaiting' ? 'all' : 'awaiting')}
                 >
                   <span className="tickets-inbox__stat-top">
@@ -191,7 +191,7 @@ export function TicketsPage() {
                   </span>
                   <span className="tickets-inbox__stat-label">Awaiting you</span>
                 </button>
-                <div className="tickets-inbox__stat" role="listitem">
+                <div className="tickets-inbox__stat tickets-inbox__stat--success" role="listitem">
                   <span className="tickets-inbox__stat-top">
                     <span className="tickets-inbox__stat-icon" aria-hidden>
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ export function TicketsPage() {
                   </span>
                   <span className="tickets-inbox__stat-label">Closed</span>
                 </div>
-                <div className="tickets-inbox__stat" role="listitem">
+                <div className="tickets-inbox__stat tickets-inbox__stat--accent" role="listitem">
                   <span className="tickets-inbox__stat-top">
                     <span className="tickets-inbox__stat-icon" aria-hidden>
                       <Layers className="h-3.5 w-3.5" />

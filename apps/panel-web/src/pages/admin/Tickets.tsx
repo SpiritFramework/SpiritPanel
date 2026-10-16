@@ -141,7 +141,7 @@ export function AdminTicketsPage() {
                 <button
                   type="button"
                   role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action${filter === 'open' ? ' is-active' : ''}`}
+                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--info${filter === 'open' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'open' ? 'all' : 'open')}
                 >
                   <span className="tickets-inbox__stat-top">
@@ -155,7 +155,7 @@ export function AdminTicketsPage() {
                 <button
                   type="button"
                   role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action${stats.needsReply ? ' tickets-inbox__stat--warning' : ''}${filter === 'needs_reply' ? ' is-active' : ''}`}
+                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--warn${filter === 'needs_reply' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'needs_reply' ? 'all' : 'needs_reply')}
                 >
                   <span className="tickets-inbox__stat-top">
@@ -169,7 +169,7 @@ export function AdminTicketsPage() {
                 <button
                   type="button"
                   role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action${stats.urgent ? ' tickets-inbox__stat--danger' : ''}${filter === 'urgent' ? ' is-active' : ''}`}
+                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--danger${filter === 'urgent' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'urgent' ? 'all' : 'urgent')}
                 >
                   <span className="tickets-inbox__stat-top">
@@ -180,7 +180,7 @@ export function AdminTicketsPage() {
                   </span>
                   <span className="tickets-inbox__stat-label">Urgent</span>
                 </button>
-                <div className="tickets-inbox__stat" role="listitem">
+                <div className="tickets-inbox__stat tickets-inbox__stat--success" role="listitem">
                   <span className="tickets-inbox__stat-top">
                     <span className="tickets-inbox__stat-icon" aria-hidden>
                       <CheckCircle2 className="h-3.5 w-3.5" />

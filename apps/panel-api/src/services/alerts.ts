@@ -24,6 +24,8 @@ export const DEFAULT_WATCHES: Record<
   account_api_key: { cooldownSec: 60, thresholdPct: 0 },
   server_subuser: { cooldownSec: 60, thresholdPct: 0 },
   node_offline: { cooldownSec: 600, thresholdPct: 0 },
+  ticket_opened: { cooldownSec: 30, thresholdPct: 0 },
+  ticket_user_reply: { cooldownSec: 30, thresholdPct: 0 },
 };
 
 const STOPPED_STATES = new Set(['offline', 'stopped']);
@@ -55,9 +57,11 @@ async function cooldownReady(
   metric: AlertMetricId,
   serverId?: string | null,
   nodeId?: string | null,
+  ticketId?: string | null,
 ): Promise<boolean> {
   const cooldownSec = DEFAULT_WATCHES[metric]?.cooldownSec ?? 900;
-  const since = new Date(Date.now() - Math.max(60, cooldownSec) * 1000);
+  const minWindowSec = metric.startsWith('ticket_') ? 1 : 60;
+  const since = new Date(Date.now() - Math.max(minWindowSec, cooldownSec) * 1000);
   const recent = await prisma.alertEvent.findFirst({
     where: {
       userId,
@@ -65,6 +69,7 @@ async function cooldownReady(
       createdAt: { gte: since },
       ...(serverId ? { serverId } : {}),
       ...(nodeId ? { nodeId } : {}),
+      ...(ticketId ? { ticketId } : {}),
     },
     select: { id: true },
   });
@@ -79,14 +84,26 @@ async function deliverInboxAlert(input: {
   severity?: string;
   serverId?: string | null;
   nodeId?: string | null;
+  ticketId?: string | null;
   valuePct?: number | null;
 }) {
-  if (!(await cooldownReady(input.userId, input.metric, input.serverId, input.nodeId))) return;
+  if (
+    !(await cooldownReady(
+      input.userId,
+      input.metric,
+      input.serverId,
+      input.nodeId,
+      input.ticketId,
+    ))
+  ) {
+    return;
+  }
   await prisma.alertEvent.create({
     data: {
       userId: input.userId,
       serverId: input.serverId ?? null,
       nodeId: input.nodeId ?? null,
+      ticketId: input.ticketId ?? null,
       metric: input.metric,
       severity: input.severity ?? 'warning',
       title: input.title,
@@ -124,6 +141,18 @@ async function listAdminInboxUserIds() {
   return admins.map((u) => u.id);
 }
 
+/** Staff + full admins who handle the tickets inbox. */
+async function listStaffInboxUserIds() {
+  const staff = await prisma.user.findMany({
+    where: {
+      enabled: true,
+      OR: [{ role: { in: ['admin', 'staff'] } }, { rootAdmin: true }],
+    },
+    select: { id: true },
+  });
+  return staff.map((u) => u.id);
+}
+
 async function deliverToUsers(
   userIds: string[],
   input: {
@@ -133,6 +162,7 @@ async function deliverToUsers(
     severity?: string;
     serverId?: string | null;
     nodeId?: string | null;
+    ticketId?: string | null;
     valuePct?: number | null;
   },
 ) {
@@ -337,5 +367,37 @@ export async function notifyUserAlertMetric(
     severity: input.severity ?? 'warning',
     serverId: input.serverId ?? null,
     valuePct: input.valuePct ?? null,
+  });
+}
+
+/** Notify staff/admins when a user opens a ticket or replies. */
+export async function notifyStaffTicketAlert(input: {
+  metric: 'ticket_opened' | 'ticket_user_reply';
+  ticketId: string;
+  ticketNumber: number;
+  subject: string;
+  username: string;
+  serverId?: string | null;
+  severity?: string;
+}) {
+  const userIds = await listStaffInboxUserIds();
+  if (userIds.length === 0) return;
+
+  const title =
+    input.metric === 'ticket_opened'
+      ? `Ticket #${input.ticketNumber} opened`
+      : `Ticket #${input.ticketNumber} — user replied`;
+  const message =
+    input.metric === 'ticket_opened'
+      ? `@${input.username} opened “${input.subject}”.`
+      : `@${input.username} replied on “${input.subject}”.`;
+
+  await deliverToUsers(userIds, {
+    metric: input.metric,
+    title,
+    message,
+    severity: input.severity ?? (input.metric === 'ticket_opened' ? 'info' : 'warning'),
+    serverId: input.serverId ?? null,
+    ticketId: input.ticketId,
   });
 }

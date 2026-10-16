@@ -17,6 +17,7 @@ function serializeEvent(event: {
   userId: string;
   serverId: string | null;
   nodeId: string | null;
+  ticketId?: string | null;
   metric: string;
   severity: string;
   title: string;
@@ -32,6 +33,7 @@ function serializeEvent(event: {
     userId: event.userId,
     serverId: event.serverId,
     nodeId: event.nodeId,
+    ticketId: event.ticketId ?? null,
     metric: event.metric,
     severity: event.severity,
     title: event.title,
