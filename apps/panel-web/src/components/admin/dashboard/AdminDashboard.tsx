@@ -14,15 +14,16 @@ import type { DashboardNodeHealth } from '../../../pages/admin/dashboard/types';
 import type { AdminDashboardController } from '../../../pages/admin/dashboard/useAdminDashboard';
 import { Button, Page } from '../../Layout';
 import { EmptyState } from '../../ui';
-import { DashboardAttentionStrip } from './DashboardAttentionStrip';
 import { DashboardCapacityPanel } from './DashboardCapacityPanel';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardQuickActions } from './DashboardQuickActions';
+import { DashboardWorkQueue } from './DashboardWorkQueue';
 import { PanelUpdateBanner } from './PanelUpdateBanner';
 
 export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
   const { user } = useAuth();
-  const { stats, ticketQueue, nodeHealth, recentActivity, error, refreshing, refresh } = ctrl;
+  const { stats, ticketQueue, attentionServers, nodeHealth, recentActivity, error, refreshing, refresh } =
+    ctrl;
 
   const name = user?.firstName?.trim() || user?.username || 'Admin';
 
@@ -45,7 +46,9 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
         </div>
       ) : null}
 
-      {!error ? <DashboardAttentionStrip stats={stats} ticketQueue={ticketQueue} /> : null}
+      {!error ? (
+        <DashboardWorkQueue ticketQueue={ticketQueue} attentionServers={attentionServers} />
+      ) : null}
 
       <div className="ds-admin-dash__mid">
         <DashboardCapacityPanel stats={stats} nodeHealth={nodeHealth} />

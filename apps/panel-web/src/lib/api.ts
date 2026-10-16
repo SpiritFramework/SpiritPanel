@@ -357,7 +357,29 @@ export interface AdminDashboardResponse {
     open: number;
     needsReply: number;
     urgent: number;
+    items: Array<{
+      id: string;
+      number: number;
+      subject: string;
+      priority: string;
+      status: string;
+      updatedAt: string;
+      needsReply: boolean;
+      user: { username: string; firstName?: string | null; lastName?: string | null };
+    }>;
   };
+  attentionServers: Array<{
+    id: string;
+    name: string;
+    status: string;
+    suspended: boolean;
+    installStatus?: string;
+    containerState?: string | null;
+    updatedAt: string;
+    owner: { username: string };
+    node: { name: string };
+    egg: { name: string; logoUrl?: string | null };
+  }>;
   nodeHealth: Array<{
     id: string;
     name: string;
@@ -371,19 +393,6 @@ export interface AdminDashboardResponse {
     serverCount: number;
     allocationCount: number;
     capacity?: NodeCapacityStats;
-  }>;
-  recentServers: Array<{
-    id: string;
-    name: string;
-    status: string;
-    suspended: boolean;
-    installStatus?: string;
-    containerState?: string | null;
-    createdAt: string;
-    owner: { username: string };
-    node: { name: string; fqdn?: string };
-    egg: { name: string; logoUrl?: string | null };
-    defaultAllocation: { ip: string; port: number; alias?: string | null };
   }>;
   recentActivity: Array<{
     id: string;

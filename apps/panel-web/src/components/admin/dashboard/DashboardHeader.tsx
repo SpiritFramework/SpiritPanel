@@ -56,7 +56,7 @@ export function DashboardHeader({
             <p className="ds-servers-fleet-greeting">
               {greetingForHour()}, {name}
             </p>
-            <h1 className="ds-servers-fleet-title">Admin</h1>
+            <h1 className="ds-servers-fleet-title">Admin Panel</h1>
             <div className="ds-servers-fleet-brand">
               <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
               {branding.tagline ? (

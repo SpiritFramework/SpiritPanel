@@ -43,6 +43,22 @@ export function DashboardCapacityPanel({
   const diskPct =
     totals.diskLimit > 0 ? Math.min(100, Math.round((totals.diskUsed / totals.diskLimit) * 100)) : 0;
 
+  const hotspots = nodeHealth
+    .map((node) => {
+      const mem = node.capacity?.memoryUsedPercent ?? 0;
+      const disk = node.capacity?.diskUsedPercent ?? 0;
+      const pressure = Math.max(mem, disk, node.online && !node.maintenanceMode ? 0 : 100);
+      const kind = !node.online || node.maintenanceMode
+        ? ('reach' as const)
+        : disk >= mem
+          ? ('disk' as const)
+          : ('mem' as const);
+      return { node, pressure, kind, mem, disk };
+    })
+    .filter((row) => row.pressure >= 70 || !row.node.online || row.node.maintenanceMode)
+    .sort((a, b) => b.pressure - a.pressure)
+    .slice(0, 3);
+
   return (
     <section className="ds-admin-dash__card ds-admin-dash__card--capacity">
       <header className="ds-admin-dash__card-head">
@@ -117,6 +133,38 @@ export function DashboardCapacityPanel({
             </p>
           </div>
         </div>
+
+        {hotspots.length > 0 ? (
+          <div className="ds-admin-dash__hotspots">
+            <p className="ds-admin-dash__hotspots-label">Pressure hotspots</p>
+            <ul className="ds-admin-dash__hotspots-list">
+              {hotspots.map(({ node, pressure, kind, mem, disk }) => {
+                const tone = !node.online || node.maintenanceMode ? 'bad' : toneForPct(pressure);
+                const hint = !node.online
+                  ? 'Offline'
+                  : node.maintenanceMode
+                    ? 'Maintenance'
+                    : kind === 'disk'
+                      ? `Disk ${Math.round(disk)}%`
+                      : `RAM ${Math.round(mem)}%`;
+                return (
+                  <li key={node.id}>
+                    <Link
+                      to={`/admin/nodes/${node.id}`}
+                      className={`ds-admin-dash__hotspot ds-admin-dash__hotspot--${tone}`}
+                    >
+                      <span className="ds-admin-dash__hotspot-name">{node.name}</span>
+                      <span className="ds-admin-dash__hotspot-hint">{hint}</span>
+                      <span className="ds-admin-dash__hotspot-bar" aria-hidden>
+                        <span style={{ width: `${Math.min(100, pressure)}%` }} />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </section>
   );

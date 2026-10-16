@@ -12,10 +12,35 @@ export interface DashboardStats {
   allocationsUsed: number;
 }
 
+export interface DashboardTicketQueueItem {
+  id: string;
+  number: number;
+  subject: string;
+  priority: string;
+  status: string;
+  updatedAt: string;
+  needsReply: boolean;
+  user: { username: string; firstName?: string | null; lastName?: string | null };
+}
+
 export interface DashboardTicketQueue {
   open: number;
   needsReply: number;
   urgent: number;
+  items: DashboardTicketQueueItem[];
+}
+
+export interface DashboardAttentionServer {
+  id: string;
+  name: string;
+  status: string;
+  suspended: boolean;
+  installStatus?: string;
+  containerState?: string | null;
+  updatedAt: string;
+  owner: { username: string };
+  node: { name: string };
+  egg: { name: string; logoUrl?: string | null };
 }
 
 export interface DashboardNodeHealth {
@@ -33,20 +58,6 @@ export interface DashboardNodeHealth {
   capacity?: NodeCapacityStats;
 }
 
-export interface DashboardRecentServer {
-  id: string;
-  name: string;
-  status: string;
-  suspended: boolean;
-  installStatus?: string;
-  containerState?: string | null;
-  createdAt: string;
-  owner: { username: string };
-  node: { name: string; fqdn?: string };
-  egg: { name: string; logoUrl?: string | null };
-  defaultAllocation: { ip: string; port: number; alias?: string | null };
-}
-
 export interface DashboardActivityItem {
   id: string;
   event: string;
@@ -59,8 +70,8 @@ export interface DashboardActivityItem {
 export interface DashboardData {
   stats: DashboardStats;
   ticketQueue: DashboardTicketQueue;
+  attentionServers: DashboardAttentionServer[];
   nodeHealth: DashboardNodeHealth[];
-  recentServers: DashboardRecentServer[];
   recentActivity: DashboardActivityItem[];
 }
 
@@ -80,6 +91,7 @@ export const EMPTY_TICKET_QUEUE: DashboardTicketQueue = {
   open: 0,
   needsReply: 0,
   urgent: 0,
+  items: [],
 };
 
 export function greetingForHour(date = new Date()): string {

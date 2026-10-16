@@ -14,9 +14,13 @@ async function fetchDashboard(): Promise<DashboardData> {
   const data: AdminDashboardResponse = await api.admin.dashboard();
   return {
     stats: data.stats ?? EMPTY_DASHBOARD_STATS,
-    ticketQueue: data.ticketQueue ?? EMPTY_TICKET_QUEUE,
+    ticketQueue: {
+      ...EMPTY_TICKET_QUEUE,
+      ...(data.ticketQueue ?? {}),
+      items: data.ticketQueue?.items ?? [],
+    },
+    attentionServers: data.attentionServers ?? [],
     nodeHealth: data.nodeHealth ?? [],
-    recentServers: data.recentServers ?? [],
     recentActivity: data.recentActivity ?? [],
   };
 }
@@ -26,8 +30,8 @@ export function useAdminDashboard() {
 
   const stats = data?.stats ?? EMPTY_DASHBOARD_STATS;
   const ticketQueue = data?.ticketQueue ?? EMPTY_TICKET_QUEUE;
+  const attentionServers = data?.attentionServers ?? [];
   const nodeHealth = data?.nodeHealth ?? [];
-  const recentServers = data?.recentServers ?? [];
   const recentActivity = data?.recentActivity ?? [];
 
   const refresh = useCallback(async () => {
@@ -47,8 +51,8 @@ export function useAdminDashboard() {
   return {
     stats,
     ticketQueue,
+    attentionServers,
     nodeHealth,
-    recentServers,
     recentActivity,
     loading,
     refreshing: validating && data !== null,

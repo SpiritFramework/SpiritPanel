@@ -143,7 +143,7 @@ export async function adminRoutes(app: FastifyInstance) {
       allocationsUsed,
       nests,
       recentActivity,
-      recentServers,
+      attentionServers,
       openTickets,
     ] = await Promise.all([
       prisma.user.count(),
@@ -169,28 +169,41 @@ export async function adminRoutes(app: FastifyInstance) {
         },
       }),
       prisma.server.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 6,
+        where: {
+          OR: [
+            { suspended: true },
+            { status: { in: ['installing', 'install_failed'] } },
+            { installStatus: { in: ['installing', 'failed'] } },
+          ],
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
         select: {
           id: true,
           uuid: true,
+          nodeId: true,
           name: true,
           status: true,
           suspended: true,
           installStatus: true,
           containerState: true,
-          nodeId: true,
-          createdAt: true,
+          updatedAt: true,
           owner: { select: { username: true } },
-          node: { select: { name: true, fqdn: true } },
+          node: { select: { name: true } },
           egg: { select: { name: true, logoUrl: true } },
-          defaultAllocation: { select: { ip: true, port: true, alias: true } },
         },
       }),
       prisma.supportTicket.findMany({
         where: { status: { in: [...openTicketStatuses] } },
+        orderBy: { updatedAt: 'desc' },
         select: {
+          id: true,
+          number: true,
+          subject: true,
           priority: true,
+          status: true,
+          updatedAt: true,
+          user: { select: { username: true, firstName: true, lastName: true } },
           messages: {
             orderBy: { createdAt: 'desc' },
             take: 1,
@@ -211,12 +224,40 @@ export async function adminRoutes(app: FastifyInstance) {
     );
 
     const nodesOnline = nodeHealth.filter((n) => n.online).length;
-    const recentServersLive = await enrichServerRefsWithLiveState(recentServers);
+    const attentionServersLive = await enrichServerRefsWithLiveState(attentionServers);
+
+    const needsReplyTickets = openTickets.filter((t) => !t.messages[0]?.isStaff);
+    const urgentOpen = openTickets.filter((t) => t.priority === 'urgent');
+
+    // Urgent first, then needs-reply; de-dupe and cap for the work queue list.
+    const ticketItemsMap = new Map<string, (typeof openTickets)[number]>();
+    for (const ticket of [...urgentOpen, ...needsReplyTickets]) {
+      ticketItemsMap.set(ticket.id, ticket);
+    }
+    const ticketItems = [...ticketItemsMap.values()]
+      .sort((a, b) => {
+        const aUrgent = a.priority === 'urgent' ? 0 : 1;
+        const bUrgent = b.priority === 'urgent' ? 0 : 1;
+        if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+      })
+      .slice(0, 6)
+      .map((t) => ({
+        id: t.id,
+        number: t.number,
+        subject: t.subject,
+        priority: t.priority,
+        status: t.status,
+        updatedAt: t.updatedAt,
+        needsReply: !t.messages[0]?.isStaff,
+        user: t.user,
+      }));
 
     const ticketQueue = {
       open: openTickets.length,
-      needsReply: openTickets.filter((t) => !t.messages[0]?.isStaff).length,
-      urgent: openTickets.filter((t) => t.priority === 'urgent').length,
+      needsReply: needsReplyTickets.length,
+      urgent: urgentOpen.length,
+      items: ticketItems,
     };
 
     return {
@@ -232,9 +273,9 @@ export async function adminRoutes(app: FastifyInstance) {
         allocationsUsed,
       },
       ticketQueue,
+      attentionServers: attentionServersLive,
       nodeHealth,
       recentActivity,
-      recentServers: recentServersLive,
     };
   });
 
