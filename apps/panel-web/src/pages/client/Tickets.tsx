@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  CheckCircle2,
   ChevronRight,
   Clock,
   Inbox,
+  Layers,
   LifeBuoy,
   MessageSquare,
   MessageSquarePlus,
@@ -167,7 +169,12 @@ export function TicketsPage() {
 
               <div className="tickets-inbox__stats" role="list" aria-label="Ticket summary">
                 <div className="tickets-inbox__stat" role="listitem">
-                  <span className="tickets-inbox__stat-value">{stats.open}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <Inbox className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.open}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Open</span>
                 </div>
                 <button
@@ -176,15 +183,30 @@ export function TicketsPage() {
                   className={`tickets-inbox__stat tickets-inbox__stat--action${stats.awaiting ? ' tickets-inbox__stat--warning' : ''}${filter === 'awaiting' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'awaiting' ? 'all' : 'awaiting')}
                 >
-                  <span className="tickets-inbox__stat-value">{stats.awaiting}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.awaiting}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Awaiting you</span>
                 </button>
                 <div className="tickets-inbox__stat" role="listitem">
-                  <span className="tickets-inbox__stat-value">{stats.closed}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.closed}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Closed</span>
                 </div>
                 <div className="tickets-inbox__stat" role="listitem">
-                  <span className="tickets-inbox__stat-value">{stats.total}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <Layers className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.total}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Total</span>
                 </div>
               </div>

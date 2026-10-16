@@ -29,11 +29,22 @@ import {
   type SecurityOverviewItem,
 } from './profile/ProfileSecurityOverview';
 
-function SecurityBadge({ active, activeLabel, inactiveLabel }: { active: boolean; activeLabel: string; inactiveLabel: string }) {
+function SecurityBadge({
+  active,
+  activeLabel,
+  inactiveLabel,
+  loading,
+}: {
+  active: boolean;
+  activeLabel: string;
+  inactiveLabel: string;
+  loading?: boolean;
+}) {
+  const tone = loading ? 'pending' : active ? 'on' : 'off';
   return (
-    <span className={`ds-sec-badge${active ? ' ds-sec-badge--on' : ''}`}>
+    <span className={`ds-sec-badge ds-sec-badge--${tone}`} title={loading ? 'Checking…' : undefined}>
       <span className="ds-sec-badge-dot" aria-hidden />
-      {active ? activeLabel : inactiveLabel}
+      {loading ? '…' : active ? activeLabel : inactiveLabel}
     </span>
   );
 }
@@ -128,7 +139,7 @@ function PasswordPanel({ minPasswordLength, onChanged }: { minPasswordLength: nu
       icon={Lock}
       title="Password"
       description={`Minimum ${minPasswordLength} characters — prefer a unique passphrase`}
-      badge={<SecurityBadge active activeLabel="Set" inactiveLabel="Unset" />}
+      badge={<SecurityBadge active activeLabel="Set" inactiveLabel="Not set" />}
     >
       <form onSubmit={savePassword}>
         <div className="ds-prof-password-grid">
@@ -319,7 +330,14 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
       icon={ShieldCheck}
       title="Two-factor authentication"
       description="Require an authenticator code when you sign in"
-      badge={<SecurityBadge active={enabled} activeLabel="Enabled" inactiveLabel="Disabled" />}
+      badge={
+        <SecurityBadge
+          active={enabled}
+          activeLabel="Enabled"
+          inactiveLabel="Off"
+          loading={loading}
+        />
+      }
     >
       {loading ? (
         <div className="ds-sec-loading">
@@ -499,7 +517,14 @@ function GithubPatPanel({ onChanged }: { onChanged: () => void }) {
       icon={Github}
       title="GitHub token"
       description="Use your own API rate limit for marketplace search and installs (5000 req/hr)"
-      badge={<SecurityBadge active={configured} activeLabel="Linked" inactiveLabel="Not linked" />}
+      badge={
+        <SecurityBadge
+          active={configured}
+          activeLabel="Linked"
+          inactiveLabel="Not linked"
+          loading={loading}
+        />
+      }
     >
       {loading ? (
         <div className="ds-sec-loading">
@@ -647,12 +672,12 @@ function SshKeysPanel({ onChanged }: { onChanged: () => void }) {
       title="SSH keys"
       description="Authenticate to SFTP with a public key instead of your password"
       badge={
-        keys.length > 0 ? (
-          <span className="ds-sec-badge ds-sec-badge--on">
-            <span className="ds-sec-badge-dot" aria-hidden />
-            {keys.length} key{keys.length === 1 ? '' : 's'}
-          </span>
-        ) : undefined
+        <SecurityBadge
+          active={keys.length > 0}
+          activeLabel={keys.length === 1 ? '1 key' : `${keys.length} keys`}
+          inactiveLabel="None"
+          loading={loading}
+        />
       }
     >
       {loading ? (
@@ -869,7 +894,14 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
       icon={DiscordIcon}
       title="Discord"
       description="Link Discord to sign in without your password next time"
-      badge={<SecurityBadge active={linked} activeLabel="Linked" inactiveLabel="Not linked" />}
+      badge={
+        <SecurityBadge
+          active={linked}
+          activeLabel="Linked"
+          inactiveLabel="Not linked"
+          loading={loading}
+        />
+      }
     >
       {loading ? (
         <div className="ds-sec-loading">

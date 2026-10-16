@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Headphones,
@@ -143,7 +144,12 @@ export function AdminTicketsPage() {
                   className={`tickets-inbox__stat tickets-inbox__stat--action${filter === 'open' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'open' ? 'all' : 'open')}
                 >
-                  <span className="tickets-inbox__stat-value">{stats.open}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <Inbox className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.open}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Open</span>
                 </button>
                 <button
@@ -152,7 +158,12 @@ export function AdminTicketsPage() {
                   className={`tickets-inbox__stat tickets-inbox__stat--action${stats.needsReply ? ' tickets-inbox__stat--warning' : ''}${filter === 'needs_reply' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'needs_reply' ? 'all' : 'needs_reply')}
                 >
-                  <span className="tickets-inbox__stat-value">{stats.needsReply}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.needsReply}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Needs reply</span>
                 </button>
                 <button
@@ -161,11 +172,21 @@ export function AdminTicketsPage() {
                   className={`tickets-inbox__stat tickets-inbox__stat--action${stats.urgent ? ' tickets-inbox__stat--danger' : ''}${filter === 'urgent' ? ' is-active' : ''}`}
                   onClick={() => setFilter(filter === 'urgent' ? 'all' : 'urgent')}
                 >
-                  <span className="tickets-inbox__stat-value">{stats.urgent}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.urgent}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Urgent</span>
                 </button>
                 <div className="tickets-inbox__stat" role="listitem">
-                  <span className="tickets-inbox__stat-value">{stats.closed}</span>
+                  <span className="tickets-inbox__stat-top">
+                    <span className="tickets-inbox__stat-icon" aria-hidden>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="tickets-inbox__stat-value">{stats.closed}</span>
+                  </span>
                   <span className="tickets-inbox__stat-label">Closed</span>
                 </div>
               </div>

@@ -30501,31 +30501,49 @@ button.ds-nodes-stat:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  padding: 0.2rem 0.55rem 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
   font-size: 0.625rem;
-  font-weight: 650;
-  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .ds-sec-badge--on {
-  border-color: color-mix(in srgb, var(--success-border, #22c55e) 35%, var(--border));
-  background: color-mix(in srgb, var(--success-bg, #14532d) 35%, var(--surface));
-  color: var(--success-fg, #22c55e);
+  border-color: color-mix(in srgb, var(--success-fg, #22c55e) 40%, var(--border));
+  background: color-mix(in srgb, var(--success-bg, #14532d) 55%, var(--surface));
+  color: var(--success-fg, #4ade80);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success-fg, #22c55e) 12%, transparent);
+}
+
+.ds-sec-badge--off {
+  border-color: color-mix(in srgb, var(--danger-fg, #ef4444) 42%, var(--border));
+  background: color-mix(in srgb, var(--danger-bg, #450a0a) 55%, var(--surface));
+  color: var(--danger-fg, #f87171);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger-fg, #ef4444) 12%, transparent);
+}
+
+.ds-sec-badge--pending {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--muted);
 }
 
 .ds-sec-badge-dot {
-  width: 0.35rem;
-  height: 0.35rem;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.65;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
+  opacity: 1;
 }
 
-.ds-sec-badge--on .ds-sec-badge-dot {
-  opacity: 1;
+.ds-sec-badge--pending .ds-sec-badge-dot {
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 .ds-sec-loading {
