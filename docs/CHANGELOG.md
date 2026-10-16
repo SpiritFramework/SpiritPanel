@@ -54,6 +54,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Admin System activity** cleaned up to the fleet-hero pattern: scope stats in the hero, single feed card (no nested node-detail chrome), search hint for loaded events, and a slim category/related rail.
 - **Admin dashboard redesigned** to match My Servers / Support: fleet hero with clickable health stats, needs-attention work queue (tickets + suspended/installing servers), capacity tiles with pressure hotspots, updated quick nav, and denser node / activity lists. Dashboard API returns `ticketQueue` (with items) and `attentionServers`.
 - **Support / Tickets hero** matches My Servers: brand mark, greeting, panel name row, summary line, and clickable fleet-style stats (client + admin).
 - **Profile → Security** polished: one score + status-chip strip, single-column Password → 2FA → Discord → GitHub → SSH (no duplicate sidebar overview).

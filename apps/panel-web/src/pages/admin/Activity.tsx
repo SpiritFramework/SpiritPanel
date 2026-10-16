@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ScrollText } from 'lucide-react';
 import { api, type ActivityLogEntry } from '../../lib/api';
 import { type ActivityEntry } from '../../lib/activity';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { isFullPanelAdmin } from '../../lib/roles';
-import { AdminLayout } from '../../components/Layout';
+import { AdminLayout, Page } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { NodeOverviewSection } from '../../components/admin/node-detail/NodeDetailShell';
-import { ScrollText } from 'lucide-react';
 import {
   AdminActivityHeader,
   ACTIVITY_SCOPES,
@@ -16,7 +15,6 @@ import {
   type ActivityScope,
 } from '../../components/admin/activity/AdminActivityHeader';
 import { AdminActivitySidebar } from '../../components/admin/activity/AdminActivitySidebar';
-import { AdminActivityStatsRow } from '../../components/admin/activity/AdminActivityStatsRow';
 import { PanelActivityFeedPanel } from '../../components/admin/activity/PanelActivityFeedPanel';
 import { groupPanelActivityByCategory } from '../../components/admin/activity/panel-activity-utils';
 
@@ -101,7 +99,7 @@ export function AdminActivity() {
 
   return (
     <AdminLayout>
-      <div className="ds-ad-act-page">
+      <Page className="ds-admin-act">
         <AdminActivityHeader
           activeScope={scope}
           onScopeChange={setScope}
@@ -118,40 +116,30 @@ export function AdminActivity() {
           }}
         />
 
-        <AdminActivityStatsRow
-          total={totals.total}
-          loaded={totals.loaded}
-          filtered={totals.filtered}
-          hasActiveFilters={totals.hasActiveFilters}
-          scopeLabel={activeScope.label}
-        />
+        <div className="ds-admin-act__workspace">
+          <section className="ds-admin-act__feed-card">
+            <header className="ds-admin-act__feed-head">
+              <span className="ds-admin-act__feed-head-icon" aria-hidden>
+                <ScrollText className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="ds-admin-act__feed-title">Activity log</h2>
+                <p className="ds-admin-act__feed-desc">{activeScope.description}. Search filters loaded events only.</p>
+              </div>
+            </header>
+            <PanelActivityFeedPanel
+              refreshKey={`${scope}-${refreshToken}`}
+              fetchPage={fetchPage}
+              onTotalsChange={setTotals}
+              onLoadedEntriesChange={setLoadedEntries}
+              emptyTitle="No panel activity yet"
+              emptyDescription="Logins, registrations, and admin actions will appear here."
+            />
+          </section>
 
-        <div className="ds-ad-act-workspace">
-          <div className="ds-ad-act-main">
-            <NodeOverviewSection
-              icon={ScrollText}
-              title="Activity log"
-              description={`${activeScope.description}. Search events below.`}
-            >
-              <PanelActivityFeedPanel
-                refreshKey={`${scope}-${refreshToken}`}
-                fetchPage={fetchPage}
-                onTotalsChange={setTotals}
-                onLoadedEntriesChange={setLoadedEntries}
-                emptyTitle="No panel activity yet"
-                emptyDescription="Logins, registrations, and admin actions will appear here."
-              />
-            </NodeOverviewSection>
-          </div>
-
-          <AdminActivitySidebar
-            scope={scope}
-            total={totals.total}
-            loaded={totals.loaded}
-            categoryRows={categoryRows}
-          />
+          <AdminActivitySidebar categoryRows={categoryRows} />
         </div>
-      </div>
+      </Page>
 
       <ConfirmModal
         open={clearOpen}

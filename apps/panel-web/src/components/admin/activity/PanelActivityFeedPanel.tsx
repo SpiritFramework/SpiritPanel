@@ -127,9 +127,9 @@ export function PanelActivityFeedPanel({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search events, users, IP…"
+            placeholder="Search loaded events…"
             className="ds-ad-act-search-input"
-            aria-label="Search activity"
+            aria-label="Search loaded activity events"
           />
         </div>
 
@@ -142,7 +142,7 @@ export function PanelActivityFeedPanel({
               </>
             ) : (
               <>
-                <strong>{entries.length}</strong> of <strong>{total}</strong> events
+                <strong>{entries.length}</strong> of <strong>{total}</strong> loaded
               </>
             )}
           </p>
