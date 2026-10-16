@@ -21,6 +21,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Security
 
+- **Dependency advisories cleared** (`pnpm audit` clean): `nodemailer` → 10.1.x, `fastify` → 5.12.7, `@fastify/multipart` → 10.1.4; overrides for `@fastify/busboy`, `fast-uri`, `http-cache-semantics`, and `source-map-js`.
 - **Session-only** for profile/2FA/PAT/SSH key changes; email change requires current password.
 - **Application API keys** require explicit permission scopes (no silent full-access default).
 - **Admin node detail** no longer returns `daemonTokenId` / daemon secrets.
