@@ -13,7 +13,7 @@ export function VariableRow({
   onChange?: (value: string) => void;
 }) {
   const multiline = variable.eggVariable.fieldType === 'textarea';
-  const locked = readOnly || !variable.eggVariable.userEditable;
+  const locked = Boolean(readOnly) || !variable.eggVariable.userEditable;
 
   return (
     <div className="ds-srv-stu-var">

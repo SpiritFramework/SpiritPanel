@@ -1,13 +1,10 @@
-import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   Ban,
-  ExternalLink,
   HardDrive,
   Play,
   RefreshCw,
   Server,
-  Settings2,
   Square,
   Trash2,
   User,
@@ -16,6 +13,7 @@ import {
 import { isServerInstalling } from '../../../lib/server-runtime';
 import { Button, Input, Select, Textarea } from '../../Layout';
 import { Checkbox } from '../../Checkbox';
+import { AdminServerStartupPanel } from './AdminServerStartupPanel';
 import { ServerDetailPanel } from './ServerDetailShell';
 import type { ServerDetailController } from '../../../pages/admin/server-detail/useServerDetail';
 
@@ -223,6 +221,8 @@ export function ServerManageDashboard({
         </ServerDetailPanel>
       ) : null}
 
+      {fullAdmin ? <AdminServerStartupPanel serverId={detail.id} /> : null}
+
       <ServerDetailPanel
         icon={Ban}
         title="Account status"
@@ -241,22 +241,6 @@ export function ServerManageDashboard({
           </p>
         ) : null}
       </ServerDetailPanel>
-
-      {fullAdmin ? (
-        <ServerDetailPanel
-          icon={Settings2}
-          title="Startup"
-          description="Edit the startup command, Docker image, and egg variables for this user's server"
-        >
-          <p className="ds-asd-muted-line font-mono text-[11px] break-all">{detail.startup}</p>
-          <Link to={`/admin/servers/${detail.id}/manage/startup`} className="inline-flex">
-            <Button type="button" variant="secondary" size="sm">
-              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              Edit startup
-            </Button>
-          </Link>
-        </ServerDetailPanel>
-      ) : null}
 
       {fullAdmin ? (
         <ServerDetailPanel

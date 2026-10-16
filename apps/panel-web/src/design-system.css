@@ -20938,6 +20938,26 @@ button.ds-nodes-stat:hover {
   overflow: hidden;
 }
 
+.ds-srv-stu-shell--embedded {
+  box-shadow: none;
+}
+
+.ds-asd-startup-embed {
+  min-width: 0;
+}
+
+.ds-asd-startup-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ds-srv-stu-notice--support {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: color-mix(in srgb, var(--text) 88%, var(--accent));
+}
+
 .ds-srv-stu-header {
   position: relative;
   border-bottom: 1px solid var(--border);

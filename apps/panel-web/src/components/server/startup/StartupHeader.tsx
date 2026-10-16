@@ -12,6 +12,7 @@ export function StartupHeader({
   canUpdate,
   refreshing,
   editableCount,
+  embedded = false,
   onRefresh,
   onReset,
   onSave,
@@ -25,12 +26,14 @@ export function StartupHeader({
   canUpdate: boolean;
   refreshing: boolean;
   editableCount: number;
+  embedded?: boolean;
   onRefresh: () => void;
   onReset: () => void;
   onSave: () => void;
 }) {
   const statusLabel = hasChanges ? 'Unsaved changes' : saved ? 'Saved' : 'Up to date';
   const statusTone = hasChanges ? 'warning' : saved ? 'success' : 'neutral';
+  const TitleTag = embedded ? 'h2' : 'h1';
 
   return (
     <header className="ds-srv-stu-header">
@@ -44,15 +47,23 @@ export function StartupHeader({
             </div>
             <div className="min-w-0 flex-1">
               <div className="ds-srv-stu-header-title-row">
-                <h1 className="ds-srv-stu-header-title truncate">{serverName}</h1>
-                <span className="ds-srv-stu-header-sep" aria-hidden>
-                  /
-                </span>
-                <span className="ds-srv-stu-header-route">Startup</span>
+                <TitleTag className="ds-srv-stu-header-title truncate">
+                  {embedded ? 'Startup & environment' : serverName}
+                </TitleTag>
+                {!embedded ? (
+                  <>
+                    <span className="ds-srv-stu-header-sep" aria-hidden>
+                      /
+                    </span>
+                    <span className="ds-srv-stu-header-route">Startup</span>
+                  </>
+                ) : null}
                 <StatusPill label={statusLabel} tone={statusTone} compact />
               </div>
               <p className="ds-srv-stu-header-meta truncate">
-                Command template, docker image &amp; environment for {eggName}
+                {embedded
+                  ? `Edit command, Docker image, and variables for ${eggName}`
+                  : `Command template, docker image & environment for ${eggName}`}
               </p>
             </div>
           </div>

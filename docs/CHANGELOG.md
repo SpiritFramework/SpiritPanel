@@ -45,6 +45,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Admin → Servers → detail → Manage** embeds the full Startup & environment editor (command, Docker image, variables) for full admins when Admin server support is enabled, including egg-locked variables.
 - **Admin → Servers → Manage → Startup** works for all full panel admins (not only rootAdmin) when Admin server support is enabled: edit startup command, docker image, and egg-locked variables.
 - **Console auto-scroll** stays on by default and no longer flips off when re-enabled or when new lines arrive (only turns off if you scroll away or toggle it off).
 - **My Servers** no longer shows Online / Offline / Installing / Total twice (hero stats and filter pills). Status filters live on the hero only; Suspended is included there too.

@@ -6,9 +6,15 @@ import { StartupCommandPanel } from './StartupCommandPanel';
 import { StartupPreviewPanel } from './StartupPreviewPanel';
 import { StartupVariablesPanel } from './StartupVariablesPanel';
 
-export function ServerStartupDashboard() {
+export function ServerStartupDashboard({
+  variant = 'page',
+}: {
+  /** Compact chrome when nested under Admin → Servers → detail → Manage. */
+  variant?: 'page' | 'embedded';
+}) {
   const stu = useServerStartup();
   const [refreshing, setRefreshing] = useState(false);
+  const embedded = variant === 'embedded';
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -17,7 +23,7 @@ export function ServerStartupDashboard() {
   }
 
   return (
-    <div className="ds-srv-stu-shell">
+    <div className={`ds-srv-stu-shell${embedded ? ' ds-srv-stu-shell--embedded' : ''}`}>
       <StartupHeader
         serverName={stu.server.name}
         eggName={stu.server.egg.name}
@@ -28,6 +34,7 @@ export function ServerStartupDashboard() {
         canUpdate={stu.canUpdate}
         refreshing={refreshing}
         editableCount={stu.editableVariables.length}
+        embedded={embedded}
         onRefresh={() => void handleRefresh()}
         onReset={stu.resetForm}
         onSave={() => void stu.saveAll()}
@@ -42,14 +49,23 @@ export function ServerStartupDashboard() {
 
         {stu.error ? <div className="ds-srv-stu-error">{stu.error}</div> : null}
 
-        <StartupStatsRow
-          variableCount={stu.variables.length}
-          editableCount={stu.editableVariables.length}
-          placeholderCount={stu.placeholders.length}
-          memory={stu.server.memory}
-          disk={stu.server.disk}
-          cpu={stu.server.cpu}
-        />
+        {stu.access.isAdminSupport ? (
+          <div className="ds-srv-stu-notice ds-srv-stu-notice--support">
+            Admin support: egg-locked environment variables are editable here for this user&apos;s
+            server.
+          </div>
+        ) : null}
+
+        {!embedded ? (
+          <StartupStatsRow
+            variableCount={stu.variables.length}
+            editableCount={stu.editableVariables.length}
+            placeholderCount={stu.placeholders.length}
+            memory={stu.server.memory}
+            disk={stu.server.disk}
+            cpu={stu.server.cpu}
+          />
+        ) : null}
 
         <div className="ds-srv-stu-command-grid">
           <StartupCommandPanel
