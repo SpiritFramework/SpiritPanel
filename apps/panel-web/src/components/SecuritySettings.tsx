@@ -25,9 +25,9 @@ import { Button, Input, Textarea } from './Layout';
 import { ConfirmModal } from './ConfirmModal';
 import { Spinner } from './ui';
 import {
-  ProfileSecuritySidebar,
+  ProfileSecurityOverview,
   type SecurityOverviewItem,
-} from './profile/ProfileSecuritySidebar';
+} from './profile/ProfileSecurityOverview';
 
 function SecurityBadge({ active, activeLabel, inactiveLabel }: { active: boolean; activeLabel: string; inactiveLabel: string }) {
   return (
@@ -127,7 +127,7 @@ function PasswordPanel({ minPasswordLength, onChanged }: { minPasswordLength: nu
     <NodeOverviewSection
       icon={Lock}
       title="Password"
-      description={`At least ${minPasswordLength} characters — use a unique passphrase`}
+      description={`Minimum ${minPasswordLength} characters — prefer a unique passphrase`}
       badge={<SecurityBadge active activeLabel="Set" inactiveLabel="Unset" />}
     >
       <form onSubmit={savePassword}>
@@ -318,7 +318,7 @@ function TwoFactorPanel({ onChanged }: { onChanged: () => void }) {
     <NodeOverviewSection
       icon={ShieldCheck}
       title="Two-factor authentication"
-      description="Require a one-time code from your authenticator app when signing in"
+      description="Require an authenticator code when you sign in"
       badge={<SecurityBadge active={enabled} activeLabel="Enabled" inactiveLabel="Disabled" />}
     >
       {loading ? (
@@ -1003,18 +1003,18 @@ export function SecuritySettings() {
       icon: ShieldCheck,
     },
     {
-      id: 'github',
-      label: 'GitHub',
-      value: githubConfigured ? 'Linked' : 'Not linked',
-      ok: githubConfigured,
-      icon: Github,
-    },
-    {
       id: 'discord',
       label: 'Discord',
       value: discordLinked ? 'Linked' : 'Not linked',
       ok: discordLinked,
       icon: DiscordIcon,
+    },
+    {
+      id: 'github',
+      label: 'GitHub',
+      value: githubConfigured ? 'Linked' : 'Not linked',
+      ok: githubConfigured,
+      icon: Github,
     },
     {
       id: 'ssh',
@@ -1026,42 +1026,14 @@ export function SecuritySettings() {
   ];
 
   return (
-    <div className="ds-prof-workspace">
-      <div className="ds-prof-main">
-        <section className="ds-sec-overview" aria-label="Security overview">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.id}
-                className={`ds-sec-overview-tile${item.ok ? ' ds-sec-overview-tile--ok' : ''}${overviewLoading ? ' ds-sec-overview-tile--loading' : ''}`}
-              >
-                <span className="ds-sec-overview-icon" aria-hidden>
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                <span className="ds-sec-overview-copy">
-                  <span className="ds-sec-overview-label">{item.label}</span>
-                  <span className="ds-sec-overview-value">{overviewLoading ? '…' : item.value}</span>
-                </span>
-              </div>
-            );
-          })}
-        </section>
+    <div className="ds-prof-stack ds-sec-page">
+      <ProfileSecurityOverview items={items} loading={overviewLoading} />
 
-        <div className="ds-sec-grid">
-          <div className="ds-sec-col">
-            <PasswordPanel minPasswordLength={branding.minPasswordLength} />
-            <DiscordPanel onChanged={loadOverview} />
-            <GithubPatPanel onChanged={loadOverview} />
-          </div>
-          <div className="ds-sec-col">
-            <TwoFactorPanel onChanged={loadOverview} />
-            <SshKeysPanel onChanged={loadOverview} />
-          </div>
-        </div>
-      </div>
-
-      <ProfileSecuritySidebar items={items} loading={overviewLoading} />
+      <PasswordPanel minPasswordLength={branding.minPasswordLength} onChanged={loadOverview} />
+      <TwoFactorPanel onChanged={loadOverview} />
+      <DiscordPanel onChanged={loadOverview} />
+      <GithubPatPanel onChanged={loadOverview} />
+      <SshKeysPanel onChanged={loadOverview} />
     </div>
   );
 }

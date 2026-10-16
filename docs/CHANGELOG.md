@@ -53,6 +53,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Profile → Security** polished: one score + status-chip strip, single-column Password → 2FA → Discord → GitHub → SSH (no duplicate sidebar overview).
 - **Admin Locations / Nodes / Subdomains** use the same fleet header pattern as Nests / Plugins (breadcrumb, status pill, compact stats, actions).
 - **Profile** respects branding hero stripe; server manage tab headers share slightly clearer title spacing.
 - **Nests & eggs redesigned** to match Admin Servers: clearer hero, clickable fleet stats, and a refreshed variables editor. Nest/egg **Save changes** now uses an explicit save action (egg manage previously used `type="submit"` with no form, so saves never fired). Nest detail and egg lists now return/show egg `logoUrl`s, with tighter typography spacing on those pages.
@@ -63,6 +64,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Removed
 
+- Unused `ProfileSecuritySidebar` (security overview is a single strip now).
 - Client alert presets and rule CRUD (API + UI). Built-in watches are automatic.
 - Unused `NodeFleetSidebar` component and its orphaned fleet-sidebar CSS (no remaining imports).
 - Unused `ServerPage` helpers (`ServerPageHeader`, `ServerPanel`, etc.), `parseGithubOwnerRepo`, `previewFromSearchResult`, and matching orphan CSS.
