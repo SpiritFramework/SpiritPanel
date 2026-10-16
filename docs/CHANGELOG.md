@@ -54,6 +54,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Support / Tickets hero** matches My Servers: brand mark, greeting, panel name row, summary line, and clickable fleet-style stats (client + admin).
 - **Profile → Security** polished: one score + status-chip strip, single-column Password → 2FA → Discord → GitHub → SSH (no duplicate sidebar overview).
 - **Admin Locations / Nodes / Subdomains** use the same fleet header pattern as Nests / Plugins (breadcrumb, status pill, compact stats, actions).
 - **Profile** respects branding hero stripe; server manage tab headers share slightly clearer title spacing.

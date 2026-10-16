@@ -7,16 +7,22 @@ import {
   Clock,
   Headphones,
   Inbox,
+  Layers,
   LifeBuoy,
+  Loader2,
   MessageSquare,
   RefreshCw,
   Search,
   Server,
   User,
   X,
+  type LucideIcon,
 } from 'lucide-react';
-import { api, type TicketSummary } from '../../lib/api';
+import { api, type TicketSummary, type User as PanelUser } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
+import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
+import { sanitizeImageSrc } from '../../lib/safe-url';
 import { AdminLayout, Button, Page } from '../../components/Layout';
 import { UserAvatar } from '../../components/UserAvatar';
 import { AlertBanner, EmptyState, PageLoading } from '../../components/ui';
@@ -29,6 +35,19 @@ type FilterId = 'all' | 'open' | 'needs_reply' | 'urgent' | 'closed';
 const OPEN_STATUSES = new Set(['open', 'awaiting_reply', 'in_progress']);
 const CLOSED_STATUSES = new Set(['resolved', 'closed']);
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function displayName(user: PanelUser): string {
+  const first = user.firstName?.trim();
+  if (first) return first;
+  return user.username;
+}
+
 function isOpenTicket(ticket: TicketSummary) {
   return OPEN_STATUSES.has(ticket.status);
 }
@@ -38,8 +57,10 @@ function needsStaffReply(ticket: TicketSummary) {
 }
 
 export function AdminTicketsPage() {
+  const { user } = useAuth();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
+  const logoSrc = sanitizeImageSrc(branding.logoUrl);
   const [items, setItems] = useState<TicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,89 +129,114 @@ export function AdminTicketsPage() {
     { id: 'closed', label: 'Closed', count: stats.closed },
   ];
 
+  const summaryText =
+    stats.total === 0
+      ? 'Queue is clear — new customer tickets will land here.'
+      : [
+          `${stats.open} open`,
+          stats.needsReply > 0 ? `${stats.needsReply} need reply` : null,
+          stats.urgent > 0 ? `${stats.urgent} urgent` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+
+  function toggleFilter(next: FilterId) {
+    setFilter((prev) => (prev === next ? 'all' : next));
+  }
+
   return (
     <AdminLayout>
       <Page>
         <section className="tickets-page tickets-page--admin">
-          <header className="tickets-inbox__hero tickets-inbox__hero--admin">
+          <header className="ds-servers-fleet">
             {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
-            <div className="tickets-inbox__hero-inner">
-              <div className="tickets-inbox__hero-top">
-                <div className="tickets-inbox__hero-copy">
-                  <span className="tickets-inbox__hero-icon tickets-inbox__hero-icon--admin" aria-hidden>
-                    <Headphones className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="tickets-inbox__eyebrow">Staff queue</p>
-                    <h1 className="tickets-inbox__title">Support tickets</h1>
-                    <p className="tickets-inbox__desc">
-                      Triage customer requests, reply in threads, and keep priority and status current.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="tickets-inbox__hero-actions">
-                  <Button variant="secondary" onClick={() => void load()} disabled={loading} aria-label="Refresh tickets">
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">Refresh</span>
-                  </Button>
+            <div className="ds-servers-fleet-top">
+              <div className="ds-servers-fleet-identity">
+                {logoSrc ? (
+                  <div className="ds-servers-fleet-mark">
+                    <img src={logoSrc} alt="" />
+                  </div>
+                ) : (
+                  <div
+                    className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback"
+                    style={panelNameGradientStyle()}
+                  >
+                    {panelNameInitial(branding.panelName)}
+                  </div>
+                )}
+                <div className="ds-servers-fleet-copy">
+                  <p className="ds-servers-fleet-greeting">
+                    {getGreeting()}
+                    {user ? `, ${displayName(user)}` : ''}
+                  </p>
+                  <h1 className="ds-servers-fleet-title">Support tickets</h1>
+                  <div className="ds-servers-fleet-brand">
+                    <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
+                    <span className="ds-servers-fleet-tagline">Staff queue</span>
+                  </div>
+                  {loading ? (
+                    <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+                      Loading tickets…
+                    </p>
+                  ) : (
+                    <p className="ds-servers-fleet-summary">{summaryText}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="tickets-inbox__stats" role="list" aria-label="Ticket summary">
-                <button
-                  type="button"
-                  role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--info${filter === 'open' ? ' is-active' : ''}`}
-                  onClick={() => setFilter(filter === 'open' ? 'all' : 'open')}
-                >
-                  <span className="tickets-inbox__stat-top">
-                    <span className="tickets-inbox__stat-icon" aria-hidden>
-                      <Inbox className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="tickets-inbox__stat-value">{stats.open}</span>
-                  </span>
-                  <span className="tickets-inbox__stat-label">Open</span>
-                </button>
-                <button
-                  type="button"
-                  role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--warn${filter === 'needs_reply' ? ' is-active' : ''}`}
-                  onClick={() => setFilter(filter === 'needs_reply' ? 'all' : 'needs_reply')}
-                >
-                  <span className="tickets-inbox__stat-top">
-                    <span className="tickets-inbox__stat-icon" aria-hidden>
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="tickets-inbox__stat-value">{stats.needsReply}</span>
-                  </span>
-                  <span className="tickets-inbox__stat-label">Needs reply</span>
-                </button>
-                <button
-                  type="button"
-                  role="listitem"
-                  className={`tickets-inbox__stat tickets-inbox__stat--action tickets-inbox__stat--danger${filter === 'urgent' ? ' is-active' : ''}`}
-                  onClick={() => setFilter(filter === 'urgent' ? 'all' : 'urgent')}
-                >
-                  <span className="tickets-inbox__stat-top">
-                    <span className="tickets-inbox__stat-icon" aria-hidden>
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="tickets-inbox__stat-value">{stats.urgent}</span>
-                  </span>
-                  <span className="tickets-inbox__stat-label">Urgent</span>
-                </button>
-                <div className="tickets-inbox__stat tickets-inbox__stat--success" role="listitem">
-                  <span className="tickets-inbox__stat-top">
-                    <span className="tickets-inbox__stat-icon" aria-hidden>
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="tickets-inbox__stat-value">{stats.closed}</span>
-                  </span>
-                  <span className="tickets-inbox__stat-label">Closed</span>
-                </div>
+              <div className="ds-servers-fleet-actions">
+                <Button variant="secondary" onClick={() => void load()} disabled={loading} aria-label="Refresh tickets">
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
               </div>
             </div>
+
+            {!loading && stats.total > 0 ? (
+              <div className="ds-servers-fleet-stats" role="list" aria-label="Ticket summary">
+                <TicketFleetStat
+                  icon={Inbox}
+                  label="Open"
+                  value={stats.open}
+                  tone="info"
+                  active={filter === 'open'}
+                  onClick={() => toggleFilter('open')}
+                />
+                <TicketFleetStat
+                  icon={MessageSquare}
+                  label="Needs reply"
+                  value={stats.needsReply}
+                  tone="warn"
+                  active={filter === 'needs_reply'}
+                  onClick={() => toggleFilter('needs_reply')}
+                />
+                <TicketFleetStat
+                  icon={AlertTriangle}
+                  label="Urgent"
+                  value={stats.urgent}
+                  tone="danger"
+                  active={filter === 'urgent'}
+                  onClick={() => toggleFilter('urgent')}
+                />
+                <TicketFleetStat
+                  icon={CheckCircle2}
+                  label="Closed"
+                  value={stats.closed}
+                  tone="success"
+                  active={filter === 'closed'}
+                  onClick={() => toggleFilter('closed')}
+                />
+                <TicketFleetStat
+                  icon={Layers}
+                  label="Total"
+                  value={stats.total}
+                  active={filter === 'all'}
+                  onClick={() => setFilter('all')}
+                />
+              </div>
+            ) : null}
           </header>
 
           {stats.needsReply > 0 && filter !== 'needs_reply' ? (
@@ -405,5 +451,50 @@ export function AdminTicketsPage() {
         </section>
       </Page>
     </AdminLayout>
+  );
+}
+
+function TicketFleetStat({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+  tone?: 'success' | 'info' | 'warn' | 'danger';
+  active?: boolean;
+  onClick: () => void;
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'ds-servers-stat--success'
+      : tone === 'info'
+        ? 'ds-servers-stat--info'
+        : tone === 'warn'
+          ? 'ds-servers-stat--warn'
+          : tone === 'danger'
+            ? 'ds-servers-stat--danger'
+            : '';
+
+  return (
+    <button
+      type="button"
+      role="listitem"
+      className={`ds-servers-stat ${toneClass}${active ? ' is-active' : ''}`}
+      onClick={onClick}
+      aria-pressed={active}
+    >
+      <span className="ds-servers-stat-top">
+        <span className="ds-servers-stat-icon" aria-hidden>
+          <Icon className="h-3 w-3" />
+        </span>
+        <span className="ds-servers-stat-label">{label}</span>
+      </span>
+      <span className="ds-servers-stat-value">{value}</span>
+    </button>
   );
 }

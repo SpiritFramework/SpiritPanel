@@ -152,11 +152,19 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     padding: 0.8rem 1.25rem 1rem;
   }
+
+  .ds-servers-fleet-stats--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 960px) {
   .ds-servers-fleet-stats {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ds-servers-fleet-stats--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -261,6 +269,16 @@
 .ds-servers-stat--warn .ds-servers-stat-icon {
   background: color-mix(in srgb, var(--warning-fg) 12%, transparent);
   border-color: color-mix(in srgb, var(--warning-fg) 28%, var(--border));
+}
+
+.ds-servers-stat--danger .ds-servers-stat-value,
+.ds-servers-stat--danger .ds-servers-stat-icon {
+  color: var(--danger-fg);
+}
+
+.ds-servers-stat--danger .ds-servers-stat-icon {
+  background: color-mix(in srgb, var(--danger-fg) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger-fg) 28%, var(--border));
 }
 
 .ds-servers-stat.is-active .ds-servers-stat-icon {
