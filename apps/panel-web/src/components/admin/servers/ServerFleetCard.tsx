@@ -8,7 +8,14 @@ import { LocationFlag } from '../../LocationFlag';
 import { ServerEggIcon } from '../../ServerEggIcon';
 import { getServerTheme } from '../../../lib/server-theme';
 
-export function ServerFleetCard({ server }: { server: AdminServerSummary }) {
+export function ServerFleetCard({
+  server,
+  href,
+}: {
+  server: AdminServerSummary;
+  /** Full admins open Manage; staff open the admin detail page. */
+  href?: string;
+}) {
   const theme = getServerTheme(server.egg.name);
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
@@ -19,10 +26,11 @@ export function ServerFleetCard({ server }: { server: AdminServerSummary }) {
     year: 'numeric',
   });
   const statusClass = server.suspended ? 'suspended' : server.status;
+  const to = href ?? `/admin/servers/${server.id}/manage`;
 
   return (
     <Link
-      to={`/admin/servers/${server.id}`}
+      to={to}
       className={`ds-adm-srv-card ds-adm-srv-card--${statusClass}`}
       aria-label={`${server.name}, ${server.egg.name}`}
     >
