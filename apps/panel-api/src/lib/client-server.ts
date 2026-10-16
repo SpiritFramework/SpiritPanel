@@ -31,7 +31,7 @@ export async function getServerAccess(serverId: string, userId: string) {
   if (!user) return null;
 
   // Full panel admins (role=admin or rootAdmin) may manage any server when support mode is on.
-  // This powers Admin → Servers → Manage (same client API as owners).
+  // Powers Admin → Servers → [detail] → Manage server (same client API as owners), including startup.
   const supportEnabled = await isAdminServerSupportEnabled();
   if (isPanelAdmin(user) && supportEnabled) {
     const server = await prisma.server.findUnique({ where: { id: serverId } });

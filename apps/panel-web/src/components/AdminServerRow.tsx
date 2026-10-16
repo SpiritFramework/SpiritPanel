@@ -12,24 +12,17 @@ import { AdminServerStatusBadge } from './admin/AdminServerStatus';
 import { AdminMobileCard, AdminResponsiveTable } from './admin/AdminMobileCard';
 import { LocationFlag } from './LocationFlag';
 
-function adminServerHref(serverId: string, openInManage: boolean) {
-  return openInManage ? `/admin/servers/${serverId}/manage` : `/admin/servers/${serverId}`;
-}
-
 export function AdminServerTable({
   servers,
-  openInManage = true,
   onServerDeleted,
 }: {
   servers: AdminServerSummary[];
-  /** Full admins open Manage; staff keep the admin detail page. */
-  openInManage?: boolean;
   onServerDeleted?: () => void;
 }) {
   return (
     <AdminResponsiveTable
       mobile={servers.map((server) => (
-        <AdminServerMobileCard key={server.id} server={server} openInManage={openInManage} />
+        <AdminServerMobileCard key={server.id} server={server} />
       ))}
       desktop={
         <table className="w-full min-w-[960px] text-left text-xs">
@@ -47,12 +40,7 @@ export function AdminServerTable({
           </thead>
           <tbody>
             {servers.map((server) => (
-              <AdminServerRow
-                key={server.id}
-                server={server}
-                openInManage={openInManage}
-                onDeleted={onServerDeleted}
-              />
+              <AdminServerRow key={server.id} server={server} onDeleted={onServerDeleted} />
             ))}
           </tbody>
         </table>
@@ -61,13 +49,7 @@ export function AdminServerTable({
   );
 }
 
-function AdminServerMobileCard({
-  server,
-  openInManage,
-}: {
-  server: AdminServerSummary;
-  openInManage: boolean;
-}) {
+function AdminServerMobileCard({ server }: { server: AdminServerSummary }) {
   const navigate = useNavigate();
   const theme = getServerTheme(server.egg.name);
   const address = formatAllocationAddress(server.defaultAllocation, {
@@ -76,7 +58,7 @@ function AdminServerMobileCard({
 
   return (
     <AdminMobileCard
-      onClick={() => navigate(adminServerHref(server.id, openInManage))}
+      onClick={() => navigate(`/admin/servers/${server.id}`)}
       leading={
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/10"
@@ -117,11 +99,9 @@ function AdminServerMobileCard({
 
 function AdminServerRow({
   server,
-  openInManage,
   onDeleted,
 }: {
   server: AdminServerSummary;
-  openInManage: boolean;
   onDeleted?: () => void;
 }) {
   const navigate = useNavigate();
@@ -163,7 +143,7 @@ function AdminServerRow({
   return (
     <>
     <tr
-      onClick={() => navigate(adminServerHref(server.id, openInManage))}
+      onClick={() => navigate(`/admin/servers/${server.id}`)}
       className="group cursor-pointer border-b border-[var(--border)]/60 transition last:border-b-0 hover:bg-[var(--surface-hover)]"
     >
       <td className="px-4 py-3">

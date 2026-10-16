@@ -178,23 +178,12 @@ export function ServersListPanel({
           <ul className="ds-adm-srv-card-grid">
             {servers.map((server) => (
               <li key={server.id}>
-                <ServerFleetCard
-                  server={server}
-                  href={
-                    fullAdmin
-                      ? `/admin/servers/${server.id}/manage`
-                      : `/admin/servers/${server.id}`
-                  }
-                />
+                <ServerFleetCard server={server} />
               </li>
             ))}
           </ul>
         ) : (
-          <AdminServerTable
-            servers={servers}
-            openInManage={fullAdmin}
-            onServerDeleted={onServerDeleted}
-          />
+          <AdminServerTable servers={servers} onServerDeleted={onServerDeleted} />
         )}
       </div>
     </Card>

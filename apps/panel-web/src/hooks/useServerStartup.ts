@@ -20,7 +20,7 @@ export function useServerStartup() {
   const { server, refresh } = useServer();
   const access = getServerAccess(server);
   const canUpdate = access.canUpdateStartup;
-  // Admin → Servers → Manage uses support access; egg "locked" vars are editable there.
+  // Admin support (Admin → Servers → detail → Manage server) may edit egg-locked vars.
   const adminCanEditLocked = Boolean(access.isAdminSupport);
 
   const variables = server.variables ?? [];
