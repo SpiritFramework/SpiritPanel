@@ -128,7 +128,6 @@ export function DashboardSkeleton() {
         <Skeleton className="h-72 w-full rounded-xl" />
         <Skeleton className="h-72 w-full rounded-xl" />
       </div>
-      <Skeleton className="h-44 w-full rounded-xl" />
     </div>
   );
 }

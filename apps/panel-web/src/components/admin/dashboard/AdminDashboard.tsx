@@ -7,17 +7,13 @@ import {
   Plus,
   Server,
 } from 'lucide-react';
-import { formatAllocationAddress } from '../../../lib/allocation';
 import { formatActivityTime, getActivityMeta } from '../../../lib/activity';
 import { formatResource } from '../../../lib/server-theme';
 import { useAuth } from '../../../context/AuthContext';
-import type { DashboardNodeHealth, DashboardRecentServer } from '../../../pages/admin/dashboard/types';
+import type { DashboardNodeHealth } from '../../../pages/admin/dashboard/types';
 import type { AdminDashboardController } from '../../../pages/admin/dashboard/useAdminDashboard';
-import { AdminServerStatusBadge } from '../AdminServerStatus';
-import { NodeResourceMeter } from '../node-detail/NodeResourceMeter';
 import { Button, Page } from '../../Layout';
 import { EmptyState } from '../../ui';
-import { ServerEggIcon } from '../../ServerEggIcon';
 import { DashboardAttentionStrip } from './DashboardAttentionStrip';
 import { DashboardCapacityPanel } from './DashboardCapacityPanel';
 import { DashboardHeader } from './DashboardHeader';
@@ -26,8 +22,7 @@ import { PanelUpdateBanner } from './PanelUpdateBanner';
 
 export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
   const { user } = useAuth();
-  const { stats, ticketQueue, nodeHealth, recentServers, recentActivity, error, refreshing, refresh } =
-    ctrl;
+  const { stats, ticketQueue, nodeHealth, recentActivity, error, refreshing, refresh } = ctrl;
 
   const name = user?.firstName?.trim() || user?.username || 'Admin';
 
@@ -58,7 +53,7 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
       </div>
 
       <div className="ds-admin-dash__split">
-        <section className="ds-admin-dash__card">
+        <section className="ds-admin-dash__card ds-admin-dash__card--nodes">
           <header className="ds-admin-dash__card-head">
             <div className="ds-admin-dash__card-head-icon" aria-hidden>
               <HardDrive className="h-3.5 w-3.5" />
@@ -78,18 +73,20 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
               </Link>
             </div>
           </header>
-          <div className="ds-admin-dash__card-body ds-admin-dash__card-body--scroll">
+          <div className="ds-admin-dash__card-body ds-admin-dash__card-body--flush ds-admin-dash__card-body--scroll">
             {nodeHealth.length === 0 ? (
-              <EmptyState
-                icon={<HardDrive className="h-6 w-6" />}
-                title="No nodes connected"
-                description="Register a Wings node to start provisioning servers."
-                action={
-                  <Link to="/admin/nodes/new">
-                    <Button size="sm">Register node</Button>
-                  </Link>
-                }
-              />
+              <div className="ds-admin-dash__empty-pad">
+                <EmptyState
+                  icon={<HardDrive className="h-6 w-6" />}
+                  title="No nodes connected"
+                  description="Register a Wings node to start provisioning servers."
+                  action={
+                    <Link to="/admin/nodes/new">
+                      <Button size="sm">Register node</Button>
+                    </Link>
+                  }
+                />
+              </div>
             ) : (
               <ul className="ds-admin-dash__nodes">
                 {nodeHealth.map((node) => (
@@ -155,44 +152,6 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
           </div>
         </section>
       </div>
-
-      <section className="ds-admin-dash__card">
-        <header className="ds-admin-dash__card-head">
-          <div className="ds-admin-dash__card-head-icon" aria-hidden>
-            <Server className="h-3.5 w-3.5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="ds-admin-dash__card-title">Latest servers</h2>
-            <p className="ds-admin-dash__card-desc">Recently provisioned game servers</p>
-          </div>
-          <Link to="/admin/servers" className="ds-admin-dash__card-link">
-            All servers
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
-        </header>
-        <div className="ds-admin-dash__card-body ds-admin-dash__card-body--flush">
-          {recentServers.length === 0 ? (
-            <div className="ds-admin-dash__empty-pad">
-              <EmptyState
-                icon={<Server className="h-6 w-6" />}
-                title="No servers yet"
-                description="Create your first game server to see it listed here."
-                action={
-                  <Link to="/admin/servers/new">
-                    <Button size="sm">Create server</Button>
-                  </Link>
-                }
-              />
-            </div>
-          ) : (
-            <ul className="ds-admin-dash__servers">
-              {recentServers.map((server) => (
-                <ServerRow key={server.id} server={server} />
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
     </Page>
   );
 }
@@ -202,89 +161,86 @@ function DashboardNodeCard({ node }: { node: DashboardNodeHealth }) {
   const status = node.maintenanceMode ? 'maintenance' : online ? 'online' : 'offline';
   const statusLabel = node.maintenanceMode ? 'Maintenance' : online ? 'Online' : 'Offline';
   const cap = node.capacity;
+  const wingsLabel = node.online
+    ? node.version
+      ? `Wings ${node.version}`
+      : 'Connected'
+    : 'Unreachable';
 
   return (
     <li>
       <Link to={`/admin/nodes/${node.id}`} className={`ds-admin-dash__node ds-admin-dash__node--${status}`}>
-        <div className="ds-admin-dash__node-top">
-          <span className="ds-admin-dash__node-icon" aria-hidden>
-            <HardDrive className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <p className="ds-admin-dash__node-name">{node.name}</p>
-              <span className={`ds-admin-dash__node-badge ds-admin-dash__node-badge--${status}`}>
-                {statusLabel}
-              </span>
+        <span className="ds-admin-dash__node-rail" aria-hidden />
+        <div className="ds-admin-dash__node-main">
+          <div className="ds-admin-dash__node-top">
+            <span className="ds-admin-dash__node-icon" aria-hidden>
+              <HardDrive className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="ds-admin-dash__node-title-row">
+                <p className="ds-admin-dash__node-name">{node.name}</p>
+                <span className={`ds-admin-dash__node-badge ds-admin-dash__node-badge--${status}`}>
+                  {statusLabel}
+                </span>
+              </div>
+              <p className="ds-admin-dash__node-meta">
+                {node.location}
+                <span aria-hidden> · </span>
+                <span className="ds-text-mono">{node.fqdn}</span>
+              </p>
             </div>
-            <p className="ds-admin-dash__node-meta">{node.location}</p>
+            <ArrowUpRight className="ds-admin-dash__node-arrow" aria-hidden />
           </div>
-          <ArrowUpRight className="ds-admin-dash__node-arrow" aria-hidden />
-        </div>
-        <p className="ds-admin-dash__node-fqdn ds-text-mono">{node.fqdn}</p>
-        <div className="ds-admin-dash__node-stats">
-          <span>{node.serverCount} servers</span>
-          <span>{node.allocationCount} ports</span>
-          <span>{node.online ? (node.version ? `Wings ${node.version}` : 'Connected') : 'Unreachable'}</span>
-        </div>
-        {cap && (cap.effectiveMemoryLimit > 0 || cap.effectiveDiskLimit > 0) ? (
-          <div className="ds-admin-dash__node-meters">
-            {cap.effectiveMemoryLimit > 0 ? (
-              <NodeResourceMeter
-                label="RAM"
-                used={cap.allocatedMemory}
-                limit={cap.effectiveMemoryLimit}
-                percent={cap.memoryUsedPercent}
-                compact
-              />
-            ) : null}
-            {cap.effectiveDiskLimit > 0 ? (
-              <NodeResourceMeter
-                label="Disk"
-                used={cap.allocatedDisk}
-                limit={cap.effectiveDiskLimit}
-                percent={cap.diskUsedPercent}
-                compact
-              />
-            ) : null}
+
+          <div className="ds-admin-dash__node-chips">
+            <span className="ds-admin-dash__node-chip">
+              <Server className="h-3 w-3" aria-hidden />
+              {node.serverCount} servers
+            </span>
+            <span className="ds-admin-dash__node-chip">{node.allocationCount} ports</span>
+            <span className="ds-admin-dash__node-chip">{wingsLabel}</span>
           </div>
-        ) : node.memory > 0 ? (
-          <p className="ds-admin-dash__node-limit">
-            {formatResource(node.memory, 'MiB')} RAM · {formatResource(node.disk, 'MiB')} disk
-          </p>
-        ) : null}
+
+          {cap && (cap.effectiveMemoryLimit > 0 || cap.effectiveDiskLimit > 0) ? (
+            <div className="ds-admin-dash__node-meters">
+              {cap.effectiveMemoryLimit > 0 ? (
+                <NodeMiniMeter
+                  label="RAM"
+                  percent={cap.memoryUsedPercent}
+                  detail={`${formatResource(cap.allocatedMemory, 'MiB')} / ${formatResource(cap.effectiveMemoryLimit, 'MiB')}`}
+                />
+              ) : null}
+              {cap.effectiveDiskLimit > 0 ? (
+                <NodeMiniMeter
+                  label="Disk"
+                  percent={cap.diskUsedPercent}
+                  detail={`${formatResource(cap.allocatedDisk, 'MiB')} / ${formatResource(cap.effectiveDiskLimit, 'MiB')}`}
+                />
+              ) : null}
+            </div>
+          ) : node.memory > 0 ? (
+            <p className="ds-admin-dash__node-limit">
+              {formatResource(node.memory, 'MiB')} RAM · {formatResource(node.disk, 'MiB')} disk
+            </p>
+          ) : null}
+        </div>
       </Link>
     </li>
   );
 }
 
-function ServerRow({ server }: { server: DashboardRecentServer }) {
+function NodeMiniMeter({ label, percent, detail }: { label: string; percent: number; detail: string }) {
+  const tone = percent >= 90 ? 'bad' : percent >= 75 ? 'warn' : 'good';
   return (
-    <li>
-      <Link to={`/admin/servers/${server.id}`} className="ds-admin-dash__server">
-        <span className="ds-admin-dash__server-icon">
-          <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-4 w-4" />
-        </span>
-        <div className="ds-admin-dash__server-main min-w-0">
-          <p className="ds-admin-dash__server-name">{server.name}</p>
-          <p className="ds-admin-dash__server-meta">
-            @{server.owner.username} · {server.node.name} · {server.egg.name}
-          </p>
-        </div>
-        <span className="ds-admin-dash__server-addr ds-text-mono">
-          {formatAllocationAddress(server.defaultAllocation, {
-            fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
-          })}
-        </span>
-        <AdminServerStatusBadge
-          status={server.status}
-          suspended={server.suspended}
-          installStatus={server.installStatus}
-          containerState={server.containerState}
-          compact
-        />
-        <ArrowUpRight className="ds-admin-dash__server-arrow" aria-hidden />
-      </Link>
-    </li>
+    <div className={`ds-admin-dash__mini-meter ds-admin-dash__mini-meter--${tone}`}>
+      <div className="ds-admin-dash__mini-meter-head">
+        <span>{label}</span>
+        <span className="ds-text-mono">{detail}</span>
+        <strong>{Math.round(percent)}%</strong>
+      </div>
+      <div className="ds-admin-dash__mini-meter-track" aria-hidden>
+        <span style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      </div>
+    </div>
   );
 }
