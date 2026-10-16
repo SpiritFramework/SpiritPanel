@@ -131,6 +131,8 @@ export async function adminRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAdmin);
 
   app.get('/dashboard', async () => {
+    const openTicketStatuses = ['open', 'awaiting_reply', 'in_progress'] as const;
+
     const [
       users,
       servers,
@@ -142,6 +144,7 @@ export async function adminRoutes(app: FastifyInstance) {
       nests,
       recentActivity,
       recentServers,
+      openTickets,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.server.count(),
@@ -184,6 +187,17 @@ export async function adminRoutes(app: FastifyInstance) {
           defaultAllocation: { select: { ip: true, port: true, alias: true } },
         },
       }),
+      prisma.supportTicket.findMany({
+        where: { status: { in: [...openTicketStatuses] } },
+        select: {
+          priority: true,
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { isStaff: true },
+          },
+        },
+      }),
     ]);
 
     const allocationTotals = await loadNodeAllocationTotals(prisma);
@@ -199,6 +213,12 @@ export async function adminRoutes(app: FastifyInstance) {
     const nodesOnline = nodeHealth.filter((n) => n.online).length;
     const recentServersLive = await enrichServerRefsWithLiveState(recentServers);
 
+    const ticketQueue = {
+      open: openTickets.length,
+      needsReply: openTickets.filter((t) => !t.messages[0]?.isStaff).length,
+      urgent: openTickets.filter((t) => t.priority === 'urgent').length,
+    };
+
     return {
       stats: {
         users,
@@ -211,6 +231,7 @@ export async function adminRoutes(app: FastifyInstance) {
         allocationsTotal,
         allocationsUsed,
       },
+      ticketQueue,
       nodeHealth,
       recentActivity,
       recentServers: recentServersLive,

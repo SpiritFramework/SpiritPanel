@@ -12,6 +12,12 @@ export interface DashboardStats {
   allocationsUsed: number;
 }
 
+export interface DashboardTicketQueue {
+  open: number;
+  needsReply: number;
+  urgent: number;
+}
+
 export interface DashboardNodeHealth {
   id: string;
   name: string;
@@ -52,6 +58,7 @@ export interface DashboardActivityItem {
 
 export interface DashboardData {
   stats: DashboardStats;
+  ticketQueue: DashboardTicketQueue;
   nodeHealth: DashboardNodeHealth[];
   recentServers: DashboardRecentServer[];
   recentActivity: DashboardActivityItem[];
@@ -67,6 +74,12 @@ export const EMPTY_DASHBOARD_STATS: DashboardStats = {
   nests: 0,
   allocationsTotal: 0,
   allocationsUsed: 0,
+};
+
+export const EMPTY_TICKET_QUEUE: DashboardTicketQueue = {
+  open: 0,
+  needsReply: 0,
+  urgent: 0,
 };
 
 export function greetingForHour(date = new Date()): string {

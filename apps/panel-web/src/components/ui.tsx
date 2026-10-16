@@ -117,18 +117,14 @@ export function ListPageSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div className="ds-ad ds-ad--skeleton" aria-hidden>
-      <Skeleton className="h-36 w-full rounded-xl" />
-      <div className="ds-ad-stats">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-[4.5rem] rounded-lg" />
-        ))}
-      </div>
-      <div className="ds-ad-bento">
+    <div className="ds-admin-dash ds-admin-dash--skeleton" aria-hidden>
+      <Skeleton className="h-44 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+      <div className="ds-admin-dash__mid">
         <Skeleton className="h-56 w-full rounded-xl" />
         <Skeleton className="h-56 w-full rounded-xl" />
       </div>
-      <div className="ds-ad-split">
+      <div className="ds-admin-dash__split">
         <Skeleton className="h-72 w-full rounded-xl" />
         <Skeleton className="h-72 w-full rounded-xl" />
       </div>

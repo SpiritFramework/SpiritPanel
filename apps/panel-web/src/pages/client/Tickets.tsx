@@ -127,7 +127,7 @@ export function TicketsPage() {
     branding.ticketsEnabled === false
       ? 'Get help with your servers and account.'
       : stats.total === 0
-        ? 'Nothing open — start a ticket when you need a hand.'
+        ? 'Nothing Open - Open a ticket when you need a hand!'
         : [
             `${stats.open} open`,
             stats.awaiting > 0 ? `${stats.awaiting} awaiting you` : null,

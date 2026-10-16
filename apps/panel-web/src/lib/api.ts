@@ -341,6 +341,60 @@ export interface AlertEventSummary {
   server: { id: string; name: string; uuidShort: string } | null;
 }
 
+export interface AdminDashboardResponse {
+  stats: {
+    users: number;
+    servers: number;
+    suspended: number;
+    installing: number;
+    nodes: number;
+    nodesOnline: number;
+    nests: number;
+    allocationsTotal: number;
+    allocationsUsed: number;
+  };
+  ticketQueue: {
+    open: number;
+    needsReply: number;
+    urgent: number;
+  };
+  nodeHealth: Array<{
+    id: string;
+    name: string;
+    fqdn: string;
+    location: string;
+    online: boolean;
+    version: string | null;
+    maintenanceMode: boolean;
+    memory: number;
+    disk: number;
+    serverCount: number;
+    allocationCount: number;
+    capacity?: NodeCapacityStats;
+  }>;
+  recentServers: Array<{
+    id: string;
+    name: string;
+    status: string;
+    suspended: boolean;
+    installStatus?: string;
+    containerState?: string | null;
+    createdAt: string;
+    owner: { username: string };
+    node: { name: string; fqdn?: string };
+    egg: { name: string; logoUrl?: string | null };
+    defaultAllocation: { ip: string; port: number; alias?: string | null };
+  }>;
+  recentActivity: Array<{
+    id: string;
+    event: string;
+    description: string;
+    timestamp: string;
+    actor?: { username: string } | null;
+    server?: { id: string; name: string } | null;
+  }>;
+}
+
 export const api = {
   login: (identifier: string, password: string, turnstileToken?: string) =>
     request<LoginResult>('/auth/login', {
@@ -454,7 +508,7 @@ export const api = {
     request<{ deleted: boolean }>(`/client/account/api-keys/${id}`, { method: 'DELETE' }),
 
   admin: {
-    dashboard: () => request<Record<string, unknown>>('/admin/dashboard'),
+    dashboard: () => request<AdminDashboardResponse>('/admin/dashboard'),
     users: (params?: { search?: string; role?: string; suspended?: string }) => {
       const qs = new URLSearchParams();
       if (params?.search) qs.set('search', params.search);

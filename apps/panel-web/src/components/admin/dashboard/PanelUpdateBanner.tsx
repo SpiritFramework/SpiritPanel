@@ -35,7 +35,7 @@ export function PanelUpdateBanner() {
   if (error || !release || release.status !== 'behind') return null;
 
   return (
-    <div className="ds-ad-alert ds-ad-alert--update" role="status">
+    <div className="ds-admin-dash__alert ds-admin-dash__alert--update" role="status">
       <Download className="h-4 w-4 shrink-0" aria-hidden />
       <p className="min-w-0 flex-1">
         <strong>{PANEL_PRODUCT}</strong> update available — you are on{' '}
@@ -46,12 +46,12 @@ export function PanelUpdateBanner() {
         href={release.releaseUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="ds-ad-alert-link"
+        className="ds-admin-dash__alert-link"
       >
         View release
         <ExternalLink className="h-3.5 w-3.5" aria-hidden />
       </a>
-      <Link to="/admin/settings?tab=about" className="ds-ad-alert-link">
+      <Link to="/admin/settings?tab=about" className="ds-admin-dash__alert-link">
         Update guide
         <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
       </Link>

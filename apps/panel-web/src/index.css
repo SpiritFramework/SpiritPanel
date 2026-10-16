@@ -5,6 +5,7 @@
 @import "./features/branding-studio/branding-studio.css";
 @import "./styles/console.css";
 @import "./styles/servers-list.css";
+@import "./styles/admin-dashboard.css";
 @import "./styles/ticket-chat.css";
 @import "./styles/ticket-list.css";
 @import "./styles/alerts.css";

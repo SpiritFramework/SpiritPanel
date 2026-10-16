@@ -1,6 +1,6 @@
 import { AdminLayout, Page } from '../../components/Layout';
+import { AdminDashboard as AdminDashboardView } from '../../components/admin/dashboard/AdminDashboard';
 import { DashboardSkeleton } from '../../components/ui';
-import { DashboardView } from './dashboard/DashboardView';
 import { useAdminDashboard } from './dashboard/useAdminDashboard';
 
 export function AdminDashboard() {
@@ -18,7 +18,7 @@ export function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <DashboardView ctrl={ctrl} />
+      <AdminDashboardView ctrl={ctrl} />
     </AdminLayout>
   );
 }
