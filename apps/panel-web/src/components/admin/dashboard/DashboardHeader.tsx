@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import {
   HardDrive,
   LifeBuoy,
-  Loader2,
   Plus,
   RefreshCw,
   Server,
@@ -15,7 +14,6 @@ import { sanitizeImageSrc } from '../../../lib/safe-url';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../PanelName';
 import { Button } from '../../Layout';
 import {
-  fleetHealthScore,
   greetingForHour,
   type DashboardStats,
   type DashboardTicketQueue,
@@ -37,19 +35,7 @@ export function DashboardHeader({
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const logoSrc = sanitizeImageSrc(branding.logoUrl);
-  const health = fleetHealthScore(stats);
   const nodesOffline = stats.nodes - stats.nodesOnline;
-
-  const summary =
-    stats.nodes === 0
-      ? 'Register a Wings node to start provisioning.'
-      : [
-          `${stats.nodesOnline}/${stats.nodes} nodes online`,
-          health >= 85 ? 'Fleet healthy' : health >= 60 ? 'Fleet degraded' : 'Fleet critical',
-          ticketQueue.needsReply > 0 ? `${ticketQueue.needsReply} tickets need reply` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
 
   return (
     <header className="ds-servers-fleet">
@@ -79,14 +65,6 @@ export function DashboardHeader({
                 <span className="ds-servers-fleet-tagline">Fleet overview</span>
               )}
             </div>
-            {refreshing ? (
-              <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
-                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
-                Refreshing fleet…
-              </p>
-            ) : (
-              <p className="ds-servers-fleet-summary">{summary}</p>
-            )}
           </div>
         </div>
 
