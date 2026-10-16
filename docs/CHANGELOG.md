@@ -55,7 +55,6 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
-- **Admin Nodes overview redesigned** to the branded fleet hero (greeting, Wings fleet tagline, clickable Online / Offline / Maintenance / Total stats plus Servers & Ports). Removed the duplicate stats strip and toolbar status pills; location chips filter the list; cards are the default view; capacity band and list panel match System activity chrome.
 - **Admin System activity** cleaned up to the fleet-hero pattern: scope stats in the hero, single feed card (no nested node-detail chrome), search hint for loaded events, and a slim category/related rail. Hero no longer shows the “N in scope · N loaded · All panel” summary line.
 - **Admin dashboard redesigned** to match My Servers / Support: fleet hero with clickable health stats, needs-attention work queue (tickets + suspended/installing servers), capacity tiles with pressure hotspots, updated quick nav, and denser node / activity lists. Dashboard API returns `ticketQueue` (with items) and `attentionServers`.
 - **Support / Tickets hero** matches My Servers: brand mark, greeting, panel name row, summary line, and clickable fleet-style stats (client + admin).

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Network } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { formatResourceAmount } from '../../../lib/server-theme';
 import { LocationFlag } from '../../LocationFlag';
 import { NodeResourceMeter } from '../node-detail/NodeResourceMeter';
@@ -9,14 +9,10 @@ export function NodesFleetOverview({
   stats,
   locationRows,
   onlinePercent,
-  locationFilter,
-  onLocationChange,
 }: {
   stats: FleetStats;
   locationRows: LocationFleetRow[];
   onlinePercent: number;
-  locationFilter: string;
-  onLocationChange: (locationId: string) => void;
 }) {
   const memPct =
     stats.memoryLimit > 0 ? Math.min(100, Math.round((stats.allocatedMemory / stats.memoryLimit) * 100)) : 0;
@@ -26,7 +22,7 @@ export function NodesFleetOverview({
   if (stats.total === 0) return null;
 
   return (
-    <section className="ds-nodes-overview ds-admin-nodes__overview" aria-label="Fleet capacity">
+    <section className="ds-nodes-overview" aria-label="Fleet capacity">
       <div className="ds-nodes-overview-main">
         <div className="ds-nodes-overview-head">
           <div>
@@ -34,11 +30,6 @@ export function NodesFleetOverview({
             <p className="ds-nodes-overview-sub">
               {stats.online} of {stats.total} nodes online
               {onlinePercent < 100 ? ` · ${onlinePercent}% reachable` : ''}
-              {' · '}
-              <span className="ds-admin-nodes__ports-meta">
-                <Network className="h-3 w-3" aria-hidden />
-                {stats.allocations.toLocaleString()} ports
-              </span>
             </p>
           </div>
           <Link to="/admin/locations" className="ds-nodes-overview-link">
@@ -79,43 +70,24 @@ export function NodesFleetOverview({
 
       {locationRows.length > 0 ? (
         <div className="ds-nodes-overview-locs">
-          <div className="ds-admin-nodes__locs-head">
-            <p className="ds-nodes-overview-label">By location</p>
-            {locationFilter ? (
-              <button
-                type="button"
-                className="ds-admin-nodes__clear-loc"
-                onClick={() => onLocationChange('')}
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
+          <p className="ds-nodes-overview-label">By location</p>
           <ul className="ds-nodes-loc-chips">
-            {locationRows.map((row) => {
-              const active = locationFilter === row.location.id;
-              return (
-                <li key={row.location.id}>
-                  <button
-                    type="button"
-                    className={`ds-nodes-loc-chip ds-admin-nodes__loc-chip${active ? ' is-active' : ''}`}
-                    aria-pressed={active}
-                    onClick={() => onLocationChange(active ? '' : row.location.id)}
-                  >
-                    <span className="ds-nodes-loc-chip-name">
-                      {row.location.flagUrl ? (
-                        <LocationFlag url={row.location.flagUrl} size="sm" className="ds-nodes-loc-flag" />
-                      ) : null}
-                      {row.location.short}
-                    </span>
-                    <span className="ds-nodes-loc-chip-meta">
-                      {row.online}/{row.nodes.length} online · {row.nodes.length} node
-                      {row.nodes.length === 1 ? '' : 's'}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {locationRows.map((row) => (
+              <li key={row.location.id}>
+                <span className="ds-nodes-loc-chip">
+                  <span className="ds-nodes-loc-chip-name">
+                    {row.location.flagUrl ? (
+                      <LocationFlag url={row.location.flagUrl} size="sm" className="ds-nodes-loc-flag" />
+                    ) : null}
+                    {row.location.short}
+                  </span>
+                  <span className="ds-nodes-loc-chip-meta">
+                    {row.online}/{row.nodes.length} online · {row.nodes.length} node
+                    {row.nodes.length === 1 ? '' : 's'}
+                  </span>
+                </span>
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}

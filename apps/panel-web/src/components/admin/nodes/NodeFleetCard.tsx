@@ -51,11 +51,11 @@ export function NodeFleetCard({ node }: { node: AdminNodeSummary }) {
         </span>
         <span className="ds-fleet-card-chip">
           <Server className="ds-icon ds-icon--sm" aria-hidden />
-          {node._count.servers} server{node._count.servers === 1 ? '' : 's'}
+          {node._count.servers}
         </span>
         <span className="ds-fleet-card-chip">
           <Network className="ds-icon ds-icon--sm" aria-hidden />
-          {node._count.allocations} port{node._count.allocations === 1 ? '' : 's'}
+          {node._count.allocations}
         </span>
         {status === 'maintenance' ? (
           <span className="ds-fleet-card-chip">

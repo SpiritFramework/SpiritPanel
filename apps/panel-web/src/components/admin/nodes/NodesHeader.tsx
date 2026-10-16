@@ -1,212 +1,124 @@
 import { Link } from 'react-router-dom';
 import {
+  ChevronRight,
   HardDrive,
   MapPin,
-  Network,
   Plus,
   RefreshCw,
   Server,
   Wifi,
   WifiOff,
-  Wrench,
-  type LucideIcon,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { useBranding } from '../../../context/BrandingContext';
-import { normalizeAppearance } from '../../../lib/branding-appearance';
-import { sanitizeImageSrc } from '../../../lib/safe-url';
-import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../PanelName';
 import { Button } from '../../Layout';
-import type { FleetStats, NodeFleetFilter } from './node-fleet-utils';
-
-function greetingForHour(date = new Date()): string {
-  const hour = date.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
+import { StatusPill } from '../../ui';
+import type { FleetStats } from './node-fleet-utils';
 
 export function NodesHeader({
   stats,
-  statusFilter,
-  onStatusChange,
   refreshing,
   loading,
   fullAdmin,
   onRefresh,
 }: {
   stats: FleetStats;
-  statusFilter: NodeFleetFilter;
-  onStatusChange: (filter: NodeFleetFilter) => void;
   refreshing: boolean;
   loading: boolean;
   fullAdmin: boolean;
   onRefresh: () => void;
 }) {
-  const { user } = useAuth();
-  const { branding } = useBranding();
-  const appearance = normalizeAppearance(branding);
-  const logoSrc = sanitizeImageSrc(branding.logoUrl);
-  const name = user?.firstName?.trim() || user?.username || 'Admin';
+  const tone = stats.total === 0 ? 'idle' : stats.offline > 0 ? 'warn' : 'live';
+  const statusLabel =
+    stats.total === 0
+      ? 'No nodes'
+      : stats.offline > 0
+        ? `${stats.offline} offline`
+        : `${stats.online} online`;
+
+  const headerStats = [
+    { icon: HardDrive, label: 'Nodes', value: String(stats.total) },
+    { icon: Wifi, label: 'Online', value: String(stats.online) },
+    { icon: WifiOff, label: 'Offline', value: String(stats.offline) },
+    { icon: Server, label: 'Servers', value: String(stats.servers) },
+  ];
 
   return (
-    <header className="ds-servers-fleet">
-      {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
+    <div className="ds-plg-header-wrap">
+      <header className={`ds-plg-header ds-plg-header--${tone === 'warn' ? 'idle' : tone}`}>
+        <nav className="ds-plg-header-crumb" aria-label="Breadcrumb">
+          <Link to="/admin">Admin</Link>
+          <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
+          <span>Nodes</span>
+        </nav>
 
-      <div className="ds-servers-fleet-top">
-        <div className="ds-servers-fleet-identity">
-          {logoSrc ? (
-            <div className="ds-servers-fleet-mark">
-              <img src={logoSrc} alt="" />
+        <div className="ds-plg-header-body">
+          <div className="ds-plg-header-accent" aria-hidden />
+
+          <div className="ds-plg-header-main">
+            <div className="ds-plg-header-identity">
+              <div className="ds-plg-header-icon-wrap" aria-hidden>
+                <HardDrive className="ds-icon" />
+                <span className={`ds-plg-header-pulse ds-plg-header-pulse--${tone === 'warn' ? 'idle' : tone}`} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="ds-plg-header-title-row">
+                  <h1 className="ds-plg-header-title">Nodes</h1>
+                  <StatusPill
+                    label={statusLabel}
+                    tone={tone === 'live' ? 'success' : tone === 'warn' ? 'warning' : 'neutral'}
+                    pulse={tone === 'warn'}
+                  />
+                </div>
+                <p className="ds-plg-header-meta">
+                  Wings daemons across your locations — reachability, capacity, and port inventory
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback" style={panelNameGradientStyle()}>
-              {panelNameInitial(branding.panelName)}
-            </div>
-          )}
-          <div className="ds-servers-fleet-copy">
-            <p className="ds-servers-fleet-greeting">
-              {greetingForHour()}, {name}
-            </p>
-            <h1 className="ds-servers-fleet-title">Nodes</h1>
-            <div className="ds-servers-fleet-brand">
-              <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-              <span className="ds-servers-fleet-tagline">Wings fleet</span>
+
+            <div className="ds-plg-header-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={onRefresh}
+                disabled={refreshing || loading}
+                aria-label="Refresh nodes"
+              >
+                <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+                Refresh
+              </Button>
+              <Link to="/admin/locations">
+                <Button type="button" variant="secondary" size="sm">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                  Locations
+                </Button>
+              </Link>
+              {fullAdmin ? (
+                <Link to="/admin/nodes/new">
+                  <Button size="sm">
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Add node
+                  </Button>
+                </Link>
+              ) : null}
             </div>
           </div>
+
+          <div className="ds-plg-header-stats" role="list" aria-label="Node summary">
+            {headerStats.map((stat) => (
+              <div key={stat.label} className="ds-plg-header-stat" role="listitem">
+                <span className="ds-plg-header-stat-icon" aria-hidden>
+                  <stat.icon className="h-3.5 w-3.5" />
+                </span>
+                <span className="ds-plg-header-stat-copy">
+                  <span className="ds-plg-header-stat-label">{stat.label}</span>
+                  <span className="ds-plg-header-stat-value">{stat.value}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div className="ds-servers-fleet-actions">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onRefresh}
-            disabled={refreshing || loading}
-            aria-label="Refresh nodes"
-          >
-            <RefreshCw className={`h-4 w-4${refreshing ? ' animate-spin' : ''}`} aria-hidden />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-          <Link to="/admin/locations">
-            <Button type="button" variant="secondary">
-              <MapPin className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">Locations</span>
-            </Button>
-          </Link>
-          {fullAdmin ? (
-            <Link to="/admin/nodes/new">
-              <Button>
-                <Plus className="h-4 w-4" aria-hidden />
-                Add node
-              </Button>
-            </Link>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="ds-servers-fleet-stats" role="list" aria-label="Node status filters and totals">
-        <FilterStat
-          icon={Wifi}
-          label="Online"
-          value={stats.online}
-          tone="success"
-          active={statusFilter === 'online'}
-          onClick={() => onStatusChange(statusFilter === 'online' ? 'all' : 'online')}
-        />
-        <FilterStat
-          icon={WifiOff}
-          label="Offline"
-          value={stats.offline}
-          tone="danger"
-          active={statusFilter === 'offline'}
-          onClick={() => onStatusChange(statusFilter === 'offline' ? 'all' : 'offline')}
-        />
-        <FilterStat
-          icon={Wrench}
-          label="Maintenance"
-          value={stats.maintenance}
-          tone="warn"
-          active={statusFilter === 'maintenance'}
-          onClick={() => onStatusChange(statusFilter === 'maintenance' ? 'all' : 'maintenance')}
-        />
-        <FilterStat
-          icon={HardDrive}
-          label="Total"
-          value={stats.total}
-          tone="info"
-          active={statusFilter === 'all'}
-          onClick={() => onStatusChange('all')}
-        />
-        <StaticStat icon={Server} label="Servers" value={stats.servers} />
-        <StaticStat icon={Network} label="Ports" value={stats.allocations} />
-      </div>
-    </header>
-  );
-}
-
-function FilterStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  active,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone?: 'success' | 'info' | 'warn' | 'danger';
-  active?: boolean;
-  onClick: () => void;
-}) {
-  const toneClass =
-    tone === 'success'
-      ? 'ds-servers-stat--success'
-      : tone === 'info'
-        ? 'ds-servers-stat--info'
-        : tone === 'warn'
-          ? 'ds-servers-stat--warn'
-          : tone === 'danger'
-            ? 'ds-servers-stat--danger'
-            : '';
-
-  return (
-    <button
-      type="button"
-      role="listitem"
-      className={`ds-servers-stat ${toneClass}${active ? ' is-active' : ''}`}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      <span className="ds-servers-stat-top">
-        <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className="h-3 w-3" />
-        </span>
-        <span className="ds-servers-stat-label">{label}</span>
-      </span>
-      <span className="ds-servers-stat-value">{value.toLocaleString()}</span>
-    </button>
-  );
-}
-
-function StaticStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="ds-servers-stat" role="listitem">
-      <span className="ds-servers-stat-top">
-        <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className="h-3 w-3" />
-        </span>
-        <span className="ds-servers-stat-label">{label}</span>
-      </span>
-      <span className="ds-servers-stat-value">{value.toLocaleString()}</span>
+      </header>
     </div>
   );
 }
