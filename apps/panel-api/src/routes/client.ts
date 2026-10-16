@@ -194,7 +194,7 @@ export async function clientRoutes(app: FastifyInstance) {
       marketplaceEnabled,
       minecraftPluginsEnabled,
       variables: server.variables
-        .filter((v) => v.eggVariable.userViewable)
+        .filter((v) => access.isAdminSupport || v.eggVariable.userViewable)
         .map((v) => ({
           id: v.id,
           variableValue: v.variableValue,
@@ -203,7 +203,8 @@ export async function clientRoutes(app: FastifyInstance) {
             envVariable: v.eggVariable.envVariable,
             description: v.eggVariable.description,
             userViewable: v.eggVariable.userViewable,
-            userEditable: v.eggVariable.userEditable,
+            // Admin support may edit egg-locked vars; keep the flag for UI labeling.
+            userEditable: access.isAdminSupport ? true : v.eggVariable.userEditable,
             fieldType: v.eggVariable.fieldType,
           },
         })),
@@ -1329,10 +1330,10 @@ export async function clientRoutes(app: FastifyInstance) {
       if (!sv) {
         return reply.status(400).send({ error: 'Invalid variable' });
       }
-      if (!sv.eggVariable.userViewable) {
+      if (!access.isAdminSupport && !sv.eggVariable.userViewable) {
         return reply.status(403).send({ error: `Variable "${sv.eggVariable.name}" is not accessible` });
       }
-      if (!sv.eggVariable.userEditable) {
+      if (!access.isAdminSupport && !sv.eggVariable.userEditable) {
         return reply.status(403).send({ error: `Variable "${sv.eggVariable.name}" is read-only` });
       }
       await prisma.serverVariable.update({
@@ -1346,7 +1347,7 @@ export async function clientRoutes(app: FastifyInstance) {
       serverId: id,
       event: 'server.variables.updated',
       description: `${request.user!.username} updated startup variables`,
-      properties: { count: body.variables.length },
+      properties: { count: body.variables.length, adminSupport: access.isAdminSupport },
     });
     return { success: true };
   });
@@ -1402,10 +1403,10 @@ export async function clientRoutes(app: FastifyInstance) {
       for (const update of body.variables) {
         const sv = byId.get(update.id);
         if (!sv) return reply.status(400).send({ error: 'Invalid variable' });
-        if (!sv.eggVariable.userViewable) {
+        if (!access.isAdminSupport && !sv.eggVariable.userViewable) {
           return reply.status(403).send({ error: `Variable "${sv.eggVariable.name}" is not accessible` });
         }
-        if (!sv.eggVariable.userEditable) {
+        if (!access.isAdminSupport && !sv.eggVariable.userEditable) {
           return reply.status(403).send({ error: `Variable "${sv.eggVariable.name}" is read-only` });
         }
         await prisma.serverVariable.update({
@@ -1430,6 +1431,7 @@ export async function clientRoutes(app: FastifyInstance) {
         startupChanged: body.startup !== undefined && body.startup !== server.startup,
         imageChanged: body.image !== undefined && body.image !== server.image,
         variableCount: body.variables?.length ?? 0,
+        adminSupport: access.isAdminSupport,
       },
     });
 

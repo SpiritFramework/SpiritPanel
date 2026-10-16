@@ -20,15 +20,18 @@ export function useServerStartup() {
   const { server, refresh } = useServer();
   const access = getServerAccess(server);
   const canUpdate = access.canUpdateStartup;
+  // Admin → Servers → Manage uses support access; egg "locked" vars are editable there.
+  const adminCanEditLocked = Boolean(access.isAdminSupport);
 
   const variables = server.variables ?? [];
   const editableVariables = useMemo(
-    () => variables.filter((v) => v.eggVariable.userEditable),
-    [variables],
+    () =>
+      adminCanEditLocked ? variables : variables.filter((v) => v.eggVariable.userEditable),
+    [variables, adminCanEditLocked],
   );
   const readOnlyVariables = useMemo(
-    () => variables.filter((v) => !v.eggVariable.userEditable),
-    [variables],
+    () => (adminCanEditLocked ? [] : variables.filter((v) => !v.eggVariable.userEditable)),
+    [variables, adminCanEditLocked],
   );
   const imageOptions = useMemo(
     () => dockerImageOptions(server.egg.dockerImages),
@@ -90,13 +93,19 @@ export function useServerStartup() {
   );
 
   const filteredEditable = useMemo(
-    () => filteredVariables.filter((v) => v.eggVariable.userEditable),
-    [filteredVariables],
+    () =>
+      adminCanEditLocked
+        ? filteredVariables
+        : filteredVariables.filter((v) => v.eggVariable.userEditable),
+    [filteredVariables, adminCanEditLocked],
   );
 
   const filteredReadOnly = useMemo(
-    () => filteredVariables.filter((v) => !v.eggVariable.userEditable),
-    [filteredVariables],
+    () =>
+      adminCanEditLocked
+        ? []
+        : filteredVariables.filter((v) => !v.eggVariable.userEditable),
+    [filteredVariables, adminCanEditLocked],
   );
 
   const hasActiveFilters = filter !== 'all' || Boolean(search.trim());

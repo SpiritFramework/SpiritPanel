@@ -651,7 +651,7 @@ export function AdminSettings() {
                           />
                           <Checkbox
                             label="Allow admin server support access"
-                            description="Let panel staff open servers for support when permitted by your policy"
+                            description="Let full admins open any server via Admin → Servers → Manage (console, files, startup, etc.)"
                             checked={security.adminServerSupport ?? true}
                             onChange={(adminServerSupport) => setSecurity({ ...security, adminServerSupport })}
                           />
