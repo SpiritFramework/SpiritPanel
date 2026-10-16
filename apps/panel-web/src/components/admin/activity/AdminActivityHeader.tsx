@@ -79,17 +79,6 @@ export function AdminActivityHeader({
   const appearance = normalizeAppearance(branding);
   const logoSrc = sanitizeImageSrc(branding.logoUrl);
   const name = user?.firstName?.trim() || user?.username || 'Admin';
-  const scopeMeta = ACTIVITY_SCOPES.find((s) => s.id === activeScope) ?? ACTIVITY_SCOPES[0];
-
-  const summary = [
-    `${total} in scope`,
-    `${loaded} loaded`,
-    filtered !== loaded ? `${filtered} matching` : null,
-    scopeMeta.label,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
   return (
     <header className="ds-servers-fleet">
       {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
@@ -114,7 +103,6 @@ export function AdminActivityHeader({
               <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
               <span className="ds-servers-fleet-tagline">Audit log</span>
             </div>
-            <p className="ds-servers-fleet-summary">{summary}</p>
           </div>
         </div>
 

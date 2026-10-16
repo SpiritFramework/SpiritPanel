@@ -46,6 +46,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Admin → Subdomains** (`GET /api/admin/domains`) no longer 500s: add the missing `server_domains` migration so the table exists on migrated installs.
 - **Admin → Servers → detail → Manage** embeds the full Startup & environment editor (command, Docker image, variables) for full admins when Admin server support is enabled, including egg-locked variables.
 - **Admin → Servers → Manage → Startup** works for all full panel admins (not only rootAdmin) when Admin server support is enabled: edit startup command, docker image, and egg-locked variables.
 - **Console auto-scroll** stays on by default and no longer flips off when re-enabled or when new lines arrive (only turns off if you scroll away or toggle it off).
@@ -54,7 +55,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
-- **Admin System activity** cleaned up to the fleet-hero pattern: scope stats in the hero, single feed card (no nested node-detail chrome), search hint for loaded events, and a slim category/related rail.
+- **Admin System activity** cleaned up to the fleet-hero pattern: scope stats in the hero, single feed card (no nested node-detail chrome), search hint for loaded events, and a slim category/related rail. Hero no longer shows the “N in scope · N loaded · All panel” summary line.
 - **Admin dashboard redesigned** to match My Servers / Support: fleet hero with clickable health stats, needs-attention work queue (tickets + suspended/installing servers), capacity tiles with pressure hotspots, updated quick nav, and denser node / activity lists. Dashboard API returns `ticketQueue` (with items) and `attentionServers`.
 - **Support / Tickets hero** matches My Servers: brand mark, greeting, panel name row, summary line, and clickable fleet-style stats (client + admin).
 - **Profile → Security** polished: one score + status-chip strip, single-column Password → 2FA → Discord → GitHub → SSH (no duplicate sidebar overview).
