@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type MarketplaceInstallEntry, type MarketplaceCatalogPlugin, type FivemServerLayout } from '../../../lib/api';
 
 export interface FivemMarketplaceOverview {
@@ -25,9 +25,13 @@ export interface FivemMarketplaceOverview {
 export function useFivemMarketplace(serverId: string, enabled: boolean) {
   const [overview, setOverview] = useState<FivemMarketplaceOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const loadedForIdRef = useRef<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (soft = false) => {
+    if (soft) setRefreshing(true);
+    else setLoading(true);
     const data = await api.client.marketplace(serverId);
     const normalized: FivemMarketplaceOverview = {
       ...data,
@@ -54,17 +58,34 @@ export function useFivemMarketplace(serverId: string, enabled: boolean) {
         (data as FivemMarketplaceOverview).featuredCatalog ?? data.catalog ?? [],
     };
     setOverview(normalized);
+    loadedForIdRef.current = serverId;
+    setLoading(false);
+    setRefreshing(false);
     return normalized;
   }, [serverId]);
 
   useEffect(() => {
     if (!serverId || !enabled) return;
-    setLoading(true);
+    let cancelled = false;
+    const soft = loadedForIdRef.current === serverId;
     setError('');
-    refresh()
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load marketplace'))
-      .finally(() => setLoading(false));
+    refresh(soft).catch((err) => {
+      if (cancelled) return;
+      setError(err instanceof Error ? err.message : 'Failed to load marketplace');
+      setLoading(false);
+      setRefreshing(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [serverId, enabled, refresh]);
 
-  return { overview, loading, error, refresh, setError };
+  return {
+    overview,
+    loading,
+    refreshing,
+    error,
+    refresh: () => refresh(true),
+    setError,
+  };
 }

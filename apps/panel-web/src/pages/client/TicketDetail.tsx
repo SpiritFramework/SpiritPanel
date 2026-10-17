@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Lock, XCircle } from 'lucide-react';
 import { api, type TicketDetail } from '../../lib/api';
@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useBranding } from '../../context/BrandingContext';
 import { Button, ClientLayout, Page } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { AlertBanner, PageHeader, PageLoading } from '../../components/ui';
+import { AlertBanner, PageHeader, Spinner } from '../../components/ui';
 import {
   TicketDetailShell,
   TicketDetailsCard,
@@ -23,27 +23,47 @@ export function TicketDetailPage() {
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const loadInFlightRef = useRef(false);
+  const loadedRef = useRef(false);
 
   const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
+    if (!id || loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const soft = loadedRef.current;
+    if (!soft) setLoading(true);
     setError('');
     try {
       setTicket(await api.client.ticket(id));
+      loadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load ticket');
+      if (!soft) setTicket(null);
     } finally {
       setLoading(false);
+      loadInFlightRef.current = false;
     }
   }, [id]);
 
   useEffect(() => {
+    loadedRef.current = false;
+    setTicket(null);
+    setReply('');
     if (branding.ticketsEnabled === false) {
       setLoading(false);
       return;
     }
     void load();
-  }, [branding.ticketsEnabled, load]);
+  }, [branding.ticketsEnabled, id, load]);
+
+  useEffect(() => {
+    if (branding.ticketsEnabled === false || !id) return;
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void load();
+    };
+    const timer = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(timer);
+  }, [branding.ticketsEnabled, id, load]);
 
   async function sendReply(payload: { body: string; images: File[] }) {
     if (!id || (!payload.body && !payload.images.length)) return;
@@ -84,10 +104,15 @@ export function TicketDetailPage() {
     );
   }
 
-  if (loading) {
+  if (loading && !ticket) {
     return (
-      <ClientLayout>
-        <PageLoading label="Loading ticket…" />
+      <ClientLayout fillHeight>
+        <div className="ticket-page ticket-page--client" role="status" aria-live="polite">
+          <div className="ticket-page__loading">
+            <Spinner className="h-7 w-7" />
+            <span>Opening conversation…</span>
+          </div>
+        </div>
       </ClientLayout>
     );
   }

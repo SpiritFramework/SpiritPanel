@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, type ServerDetail } from '../lib/api';
 import { useServerRouteId } from '../hooks/useServerRouteId';
 
@@ -24,11 +24,13 @@ export function ServerProvider({
   const [server, setServer] = useState<ServerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const serverIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async (): Promise<ServerDetail | null> => {
     if (!resolvedId) return null;
     const data = await api.client.server(resolvedId);
     setServer(data);
+    serverIdRef.current = data.id;
     setLoadError(null);
     return data;
   }, [resolvedId]);
@@ -37,17 +39,27 @@ export function ServerProvider({
     if (!resolvedId) {
       setLoading(false);
       setServer(null);
+      serverIdRef.current = null;
       setLoadError('Invalid server');
       return;
     }
-    setLoading(true);
+    let cancelled = false;
+    const keepShell = serverIdRef.current === resolvedId;
+    if (!keepShell) setLoading(true);
     setLoadError(null);
     refresh()
       .catch((err) => {
+        if (cancelled) return;
         setServer(null);
+        serverIdRef.current = null;
         setLoadError(err instanceof Error ? err.message : 'Failed to load server');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [resolvedId, refresh]);
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
@@ -57,7 +69,8 @@ export function ServerProvider({
     await refresh();
   }
 
-  if (loading) return loadingFallback ?? null;
+  // Only block the UI when we have nothing to show yet.
+  if (loading && !server) return loadingFallback ?? null;
   if (!server) return notFoundFallback ?? null;
 
   return (

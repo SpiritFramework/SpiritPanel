@@ -10,6 +10,45 @@
   gap: 1rem;
 }
 
+.tickets-inbox__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 2rem 1rem;
+  border-radius: var(--ds-radius-xl, 1rem);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.tickets-inbox__panel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 35%, transparent);
+}
+
+@media (min-width: 640px) {
+  .tickets-inbox__panel-tools {
+    padding: 0.75rem 1.15rem;
+  }
+}
+
+.tickets-inbox__meta-text {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.tickets-inbox__meta-text strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
 .tickets-inbox__hero {
   overflow: hidden;
   border-radius: var(--ds-radius-xl, 1rem);
@@ -342,8 +381,10 @@ button.tickets-inbox__stat:hover {
 
 .tickets-inbox__search {
   position: relative;
-  flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 18rem;
+  margin-left: auto;
 }
 
 .tickets-inbox__search-icon {
@@ -379,22 +420,28 @@ button.tickets-inbox__stat:hover {
 .tickets-inbox__search-clear {
   position: absolute;
   top: 50%;
-  right: 0.4rem;
-  display: inline-flex;
+  right: 0.2rem;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  transform: translateY(-50%);
   border-radius: 0.45rem;
   border: none;
   background: transparent;
   color: var(--muted);
+  transform: translateY(-50%);
 }
 
 .tickets-inbox__search-clear:hover {
   background: var(--surface-hover);
   color: var(--text);
+}
+
+@media (max-width: 639px) {
+  .tickets-inbox__search {
+    max-width: none;
+  }
 }
 
 .tickets-inbox__filters {
@@ -480,8 +527,8 @@ button.tickets-inbox__stat:hover {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.75rem 0.85rem;
-  padding: 0.95rem 1rem 0.95rem 0.85rem;
+  gap: 0.65rem 0.75rem;
+  padding: 0.75rem 1rem 0.75rem 0.85rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   text-decoration: none;
   color: inherit;
@@ -523,10 +570,10 @@ button.tickets-inbox__stat:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.15rem;
+  height: 2.15rem;
   flex-shrink: 0;
-  border-radius: 0.7rem;
+  border-radius: 0.65rem;
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--muted);
@@ -581,13 +628,13 @@ button.tickets-inbox__stat:hover {
 }
 
 .tickets-inbox__row-title {
-  margin: 0.25rem 0 0;
+  margin: 0.15rem 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.3;
   color: var(--text);
 }
 

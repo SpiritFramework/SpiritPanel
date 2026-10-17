@@ -1,6 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, FolderOpen, Hash, Info, LifeBuoy, MessageSquare, Server, User, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  FolderOpen,
+  Hash,
+  Info,
+  LifeBuoy,
+  MessageSquare,
+  Server,
+  User,
+  X,
+} from 'lucide-react';
 import type { TicketDetail } from '../../lib/api';
 import { AlertBanner } from '../ui';
 import { TicketPriorityBadge, TicketStatusBadge } from './TicketBadges';
@@ -62,12 +73,12 @@ export function TicketDetailShell({
 
   return (
     <div className={`ticket-page ticket-page--${variant}${error ? ' ticket-page--has-error' : ''}`}>
-      <header className="ticket-page__header glass">
+      <header className="ticket-page__header">
         <Link to={backHref} className="ticket-page__back" aria-label={backLabel} title={backLabel}>
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
-        <div className="ticket-page__header-icon" aria-hidden>
+        <div className="ticket-page__header-mark" aria-hidden>
           <LifeBuoy className="h-4 w-4" />
         </div>
 
@@ -80,11 +91,23 @@ export function TicketDetailShell({
             <span className="ticket-page__id-cat">{ticketCategoryLabel(ticket.category)}</span>
           </div>
           <h1 className="ticket-page__title">{ticket.subject}</h1>
-        </div>
-
-        <div className="ticket-page__badges">
-          <TicketStatusBadge status={ticket.status} />
-          <TicketPriorityBadge priority={ticket.priority} />
+          <div className="ticket-page__hero-meta">
+            <TicketStatusBadge status={ticket.status} />
+            <TicketPriorityBadge priority={ticket.priority} />
+            {ticket.server ? (
+              <Link
+                to={variant === 'admin' ? `/admin/servers/${ticket.server.id}` : `/servers/${ticket.server.id}`}
+                className="ticket-page__pill ticket-page__pill--link"
+              >
+                <Server className="h-3 w-3" />
+                {ticket.server.name}
+              </Link>
+            ) : null}
+            <span className="ticket-page__pill">
+              <MessageSquare className="h-3 w-3" />
+              {ticket.messages.length} message{ticket.messages.length === 1 ? '' : 's'}
+            </span>
+          </div>
         </div>
 
         <div className="ticket-page__actions">
@@ -110,12 +133,6 @@ export function TicketDetailShell({
 
       <div className="ticket-page__body">
         <section className="ticket-page__chat" aria-label="Conversation">
-          <div className="ticket-page__chat-label">
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>Conversation</span>
-            <span className="ticket-page__chat-count">{ticket.messages.length}</span>
-          </div>
-
           <div className="ticket-page__thread">
             <div className="ticket-page__messages">
               <TicketChat messages={ticket.messages} currentUserId={currentUserId} />
@@ -233,7 +250,7 @@ export function TicketDetailsCard({
   }
 
   return (
-    <div className="ticket-page__card ds-card">
+    <div className="ticket-page__card">
       <div className="ticket-page__card-head">
         <h3 className="ticket-page__card-title">Ticket details</h3>
         <div className="ticket-page__card-head-badges">
@@ -269,7 +286,7 @@ export function TicketMetaCard({
   children: ReactNode;
 }) {
   return (
-    <div className="ticket-page__card ds-card">
+    <div className="ticket-page__card">
       <div className="ticket-page__card-head">
         <h3 className="ticket-page__card-title">{title}</h3>
       </div>

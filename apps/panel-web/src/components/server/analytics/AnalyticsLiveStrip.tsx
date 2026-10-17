@@ -28,6 +28,7 @@ export function AnalyticsLiveStrip({
     pct: number;
     tone: 'cpu' | 'ram' | 'disk' | 'net';
     status?: 'success' | 'warning' | 'danger';
+    net?: { rx: string; tx: string };
   }> = [
     {
       icon: Cpu,
@@ -59,10 +60,14 @@ export function AnalyticsLiveStrip({
     {
       icon: Network,
       label: 'Network',
-      value: formatBytes(current?.networkRxBytes ?? 0),
-      sub: `↑ ${formatBytes(current?.networkTxBytes ?? 0)} total`,
+      value: formatBytes((current?.networkRxBytes ?? 0) + (current?.networkTxBytes ?? 0)),
+      sub: 'Combined transfer',
       pct: 0,
       tone: 'net',
+      net: {
+        rx: formatBytes(current?.networkRxBytes ?? 0),
+        tx: formatBytes(current?.networkTxBytes ?? 0),
+      },
     },
   ];
 
@@ -74,23 +79,31 @@ export function AnalyticsLiveStrip({
           className={`ds-srv-an-live-tile ds-srv-an-live-tile--${tile.tone}${tile.status ? ` ds-srv-an-live-tile--${tile.status}` : ''}`}
           role="listitem"
         >
-          <span className={`ds-srv-an-live-tile-icon ds-srv-an-live-tile-icon--${tile.tone}`} aria-hidden>
-            <tile.icon className="h-3.5 w-3.5" />
-          </span>
-          <span className="ds-srv-an-live-tile-copy">
+          <div className="ds-srv-an-live-tile-top">
+            <span className={`ds-srv-an-live-tile-icon ds-srv-an-live-tile-icon--${tile.tone}`} aria-hidden>
+              <tile.icon className="h-3.5 w-3.5" />
+            </span>
             <span className="ds-srv-an-live-tile-label">{tile.label}</span>
-            <span className="ds-srv-an-live-tile-value">{tile.value}</span>
-            <span className="ds-srv-an-live-tile-sub">{tile.sub}</span>
-          </span>
-          {tile.tone === 'net' ? (
-            <span className="ds-srv-an-live-net" aria-hidden>
-              <ArrowDown className="h-3 w-3 text-sky-400" />
-              <ArrowUp className="h-3 w-3 text-violet-400" />
+          </div>
+          <span className="ds-srv-an-live-tile-value">{tile.value}</span>
+          {tile.net ? (
+            <span className="ds-srv-an-live-net-meta">
+              <span>
+                <ArrowDown className="h-3 w-3" aria-hidden />
+                {tile.net.rx}
+              </span>
+              <span>
+                <ArrowUp className="h-3 w-3" aria-hidden />
+                {tile.net.tx}
+              </span>
             </span>
           ) : (
-            <span className="ds-srv-an-live-tile-bar" aria-hidden>
-              <span className="ds-srv-an-live-tile-fill" style={{ width: `${Math.min(100, tile.pct)}%` }} />
-            </span>
+            <>
+              <span className="ds-srv-an-live-tile-sub">{tile.sub}</span>
+              <span className="ds-srv-an-live-tile-bar" aria-hidden>
+                <span className="ds-srv-an-live-tile-fill" style={{ width: `${Math.min(100, tile.pct)}%` }} />
+              </span>
+            </>
           )}
         </div>
       ))}

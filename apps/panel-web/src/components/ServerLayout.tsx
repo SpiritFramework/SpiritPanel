@@ -17,8 +17,9 @@ import {
   Users,
   Store,
   Package,
+  WifiOff,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { ServerProvider, useServer } from '../context/ServerContext';
 import { useAdminSupport } from '../context/AdminSupportContext';
 import { formatAllocationAddress } from '../lib/allocation';
@@ -37,8 +38,9 @@ import { ServerOverviewBar } from './server/ServerOverviewBar';
 import { ServerSidebar } from './server/ServerSidebar';
 import { AmbientBackdrop } from './AmbientBackdrop';
 import { RouteErrorBoundary } from './ErrorBoundary';
-import { AlertBanner, Spinner } from './ui';
+import { Spinner } from './ui';
 import { isFiveMServer, isMinecraftServer } from '../lib/server-eggs';
+import { prefetchCommonServerTabs, prefetchServerTab } from '../lib/prefetch-server-tabs';
 import type { ServerDetail } from '../lib/api';
 
 const serverNavGroups: Array<{
@@ -240,7 +242,13 @@ export function ServerShellInner() {
               aria-label="Server sections"
             >
               {navItems.map(({ to, label, icon }) => (
-                <TabNavItem key={to} to={to} icon={icon} label={label} />
+                <TabNavItem
+                  key={to}
+                  to={to}
+                  icon={icon}
+                  label={label}
+                  onPrefetch={() => prefetchServerTab(to)}
+                />
               ))}
             </nav>
           </div>
@@ -277,12 +285,18 @@ export function ServerShellInner() {
         </div>
 
         {server.nodeReachable === false ? (
-          <AlertBanner
-            tone="warning"
-            className={`relative z-[1] mx-3 mt-2 md:mx-5 md:mt-0${isConsoleRoute ? ' hidden md:flex' : ''}`}
+          <div
+            className={`ds-srv-node-notice relative z-[1] mx-3 mt-2 md:mx-5 md:mt-0${isConsoleRoute ? ' ds-srv-node-notice--console' : ''}`}
+            role="status"
           >
-            Host node is unreachable — status and console may be stale until FeatherWings reconnects.
-          </AlertBanner>
+            <span className="ds-srv-node-notice-icon" aria-hidden>
+              <WifiOff className="h-4 w-4" />
+            </span>
+            <span className="ds-srv-node-notice-copy">
+              <strong>Node unreachable</strong>
+              <span>The panel can’t reach FeatherWings on this host, so console and power controls won’t work until it comes back.</span>
+            </span>
+          </div>
         ) : null}
 
         <main
@@ -302,7 +316,10 @@ export function ServerShellInner() {
             }
           >
             <RouteErrorBoundary fallbackTitle="This server page failed to load">
-              <Outlet key={location.pathname} />
+              {/* Nested Suspense keeps the shell mounted while tab chunks load. */}
+              <Suspense fallback={<ServerOutletFallback />}>
+                <Outlet />
+              </Suspense>
             </RouteErrorBoundary>
           </div>
         </main>
@@ -453,13 +470,42 @@ function MobilePowerBar({
   );
 }
 
+function ServerOutletFallback() {
+  return (
+    <div className="ds-srv-outlet-fallback" role="status" aria-live="polite">
+      <Spinner className="h-7 w-7" />
+      <span className="sr-only">Loading page</span>
+    </div>
+  );
+}
+
 export function ServerLoadingShell() {
   const panelBgClass = usePanelBackgroundClass();
   return (
     <div className={`flex min-h-[100dvh] min-h-screen items-center justify-center ${panelBgClass}`}>
       <Spinner className="h-8 w-8" />
+      <span className="sr-only">Loading server</span>
     </div>
   );
+}
+
+/** Warm common server-tab chunks so tab switches don’t flash Suspense. */
+function usePrefetchServerTabs() {
+  useEffect(() => {
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const ric = typeof window !== 'undefined' ? window.requestIdleCallback?.bind(window) : undefined;
+    const cic = typeof window !== 'undefined' ? window.cancelIdleCallback?.bind(window) : undefined;
+    if (ric) {
+      idleId = ric(() => prefetchCommonServerTabs(), { timeout: 1500 });
+    } else {
+      timeoutId = setTimeout(() => prefetchCommonServerTabs(), 400);
+    }
+    return () => {
+      if (idleId != null && cic) cic(idleId);
+      if (timeoutId != null) clearTimeout(timeoutId);
+    };
+  }, []);
 }
 
 export function ServerNotFoundShell({
@@ -482,11 +528,16 @@ export function ServerNotFoundShell({
   );
 }
 
+function ServerShellWithPrefetch() {
+  usePrefetchServerTabs();
+  return <ServerShellInner />;
+}
+
 export function ServerShell() {
   return (
     <ServerProvider loadingFallback={<ServerLoadingShell />} notFoundFallback={<ServerNotFoundShell />}>
       <ServerLiveProvider>
-        <ServerShellInner />
+        <ServerShellWithPrefetch />
       </ServerLiveProvider>
     </ServerProvider>
   );

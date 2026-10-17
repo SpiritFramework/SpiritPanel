@@ -10,12 +10,14 @@ export function SideNavItem({
   icon: Icon,
   label,
   description,
+  onPrefetch,
 }: {
   to: string;
   end?: boolean;
   icon: LucideIcon;
   label: string;
   description?: string;
+  onPrefetch?: () => void;
 }) {
   const resolved = useResolvedPath(to);
   const match = useMatch({ path: resolved.pathname, end: Boolean(end) });
@@ -26,6 +28,8 @@ export function SideNavItem({
       to={to}
       end={end}
       aria-current={isActive ? 'page' : undefined}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
       className={({ isActive: active }) =>
         `nav-item group flex items-center gap-2 rounded-lg px-2 py-1.5 transition ${
           active ? 'nav-item-active active' : 'text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]'
@@ -79,17 +83,22 @@ export function TabNavItem({
   end,
   icon: Icon,
   label,
+  onPrefetch,
 }: {
   to: string;
   end?: boolean;
   icon: LucideIcon;
   label: string;
+  /** Warm the lazy chunk before click (pointer enter / focus). */
+  onPrefetch?: () => void;
 }) {
   return (
     <NavLink
       to={to}
       end={end}
       title={label}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
       className={({ isActive }) =>
         `nav-tab inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition sm:gap-1.5 sm:px-3 ${
           isActive

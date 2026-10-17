@@ -1,84 +1,121 @@
-import type { LucideIcon } from 'lucide-react';
-import { Github, HardDrive, Package, Sparkles, Store } from 'lucide-react';
+import { Github, Package, RefreshCw, Store } from 'lucide-react';
+import { StatusPill } from '../../../components/ui';
+import { ServerEggIcon } from '../../../components/ServerEggIcon';
 import type { FivemMarketplaceOverview } from '../hooks/useFivemMarketplace';
 
-type Tab = 'catalog' | 'github' | 'installed';
-
-const TAB_META: Record<Tab, { icon: LucideIcon; label: string }> = {
-  catalog: { icon: Store, label: 'Host catalog' },
-  github: { icon: Github, label: 'GitHub' },
-  installed: { icon: Package, label: 'Installed' },
-};
-
 export function MarketplaceHeader({
-  tab,
+  serverName,
+  eggName,
+  eggLogoUrl,
   layoutLabel,
   overview,
-  onTabChange,
+  refreshing,
+  onRefresh,
+  onCatalogClick,
+  onInstalledClick,
 }: {
-  tab: Tab;
+  serverName: string;
+  eggName: string;
+  eggLogoUrl?: string | null;
   layoutLabel: string;
-  overview: FivemMarketplaceOverview;
-  onTabChange: (tab: Tab) => void;
+  overview: FivemMarketplaceOverview | null;
+  refreshing: boolean;
+  onRefresh: () => void;
+  onCatalogClick?: () => void;
+  onInstalledClick?: () => void;
 }) {
-  const tabs: Tab[] = [
-    ...(overview.features.catalog ? (['catalog'] as Tab[]) : []),
-    ...(overview.features.github ? (['github'] as Tab[]) : []),
-    'installed',
-  ];
+  const installed = overview?.stats.installedCount ?? 0;
+  const catalog = overview?.stats.catalogCount ?? 0;
+  const features = [
+    overview?.features.catalog ? 'Host catalog' : null,
+    overview?.features.github ? 'GitHub' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const tabBadge = (id: Tab): number | undefined => {
-    if (id === 'catalog') return overview.stats.catalogCount;
-    if (id === 'installed') return overview.stats.installedCount;
-    return undefined;
-  };
+  const statusLabel =
+    installed > 0 ? `${installed} installed` : catalog > 0 ? `${catalog} in catalog` : 'Marketplace';
 
   return (
-    <header className="ds-marketplace-header">
-      <div className="ds-marketplace-header__banner">
-        <div className="ds-marketplace-header__brand">
-          <div className="ds-marketplace-header__logo" aria-hidden>
-            <Sparkles className="h-5 w-5" />
+    <header className="ds-srv-plugins-header">
+      <div className="ds-srv-plugins-header-accent" aria-hidden />
+
+      <div className="ds-srv-plugins-header-body">
+        <div className="ds-srv-plugins-header-main">
+          <div className="ds-srv-plugins-header-identity">
+            <div className="ds-srv-plugins-header-icon-wrap" aria-hidden>
+              <ServerEggIcon
+                eggName={eggName}
+                logoUrl={eggLogoUrl}
+                className="h-5 w-5"
+                iconClassName="h-5 w-5 text-white/90"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="ds-srv-plugins-header-title-row">
+                <h1 className="ds-srv-plugins-header-title truncate">{serverName}</h1>
+                <span className="ds-srv-plugins-header-sep" aria-hidden>
+                  /
+                </span>
+                <span className="ds-srv-plugins-header-route">Marketplace</span>
+                <StatusPill label={statusLabel} tone="neutral" compact />
+              </div>
+              <p className="ds-srv-plugins-header-meta truncate">
+                {layoutLabel}
+                {features ? ` · ${features}` : ''}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="ds-eyebrow">Server resources</p>
-            <h1 className="ds-marketplace-header__title">FiveM Marketplace</h1>
-            <p className="ds-marketplace-header__layout">
-              <HardDrive className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {layoutLabel}
-            </p>
+
+          <div className="ds-srv-plugins-header-actions">
+            <div className="ds-srv-plugins-metrics" aria-label="Marketplace totals">
+              <button
+                type="button"
+                className={`ds-srv-plugins-metric${catalog > 0 ? ' ds-srv-plugins-metric--ok' : ''}`}
+                onClick={onCatalogClick}
+                disabled={!onCatalogClick}
+              >
+                <span className="ds-srv-plugins-metric-icon" aria-hidden>
+                  <Store className="h-3.5 w-3.5" />
+                </span>
+                <span className="ds-srv-plugins-metric-copy">
+                  <span className="ds-srv-plugins-metric-label">Catalog</span>
+                  <span className="ds-srv-plugins-metric-value">{catalog}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`ds-srv-plugins-metric${installed > 0 ? ' ds-srv-plugins-metric--ok' : ''}`}
+                onClick={onInstalledClick}
+                disabled={!onInstalledClick}
+              >
+                <span className="ds-srv-plugins-metric-icon" aria-hidden>
+                  <Package className="h-3.5 w-3.5" />
+                </span>
+                <span className="ds-srv-plugins-metric-copy">
+                  <span className="ds-srv-plugins-metric-label">Installed</span>
+                  <span className="ds-srv-plugins-metric-value">{installed}</span>
+                </span>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="ds-srv-plugins-action-btn"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label="Refresh marketplace"
+            >
+              <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="ds-srv-plugins-action-label">Refresh</span>
+            </button>
           </div>
         </div>
+
+        <div className="ds-srv-plugins-header-kicker" aria-hidden>
+          <Github className="h-3 w-3" />
+          <span>FiveM resources</span>
+        </div>
       </div>
-
-      <nav className="ds-marketplace-tabs" role="tablist" aria-label="Marketplace sections">
-        {tabs.map((id) => {
-          const meta = TAB_META[id];
-          const Icon = meta.icon;
-          const active = tab === id;
-          const badge = tabBadge(id);
-
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => onTabChange(id)}
-              className={`ds-marketplace-tab${active ? ' is-active' : ''}`}
-            >
-              <span className="ds-marketplace-tab__icon">
-                <Icon className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              <span className="ds-marketplace-tab__label">{meta.label}</span>
-              {badge !== undefined && badge > 0 ? (
-                <span className="ds-marketplace-tab__badge">{badge}</span>
-              ) : null}
-            </button>
-          );
-        })}
-      </nav>
     </header>
   );
 }

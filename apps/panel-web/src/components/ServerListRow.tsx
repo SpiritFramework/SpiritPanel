@@ -15,7 +15,9 @@ import { formatAllocationAddress } from '../lib/allocation';
 import { useBranding } from '../context/BrandingContext';
 import { normalizeAppearance } from '../lib/branding-appearance';
 import { formatResource, getServerTheme, resolveServerCardStyle } from '../lib/server-theme';
+import { prefetchServerTab } from '../lib/prefetch-server-tabs';
 import { ServerEggIcon } from './ServerEggIcon';
+import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
 
 export function ServerListTable({ servers }: { servers: ServerSummary[] }) {
@@ -69,6 +71,8 @@ function ServerListRow({ server }: { server: ServerSummary }) {
       role="link"
       tabIndex={0}
       onClick={openServer}
+      onMouseEnter={() => prefetchServerTab('console')}
+      onFocus={() => prefetchServerTab('console')}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -133,9 +137,11 @@ function ServerListRow({ server }: { server: ServerSummary }) {
           containerState={server.containerState}
           compact
         />
-        {server.nodeReachable === false ? (
-          <span className="ds-servers-row-warn">Node unreachable</span>
-        ) : null}
+        <ServerHostNotice
+          nodeReachable={server.nodeReachable}
+          maintenanceMode={server.node.maintenanceMode}
+          compact
+        />
       </span>
 
       <span className="ds-servers-row-go" aria-hidden>

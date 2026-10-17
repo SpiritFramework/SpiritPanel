@@ -93,3 +93,18 @@ export function formatTicketTime(iso: string): string {
     minute: '2-digit',
   });
 }
+
+export function formatTicketDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+export function formatTicketClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}

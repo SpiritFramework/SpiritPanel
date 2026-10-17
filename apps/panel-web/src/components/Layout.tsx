@@ -32,7 +32,6 @@ import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
 import { AuthorAttribution } from './AuthorAttribution';
-import { InstallAppButton } from './InstallAppButton';
 import { AlertBell } from './AlertBell';
 import { LiveAlertToasts } from './LiveAlertToasts';
 import { RouteErrorBoundary } from './ErrorBoundary';
@@ -135,7 +134,6 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           </div>
         </div>
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
-        <InstallAppButton />
         <button
           type="button"
           onClick={logout}
@@ -226,7 +224,6 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
             </span>
           </Link>
         )}
-        <InstallAppButton />
         <button
           type="button"
           onClick={logout}

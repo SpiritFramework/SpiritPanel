@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -7,7 +7,6 @@ import {
   Inbox,
   Layers,
   LifeBuoy,
-  Loader2,
   MessageSquare,
   MessageSquarePlus,
   RefreshCw,
@@ -23,7 +22,7 @@ import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../compo
 import { sanitizeImageSrc } from '../../lib/safe-url';
 import { Button, ClientLayout, Input, Page, Select, Textarea } from '../../components/Layout';
 import { ModalShell } from '../../components/ModalShell';
-import { AlertBanner, EmptyState, PageLoading } from '../../components/ui';
+import { AlertBanner, EmptyState, Spinner } from '../../components/ui';
 import { TicketPriorityBadge, TicketStatusBadge } from '../../components/tickets/TicketBadges';
 import { TicketCreatePriorityPicker } from '../../components/tickets/TicketCreatePriorityPicker';
 import { formatTicketTime, ticketCategoryLabel, TICKET_CATEGORIES } from '../../lib/ticket-utils';
@@ -62,21 +61,32 @@ export function TicketsPage() {
   const logoSrc = sanitizeImageSrc(branding.logoUrl);
   const [items, setItems] = useState<TicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const loadInFlightRef = useRef(false);
+  const loadedRef = useRef(false);
+
+  const load = useCallback(async (opts?: { soft?: boolean }) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const soft = opts?.soft || loadedRef.current;
+    if (soft) setRefreshing(true);
+    else setLoading(true);
     setError('');
     try {
       const result = await api.client.tickets({ status: 'all' });
       setItems(result.items);
+      loadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tickets');
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 
@@ -86,6 +96,23 @@ export function TicketsPage() {
       return;
     }
     void load();
+  }, [branding.ticketsEnabled, load]);
+
+  useEffect(() => {
+    if (branding.ticketsEnabled === false) return;
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void load({ soft: true });
+    };
+    const id = window.setInterval(tick, 45_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void load({ soft: true });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [branding.ticketsEnabled, load]);
 
   const stats = useMemo(
@@ -116,25 +143,27 @@ export function TicketsPage() {
 
   const awaitingTickets = useMemo(() => items.filter(needsUserReply), [items]);
 
-  const filterOptions: Array<{ id: StatusFilter; label: string; count: number }> = [
-    { id: 'all', label: 'All', count: stats.total },
-    { id: 'open', label: 'Open', count: stats.open },
-    { id: 'awaiting', label: 'Your reply', count: stats.awaiting },
-    { id: 'closed', label: 'Closed', count: stats.closed },
-  ];
+  const filterLabels: Record<StatusFilter, string> = {
+    all: 'All',
+    open: 'Open',
+    awaiting: 'Awaiting you',
+    closed: 'Closed',
+  };
 
   const summaryText =
     branding.ticketsEnabled === false
       ? 'Get help with your servers and account.'
-      : stats.total === 0
-        ? 'Nothing Open - Open a ticket when you need a hand!'
-        : [
-            `${stats.open} open`,
-            stats.awaiting > 0 ? `${stats.awaiting} awaiting you` : null,
-            `${stats.closed} closed`,
-          ]
-            .filter(Boolean)
-            .join(' · ');
+      : loading && !loadedRef.current
+        ? 'Loading your tickets…'
+        : stats.total === 0
+          ? 'Nothing open — start a conversation when you need a hand.'
+          : [
+              `${stats.open} open`,
+              stats.awaiting > 0 ? `${stats.awaiting} awaiting you` : null,
+              `${stats.closed} closed`,
+            ]
+              .filter(Boolean)
+              .join(' · ');
 
   function toggleFilter(next: StatusFilter) {
     setFilter((prev) => (prev === next ? 'all' : next));
@@ -163,26 +192,25 @@ export function TicketsPage() {
             <h1 className="ds-servers-fleet-title">Support</h1>
             <div className="ds-servers-fleet-brand">
               <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-              {branding.tagline ? <span className="ds-servers-fleet-tagline">{branding.tagline}</span> : null}
+              <span className="ds-servers-fleet-tagline">Inbox</span>
             </div>
-            {loading ? (
-              <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
-                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
-                Loading your tickets…
-              </p>
-            ) : (
-              <p className="ds-servers-fleet-summary">{summaryText}</p>
-            )}
+            <p className="ds-servers-fleet-summary">{summaryText}</p>
           </div>
         </div>
 
         {branding.ticketsEnabled !== false ? (
           <div className="ds-servers-fleet-actions">
-            <Button variant="secondary" onClick={() => void load()} disabled={loading} aria-label="Refresh tickets">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void load({ soft: true })}
+              disabled={refreshing || (loading && !loadedRef.current)}
+              aria-label="Refresh tickets"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button onClick={() => setShowCreate(true)}>
+            <Button type="button" onClick={() => setShowCreate(true)}>
               <MessageSquarePlus className="h-4 w-4" />
               New ticket
             </Button>
@@ -190,13 +218,13 @@ export function TicketsPage() {
         ) : null}
       </div>
 
-      {!loading && branding.ticketsEnabled !== false && stats.total > 0 ? (
+      {branding.ticketsEnabled !== false && (!loading || items.length > 0) ? (
         <div className="ds-servers-fleet-stats ds-servers-fleet-stats--4" role="list" aria-label="Ticket summary">
           <TicketFleetStat
             icon={Inbox}
             label="Open"
             value={stats.open}
-            tone="info"
+            tone={stats.open > 0 ? 'info' : undefined}
             active={filter === 'open'}
             onClick={() => toggleFilter('open')}
           />
@@ -204,7 +232,7 @@ export function TicketsPage() {
             icon={MessageSquare}
             label="Awaiting you"
             value={stats.awaiting}
-            tone="warn"
+            tone={stats.awaiting > 0 ? 'warn' : undefined}
             active={filter === 'awaiting'}
             onClick={() => toggleFilter('awaiting')}
           />
@@ -212,7 +240,7 @@ export function TicketsPage() {
             icon={CheckCircle2}
             label="Closed"
             value={stats.closed}
-            tone="success"
+            tone={stats.closed > 0 ? 'success' : undefined}
             active={filter === 'closed'}
             onClick={() => toggleFilter('closed')}
           />
@@ -254,13 +282,13 @@ export function TicketsPage() {
           {stats.awaiting > 0 && filter !== 'awaiting' ? (
             <button
               type="button"
-              className="tickets-inbox__callout"
+              className="ds-servers-callout ds-servers-callout--warn"
               onClick={() => setFilter('awaiting')}
             >
-              <span className="tickets-inbox__callout-icon" aria-hidden>
+              <span className="ds-servers-callout-icon" aria-hidden>
                 <MessageSquare className="h-4 w-4" />
               </span>
-              <span className="tickets-inbox__callout-body">
+              <span className="ds-servers-callout-body">
                 <strong>
                   {stats.awaiting} ticket{stats.awaiting === 1 ? '' : 's'}{' '}
                   {stats.awaiting === 1 ? 'needs' : 'need'} your reply
@@ -271,135 +299,155 @@ export function TicketsPage() {
                     : 'Staff replied and is waiting on you.'}
                 </span>
               </span>
-              <ChevronRight className="tickets-inbox__callout-chevron h-4 w-4" aria-hidden />
+              <ChevronRight className="ds-servers-callout-chevron h-4 w-4" aria-hidden />
             </button>
           ) : null}
 
-          {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
+          {error ? (
+            <AlertBanner tone="error" className="flex-wrap justify-between">
+              <p>{error}</p>
+              <Button type="button" variant="secondary" onClick={() => void load({ soft: true })}>
+                Retry
+              </Button>
+            </AlertBanner>
+          ) : null}
 
-          <div className="tickets-inbox__panel">
-            <div className="tickets-inbox__toolbar">
-              <div className="tickets-inbox__search">
-                <Search className="tickets-inbox__search-icon" aria-hidden />
-                <input
-                  className="tickets-inbox__search-input"
-                  placeholder="Search subject, #, category, server…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="Search tickets"
-                />
-                {search ? (
-                  <button
-                    type="button"
-                    className="tickets-inbox__search-clear"
-                    aria-label="Clear search"
-                    onClick={() => setSearch('')}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="tickets-inbox__filters" role="tablist" aria-label="Filter tickets">
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={filter === option.id}
-                    className={`tickets-inbox__filter${filter === option.id ? ' is-active' : ''}${option.id === 'awaiting' && option.count > 0 ? ' tickets-inbox__filter--pulse' : ''}`}
-                    onClick={() => setFilter(option.id)}
-                  >
-                    {option.label}
-                    <span className="tickets-inbox__filter-count">{option.count}</span>
-                  </button>
-                ))}
-              </div>
+          {loading && items.length === 0 ? (
+            <div className="tickets-inbox__loading" role="status" aria-live="polite">
+              <Spinner className="h-7 w-7" />
+              <span className="sr-only">Loading tickets</span>
             </div>
+          ) : items.length === 0 ? (
+            <EmptyState
+              icon={<Inbox className="h-8 w-8" />}
+              title="No tickets yet"
+              description="Open a ticket and our team will reply in the conversation thread."
+              action={
+                <Button type="button" onClick={() => setShowCreate(true)}>
+                  <MessageSquarePlus className="h-4 w-4" />
+                  New ticket
+                </Button>
+              }
+            />
+          ) : (
+            <div className="tickets-inbox__panel">
+              <div className="tickets-inbox__panel-tools">
+                <p className="tickets-inbox__meta-text">
+                  Showing <strong>{filtered.length}</strong>
+                  {filtered.length !== items.length ? ` of ${items.length}` : ''}
+                  {filter !== 'all' ? ` · ${filterLabels[filter]}` : ''}
+                </p>
 
-            {loading ? (
-              <PageLoading label="Loading tickets…" />
-            ) : filtered.length === 0 ? (
-              <div className="tickets-inbox__empty">
-                <EmptyState
-                  icon={<Inbox className="h-8 w-8" />}
-                  title={items.length ? 'No tickets match' : 'No tickets yet'}
-                  description={
-                    items.length
-                      ? 'Try another filter or clear your search.'
-                      : 'Open a ticket and our team will reply in the conversation thread.'
-                  }
-                  action={
-                    !items.length ? (
-                      <Button onClick={() => setShowCreate(true)}>
-                        <MessageSquarePlus className="h-4 w-4" />
-                        New ticket
-                      </Button>
-                    ) : undefined
-                  }
-                />
+                <div className="tickets-inbox__search">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search tickets…"
+                    className="ds-field ds-field--icon-left ds-field--icon-right"
+                    aria-label="Search tickets"
+                  />
+                  {search ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="tickets-inbox__search-clear"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            ) : (
-              <ul className="tickets-inbox__list">
-                {filtered.map((ticket) => {
-                  const awaiting = needsUserReply(ticket);
-                  return (
-                    <li key={ticket.id}>
-                      <Link
-                        to={`/tickets/${ticket.id}`}
-                        className={`tickets-inbox__row${awaiting ? ' tickets-inbox__row--awaiting' : ''}${CLOSED_STATUSES.has(ticket.status) ? ' tickets-inbox__row--closed' : ''}`}
-                      >
-                        <span className="tickets-inbox__row-rail" aria-hidden />
-                        <span className={`tickets-inbox__row-icon${awaiting ? ' tickets-inbox__row-icon--awaiting' : ''}`} aria-hidden>
-                          {awaiting ? <MessageSquare className="h-4 w-4" /> : <LifeBuoy className="h-4 w-4" />}
-                        </span>
 
-                        <div className="tickets-inbox__row-main">
-                          <div className="tickets-inbox__row-top">
-                            <span className="tickets-inbox__row-id">#{ticket.number}</span>
-                            {awaiting ? <span className="tickets-inbox__ping">Your reply</span> : null}
-                          </div>
-                          <h2 className="tickets-inbox__row-title">{ticket.subject}</h2>
-                          <div className="tickets-inbox__row-meta">
-                            <span>{ticketCategoryLabel(ticket.category)}</span>
-                            {ticket.server ? (
-                              <>
-                                <span className="tickets-inbox__dot" aria-hidden>
-                                  ·
-                                </span>
-                                <span className="tickets-inbox__server">
-                                  <Server className="h-3 w-3" aria-hidden />
-                                  {ticket.server.name}
-                                </span>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
+              {filtered.length === 0 ? (
+                <div className="tickets-inbox__empty">
+                  <EmptyState
+                    icon={<Inbox className="h-8 w-8" />}
+                    title="No matching tickets"
+                    description="Try another filter or clear your search."
+                    action={
+                      search || filter !== 'all' ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setSearch('');
+                            setFilter('all');
+                          }}
+                        >
+                          Reset filters
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                </div>
+              ) : (
+                <ul className="tickets-inbox__list">
+                  {filtered.map((ticket) => {
+                    const awaiting = needsUserReply(ticket);
+                    return (
+                      <li key={ticket.id}>
+                        <Link
+                          to={`/tickets/${ticket.id}`}
+                          className={`tickets-inbox__row${awaiting ? ' tickets-inbox__row--awaiting' : ''}${CLOSED_STATUSES.has(ticket.status) ? ' tickets-inbox__row--closed' : ''}`}
+                        >
+                          <span className="tickets-inbox__row-rail" aria-hidden />
+                          <span
+                            className={`tickets-inbox__row-icon${awaiting ? ' tickets-inbox__row-icon--awaiting' : ''}`}
+                            aria-hidden
+                          >
+                            {awaiting ? <MessageSquare className="h-4 w-4" /> : <LifeBuoy className="h-4 w-4" />}
+                          </span>
 
-                        <div className="tickets-inbox__row-side">
-                          <div className="tickets-inbox__row-badges">
-                            <TicketStatusBadge status={ticket.status} />
-                            <TicketPriorityBadge priority={ticket.priority} />
+                          <div className="tickets-inbox__row-main">
+                            <div className="tickets-inbox__row-top">
+                              <span className="tickets-inbox__row-id">#{ticket.number}</span>
+                              {awaiting ? <span className="tickets-inbox__ping">Your reply</span> : null}
+                            </div>
+                            <h2 className="tickets-inbox__row-title">{ticket.subject}</h2>
+                            <div className="tickets-inbox__row-meta">
+                              <span>{ticketCategoryLabel(ticket.category)}</span>
+                              {ticket.server ? (
+                                <>
+                                  <span className="tickets-inbox__dot" aria-hidden>
+                                    ·
+                                  </span>
+                                  <span className="tickets-inbox__server">
+                                    <Server className="h-3 w-3" aria-hidden />
+                                    {ticket.server.name}
+                                  </span>
+                                </>
+                              ) : null}
+                            </div>
                           </div>
-                          <time className="tickets-inbox__row-time" dateTime={ticket.updatedAt}>
-                            <Clock className="h-3.5 w-3.5" aria-hidden />
-                            {formatTicketTime(ticket.updatedAt)}
-                          </time>
-                        </div>
 
-                        <ChevronRight className="tickets-inbox__row-chevron h-4 w-4" aria-hidden />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                          <div className="tickets-inbox__row-side">
+                            <div className="tickets-inbox__row-badges">
+                              <TicketStatusBadge status={ticket.status} />
+                              <TicketPriorityBadge priority={ticket.priority} />
+                            </div>
+                            <time className="tickets-inbox__row-time" dateTime={ticket.updatedAt}>
+                              <Clock className="h-3.5 w-3.5" aria-hidden />
+                              {formatTicketTime(ticket.updatedAt)}
+                            </time>
+                          </div>
+
+                          <ChevronRight className="tickets-inbox__row-chevron h-4 w-4" aria-hidden />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
       </Page>
 
       {showCreate ? (
-        <CreateTicketModal onClose={() => setShowCreate(false)} onCreated={() => void load()} />
+        <CreateTicketModal onClose={() => setShowCreate(false)} onCreated={() => void load({ soft: true })} />
       ) : null}
     </ClientLayout>
   );

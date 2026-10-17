@@ -1931,7 +1931,12 @@ export interface ServerSummary {
   cpu?: number;
   image?: string;
   egg: { name: string; logoUrl?: string | null; dockerImages?: Record<string, string>; features?: string[] };
-  node: { name: string; fqdn?: string; location?: { short: string; flagUrl?: string | null } };
+  node: {
+    name: string;
+    fqdn?: string;
+    maintenanceMode?: boolean;
+    location?: { short: string; flagUrl?: string | null };
+  };
   defaultAllocation: { ip: string; port: number; alias?: string | null };
   nodeReachable?: boolean;
 }

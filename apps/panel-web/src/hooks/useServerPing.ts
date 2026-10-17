@@ -49,11 +49,20 @@ export function useServerPing(serverId: string, enabled: boolean) {
       }
     }
 
-    void measure();
-    const timer = window.setInterval(() => void measure(), 60_000);
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void measure();
+    };
+    tick();
+    const timer = window.setInterval(tick, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void measure();
+    };
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [serverId, enabled]);
 

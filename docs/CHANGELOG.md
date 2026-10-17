@@ -19,6 +19,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+## [1.3.4.5] - 2026-10-17
+
 ### Security
 
 - **Dependency advisories cleared** (`pnpm audit` clean): `nodemailer` → 10.1.x, `fastify` → 5.12.7, `@fastify/multipart` → 10.1.4; overrides for `@fastify/busboy`, `fast-uri`, `http-cache-semantics`, and `source-map-js`.
@@ -39,6 +41,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Added
 
+- **Dev seed: Demo FiveM Server** (FiveM nest/egg with `fivem` feature + marketplace access) so local installs can open `/servers/…/marketplace` without importing eggs by hand.
 - **Ticket staff alerts:** when a user opens a ticket or replies, staff/admins get an unread Alerts inbox event (`ticket_opened` / `ticket_user_reply`) with a deep link to the ticket, plus live toast popups (~12s poll) while the panel is open.
 - **Delete alerts** from the inbox (one message or clear all, with confirm on clear).
 - **Installer progress UX** (`spirit.sh` 2.0.7): fixed-phase `[n/total · %]` lines for install/update, an “Almost done” notice from 80% onward, and TTY heartbeats during long silent work (apt, clone, pnpm, certbot, health wait).
@@ -46,6 +49,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Server console node-offline notice** uses clearer copy (“Node unreachable” — panel can’t reach FeatherWings) and a compact callout layout instead of a plain warning banner.
 - **Admin → Subdomains** (`GET /api/admin/domains`) no longer 500s: add the missing `server_domains` migration so the table exists on migrated installs.
 - **Admin → Servers → detail → Manage** embeds the full Startup & environment editor (command, Docker image, variables) for full admins when Admin server support is enabled, including egg-locked variables.
 - **Admin → Servers → Manage → Startup** works for all full panel admins (not only rootAdmin) when Admin server support is enabled: edit startup command, docker image, and egg-locked variables.
@@ -55,6 +59,16 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Alerts inbox** aligned to My Servers / Support fleet chrome: clickable Unread / Critical / Servers / Security / Total stats (Tickets/Nodes only when those events exist), labeled Refresh · Mark all · Clear, search in the list panel (no duplicate filter pills), denser rows, soft reload (no full-page spinner), polling pauses while the tab is hidden.
+- **Support inbox** matched to Alerts: fleet stats as filters (no duplicate pills), search + “Showing” meta in the list panel, denser rows, soft reload, visibility-paused polling.
+- **Support ticket chat** polished like billing conversations: day separators, client/staff asymmetric bubbles, richer header meta (status · priority · server · message count), quieter composer, soft “Opening conversation…” load.
+- **FiveM Marketplace** (user manage) rebuilt onto the Plugins manage shell: `Server / Marketplace` header with Catalog/Installed metrics + Refresh, segment tabs, denser catalog cards, quieter empty states. Fixes a crash from a mismatched header API. Catalog gets results head + icon category chips; Installed matches Plugins installed chrome (source filters, search, denser cards).
+- **Sidebar:** removed the PWA “Install app” entry from client and admin sidebars.
+- **Server Analytics** (user manage) polished to match Network/Activity/Plugins chrome: labeled Refresh, denser live usage tiles (clearer RX/TX), Historical trends head with snapshot count, consolidated “How it works” side card, quieter empty state. Demo seed now writes denser 7-day snapshot history so charts render locally. Loading uses a single in-shell spinner; range changes soft-refresh.
+- **Server shell performance:** `ServerShell` loads eagerly; tab chunks suspend only inside the content area (shell stays mounted); common tabs prefetch on idle and on tab/list hover; server fetch no longer blanks the shell when revalidating the same server; analytics/ping/player-count polling pauses while the tab is hidden; My Servers no longer stacks a “Loading…” line on top of the list skeleton.
+- **Server Plugins** (Minecraft Modrinth catalog) polished to match Network/Activity manage tabs: `Server / Plugins` header with install/update metrics, Refresh, Browse/Installed tabs in-panel, quieter category chips (less storefront green). Popular results head + denser metrics; full Modrinth category set (19 chips). Installed tab gets matching section head, icon filters, amber update cards, and a clearer empty state. Project detail uses the same manage shell (header, install card, version list).
+- **Server Activity** (user manage) polished to match Network-style manage tabs: labeled Refresh/Clear, event count in the header pill, no Total/Loaded/Showing strip, feed head + quieter filters, denser event cards.
+- **My Servers cards/rows** show host condition as chips under power status: FeatherWings unreachable and/or node Maintenance (client list includes `node.maintenanceMode`).
 - **Admin System activity** cleaned up to the fleet-hero pattern: scope stats in the hero, single feed card (no nested node-detail chrome), search hint for loaded events, and a slim category/related rail. Hero no longer shows the “N in scope · N loaded · All panel” summary line.
 - **Admin dashboard redesigned** to match My Servers / Support: fleet hero with clickable health stats, needs-attention work queue (tickets + suspended/installing servers), capacity tiles with pressure hotspots, updated quick nav, and denser node / activity lists. Dashboard API returns `ticketQueue` (with items) and `attentionServers`.
 - **Support / Tickets hero** matches My Servers: brand mark, greeting, panel name row, summary line, and clickable fleet-style stats (client + admin).

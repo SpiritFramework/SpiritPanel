@@ -114,7 +114,7 @@ export function ActivityFeedPanel({
   }
 
   return (
-    <section className="ds-srv-act-feed">
+    <div className="ds-srv-act-feed">
       <div className="ds-srv-act-feed-toolbar">
         <div className="ds-srv-act-search">
           <Search className="ds-srv-act-search-icon" aria-hidden />
@@ -122,8 +122,9 @@ export function ActivityFeedPanel({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search events, users, IP…"
+            placeholder="Search loaded events, users, IP…"
             className="ds-srv-act-search-input"
+            aria-label="Search loaded activity events"
           />
         </div>
 
@@ -152,13 +153,13 @@ export function ActivityFeedPanel({
           <p className="ds-srv-act-feed-meta">
             {hasActiveFilters ? (
               <>
-                <strong>{filtered.length}</strong> matching
-                {filter !== 'all' ? <> in <strong>{activeFilterMeta.label}</strong></> : null}
-                <span className="opacity-60"> · {entries.length} loaded</span>
+                Showing <strong>{filtered.length}</strong>
+                {filter !== 'all' ? <> in {activeFilterMeta.label.toLowerCase()}</> : null}
+                <span className="ds-srv-act-feed-meta-muted"> · {entries.length} loaded</span>
               </>
             ) : (
               <>
-                <strong>{entries.length}</strong> of <strong>{total}</strong> events
+                Showing <strong>{entries.length}</strong> of <strong>{total}</strong>
               </>
             )}
           </p>
@@ -227,6 +228,6 @@ export function ActivityFeedPanel({
           </button>
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }

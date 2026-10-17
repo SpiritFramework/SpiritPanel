@@ -23,6 +23,7 @@ export function useServerAnalytics() {
   const [statsError, setStatsError] = useState(false);
   const { connected, live: wsLive } = useServerLiveStats(id);
   const livePointRef = useRef<StatPoint | null>(null);
+  const loadedForIdRef = useRef<string | null>(null);
 
   const livePoint = wsLive ?? stats?.live ?? null;
   livePointRef.current = livePoint;
@@ -47,6 +48,7 @@ export function useServerAnalytics() {
       const data = await api.client.stats(id, range);
       setStats(data);
       setStatsError(false);
+      loadedForIdRef.current = id;
     } catch {
       setStatsError(true);
     } finally {
@@ -56,12 +58,20 @@ export function useServerAnalytics() {
   }
 
   useEffect(() => {
-    load();
+    // New server: full skeleton. Same server / range change: soft-refresh in place.
+    const soft = loadedForIdRef.current === id;
+    if (!soft) {
+      setStats(null);
+      loadedForIdRef.current = null;
+    }
+    void load(soft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch on id/range only
   }, [id, range]);
 
   useEffect(() => {
     if (!id || !connected) return;
     const persist = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       const live = livePointRef.current;
       if (!live) return;
       api.client
@@ -82,8 +92,20 @@ export function useServerAnalytics() {
 
   useEffect(() => {
     if (!id) return;
-    const timer = window.setInterval(() => load(true), 60_000);
-    return () => window.clearInterval(timer);
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void load(true);
+    };
+    const timer = window.setInterval(tick, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void load(true);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, range]);
 
   const series = useMemo(() => {

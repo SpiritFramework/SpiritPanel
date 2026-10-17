@@ -15,7 +15,9 @@ import { formatAllocationAddress } from '../lib/allocation';
 import { useBranding } from '../context/BrandingContext';
 import { normalizeAppearance } from '../lib/branding-appearance';
 import { formatResource, getServerTheme, resolveServerCardStyle } from '../lib/server-theme';
+import { prefetchServerTab } from '../lib/prefetch-server-tabs';
 import { ServerEggIcon } from './ServerEggIcon';
+import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
 
 const BANNER_PATTERN =
@@ -55,7 +57,12 @@ export function ServerCard({ server }: ServerCardProps) {
     >
       {cardStyle === 'neon' && <div className="server-card-neon-mesh" aria-hidden />}
 
-      <Link to={`/servers/${server.id}`} className="relative flex flex-1 flex-col">
+      <Link
+        to={`/servers/${server.id}`}
+        className="relative flex flex-1 flex-col"
+        onMouseEnter={() => prefetchServerTab('console')}
+        onFocus={() => prefetchServerTab('console')}
+      >
         <CardHeader server={server} theme={theme} cardStyle={cardStyle} />
 
         <div className={`relative flex flex-1 flex-col ${
@@ -270,8 +277,8 @@ function CardBody({
 }) {
   return (
     <div className={`flex flex-1 flex-col ${flat ? 'border-t border-[var(--border)] pt-3' : 'glass-panel rounded-xl p-3'}`}>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="min-w-0">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="ds-servers-card-status min-w-0">
           <ServerStatusBadge
             status={server.status}
             suspended={server.suspended}
@@ -279,9 +286,10 @@ function CardBody({
             containerState={server.containerState}
             compact
           />
-          {server.nodeReachable === false ? (
-            <p className="mt-1 text-[11px] leading-snug text-[var(--warning-fg)]">Node unreachable</p>
-          ) : null}
+          <ServerHostNotice
+            nodeReachable={server.nodeReachable}
+            maintenanceMode={server.node.maintenanceMode}
+          />
         </div>
         <span className="truncate text-[11px] leading-snug text-[var(--muted)]">{server.egg.name}</span>
       </div>

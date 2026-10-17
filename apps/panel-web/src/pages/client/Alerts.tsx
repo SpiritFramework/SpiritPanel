@@ -30,7 +30,7 @@ import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../compo
 import { sanitizeImageSrc } from '../../lib/safe-url';
 import { ClientLayout, Button, Page } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { AlertBanner, DsIcon, EmptyState, PageLoading } from '../../components/ui';
+import { AlertBanner, DsIcon, EmptyState, Spinner } from '../../components/ui';
 
 type InboxFilter = 'all' | 'unread' | 'critical' | 'servers' | 'security' | 'tickets' | 'nodes';
 
@@ -201,16 +201,19 @@ export function AlertsPage() {
   const [confirmClear, setConfirmClear] = useState(false);
 
   const loadInFlightRef = useRef(false);
+  const loadedRef = useRef(false);
 
   const load = useCallback(async (opts?: { soft?: boolean }) => {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;
-    if (opts?.soft) setRefreshing(true);
+    const soft = opts?.soft || loadedRef.current;
+    if (soft) setRefreshing(true);
     else setLoading(true);
     setError('');
     try {
       const ev = await api.client.alertEvents();
       setEvents(ev.events);
+      loadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load alerts');
     } finally {
@@ -225,8 +228,19 @@ export function AlertsPage() {
   }, [load]);
 
   useEffect(() => {
-    const id = window.setInterval(() => void load({ soft: true }), 30_000);
-    return () => window.clearInterval(id);
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void load({ soft: true });
+    };
+    const id = window.setInterval(tick, 30_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void load({ soft: true });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [load]);
 
   const unread = useMemo(() => events.filter((e) => !e.readAt).length, [events]);
@@ -342,295 +356,355 @@ export function AlertsPage() {
     if (!event.readAt) void markRead(event.id);
   }
 
-  const filters: Array<{ id: InboxFilter; label: string; count: number; icon: LucideIcon }> = [
-    { id: 'all', label: 'All', count: events.length, icon: Inbox },
-    { id: 'unread', label: 'Unread', count: unread, icon: Bell },
-    { id: 'critical', label: 'Critical', count: criticalCount, icon: Activity },
-    { id: 'servers', label: 'Servers', count: serverCount, icon: Server },
-    { id: 'security', label: 'Security', count: securityCount, icon: Shield },
-    ...(ticketCount > 0 || staff
-      ? [{ id: 'tickets' as const, label: 'Tickets', count: ticketCount, icon: LifeBuoy }]
-      : []),
-    ...(nodeCount > 0 ? [{ id: 'nodes' as const, label: 'Nodes', count: nodeCount, icon: HardDrive }] : []),
-  ];
+  function toggleFilter(next: InboxFilter) {
+    setInboxFilter((prev) => (prev === next ? 'all' : next));
+  }
+
+  const filterLabels: Record<InboxFilter, string> = {
+    all: 'All',
+    unread: 'Unread',
+    critical: 'Critical',
+    servers: 'Servers',
+    security: 'Security',
+    tickets: 'Tickets',
+    nodes: 'Nodes',
+  };
 
   const summaryText =
-    events.length === 0
-      ? 'Nothing waiting — new notices land here automatically.'
-      : unread > 0
-        ? `${unread} unread${criticalUnread ? ` · ${criticalUnread} critical` : ''}`
-        : `You're caught up · ${events.length} in inbox`;
+    loading && !loadedRef.current
+      ? 'Loading your inbox…'
+      : events.length === 0
+        ? 'Nothing waiting — new notices land here automatically.'
+        : unread > 0
+          ? `${unread} unread${criticalUnread ? ` · ${criticalUnread} critical` : ''}`
+          : `You're caught up · ${events.length} in inbox`;
 
-  if (loading) {
-    return (
-      <ClientLayout>
-        <Page>
-          <PageLoading label="Loading alerts…" />
-        </Page>
-      </ClientLayout>
-    );
-  }
+  const activeFilterLabel = filterLabels[inboxFilter];
 
   return (
     <ClientLayout>
       <Page>
         <section className="alerts-inbox" aria-label="Alerts">
-          <header className="alerts-inbox__hero">
+          <header className="ds-servers-fleet">
             {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
 
-            <div className="alerts-inbox__hero-top">
-              <div className="alerts-inbox__identity">
+            <div className="ds-servers-fleet-top">
+              <div className="ds-servers-fleet-identity">
                 {logoSrc ? (
-                  <div className="alerts-inbox__mark">
+                  <div className="ds-servers-fleet-mark">
                     <img src={logoSrc} alt="" />
                   </div>
                 ) : (
-                  <div className="alerts-inbox__mark alerts-inbox__mark--fallback" style={panelNameGradientStyle()}>
+                  <div
+                    className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback"
+                    style={panelNameGradientStyle()}
+                  >
                     {panelNameInitial(branding.panelName)}
                   </div>
                 )}
-                <div className="min-w-0">
-                  <p className="alerts-inbox__greeting">
+                <div className="ds-servers-fleet-copy">
+                  <p className="ds-servers-fleet-greeting">
                     {greeting()}
                     {user ? `, ${displayName(user)}` : ''}
                   </p>
-                  <h1 className="alerts-inbox__title">Alerts</h1>
-                  <div className="alerts-inbox__brand">
+                  <h1 className="ds-servers-fleet-title">Alerts</h1>
+                  <div className="ds-servers-fleet-brand">
                     <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-                    <span className="alerts-inbox__tagline">Inbox</span>
+                    <span className="ds-servers-fleet-tagline">Inbox</span>
                   </div>
-                  <p className="alerts-inbox__summary">{summaryText}</p>
+                  <p className="ds-servers-fleet-summary">{summaryText}</p>
                 </div>
               </div>
 
-              <div className="alerts-inbox__aside">
-                <HeaderStat label="Unread" value={unread} tone={unread ? 'warn' : undefined} />
-                {criticalUnread > 0 ? <HeaderStat label="Critical" value={criticalUnread} tone="danger" /> : null}
-                <HeaderStat label="Total" value={events.length} />
-                <button
+              <div className="ds-servers-fleet-actions">
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => void load({ soft: true })}
-                  disabled={refreshing}
-                  title="Refresh inbox"
+                  disabled={refreshing || (loading && !loadedRef.current)}
                   aria-label="Refresh inbox"
-                  className="ds-icon-btn ds-icon-btn--bordered h-9 w-9"
                 >
-                  <RefreshCw className={`ds-icon ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
                 {unread > 0 ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
                     onClick={() => void markAll()}
                     disabled={busyId === 'all-read'}
-                    title="Mark all read"
                     aria-label="Mark all read"
-                    className="ds-icon-btn ds-icon-btn--bordered h-9 w-9"
                   >
-                    <CheckCheck className="ds-icon" />
-                  </button>
+                    <CheckCheck className="h-4 w-4" />
+                    <span className="hidden sm:inline">Mark all</span>
+                  </Button>
                 ) : null}
                 {events.length > 0 ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
                     onClick={() => setConfirmClear(true)}
-                    title="Clear inbox"
                     aria-label="Clear inbox"
-                    className="ds-icon-btn ds-icon-btn--bordered h-9 w-9"
                   >
-                    <Trash2 className="ds-icon" />
-                  </button>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </Button>
                 ) : null}
               </div>
             </div>
 
-            <div className="alerts-inbox__tools">
-              <div className="alerts-inbox__pills" role="toolbar" aria-label="Filter alerts">
-                {filters.map((pill) => {
-                  const Icon = pill.icon;
-                  const active = inboxFilter === pill.id;
-                  return (
-                    <button
-                      key={pill.id}
-                      type="button"
-                      onClick={() => setInboxFilter(pill.id)}
-                      className={`ds-filter-pill ${active ? 'is-active' : ''}`}
-                      aria-pressed={active}
-                    >
-                      <Icon className="ds-icon" />
-                      {pill.label}
-                      <span className="ds-filter-pill-count">{pill.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="alerts-inbox__search">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search alerts…"
-                  className="ds-field ds-field--icon-left ds-field--icon-right"
-                  aria-label="Search alerts"
+            {!loading || events.length > 0 ? (
+              <div
+                className={`ds-servers-fleet-stats${
+                  ticketCount > 0 || nodeCount > 0
+                    ? ` ds-servers-fleet-stats--${5 + (ticketCount > 0 ? 1 : 0) + (nodeCount > 0 ? 1 : 0)}`
+                    : ''
+                }`}
+                role="list"
+                aria-label="Inbox summary"
+              >
+                <AlertFleetStat
+                  icon={Bell}
+                  label="Unread"
+                  value={unread}
+                  tone={unread > 0 ? 'warn' : undefined}
+                  active={inboxFilter === 'unread'}
+                  onClick={() => toggleFilter('unread')}
                 />
-                {search ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearch('')}
-                    className="alerts-inbox__search-clear"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                <AlertFleetStat
+                  icon={Activity}
+                  label="Critical"
+                  value={criticalCount}
+                  tone={criticalUnread > 0 ? 'danger' : criticalCount > 0 ? 'warn' : undefined}
+                  active={inboxFilter === 'critical'}
+                  onClick={() => toggleFilter('critical')}
+                />
+                <AlertFleetStat
+                  icon={Server}
+                  label="Servers"
+                  value={serverCount}
+                  active={inboxFilter === 'servers'}
+                  onClick={() => toggleFilter('servers')}
+                />
+                <AlertFleetStat
+                  icon={Shield}
+                  label="Security"
+                  value={securityCount}
+                  active={inboxFilter === 'security'}
+                  onClick={() => toggleFilter('security')}
+                />
+                {ticketCount > 0 ? (
+                  <AlertFleetStat
+                    icon={LifeBuoy}
+                    label="Tickets"
+                    value={ticketCount}
+                    active={inboxFilter === 'tickets'}
+                    onClick={() => toggleFilter('tickets')}
+                  />
                 ) : null}
+                {nodeCount > 0 ? (
+                  <AlertFleetStat
+                    icon={HardDrive}
+                    label="Nodes"
+                    value={nodeCount}
+                    active={inboxFilter === 'nodes'}
+                    onClick={() => toggleFilter('nodes')}
+                  />
+                ) : null}
+                <AlertFleetStat
+                  icon={Inbox}
+                  label="Total"
+                  value={events.length}
+                  active={inboxFilter === 'all'}
+                  onClick={() => setInboxFilter('all')}
+                />
               </div>
-            </div>
+            ) : null}
           </header>
 
           {criticalUnread > 0 ? (
             <button
               type="button"
-              className="alerts-inbox__callout"
+              className="ds-servers-callout ds-servers-callout--warn"
               onClick={() => {
                 setInboxFilter('critical');
                 const first = events.find((e) => !e.readAt && e.severity === 'critical');
                 if (first) openAlert(first);
               }}
             >
-              <span className="alerts-inbox__callout-icon" aria-hidden>
+              <span className="ds-servers-callout-icon" aria-hidden>
                 <Bell className="h-4 w-4" />
               </span>
-              <span className="alerts-inbox__callout-body">
+              <span className="ds-servers-callout-body">
                 <strong>
                   {criticalUnread} critical alert{criticalUnread === 1 ? '' : 's'} need attention
                 </strong>
                 <span>Open the latest one to check the console or security settings.</span>
               </span>
-              <ChevronRight className="alerts-inbox__callout-chevron h-4 w-4" aria-hidden />
+              <ChevronRight className="ds-servers-callout-chevron h-4 w-4" aria-hidden />
             </button>
           ) : null}
 
-          {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
+          {error ? (
+            <AlertBanner tone="error" className="flex-wrap justify-between">
+              <p>{error}</p>
+              <Button type="button" variant="secondary" onClick={() => void load({ soft: true })}>
+                Retry
+              </Button>
+            </AlertBanner>
+          ) : null}
 
-          {events.length === 0 ? (
+          {loading && events.length === 0 ? (
+            <div className="alerts-inbox__loading" role="status" aria-live="polite">
+              <Spinner className="h-7 w-7" />
+              <span className="sr-only">Loading alerts</span>
+            </div>
+          ) : events.length === 0 ? (
             <EmptyState
               icon={<DsIcon icon={BellOff} className="ds-icon--md" />}
               title="Inbox is empty"
               description="We’ll notify you here if a server crashes, disk fills up, or something changes on your account."
             />
           ) : (
-            <>
-              <div className="alerts-inbox__meta">
+            <div className="alerts-inbox__panel">
+              <div className="alerts-inbox__panel-tools">
                 <p className="alerts-inbox__meta-text">
                   Showing <strong>{filteredEvents.length}</strong>
                   {filteredEvents.length !== events.length ? ` of ${events.length}` : ''}
-                  {inboxFilter !== 'all' ? ` · ${filters.find((f) => f.id === inboxFilter)?.label}` : ''}
+                  {inboxFilter !== 'all' ? ` · ${activeFilterLabel}` : ''}
                 </p>
+
+                <div className="alerts-inbox__search">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search alerts…"
+                    className="ds-field ds-field--icon-left ds-field--icon-right"
+                    aria-label="Search alerts"
+                  />
+                  {search ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="alerts-inbox__search-clear"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
-              <div className="alerts-inbox__panel">
-                {filteredEvents.length === 0 ? (
-                  <div className="alerts-inbox__empty">
-                    <EmptyState
-                      icon={<Inbox className="h-8 w-8" />}
-                      title="No matching alerts"
-                      description="Try another filter or clear your search."
-                      action={
-                        search || inboxFilter !== 'all' ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => {
-                              setSearch('');
-                              setInboxFilter('all');
-                            }}
-                          >
-                            Reset filters
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  </div>
-                ) : (
-                  groups.map((group) => (
-                    <section key={group.label} className="alerts-inbox__group">
-                      <h2 className="alerts-inbox__group-title">{group.label}</h2>
-                      <ul className="alerts-inbox__list">
-                        {group.events.map((event) => {
-                          const Icon = metricIcon(event.metric);
-                          const unreadItem = !event.readAt;
-                          const kind = metricKind(event.metric);
-                          const selected = selectedId === event.id;
-                          return (
-                            <li key={event.id} className={selected ? 'is-open' : undefined}>
-                              <div
-                                className={`alerts-inbox__row alerts-inbox__row--${event.severity || 'info'}${
-                                  unreadItem ? ' is-unread' : ''
-                                }${selected ? ' is-selected' : ''}`}
+              {filteredEvents.length === 0 ? (
+                <div className="alerts-inbox__empty">
+                  <EmptyState
+                    icon={<Inbox className="h-8 w-8" />}
+                    title="No matching alerts"
+                    description="Try another filter or clear your search."
+                    action={
+                      search || inboxFilter !== 'all' ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setSearch('');
+                            setInboxFilter('all');
+                          }}
+                        >
+                          Reset filters
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <section key={group.label} className="alerts-inbox__group">
+                    <h2 className="alerts-inbox__group-title">{group.label}</h2>
+                    <ul className="alerts-inbox__list">
+                      {group.events.map((event) => {
+                        const Icon = metricIcon(event.metric);
+                        const unreadItem = !event.readAt;
+                        const kind = metricKind(event.metric);
+                        const selected = selectedId === event.id;
+                        return (
+                          <li key={event.id} className={selected ? 'is-open' : undefined}>
+                            <div
+                              className={`alerts-inbox__row alerts-inbox__row--${event.severity || 'info'}${
+                                unreadItem ? ' is-unread' : ''
+                              }${selected ? ' is-selected' : ''}`}
+                            >
+                              <button
+                                type="button"
+                                className="alerts-inbox__row-open"
+                                onClick={() => openAlert(event)}
                               >
-                                <button type="button" className="alerts-inbox__row-open" onClick={() => openAlert(event)}>
-                                  <span className="alerts-inbox__row-rail" aria-hidden />
-                                  <span
-                                    className={`alerts-inbox__row-icon alerts-inbox__row-icon--${event.severity || 'info'}`}
-                                    aria-hidden
-                                  >
-                                    <Icon className="h-4 w-4" />
-                                  </span>
-                                  <div className="alerts-inbox__row-main">
-                                    <div className="alerts-inbox__row-top">
-                                      <span className="alerts-inbox__row-kind">{kindLabel(kind)}</span>
-                                      {unreadItem ? <span className="alerts-inbox__ping">New</span> : null}
-                                      <span className={`alerts-inbox__sev alerts-inbox__sev--${event.severity || 'info'}`}>
-                                        {severityLabel(event.severity)}
-                                      </span>
-                                    </div>
-                                    <h3 className="alerts-inbox__row-title">{event.title}</h3>
-                                    <p className="alerts-inbox__row-preview">{event.message}</p>
-                                    <div className="alerts-inbox__row-meta">
-                                      {event.server ? (
-                                        <span className="alerts-inbox__server">
-                                          <Server className="h-3 w-3" aria-hidden />
-                                          {event.server.name}
-                                        </span>
-                                      ) : null}
-                                      {event.valuePct != null ? <span>{event.valuePct.toFixed(0)}%</span> : null}
-                                    </div>
-                                  </div>
-                                  <time className="alerts-inbox__row-time" dateTime={event.createdAt}>
-                                    {formatRelative(event.createdAt)}
-                                  </time>
-                                  <ChevronRight className="alerts-inbox__row-chevron h-4 w-4" aria-hidden />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="alerts-inbox__row-delete"
-                                  aria-label="Delete alert"
-                                  disabled={busyId === event.id}
-                                  onClick={() => void deleteOne(event.id)}
+                                <span className="alerts-inbox__row-rail" aria-hidden />
+                                <span
+                                  className={`alerts-inbox__row-icon alerts-inbox__row-icon--${event.severity || 'info'}`}
+                                  aria-hidden
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
+                                  <Icon className="h-4 w-4" />
+                                </span>
+                                <div className="alerts-inbox__row-main">
+                                  <div className="alerts-inbox__row-top">
+                                    <span className="alerts-inbox__row-kind">{kindLabel(kind)}</span>
+                                    <span
+                                      className={`alerts-inbox__sev alerts-inbox__sev--${event.severity || 'info'}`}
+                                    >
+                                      {severityLabel(event.severity)}
+                                    </span>
+                                    {unreadItem ? <span className="alerts-inbox__ping">New</span> : null}
+                                  </div>
+                                  <h3 className="alerts-inbox__row-title">{event.title}</h3>
+                                  <p className="alerts-inbox__row-preview">{event.message}</p>
+                                  <div className="alerts-inbox__row-meta">
+                                    {event.server ? (
+                                      <span className="alerts-inbox__server">
+                                        <Server className="h-3 w-3" aria-hidden />
+                                        {event.server.name}
+                                      </span>
+                                    ) : null}
+                                    {event.valuePct != null ? (
+                                      <span>{event.valuePct.toFixed(0)}%</span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <time className="alerts-inbox__row-time" dateTime={event.createdAt}>
+                                  {formatRelative(event.createdAt)}
+                                </time>
+                                <ChevronRight className="alerts-inbox__row-chevron h-4 w-4" aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className="alerts-inbox__row-delete"
+                                aria-label="Delete alert"
+                                disabled={busyId === event.id}
+                                onClick={() => void deleteOne(event.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
 
-                              {selected ? (
-                                <AlertLetter
-                                  event={event}
-                                  staff={staff}
-                                  busy={busyId === event.id}
-                                  onDelete={() => void deleteOne(event.id)}
-                                  onMarkRead={() => void markRead(event.id)}
-                                />
-                              ) : null}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
-                  ))
-                )}
-              </div>
-            </>
+                            {selected ? (
+                              <AlertLetter
+                                event={event}
+                                staff={staff}
+                                busy={busyId === event.id}
+                                onDelete={() => void deleteOne(event.id)}
+                                onMarkRead={() => void markRead(event.id)}
+                              />
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))
+              )}
+            </div>
           )}
         </section>
       </Page>
@@ -698,26 +772,47 @@ function AlertLetter({
   );
 }
 
-function HeaderStat({
+function AlertFleetStat({
+  icon: Icon,
   label,
   value,
   tone,
+  active,
+  onClick,
 }: {
+  icon: LucideIcon;
   label: string;
   value: number;
-  tone?: 'warn' | 'danger';
+  tone?: 'success' | 'info' | 'warn' | 'danger';
+  active?: boolean;
+  onClick: () => void;
 }) {
   const toneClass =
-    tone === 'warn'
-      ? 'border-[var(--warning-border)] bg-[var(--warning-bg)] text-[var(--warning-fg)]'
-      : tone === 'danger'
-        ? 'border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger-fg)]'
-        : '';
+    tone === 'success'
+      ? 'ds-servers-stat--success'
+      : tone === 'info'
+        ? 'ds-servers-stat--info'
+        : tone === 'warn'
+          ? 'ds-servers-stat--warn'
+          : tone === 'danger'
+            ? 'ds-servers-stat--danger'
+            : '';
 
   return (
-    <div className={`ds-mini-stat ${toneClass}`}>
-      {label}
-      <span className="ds-mini-stat-value ds-text-mono">{value}</span>
-    </div>
+    <button
+      type="button"
+      role="listitem"
+      className={`ds-servers-stat ${toneClass}${active ? ' is-active' : ''}`}
+      onClick={onClick}
+      aria-pressed={active}
+    >
+      <span className="ds-servers-stat-top">
+        <span className="ds-servers-stat-icon" aria-hidden>
+          <Icon className="h-3 w-3" />
+        </span>
+        <span className="ds-servers-stat-label">{label}</span>
+      </span>
+      <span className="ds-servers-stat-value">{value}</span>
+    </button>
   );
 }

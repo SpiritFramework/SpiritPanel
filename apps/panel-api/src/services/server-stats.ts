@@ -229,6 +229,7 @@ export async function recordStatSnapshotFromPayload(
   });
 }
 
+/** Synthetic history for local/demo servers so Analytics charts have something to render. */
 export async function seedDemoStats(serverId: string, memoryLimitMiB: number, diskLimitMiB: number) {
   const existing = await prisma.serverStatSnapshot.count({ where: { serverId } });
   if (existing > 0) return;
@@ -236,20 +237,23 @@ export async function seedDemoStats(serverId: string, memoryLimitMiB: number, di
   const memoryLimit = memoryLimitMiB * 1024 * 1024;
   const diskLimit = diskLimitMiB * 1024 * 1024;
   const now = Date.now();
-  const intervalMs = 15 * 60 * 1000;
+  // Dense enough for 1h / 24h / 7d ranges (≈5 min steps over a week).
+  const intervalMs = 5 * 60 * 1000;
   const points = Math.floor((7 * 24 * 60 * 60 * 1000) / intervalMs);
 
   const data = Array.from({ length: points }, (_, i) => {
     const t = now - (points - i) * intervalMs;
     const hour = new Date(t).getHours();
-    const peak = hour >= 18 && hour <= 23 ? 1.4 : hour >= 12 && hour <= 17 ? 1.1 : 0.7;
-    const noise = () => 0.85 + Math.random() * 0.3;
+    const dayWave = 0.55 + 0.45 * Math.sin((2 * Math.PI * (hour - 6)) / 24);
+    const peak = hour >= 18 && hour <= 23 ? 1.45 : hour >= 12 && hour <= 17 ? 1.15 : dayWave;
+    const noise = () => 0.82 + Math.random() * 0.36;
+    const spike = i % 37 === 0 ? 1.8 : 1;
 
-    const cpu = Math.min(95, 12 * peak * noise());
-    const memoryBytes = Math.floor(memoryLimit * (0.35 + 0.25 * peak * noise()));
-    const diskBytes = Math.floor(diskLimit * (0.42 + i * 0.00008));
-    const networkRxBytes = BigInt(Math.floor(50_000_000 + i * 120_000 * peak * noise()));
-    const networkTxBytes = BigInt(Math.floor(30_000_000 + i * 80_000 * peak * noise()));
+    const cpu = Math.min(96, 10 + 22 * peak * noise() * spike);
+    const memoryBytes = Math.floor(memoryLimit * (0.32 + 0.28 * peak * noise()));
+    const diskBytes = Math.floor(diskLimit * (0.38 + i * 0.00005 + (i % 50 === 0 ? 0.002 : 0)));
+    const networkRxBytes = BigInt(Math.floor(40_000_000 + i * 95_000 * peak * noise()));
+    const networkTxBytes = BigInt(Math.floor(22_000_000 + i * 62_000 * peak * noise()));
 
     return {
       serverId,
@@ -258,10 +262,14 @@ export async function seedDemoStats(serverId: string, memoryLimitMiB: number, di
       diskBytes: BigInt(diskBytes),
       networkRxBytes,
       networkTxBytes,
-      state: 'running',
+      state: 'running' as const,
       recordedAt: new Date(t),
     };
   });
 
-  await prisma.serverStatSnapshot.createMany({ data });
+  // createMany in chunks to stay under driver packet limits
+  const chunk = 500;
+  for (let i = 0; i < data.length; i += chunk) {
+    await prisma.serverStatSnapshot.createMany({ data: data.slice(i, i + chunk) });
+  }
 }

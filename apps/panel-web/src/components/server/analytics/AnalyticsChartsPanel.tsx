@@ -1,4 +1,13 @@
-import { Activity, BarChart3, Clock, Cpu, Database, Gauge, HardDrive, MemoryStick, TrendingUp, type LucideIcon } from 'lucide-react';
+import {
+  Activity,
+  Cpu,
+  Database,
+  Gauge,
+  HardDrive,
+  MemoryStick,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react';
 import { ChartSyncProvider, UsageChart } from '../../UsageChart';
 import { formatBytes, formatNetworkRate } from '../../../lib/stats';
 import { formatResource } from '../../../lib/server-theme';
@@ -69,11 +78,18 @@ export function AnalyticsChartsPanel({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="ds-srv-an-panel-title">Historical trends</h2>
-            <p className="ds-srv-an-panel-desc">{activeRangeLabel} · usage over time</p>
+            <p className="ds-srv-an-panel-desc">
+              {activeRangeLabel} · hover for point-in-time values · auto-refresh every minute
+            </p>
           </div>
           {hasCharts ? (
-            <span className="ds-srv-an-panel-badge">{seriesCount} snapshots</span>
-          ) : null}
+            <span className="ds-srv-an-panel-badge" title={`${seriesCount.toLocaleString()} snapshots`}>
+              <strong>{seriesCount}</strong>
+              <span>snapshots</span>
+            </span>
+          ) : (
+            <span className="ds-srv-an-panel-badge ds-srv-an-panel-badge--muted">No history</span>
+          )}
         </div>
 
         <div className="ds-srv-an-panel-body">
@@ -99,7 +115,11 @@ export function AnalyticsChartsPanel({
                   <UsageChart
                     className="ds-srv-an-chart-inner"
                     title="Memory pressure"
-                    unit={memoryLimitBytes > 0 ? `Limit ${formatResource(limits.memory, 'MiB')}` : 'RAM allocated'}
+                    unit={
+                      memoryLimitBytes > 0
+                        ? `Limit ${formatResource(limits.memory, 'MiB')}`
+                        : 'RAM allocated'
+                    }
                     color="#34d399"
                     range={range}
                     data={memoryData}
@@ -146,11 +166,13 @@ export function AnalyticsChartsPanel({
             </ChartSyncProvider>
           ) : (
             <div className="ds-srv-an-empty">
-              <Activity className="h-5 w-5 opacity-50" aria-hidden />
+              <span className="ds-srv-an-empty-icon" aria-hidden>
+                <Activity className="h-5 w-5" />
+              </span>
               <p className="ds-srv-an-empty-title">No chart history yet</p>
               <p className="ds-srv-an-empty-desc">
-                Open the console for live stats — snapshots are saved every 30 seconds while connected, or by
-                the panel collector in the background.
+                Snapshots save every 30 seconds while the console is connected, or via the panel collector in
+                the background. Check back after a few minutes.
               </p>
             </div>
           )}
@@ -160,7 +182,9 @@ export function AnalyticsChartsPanel({
       <aside className="ds-srv-an-bento-side">
         <section className="ds-srv-an-side-card ds-srv-an-alloc">
           <div className="ds-srv-an-side-head">
-            <Gauge className="h-4 w-4" aria-hidden />
+            <span className="ds-srv-an-side-icon" aria-hidden>
+              <Gauge className="h-3.5 w-3.5" />
+            </span>
             <div className="min-w-0">
               <h3 className="ds-srv-an-side-title">Allocation</h3>
               <p className="ds-srv-an-alloc-desc">Hard limits for this server</p>
@@ -182,32 +206,27 @@ export function AnalyticsChartsPanel({
           </ul>
         </section>
 
-        <section className="ds-srv-an-side-card">
+        <section className="ds-srv-an-side-card ds-srv-an-side-card--info">
           <div className="ds-srv-an-side-head">
-            <Database className="h-4 w-4" aria-hidden />
-            <h3 className="ds-srv-an-side-title">Data source</h3>
+            <span className="ds-srv-an-side-icon" aria-hidden>
+              <Database className="h-3.5 w-3.5" />
+            </span>
+            <h3 className="ds-srv-an-side-title">How it works</h3>
           </div>
-          <p className="ds-srv-an-side-text">
-            Charts combine stored snapshots with a live tip when the console websocket is connected.
-          </p>
-        </section>
-
-        <section className="ds-srv-an-side-card">
-          <div className="ds-srv-an-side-head">
-            <Clock className="h-4 w-4" aria-hidden />
-            <h3 className="ds-srv-an-side-title">Retention</h3>
-          </div>
-          <p className="ds-srv-an-side-text">Snapshots are kept for up to 8 days, then pruned automatically.</p>
-        </section>
-
-        <section className="ds-srv-an-side-card ds-srv-an-side-card--muted">
-          <div className="ds-srv-an-side-head">
-            <BarChart3 className="h-4 w-4" aria-hidden />
-            <h3 className="ds-srv-an-side-title">Tip</h3>
-          </div>
-          <p className="ds-srv-an-side-text">
-            Peak and average values update as you hover charts. Use 1h for debugging spikes, 7d for capacity planning.
-          </p>
+          <ul className="ds-srv-an-info-list">
+            <li>
+              <strong>Source</strong>
+              <span>Stored snapshots + live tip when the console websocket is connected.</span>
+            </li>
+            <li>
+              <strong>Retention</strong>
+              <span>Kept up to 8 days, then pruned automatically.</span>
+            </li>
+            <li>
+              <strong>Ranges</strong>
+              <span>Use 1h for spikes, 24h for daily load, 7d for capacity planning.</span>
+            </li>
+          </ul>
         </section>
       </aside>
     </div>

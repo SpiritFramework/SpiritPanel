@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Headphones, ImagePlus, MessageSquare, Send, User, X } from 'lucide-react';
+import { ImagePlus, MessageSquare, Send, X } from 'lucide-react';
 import type { TicketAttachment, TicketMessage } from '../../lib/api';
 import { UserAvatar } from '../UserAvatar';
-import { displayTicketUser, formatTicketTime } from '../../lib/ticket-utils';
+import { displayTicketUser, formatTicketClock, formatTicketDay } from '../../lib/ticket-utils';
 
 const MAX_IMAGES = 5;
 const ACCEPTED_IMAGES = 'image/png,image/jpeg,image/webp,image/gif';
@@ -68,6 +68,10 @@ function MessageAttachments({
   );
 }
 
+function sameDay(a: string, b: string) {
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
 export function TicketChat({
   messages,
   currentUserId,
@@ -76,7 +80,6 @@ export function TicketChat({
   currentUserId?: string;
 }) {
   const endRef = useRef<HTMLDivElement | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
   const [lightbox, setLightbox] = useState<TicketAttachment | null>(null);
 
   useEffect(() => {
@@ -97,45 +100,47 @@ export function TicketChat({
 
   return (
     <>
-      <div ref={listRef} className="ticket-page__msg-list">
-        {messages.map((message) => {
+      <div className="ticket-page__msg-list">
+        {messages.map((message, index) => {
           const isStaff = message.isStaff;
           const isYou = Boolean(currentUserId && message.author.id === currentUserId);
           const side = isStaff ? 'staff' : 'customer';
           const hasBody = Boolean(message.body.trim());
+          const prev = messages[index - 1];
+          const showDay = !prev || !sameDay(prev.createdAt, message.createdAt);
+          const name = isYou ? 'You' : displayTicketUser(message.author);
 
           return (
-            <article
-              key={message.id}
-              className={`ticket-page__msg ticket-page__msg--${side}`}
-            >
-              <div className={`ticket-page__msg-avatar ticket-page__msg-avatar--${side}`}>
-                <UserAvatar user={message.author} size="sm" />
-              </div>
+            <div key={message.id} className="ticket-page__msg-block">
+              {showDay ? (
+                <div className="ticket-page__day">
+                  <span>{formatTicketDay(message.createdAt)}</span>
+                </div>
+              ) : null}
 
-              <div className="ticket-page__msg-inner">
-                <div className="ticket-page__msg-meta">
-                  <span className="ticket-page__msg-role" aria-hidden>
-                    {isStaff ? <Headphones className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                  </span>
-                  <span className="ticket-page__msg-name">
-                    {isYou ? 'You' : displayTicketUser(message.author)}
-                  </span>
-                  {isStaff ? <span className="ticket-page__msg-badge">Staff</span> : null}
-                  <time dateTime={message.createdAt}>{formatTicketTime(message.createdAt)}</time>
+              <article className={`ticket-page__msg ticket-page__msg--${side}`}>
+                <div className={`ticket-page__msg-avatar ticket-page__msg-avatar--${side}`}>
+                  <UserAvatar user={message.author} size="sm" />
                 </div>
 
-                {(hasBody || (message.attachments?.length ?? 0) > 0) && (
-                  <div className="ticket-page__bubble">
+                <div className="ticket-page__msg-inner">
+                  <div className={`ticket-page__bubble ticket-page__bubble--${side}`}>
+                    <header className="ticket-page__bubble-head">
+                      <strong>
+                        {name}
+                        {isStaff ? ' · Support' : ''}
+                      </strong>
+                      <time dateTime={message.createdAt}>{formatTicketClock(message.createdAt)}</time>
+                    </header>
                     {hasBody ? <p className="ticket-page__bubble-text">{message.body}</p> : null}
                     <MessageAttachments
                       attachments={message.attachments ?? []}
                       onOpen={setLightbox}
                     />
                   </div>
-                )}
-              </div>
-            </article>
+                </div>
+              </article>
+            </div>
           );
         })}
         <div ref={endRef} className="ticket-page__scroll-anchor" aria-hidden />

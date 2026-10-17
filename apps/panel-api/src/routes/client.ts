@@ -130,7 +130,14 @@ export async function clientRoutes(app: FastifyInstance) {
         disk: true,
         cpu: true,
         egg: { select: { name: true, logoUrl: true } },
-        node: { select: { name: true, fqdn: true, location: { select: { short: true, flagUrl: true } } } },
+        node: {
+          select: {
+            name: true,
+            fqdn: true,
+            maintenanceMode: true,
+            location: { select: { short: true, flagUrl: true } },
+          },
+        },
         defaultAllocation: { select: { ip: true, port: true, alias: true } },
       },
       orderBy: { name: 'asc' },

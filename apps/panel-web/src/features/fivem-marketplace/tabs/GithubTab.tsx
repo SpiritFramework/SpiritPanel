@@ -4,6 +4,7 @@ import { ArrowRight, Compass, TrendingUp } from 'lucide-react';
 import { api, type GithubFeaturedScript, type GithubSearchResult } from '../../../lib/api';
 import { useMarketplacePaths } from '../../../lib/marketplace-paths';
 import { Spinner } from '../../../components/ui';
+import { MarketplaceSectionHead } from '../../../components/marketplace/MarketplaceChrome';
 import { GithubFindPanel } from '../components/GithubFindPanel';
 import { GithubCategorySection } from '../components/GithubCategorySection';
 import { GithubRepoCard } from '../components/GithubRepoCard';
@@ -101,7 +102,7 @@ export function MarketplaceGithubTab({
   }
 
   return (
-    <div className="ds-stack">
+    <section className="ds-srv-plugins-panel ds-srv-mp-panel ds-srv-mp-github">
       <GithubFindPanel
         searchInput={searchInput}
         pasteUrl={pasteUrl}
@@ -132,30 +133,25 @@ export function MarketplaceGithubTab({
         }
       />
 
-      <section className="ds-stack">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
-              <TrendingUp className="h-4 w-4 text-[var(--accent)]" />
-              Featured community scripts
-            </h2>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">
-              Curated high-quality resources — {featured.length} total
-            </p>
-          </div>
-        </div>
+      <div className="ds-srv-mp-block">
+        <MarketplaceSectionHead
+          icon={TrendingUp}
+          title="Featured community scripts"
+          description={`Curated high-quality resources · ${featured.length} total`}
+          count={featured.length}
+          accent
+        />
 
-        {featuredLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner className="h-8 w-8" />
+        {featuredLoading && featuredSlice.length === 0 ? (
+          <div className="ds-srv-plugins-loading" role="status">
+            <Spinner className="h-7 w-7" />
+            <span className="sr-only">Loading featured scripts</span>
           </div>
         ) : featuredSlice.length === 0 ? (
-          <div className="ds-card ds-card-body py-10 text-center text-sm text-[var(--muted)]">
-            Featured scripts will appear here once loaded.
-          </div>
+          <p className="ds-srv-mp-inline-empty">Featured scripts will appear here once loaded.</p>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mc-card-grid">
               {featuredSlice.map((item) => (
                 <GithubRepoCard key={`${item.owner}/${item.repo}`} item={item} onOpen={onOpenRepo} />
               ))}
@@ -168,34 +164,36 @@ export function MarketplaceGithubTab({
             />
           </>
         )}
-      </section>
+      </div>
 
-      <section className="ds-stack">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-[var(--text)]">More from GitHub</h2>
-            <p className="mt-0.5 text-xs text-[var(--muted)]">Recently popular FiveM repositories</p>
-          </div>
-          <Link
-            to={githubBrowsePath('libraries')}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:underline"
-          >
-            Browse all
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
+      <div className="ds-srv-mp-block">
+        <MarketplaceSectionHead
+          icon={Compass}
+          title="More from GitHub"
+          description="Recently popular FiveM repositories"
+          action={
+            <Link
+              to={githubBrowsePath('libraries')}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:underline"
+            >
+              Browse all
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          }
+        />
 
-        {communityLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner className="h-8 w-8" />
+        {communityLoading && community.length === 0 ? (
+          <div className="ds-srv-plugins-loading" role="status">
+            <Spinner className="h-7 w-7" />
+            <span className="sr-only">Loading community scripts</span>
           </div>
         ) : community.length === 0 ? (
-          <div className="ds-card ds-card-body py-10 text-center text-sm text-[var(--muted)]">
+          <p className="ds-srv-mp-inline-empty">
             No community scripts loaded right now. Try browsing a category or searching GitHub.
-          </div>
+          </p>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mc-card-grid">
               {community.map((item) => (
                 <GithubRepoCard key={`${item.owner}/${item.name}`} item={item} onOpen={onOpenRepo} />
               ))}
@@ -208,7 +206,7 @@ export function MarketplaceGithubTab({
             />
           </>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }

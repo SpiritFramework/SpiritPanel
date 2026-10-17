@@ -19,6 +19,11 @@ function formatCrashActivityDetail(properties?: Record<string, unknown> | null):
 const ACCENT_BAR_CLASS: Partial<Record<ActivityFilterCategory, string>> = {
   power: 'ds-srv-act-event-accent--power',
   files: 'ds-srv-act-event-accent--files',
+  settings: 'ds-srv-act-event-accent--settings',
+  access: 'ds-srv-act-event-accent--access',
+  backups: 'ds-srv-act-event-accent--backups',
+  automation: 'ds-srv-act-event-accent--automation',
+  network: 'ds-srv-act-event-accent--network',
   marketplace: 'ds-srv-act-event-accent--marketplace',
 };
 

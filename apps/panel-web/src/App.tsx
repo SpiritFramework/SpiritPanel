@@ -9,6 +9,7 @@ import { RequireServerPermission } from './components/RequireServerPermission';
 import { CommandPalette } from './components/CommandPalette';
 import { ServiceUnavailable } from './components/ServiceUnavailable';
 import { PwaUpdateBanner } from './components/PwaUpdateBanner';
+import { ServerShell } from './components/ServerLayout';
 import { PageLoading } from './components/ui';
 
 const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
@@ -67,11 +68,10 @@ const AdminTicketDetailPage = lazy(() => import('./pages/admin/TicketDetail').th
 const ProfilePage = lazy(() => import('./pages/client/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const TicketsPage = lazy(() => import('./pages/client/Tickets').then((m) => ({ default: m.TicketsPage })));
 const TicketDetailPage = lazy(() => import('./pages/client/TicketDetail').then((m) => ({ default: m.TicketDetailPage })));
-const ServerShell = lazy(() => import('./components/ServerLayout').then((m) => ({ default: m.ServerShell })));
 
 function RouteFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center">
+    <div className="flex min-h-[100dvh] min-h-screen items-center justify-center bg-[var(--bg)]">
       <PageLoading />
     </div>
   );

@@ -1,4 +1,5 @@
-import { Activity, AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { Spinner } from '../../ui';
 import { useServerAnalytics } from '../../../hooks/useServerAnalytics';
 import { AnalyticsHeader } from './AnalyticsHeader';
 import { AnalyticsLiveStrip } from './AnalyticsLiveStrip';
@@ -18,7 +19,6 @@ export function ServerAnalyticsDashboard() {
     memoryLimitBytes,
     diskLimitBytes,
     series,
-    hasHistory,
     liveOnlyCharts,
     cpuData,
     memoryData,
@@ -28,17 +28,8 @@ export function ServerAnalyticsDashboard() {
     refresh,
   } = useServerAnalytics();
 
-  if (loading) {
-    return (
-      <div className="ds-srv-an ds-srv-an--loading">
-        <Loader2 className="h-7 w-7 animate-spin text-[var(--accent-hover)]" aria-hidden />
-        <p className="ds-srv-an-loading-text">Loading analytics…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="ds-srv-an-shell">
+    <div className={`ds-srv-an-shell${refreshing ? ' ds-srv-an-shell--refreshing' : ''}`}>
       <AnalyticsHeader
         serverName={server.name}
         eggName={server.egg.name}
@@ -51,57 +42,53 @@ export function ServerAnalyticsDashboard() {
         onRefresh={refresh}
       />
 
-      <div className="ds-srv-an-body">
-        <AnalyticsLiveStrip
-          current={current}
-          limits={limits}
-          memoryLimitBytes={memoryLimitBytes}
-          diskLimitBytes={diskLimitBytes}
-        />
+      {loading ? (
+        <div className="ds-srv-an-body ds-srv-an-body--loading" role="status" aria-live="polite">
+          <Spinner className="h-7 w-7" />
+          <span className="sr-only">Loading analytics</span>
+        </div>
+      ) : (
+        <div className="ds-srv-an-body">
+          <AnalyticsLiveStrip
+            current={current}
+            limits={limits}
+            memoryLimitBytes={memoryLimitBytes}
+            diskLimitBytes={diskLimitBytes}
+          />
 
-        <AnalyticsChartsPanel
-          range={range}
-          activeRangeLabel={activeRange.longLabel}
-          seriesCount={series.length}
-          limits={limits}
-          memoryLimitBytes={memoryLimitBytes}
-          diskLimitBytes={diskLimitBytes}
-          cpuData={cpuData}
-          memoryData={memoryData}
-          diskData={diskData}
-          networkData={networkData}
-        />
+          {statsError && !current ? (
+            <div className="ds-srv-an-notice ds-srv-an-notice--warning" role="alert">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>Could not load usage data. Check that the node is online and try refreshing.</span>
+            </div>
+          ) : null}
 
-        {!connected && series.length > 0 ? (
-          <div className="ds-srv-an-notice ds-srv-an-notice--info" role="status">
-            <Activity className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span>Showing stored snapshots. Open the console tab for live usage updates.</span>
-          </div>
-        ) : null}
+          {!connected && series.length > 0 ? (
+            <div className="ds-srv-an-notice ds-srv-an-notice--info" role="status">
+              <span>Showing stored snapshots. Open Console for a live tip on the charts.</span>
+            </div>
+          ) : null}
 
-        {liveOnlyCharts ? (
-          <div className="ds-srv-an-notice" role="status">
-            <Activity className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span>
-              Live usage only — check back after a few minutes once snapshots accumulate.
-            </span>
-          </div>
-        ) : null}
+          {liveOnlyCharts ? (
+            <div className="ds-srv-an-notice" role="status">
+              <span>Live usage only — history appears after a few minutes of snapshots.</span>
+            </div>
+          ) : null}
 
-        {!liveOnlyCharts && hasHistory ? (
-          <div className="ds-srv-an-notice ds-srv-an-notice--muted" role="status">
-            <Activity className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span>Hover charts for point-in-time values. Auto-refreshes every minute.</span>
-          </div>
-        ) : null}
-
-        {statsError && !current ? (
-          <div className="ds-srv-an-notice ds-srv-an-notice--warning" role="alert">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span>Could not load usage data. Check that the node is online and try refreshing.</span>
-          </div>
-        ) : null}
-      </div>
+          <AnalyticsChartsPanel
+            range={range}
+            activeRangeLabel={activeRange.longLabel}
+            seriesCount={series.length}
+            limits={limits}
+            memoryLimitBytes={memoryLimitBytes}
+            diskLimitBytes={diskLimitBytes}
+            cpuData={cpuData}
+            memoryData={memoryData}
+            diskData={diskData}
+            networkData={networkData}
+          />
+        </div>
+      )}
     </div>
   );
 }

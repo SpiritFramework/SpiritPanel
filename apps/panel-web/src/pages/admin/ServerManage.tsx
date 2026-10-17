@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, type AdminServerDetail, type ServerDetail } from '../../lib/api';
 import { AdminSupportProvider } from '../../context/AdminSupportContext';
@@ -13,10 +13,12 @@ import { usePanelBackgroundClass } from '../../hooks/usePanelBackgroundClass';
 
 export function AdminServerManageShell() {
   const { serverId = '' } = useParams();
+  const panelBgClass = usePanelBackgroundClass();
   const [detail, setDetail] = useState<AdminServerDetail | null>(null);
   const [clientServer, setClientServer] = useState<ServerDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const loadedIdRef = useRef<string | null>(null);
   const backTo = `/admin/servers/${serverId}`;
 
   const refreshAll = useCallback(async (): Promise<ServerDetail | null> => {
@@ -26,28 +28,40 @@ export function AdminServerManageShell() {
     ]);
     setDetail(admin);
     setClientServer(client);
+    loadedIdRef.current = client.id;
     setLoadError('');
     return client;
   }, [serverId]);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
+    const keepShell = loadedIdRef.current === serverId && Boolean(clientServer);
+    if (!keepShell) setLoading(true);
     setLoadError('');
     refreshAll()
       .catch((err) => {
+        if (cancelled) return;
         setDetail(null);
         setClientServer(null);
+        loadedIdRef.current = null;
         setLoadError(err instanceof Error ? err.message : 'Failed to load server');
       })
-      .finally(() => setLoading(false));
-  }, [refreshAll]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- soft-revalidate; clientServer intentionally omitted
+  }, [refreshAll, serverId]);
 
   async function power(action: 'start' | 'stop' | 'restart' | 'kill') {
     await api.admin.serverPower(serverId, action);
     await refreshAll();
   }
 
-  if (loading) {
+  // Only blank the shell on first load / server change.
+  if (loading && !clientServer) {
     return <ServerLoadingShell />;
   }
 
@@ -60,8 +74,6 @@ export function AdminServerManageShell() {
       />
     );
   }
-
-  const panelBgClass = usePanelBackgroundClass();
 
   return (
     <AdminSupportProvider owner={detail.owner} serverName={detail.name} backTo={backTo}>

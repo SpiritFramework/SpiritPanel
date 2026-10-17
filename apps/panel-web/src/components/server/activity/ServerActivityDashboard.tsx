@@ -1,8 +1,8 @@
 import { useState } from 'react';
+import { ScrollText } from 'lucide-react';
 import { ConfirmModal } from '../../ConfirmModal';
 import { useServerActivityPage } from '../../../hooks/useServerActivityPage';
 import { ActivityHeader } from './ActivityHeader';
-import { ActivityStatsRow } from './ActivityStatsRow';
 import { ActivityFeedPanel } from './ActivityFeedPanel';
 
 export function ServerActivityDashboard() {
@@ -47,18 +47,22 @@ export function ServerActivityDashboard() {
         />
 
         <div className="ds-srv-act-body">
-          <ActivityStatsRow
-            total={totals.total}
-            loaded={totals.loaded}
-            filtered={totals.filtered}
-            hasActiveFilters={totals.hasActiveFilters}
-          />
-
-          <ActivityFeedPanel
-            fetchPage={fetchPage}
-            refreshKey={`${server.id}-${refreshToken}`}
-            onTotalsChange={setTotals}
-          />
+          <section className="ds-srv-act-feed-wrap" aria-label="Activity log">
+            <div className="ds-srv-act-feed-head">
+              <span className="ds-srv-act-feed-head-icon" aria-hidden>
+                <ScrollText className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="ds-srv-act-feed-title">Activity log</h2>
+                <p className="ds-srv-act-feed-desc">Search and filters apply to loaded events only</p>
+              </div>
+            </div>
+            <ActivityFeedPanel
+              fetchPage={fetchPage}
+              refreshKey={`${server.id}-${refreshToken}`}
+              onTotalsChange={setTotals}
+            />
+          </section>
         </div>
       </div>
 

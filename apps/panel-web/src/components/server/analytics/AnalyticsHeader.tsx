@@ -33,7 +33,12 @@ export function AnalyticsHeader({
         <div className="ds-srv-an-header-main">
           <div className="ds-srv-an-header-identity">
             <div className="ds-srv-an-header-icon-wrap" aria-hidden>
-              <ServerEggIcon eggName={eggName} logoUrl={eggLogoUrl} className="h-5 w-5" iconClassName="h-5 w-5 text-white/90" />
+              <ServerEggIcon
+                eggName={eggName}
+                logoUrl={eggLogoUrl}
+                className="h-5 w-5"
+                iconClassName="h-5 w-5 text-white/90"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <div className="ds-srv-an-header-title-row">
@@ -72,12 +77,12 @@ export function AnalyticsHeader({
             <button
               type="button"
               className="ds-srv-an-action-btn"
-              title="Refresh analytics"
               aria-label="Refresh analytics"
               disabled={refreshing}
               onClick={onRefresh}
             >
               <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="ds-srv-an-action-label">Refresh</span>
             </button>
           </div>
         </div>

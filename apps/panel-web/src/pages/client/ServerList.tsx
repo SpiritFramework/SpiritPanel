@@ -259,12 +259,6 @@ export function ServerListPage() {
                       <span className="ds-servers-fleet-tagline">{branding.tagline}</span>
                     ) : null}
                   </div>
-                  {loading ? (
-                    <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
-                      Loading your servers…
-                    </p>
-                  ) : null}
                 </div>
               </div>
 

@@ -6,40 +6,99 @@ export interface PluginCategoryChip {
   label: string;
 }
 
-const PLUGIN_CATEGORIES: PluginCategoryChip[] = [
-  { id: 'management', label: 'Management' },
-  { id: 'economy', label: 'Economy' },
+/** Full Modrinth `mod` category set (also used for plugins / datapacks in search). */
+const MODRINTH_CATEGORIES: PluginCategoryChip[] = [
+  { id: 'adventure', label: 'Adventure' },
   { id: 'utility', label: 'Utility' },
-  { id: 'minigame', label: 'Minigames' },
-  { id: 'social', label: 'Chat & social' },
-  { id: 'worldgen', label: 'World' },
-  { id: 'library', label: 'Libraries' },
-  { id: 'optimization', label: 'Optimization' },
-  { id: 'technology', label: 'Technology' },
-  { id: 'adventure', label: 'Adventure' },
-];
-
-const MOD_CATEGORIES: PluginCategoryChip[] = [
-  { id: 'adventure', label: 'Adventure' },
+  { id: 'worldgen', label: 'Worldgen' },
   { id: 'technology', label: 'Technology' },
   { id: 'magic', label: 'Magic' },
-  { id: 'worldgen', label: 'Worldgen' },
-  { id: 'optimization', label: 'Optimization' },
   { id: 'decoration', label: 'Decoration' },
-  { id: 'utility', label: 'Utility' },
-  { id: 'library', label: 'Libraries' },
   { id: 'equipment', label: 'Equipment' },
+  { id: 'game-mechanics', label: 'Game mechanics' },
   { id: 'mobs', label: 'Mobs' },
+  { id: 'optimization', label: 'Optimization' },
+  { id: 'library', label: 'Libraries' },
+  { id: 'economy', label: 'Economy' },
+  { id: 'management', label: 'Management' },
+  { id: 'social', label: 'Chat & social' },
+  { id: 'minigame', label: 'Minigames' },
+  { id: 'food', label: 'Food' },
+  { id: 'storage', label: 'Storage' },
+  { id: 'transportation', label: 'Transport' },
+  { id: 'cursed', label: 'Cursed' },
 ];
 
-const DATAPACK_CATEGORIES: PluginCategoryChip[] = [
-  { id: 'adventure', label: 'Adventure' },
-  { id: 'utility', label: 'Utility' },
-  { id: 'worldgen', label: 'Worldgen' },
-  { id: 'technology', label: 'Technology' },
-  { id: 'magic', label: 'Magic' },
-  { id: 'decoration', label: 'Decoration' },
+const PLUGIN_ORDER = [
+  'management',
+  'economy',
+  'utility',
+  'minigame',
+  'social',
+  'worldgen',
+  'library',
+  'optimization',
+  'technology',
+  'adventure',
+  'game-mechanics',
+  'mobs',
+  'magic',
+  'decoration',
+  'equipment',
+  'food',
+  'storage',
+  'transportation',
+  'cursed',
 ];
+
+const MOD_ORDER = [
+  'adventure',
+  'technology',
+  'magic',
+  'worldgen',
+  'optimization',
+  'decoration',
+  'utility',
+  'library',
+  'equipment',
+  'mobs',
+  'game-mechanics',
+  'food',
+  'storage',
+  'transportation',
+  'economy',
+  'management',
+  'social',
+  'minigame',
+  'cursed',
+];
+
+const DATAPACK_ORDER = [
+  'adventure',
+  'worldgen',
+  'utility',
+  'technology',
+  'magic',
+  'decoration',
+  'equipment',
+  'game-mechanics',
+  'mobs',
+  'optimization',
+  'library',
+  'food',
+  'storage',
+  'transportation',
+  'economy',
+  'social',
+  'management',
+  'minigame',
+  'cursed',
+];
+
+function orderCategories(order: string[]): PluginCategoryChip[] {
+  const byId = new Map(MODRINTH_CATEGORIES.map((c) => [c.id, c]));
+  return order.map((id) => byId.get(id)).filter(Boolean) as PluginCategoryChip[];
+}
 
 const LOADER_SET = new Set([
   'bukkit',
@@ -62,9 +121,9 @@ const LOADER_SET = new Set([
 ]);
 
 export function categoriesForKind(kind: string | undefined): PluginCategoryChip[] {
-  if (kind === 'mod') return MOD_CATEGORIES;
-  if (kind === 'datapack') return DATAPACK_CATEGORIES;
-  return PLUGIN_CATEGORIES;
+  if (kind === 'mod') return orderCategories(MOD_ORDER);
+  if (kind === 'datapack') return orderCategories(DATAPACK_ORDER);
+  return orderCategories(PLUGIN_ORDER);
 }
 
 export function formatPluginDownloads(n: number): string {

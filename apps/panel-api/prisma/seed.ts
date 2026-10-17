@@ -15,6 +15,9 @@ const prisma = new PrismaClient();
 
 const DEMO_NODE_UUID = '00000000-0000-0000-0000-000000000010';
 const DEMO_SERVER_UUID = '00000000-0000-0000-0000-000000000020';
+const DEMO_FIVEM_NEST_UUID = '00000000-0000-0000-0000-000000000002';
+/** Distinct leading hex so uuidShort does not collide with the Minecraft demo. */
+const DEMO_FIVEM_SERVER_UUID = 'f1ve0000-0000-0000-0000-000000000021';
 
 async function seedAdminUser(isProduction: boolean) {
   const adminEmail = process.env.ADMIN_EMAIL?.trim();
@@ -105,16 +108,46 @@ async function seedPanelSettings() {
     update: {},
     create: { key: 'security', value: { minPasswordLength: 8 } },
   });
+
+  await prisma.panelSetting.upsert({
+    where: { key: 'marketplace' },
+    update: {},
+    create: {
+      key: 'marketplace',
+      value: { enabled: true, allowGithubInstalls: true },
+    },
+  });
+
+  // Keep host catalog + GitHub installs on for local marketplace preview.
+  await prisma.panelPlugin.upsert({
+    where: { id: 'fivem-marketplace' },
+    update: {
+      enabled: true,
+      settings: {
+        enabled: true,
+        allowGithubInstalls: true,
+        allowCatalogInstalls: true,
+      },
+    },
+    create: {
+      id: 'fivem-marketplace',
+      name: 'FiveM Marketplace',
+      description: 'Curated resource catalog and GitHub installs for FiveM servers.',
+      version: '1.0.0',
+      author: 'SpiritFramework',
+      builtIn: true,
+      enabled: true,
+      settings: {
+        enabled: true,
+        allowGithubInstalls: true,
+        allowCatalogInstalls: true,
+      },
+    },
+  });
 }
 
-async function seedDemoServer(adminId: string, locationId: string, nestId: string) {
-  const egg = await prisma.egg.findFirst({
-    where: { nestId, name: 'Vanilla Minecraft' },
-    include: { variables: true },
-  });
-  if (!egg) return null;
-
-  const node = await prisma.node.upsert({
+async function ensureDemoNode(locationId: string) {
+  return prisma.node.upsert({
     where: { uuid: DEMO_NODE_UUID },
     update: { name: 'Demo Node' },
     create: {
@@ -132,16 +165,29 @@ async function seedDemoServer(adminId: string, locationId: string, nestId: strin
       daemonSftp: 2022,
     },
   });
+}
 
+async function ensureAllocation(nodeId: string, port: number) {
   let allocation = await prisma.allocation.findFirst({
-    where: { nodeId: node.id, ip: '0.0.0.0', port: 25565 },
+    where: { nodeId, ip: '0.0.0.0', port },
   });
-
   if (!allocation) {
     allocation = await prisma.allocation.create({
-      data: { nodeId: node.id, ip: '0.0.0.0', port: 25565 },
+      data: { nodeId, ip: '0.0.0.0', port },
     });
   }
+  return allocation;
+}
+
+async function seedDemoServer(adminId: string, locationId: string, nestId: string) {
+  const egg = await prisma.egg.findFirst({
+    where: { nestId, name: 'Vanilla Minecraft' },
+    include: { variables: true },
+  });
+  if (!egg) return null;
+
+  const node = await ensureDemoNode(locationId);
+  const allocation = await ensureAllocation(node.id, 25565);
 
   const existing = await prisma.server.findUnique({ where: { uuid: DEMO_SERVER_UUID } });
   if (existing) return existing;
@@ -157,9 +203,9 @@ async function seedDemoServer(adminId: string, locationId: string, nestId: strin
         ownerId: adminId,
         nodeId: node.id,
         eggId: egg.id,
-        allocationId: allocation!.id,
+        allocationId: allocation.id,
         name: 'Demo Minecraft Server',
-        description: 'Browse the panel UI — live console needs a Wings node',
+        description: 'Browse the panel UI — live console needs a FeatherWings node',
         status: 'normal',
         installStatus: 'installed',
         installedAt: new Date(),
@@ -178,7 +224,129 @@ async function seedDemoServer(adminId: string, locationId: string, nestId: strin
     });
 
     await tx.allocation.update({
-      where: { id: allocation!.id },
+      where: { id: allocation.id },
+      data: { assigned: true },
+    });
+
+    return server;
+  });
+}
+
+async function seedDemoFiveMServer(adminId: string, locationId: string) {
+  const nest = await prisma.nest.upsert({
+    where: { uuid: DEMO_FIVEM_NEST_UUID },
+    update: { name: 'FiveM', description: 'Cfx.re / FiveM server eggs' },
+    create: {
+      uuid: DEMO_FIVEM_NEST_UUID,
+      name: 'FiveM',
+      description: 'Cfx.re / FiveM server eggs',
+    },
+  });
+
+  let egg = await prisma.egg.findFirst({
+    where: { nestId: nest.id, name: 'FiveM' },
+    include: { variables: true },
+  });
+
+  if (!egg) {
+    egg = await prisma.egg.create({
+      data: {
+        nestId: nest.id,
+        name: 'FiveM',
+        description: 'FXServer — local UI preview for the FiveM marketplace',
+        features: ['fivem'],
+        dockerImages: {
+          'FXServer': 'ghcr.io/parkervcp/yolks:fivem',
+        },
+        startup:
+          '$(pwd)/alpine/opt/cfx-server/FXServer +set citizen_dir $(pwd)/alpine/opt/cfx-server/citizen/ +exec server.cfg',
+        configStop: '^C',
+        configStartup: { done: 'Authenticated with cfx.re' },
+        scriptContainer: 'ghcr.io/pterodactyl/installers:debian',
+        scriptEntry: 'bash',
+        scriptInstall: `#!/bin/bash
+# Demo egg — install script not used for local UI preview
+echo "FiveM demo egg"
+`,
+        variables: {
+          create: [
+            {
+              name: 'Max Players',
+              envVariable: 'MAX_PLAYERS',
+              defaultValue: '48',
+              userViewable: true,
+              userEditable: true,
+            },
+            {
+              name: 'Server License Key',
+              envVariable: 'FIVEM_LICENSE',
+              defaultValue: '',
+              userViewable: true,
+              userEditable: true,
+            },
+          ],
+        },
+      },
+      include: { variables: true },
+    });
+  } else if (!Array.isArray(egg.features) || !(egg.features as unknown[]).includes('fivem')) {
+    egg = await prisma.egg.update({
+      where: { id: egg.id },
+      data: { features: ['fivem'] },
+      include: { variables: true },
+    });
+  }
+
+  const node = await ensureDemoNode(locationId);
+  const allocation = await ensureAllocation(node.id, 30120);
+
+  const existing = await prisma.server.findUnique({ where: { uuid: DEMO_FIVEM_SERVER_UUID } });
+  if (existing) {
+    return prisma.server.update({
+      where: { id: existing.id },
+      data: {
+        eggId: egg.id,
+        fivemMarketplaceAccess: true,
+        name: 'Demo FiveM Server',
+        description: 'Open Marketplace to browse curated FiveM resources (UI preview)',
+      },
+    });
+  }
+
+  const dockerImages = egg.dockerImages as Record<string, string>;
+  const image = Object.values(dockerImages)[0] ?? 'ghcr.io/parkervcp/yolks:fivem';
+
+  return prisma.$transaction(async (tx) => {
+    const server = await tx.server.create({
+      data: {
+        uuid: DEMO_FIVEM_SERVER_UUID,
+        uuidShort: generateUuidShort(DEMO_FIVEM_SERVER_UUID),
+        ownerId: adminId,
+        nodeId: node.id,
+        eggId: egg.id,
+        allocationId: allocation.id,
+        name: 'Demo FiveM Server',
+        description: 'Open Marketplace to browse curated FiveM resources (UI preview)',
+        status: 'normal',
+        installStatus: 'installed',
+        installedAt: new Date(),
+        memory: 4096,
+        disk: 20480,
+        cpu: 200,
+        image,
+        startup: egg.startup,
+        fivemMarketplaceAccess: true,
+        variables: {
+          create: egg.variables.map((v) => ({
+            eggVariableId: v.id,
+            variableValue: v.defaultValue,
+          })),
+        },
+      },
+    });
+
+    await tx.allocation.update({
+      where: { id: allocation.id },
       data: { assigned: true },
     });
 
@@ -260,6 +428,7 @@ curl -o server.jar https://launcher.mojang.com/v1/objects/latest/server.jar || c
   }
 
   const demoServer = await seedDemoServer(admin.id, location.id, nest.id);
+  const demoFiveMServer = await seedDemoFiveMServer(admin.id, location.id);
 
   if (demoServer) {
     const existingLogs = await prisma.activityLog.count({ where: { serverId: demoServer.id } });
@@ -290,7 +459,25 @@ curl -o server.jar https://launcher.mojang.com/v1/objects/latest/server.jar || c
     await seedDemoStats(demoServer.id, demoServer.memory, demoServer.disk);
   }
 
-  return { location, nest, demoServer, demoPassword };
+  if (demoFiveMServer) {
+    const existingLogs = await prisma.activityLog.count({ where: { serverId: demoFiveMServer.id } });
+    if (existingLogs === 0) {
+      await prisma.activityLog.createMany({
+        data: [
+          {
+            event: 'server.settings.updated',
+            actorId: admin.id,
+            serverId: demoFiveMServer.id,
+            description: 'Created Demo FiveM Server for marketplace preview',
+            ip: '127.0.0.1',
+            timestamp: new Date(Date.now() - 86400000),
+          },
+        ],
+      });
+    }
+  }
+
+  return { location, nest, demoServer, demoFiveMServer, demoPassword };
 }
 
 async function main() {
@@ -314,7 +501,12 @@ async function main() {
     console.log(`  Location: ${dev.location.short}`);
     console.log(`  Nest: ${dev.nest.name} with Vanilla Minecraft egg`);
     if (dev.demoServer) {
-      console.log(`  Demo server: "${dev.demoServer.name}" → /servers/${dev.demoServer.id}`);
+      console.log(`  Demo Minecraft: "${dev.demoServer.name}" → /servers/${dev.demoServer.id}`);
+    }
+    if (dev.demoFiveMServer) {
+      console.log(
+        `  Demo FiveM: "${dev.demoFiveMServer.name}" → /servers/${dev.demoFiveMServer.id}/marketplace`,
+      );
     }
     console.log(`  Demo user: demo@example.com / ${dev.demoPassword}`);
   }

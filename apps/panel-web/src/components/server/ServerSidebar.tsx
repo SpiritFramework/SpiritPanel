@@ -3,6 +3,7 @@ import { useBranding } from '../../context/BrandingContext';
 import { useServer } from '../../context/ServerContext';
 import { getServerAccess } from '../../lib/server-access';
 import { normalizeAppearance, serverSidebarClassName, sidebarMaterialClassName } from '../../lib/branding-appearance';
+import { prefetchServerTab } from '../../lib/prefetch-server-tabs';
 import { BrandMark, SideNavGroup, SideNavItem } from '../Nav';
 import { ThemeToggle } from '../ThemeToggle';
 
@@ -52,7 +53,14 @@ export function ServerSidebar({
         {navGroups.map((group) => (
           <SideNavGroup key={group.label} label={group.label}>
             {group.items.map(({ to, label, description, icon }) => (
-              <SideNavItem key={to} to={to} icon={icon} label={label} description={description} />
+              <SideNavItem
+                key={to}
+                to={to}
+                icon={icon}
+                label={label}
+                description={description}
+                onPrefetch={() => prefetchServerTab(to)}
+              />
             ))}
           </SideNavGroup>
         ))}

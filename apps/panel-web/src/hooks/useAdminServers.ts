@@ -93,12 +93,24 @@ export function useAdminServers() {
   const pollTickRef = useRef(0);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       pollTickRef.current += 1;
       wantLiveRef.current = pollTickRef.current % 3 === 0;
       void pollRef.current();
-    }, 15_000);
-    return () => window.clearInterval(timer);
+    };
+    const timer = window.setInterval(tick, 15_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        wantLiveRef.current = true;
+        void pollRef.current();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, []);
 
   const refresh = useCallback(async () => {

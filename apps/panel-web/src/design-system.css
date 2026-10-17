@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    Spirit Panel ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â unified design system
    Complements Tailwind; uses existing theme tokens from index.css
 
@@ -9332,6 +9332,1199 @@ button.ds-nodes-stat:hover {
 
 /* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Minecraft Plugins (mc-*) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 
+/* Server manage → Minecraft plugins / mods / datapacks */
+.ds-srv-plugins-shell {
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent) 12%);
+  background: var(--bg-elevated);
+  box-shadow: var(--ds-shadow-card);
+  overflow: hidden;
+}
+
+.ds-srv-plugins-header {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 92%, transparent), var(--bg-elevated));
+}
+
+.ds-srv-plugins-header-accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 55%, color-mix(in srgb, var(--accent) 45%, #000) 100%);
+}
+
+.ds-srv-plugins-header-body {
+  position: relative;
+  padding: 0.875rem 1rem 0.75rem;
+}
+
+.ds-srv-plugins-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding-left: 0.65rem;
+}
+
+.ds-srv-plugins-header-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+
+.ds-srv-plugins-header-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)) 0%, color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, #000) 8%, var(--surface)) 100%);
+  overflow: hidden;
+}
+
+.ds-srv-plugins-header-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.ds-srv-plugins-header-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.ds-srv-plugins-header-sep {
+  color: var(--muted);
+  opacity: 0.45;
+}
+
+.ds-srv-plugins-header-route {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-header-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ds-srv-plugins-metrics {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ds-srv-plugins-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 5.5rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.ds-srv-plugins-metric:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  transform: translateY(-1px);
+}
+
+.ds-srv-plugins-metric:disabled {
+  cursor: default;
+}
+
+.ds-srv-plugins-metric-icon {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 75%, transparent);
+  color: var(--muted);
+}
+
+.ds-srv-plugins-metric-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.ds-srv-plugins-metric-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-metric-value {
+  font-size: 1rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ds-srv-plugins-metric--ok {
+  border-color: color-mix(in srgb, #22c55e 28%, var(--border));
+  background: color-mix(in srgb, #22c55e 8%, var(--surface));
+}
+
+.ds-srv-plugins-metric--ok .ds-srv-plugins-metric-icon {
+  border-color: color-mix(in srgb, #22c55e 35%, var(--border));
+  background: color-mix(in srgb, #22c55e 14%, var(--bg-elevated));
+  color: #4ade80;
+}
+
+.ds-srv-plugins-metric--warn {
+  border-color: color-mix(in srgb, #f59e0b 35%, var(--border));
+  background: color-mix(in srgb, #f59e0b 10%, var(--surface));
+}
+
+.ds-srv-plugins-metric--warn .ds-srv-plugins-metric-icon {
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border));
+  background: color-mix(in srgb, #f59e0b 16%, var(--bg-elevated));
+  color: #fbbf24;
+}
+
+.ds-srv-plugins-metric--warn .ds-srv-plugins-metric-value {
+  color: #fbbf24;
+}
+
+.ds-srv-plugins-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.ds-srv-plugins-action-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ds-srv-plugins-action-label {
+    display: inline;
+  }
+}
+
+.ds-srv-plugins-action-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.ds-srv-plugins-action-btn:disabled {
+  opacity: 0.5;
+}
+
+.ds-srv-plugins-header-kicker {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+  padding-left: 0.65rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--muted) 80%, transparent);
+}
+
+@media (min-width: 640px) {
+  .ds-srv-plugins-header-kicker {
+    display: inline-flex;
+  }
+}
+
+.ds-srv-plugins-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ds-srv-plugins-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+}
+
+.ds-srv-plugins-tabs .fm-seg-tabs {
+  margin: 0;
+}
+
+.ds-srv-plugins-tabs-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-tabs-hint code {
+  font-size: 0.65rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  color: var(--text);
+}
+
+.ds-srv-plugins-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.ds-srv-plugins-search {
+  margin: 0;
+}
+
+.ds-srv-plugins-results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--accent) 12%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 42%),
+    color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.ds-srv-plugins-results-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.ds-srv-plugins-results-icon {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--bg-elevated)), color-mix(in srgb, var(--accent) 6%, var(--surface)));
+  color: var(--accent-hover, var(--accent));
+}
+
+.ds-srv-plugins-results-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.ds-srv-plugins-results-desc {
+  margin: 0.12rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-results-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ds-srv-plugins-results-live {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-results-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-results-count strong {
+  font-size: 0.875rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ds-srv-plugins-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 12rem;
+  padding: 2rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.mc-plugins-page .mc-cat-row {
+  gap: 0.4rem;
+  padding: 0.15rem 0 0.05rem;
+}
+
+.mc-plugins-page .mc-cat-chip {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.71875rem;
+}
+
+/* Installed tab */
+.ds-srv-plugins-installed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ds-srv-plugins-installed-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--accent) 12%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 42%),
+    color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.ds-srv-plugins-installed-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.ds-srv-plugins-installed-icon {
+  display: grid;
+  place-items: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, var(--bg-elevated)), color-mix(in srgb, var(--accent) 6%, var(--surface)));
+  color: var(--accent-hover, var(--accent));
+}
+
+.ds-srv-plugins-installed-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.ds-srv-plugins-installed-desc {
+  margin: 0.12rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ds-srv-plugins-installed-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 65%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-status--ok {
+  border-color: color-mix(in srgb, #22c55e 35%, var(--border));
+  background: color-mix(in srgb, #22c55e 10%, var(--bg-elevated));
+  color: #4ade80;
+}
+
+.ds-srv-plugins-installed-status--warn {
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border));
+  background: color-mix(in srgb, #f59e0b 12%, var(--bg-elevated));
+  color: #fbbf24;
+}
+
+.ds-srv-plugins-installed-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-count strong {
+  font-size: 0.875rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ds-srv-plugins-installed-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ds-srv-plugins-installed-search {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.ds-srv-plugins-installed-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ds-srv-plugins-installed-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.ds-srv-plugins-installed-filter:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+
+.ds-srv-plugins-installed-filter--active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.ds-srv-plugins-installed-filter--warn:not(.ds-srv-plugins-installed-filter--active) {
+  border-color: color-mix(in srgb, #f59e0b 35%, var(--border));
+  color: #fbbf24;
+}
+
+.ds-srv-plugins-installed-filter--warn.ds-srv-plugins-installed-filter--active {
+  border-color: color-mix(in srgb, #f59e0b 48%, var(--border));
+  background: color-mix(in srgb, #f59e0b 14%, var(--surface));
+  color: #fbbf24;
+}
+
+.ds-srv-plugins-installed-filter-count {
+  display: inline-flex;
+  min-width: 1.15rem;
+  justify-content: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.ds-srv-plugins-installed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ds-srv-plugins-installed-card {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.8rem 0.95rem 0.8rem 1.05rem;
+  border-radius: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ds-srv-plugins-installed-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.ds-srv-plugins-installed-card-accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.ds-srv-plugins-installed-card--update {
+  border-color: color-mix(in srgb, #f59e0b 38%, var(--border));
+  background: color-mix(in srgb, #f59e0b 7%, var(--surface));
+}
+
+.ds-srv-plugins-installed-card--update .ds-srv-plugins-installed-card-accent {
+  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+}
+
+.ds-srv-plugins-installed-card--missing {
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border));
+}
+
+.ds-srv-plugins-installed-card--missing .ds-srv-plugins-installed-card-accent {
+  background: #f59e0b;
+}
+
+.ds-srv-plugins-installed-card--busy {
+  opacity: 0.72;
+}
+
+.ds-srv-plugins-installed-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ds-srv-plugins-installed-main:disabled {
+  cursor: default;
+}
+
+.ds-srv-plugins-installed-thumb {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 75%, transparent);
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.ds-srv-plugins-installed-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ds-srv-plugins-installed-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.ds-srv-plugins-installed-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.ds-srv-plugins-installed-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.ds-srv-plugins-update-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 40%, var(--border));
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  color: #fbbf24;
+  font-weight: 650;
+  font-size: 0.68rem;
+}
+
+.ds-srv-plugins-installed-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ds-srv-plugins-installed-badges .mc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ds-srv-plugins-installed-ago {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-path {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ds-srv-plugins-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.ds-srv-plugins-external:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.ds-srv-plugins-installed-foot {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-installed-empty {
+  display: flex;
+  justify-content: center;
+  padding: 0.35rem 0 0.15rem;
+}
+
+.ds-srv-plugins-installed-empty--compact {
+  padding: 0.25rem 0;
+}
+
+.ds-srv-plugins-installed-empty .fm-empty {
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.75rem 1.25rem;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+}
+
+.ds-srv-plugins-installed-empty .fm-empty-icon {
+  border-radius: 0.7rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--bg-elevated)), var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  color: var(--accent-hover, var(--accent));
+}
+
+.ds-srv-plugins-installed-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+/* Plugin project detail */
+.ds-srv-plugins-detail-header {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 92%, transparent), var(--bg-elevated));
+}
+
+.ds-srv-plugins-detail-header-body {
+  position: relative;
+  padding: 0.75rem 1rem 0.9rem;
+}
+
+.ds-srv-plugins-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.65rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+
+.ds-srv-plugins-detail-back:hover {
+  color: var(--text);
+}
+
+.ds-srv-plugins-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 8rem;
+  padding: 1.5rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-detail-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  padding-left: 0.65rem;
+}
+
+.ds-srv-plugins-detail-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.ds-srv-plugins-detail-icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.ds-srv-plugins-detail-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ds-srv-plugins-detail-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.ds-srv-plugins-detail-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-detail-desc {
+  margin: 0.45rem 0 0;
+  max-width: 42rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+}
+
+.ds-srv-plugins-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-detail-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.ds-srv-plugins-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.ds-srv-plugins-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ds-srv-plugins-detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18.5rem;
+  gap: 1rem;
+  padding: 0.9rem 1rem 1.1rem;
+  align-items: start;
+}
+
+@media (max-width: 920px) {
+  .ds-srv-plugins-detail-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ds-srv-plugins-detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.ds-srv-plugins-detail-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.ds-srv-plugins-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+}
+
+.ds-srv-plugins-gallery-item {
+  display: block;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  aspect-ratio: 16 / 10;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+}
+
+.ds-srv-plugins-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.ds-srv-plugins-gallery-item:hover img {
+  transform: scale(1.03);
+}
+
+.ds-srv-plugins-versions {
+  border-radius: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  overflow: hidden;
+}
+
+.ds-srv-plugins-versions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+}
+
+.ds-srv-plugins-versions-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ds-srv-plugins-versions-count {
+  display: inline-flex;
+  min-width: 1.25rem;
+  justify-content: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-version-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-srv-plugins-version-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.ds-srv-plugins-version-row:last-child {
+  border-bottom: 0;
+}
+
+.ds-srv-plugins-version-row:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.ds-srv-plugins-version-row--active {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.ds-srv-plugins-version-num {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ds-srv-plugins-version-meta {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-install {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent) 14%);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 55%),
+    color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.ds-srv-plugins-install-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ds-srv-plugins-install-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.ds-srv-plugins-install .ds-label {
+  margin-bottom: 0.35rem;
+}
+
+.ds-srv-plugins-install-file {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-install-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ds-srv-plugins-install-hint {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-install-status {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-srv-plugins-install-status code {
+  font-size: 0.6875rem;
+  color: var(--text);
+}
+
+.ds-srv-plugins-detail-done {
+  width: 100%;
+  justify-content: center;
+}
+
+.mc-plugins-page .mc-project-about-head {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent) 8%, var(--surface)) 0%,
+      color-mix(in srgb, var(--bg) 35%, var(--surface)) 100%
+    );
+}
+
+.mc-plugins-page .mc-chip--loader {
+  color: color-mix(in srgb, var(--accent) 55%, var(--text));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.mc-plugins-page .mc-md-badge-wrap,
+.mc-plugins-page .mc-md-badge-link,
+.mc-plugins-page a:has(> .mc-md-badge-wrap),
+.mc-plugins-page a:has(> .mc-md-badge) {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.1rem 0.2rem 0.1rem 0;
+  vertical-align: middle;
+  line-height: 0;
+  border-radius: 0.3rem;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.mc-plugins-page .mc-md-badge {
+  display: block;
+  height: 1.75rem;
+  width: auto;
+  max-width: min(100%, 14rem);
+  object-fit: contain;
+  object-position: left center;
+}
+
+.mc-plugins-page .mc-md p:has(.mc-md-badge),
+.mc-plugins-page .mc-md p:has(.mc-md-badge-wrap) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.55rem 0;
+}
+
+.mc-plugins-page .mc-md-image-link:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.mc-plugins-page .mc-cat-chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.mc-plugins-page .mc-cat-chip--active,
+:root[data-theme='dark'] .mc-plugins-page .mc-cat-chip--active,
+.dark .mc-plugins-page .mc-cat-chip--active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+  color: var(--text);
+}
+
+.mc-plugins-page .fm-seg-tab--active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+  color: var(--text);
+}
+
+.mc-plugins-page .mc-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+}
+
+.mc-plugins-page .mc-card-accent {
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, transparent));
+  opacity: 0.7;
+}
+
 .mc-hero {
   border-radius: 1rem;
   border: 1px solid var(--border);
@@ -9491,6 +10684,9 @@ button.ds-nodes-stat:hover {
 }
 
 .mc-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--muted);
@@ -9662,6 +10858,7 @@ button.ds-nodes-stat:hover {
 .mc-chip {
   display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-elevated);
@@ -9672,11 +10869,24 @@ button.ds-nodes-stat:hover {
   text-transform: capitalize;
 }
 
+.mc-chip--featured {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--accent) 85%, var(--text));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  text-transform: none;
+}
+
+.mc-chip--soft {
+  text-transform: none;
+}
+
 .mc-chip--installed {
   margin-left: auto;
   color: #166534;
   background: color-mix(in srgb, #22c55e 16%, transparent);
   border-color: color-mix(in srgb, #22c55e 35%, var(--border));
+  text-transform: none;
 }
 
 :root[data-theme='dark'] .mc-chip--installed,
@@ -9722,6 +10932,100 @@ button.ds-nodes-stat:hover {
 
 .mc-card:hover .mc-card-foot {
   color: var(--text);
+}
+
+.mc-card-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.mc-card-foot-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.mc-card-foot-link:hover {
+  color: var(--accent);
+}
+
+.mc-card-foot-status {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  color: color-mix(in srgb, #22c55e 75%, var(--text));
+}
+
+.mc-card--installed .mc-card-accent {
+  background: linear-gradient(180deg, #22c55e, color-mix(in srgb, #22c55e 40%, transparent));
+}
+
+.mc-card--busy {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.mc-card-metrics .mc-card-metric {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ds-srv-mp-shell .ds-srv-plugins-body {
+  gap: 0.85rem;
+}
+
+.ds-srv-mp-panel {
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.ds-srv-mp-catalog.is-refreshing {
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.ds-srv-mp-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ds-srv-mp-block-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-srv-mp-soft-error,
+.ds-srv-mp-inline-empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.ds-srv-mp-inline-empty {
+  padding: 1.25rem 0.5rem;
+  text-align: center;
+}
+
+.ds-srv-mp-github {
+  gap: 1rem;
 }
 
 .mc-update-pill {
@@ -9786,13 +11090,24 @@ button.ds-nodes-stat:hover {
 
 .mc-installed-filter:hover {
   color: var(--text);
-  border-color: color-mix(in srgb, #22c55e 30%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 
 .mc-installed-filter--active {
-  color: #bbf7d0;
-  border-color: color-mix(in srgb, #22c55e 45%, var(--border));
-  background: color-mix(in srgb, #22c55e 12%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.mc-installed-filter--warn:not(.mc-installed-filter--active) {
+  border-color: color-mix(in srgb, #f59e0b 35%, var(--border));
+  color: #fbbf24;
+}
+
+.mc-installed-filter--warn.mc-installed-filter--active {
+  border-color: color-mix(in srgb, #f59e0b 48%, var(--border));
+  background: color-mix(in srgb, #f59e0b 14%, var(--surface));
+  color: #fbbf24;
 }
 
 .mc-installed-filter-count {
@@ -13603,6 +14918,57 @@ button.ds-nodes-stat:hover {
 
 /* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Server overview bar ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 
+/* Server node unreachable notice (shell banner above console / server pages) */
+.ds-srv-node-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--warning-fg) 32%, var(--border));
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--warning-bg) 78%, transparent), transparent 58%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+
+.ds-srv-node-notice--console {
+  margin-bottom: 0.15rem;
+}
+
+.ds-srv-node-notice-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--warning-fg) 28%, var(--border));
+  background: color-mix(in srgb, var(--warning-bg) 85%, var(--bg-elevated));
+  color: var(--warning-fg);
+}
+
+.ds-srv-node-notice-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.ds-srv-node-notice-copy strong {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.ds-srv-node-notice-copy span {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .ds-srv-bar {
   position: relative;
   border-bottom: 1px solid var(--border);
@@ -13987,18 +15353,26 @@ button.ds-nodes-stat:hover {
   gap: 0.85rem;
 }
 
-.ds-srv-an--loading {
-  align-items: center;
-  justify-content: center;
-  min-height: 14rem;
-  gap: 0.75rem;
-  padding: 2rem;
+.ds-srv-an-shell--refreshing .ds-srv-an-body {
+  opacity: 0.72;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
 }
 
-.ds-srv-an-loading-text {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--muted);
+.ds-srv-an-body--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+  padding: 2.5rem 1rem;
+}
+
+.ds-srv-outlet-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 2rem 1rem;
 }
 
 .ds-srv-an-header {
@@ -14121,13 +15495,26 @@ button.ds-nodes-stat:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.55rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: color-mix(in srgb, var(--surface) 55%, transparent);
   color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.ds-srv-an-action-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ds-srv-an-action-label {
+    display: inline;
+  }
 }
 
 .ds-srv-an-action-btn:hover:not(:disabled) {
@@ -14178,15 +15565,16 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-an-live-tile {
-  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  padding: 0.65rem 0.7rem 0.75rem;
-  border-radius: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  flex-direction: column;
+  gap: 0.35rem;
   min-width: 0;
+  padding: 0.7rem 0.75rem 0.65rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 50%),
+    color-mix(in srgb, var(--surface) 50%, transparent);
 }
 
 .ds-srv-an-live-tile--warning {
@@ -14197,41 +15585,45 @@ button.ds-nodes-stat:hover {
   border-color: color-mix(in srgb, #f87171 35%, var(--border));
 }
 
+.ds-srv-an-live-tile-top {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .ds-srv-an-live-tile-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.65rem;
+  height: 1.65rem;
   flex-shrink: 0;
   border-radius: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .ds-srv-an-live-tile-icon--cpu {
   color: var(--accent-hover);
   background: var(--accent-muted);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 .ds-srv-an-live-tile-icon--ram {
-  color: var(--accent-hover);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: #6ee7b7;
+  background: color-mix(in srgb, #34d399 12%, transparent);
+  border-color: color-mix(in srgb, #34d399 28%, var(--border));
 }
 
 .ds-srv-an-live-tile-icon--disk {
   color: #fcd34d;
-  background: color-mix(in srgb, #fbbf24 14%, transparent);
+  background: color-mix(in srgb, #fbbf24 12%, transparent);
+  border-color: color-mix(in srgb, #fbbf24 28%, var(--border));
 }
 
 .ds-srv-an-live-tile-icon--net {
   color: #7dd3fc;
-  background: color-mix(in srgb, #38bdf8 14%, transparent);
-}
-
-.ds-srv-an-live-tile-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
+  background: color-mix(in srgb, #38bdf8 12%, transparent);
+  border-color: color-mix(in srgb, #38bdf8 28%, var(--border));
 }
 
 .ds-srv-an-live-tile-label {
@@ -14243,17 +15635,17 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-an-live-tile-value {
-  font-family: ui-monospace, monospace;
-  font-size: 0.8125rem;
-  font-weight: 650;
+  font-size: 1rem;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .ds-srv-an-live-tile-sub {
-  margin-top: 0.1rem;
   font-size: 0.625rem;
+  font-weight: 600;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14261,11 +15653,7 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-an-live-tile-bar {
-  position: absolute;
-  right: 0.7rem;
-  bottom: 0.45rem;
-  left: 0.7rem;
-  height: 0.2rem;
+  height: 0.22rem;
   overflow: hidden;
   border-radius: 9999px;
   background: color-mix(in srgb, var(--border) 80%, transparent);
@@ -14284,19 +15672,35 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-an-live-tile--ram .ds-srv-an-live-tile-fill {
-  background: linear-gradient(90deg, var(--accent-hover), var(--accent));
+  background: linear-gradient(90deg, #10b981, #34d399);
 }
 
 .ds-srv-an-live-tile--disk .ds-srv-an-live-tile-fill {
   background: linear-gradient(90deg, #d97706, #fbbf24);
 }
 
-.ds-srv-an-live-net {
+.ds-srv-an-live-net-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.ds-srv-an-live-net-meta span {
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  flex-shrink: 0;
-  opacity: 0.85;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.ds-srv-an-live-net-meta span:first-child {
+  color: #7dd3fc;
+}
+
+.ds-srv-an-live-net-meta span:last-child {
+  color: #c4b5fd;
 }
 
 .ds-srv-an-bento {
@@ -14325,46 +15729,67 @@ button.ds-nodes-stat:hover {
 
 .ds-srv-an-panel-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.75rem 0.9rem;
+  padding: 0.7rem 0.85rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 50%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 45%),
+    color-mix(in srgb, var(--bg-elevated) 50%, transparent);
 }
 
 .ds-srv-an-panel-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.15rem;
+  height: 2.15rem;
   flex-shrink: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
   color: var(--accent-hover);
-  background: var(--accent-muted);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--bg-elevated)), color-mix(in srgb, var(--accent) 6%, var(--surface)));
 }
 
 .ds-srv-an-panel-title {
   margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 650;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .ds-srv-an-panel-desc {
-  margin: 0.1rem 0 0;
+  margin: 0.12rem 0 0;
   font-size: 0.6875rem;
   color: var(--muted);
 }
 
 .ds-srv-an-panel-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
   flex-shrink: 0;
-  padding: 0.2rem 0.5rem;
+  margin-left: auto;
+  padding: 0.35rem 0.65rem;
   border-radius: 9999px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
-  font-size: 0.625rem;
-  font-weight: 650;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
   color: var(--muted);
+}
+
+.ds-srv-an-panel-badge strong {
+  font-size: 0.875rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ds-srv-an-panel-badge--muted {
+  font-size: 0.6875rem;
+  font-weight: 650;
 }
 
 .ds-srv-an-panel-body {
@@ -14531,57 +15956,117 @@ button.ds-nodes-stat:hover {
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 2rem 1rem;
-  border-radius: var(--radius-lg);
-  border: 1px dashed var(--border);
+  padding: 2.25rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--surface) 35%, transparent);
   text-align: center;
   color: var(--muted);
+}
+
+.ds-srv-an-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--bg-elevated)), var(--bg-elevated));
+  color: var(--accent-hover, var(--accent));
 }
 
 .ds-srv-an-empty-title {
   margin: 0;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 
 .ds-srv-an-empty-desc {
   margin: 0;
-  max-width: 28rem;
+  max-width: 26rem;
   font-size: 0.75rem;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .ds-srv-an-bento-side {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.65rem;
 }
 
 .ds-srv-an-side-card {
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.65rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  background: color-mix(in srgb, var(--surface) 40%, transparent);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
 }
 
 .ds-srv-an-side-card--muted {
   background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
 }
 
+.ds-srv-an-side-card--info {
+  border-color: color-mix(in srgb, var(--border) 75%, var(--accent) 12%);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 7%, transparent) 0%, transparent 55%),
+    color-mix(in srgb, var(--surface) 45%, transparent);
+}
+
 .ds-srv-an-side-head {
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.45rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+  color: var(--muted);
+}
+
+.ds-srv-an-side-icon {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border-radius: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
   color: var(--muted);
 }
 
 .ds-srv-an-side-title {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 650;
+  font-size: 0.8125rem;
+  font-weight: 700;
   color: var(--text);
+}
+
+.ds-srv-an-info-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ds-srv-an-info-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ds-srv-an-info-list strong {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-srv-an-info-list span {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text) 88%, var(--muted));
 }
 
 .ds-srv-an-side-list {
@@ -14847,13 +16332,26 @@ button.ds-nodes-stat:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.5rem;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.55rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   background: color-mix(in srgb, var(--surface) 55%, transparent);
   color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.ds-srv-act-action-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ds-srv-act-action-label {
+    display: inline;
+  }
 }
 
 .ds-srv-act-action-btn:hover:not(:disabled) {
@@ -14893,14 +16391,15 @@ button.ds-nodes-stat:hover {
 .ds-srv-act-body {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  padding: 0.85rem 1rem 1rem;
+  gap: 0;
+  padding: 0;
 }
 
 .ds-srv-act-stats {
   display: grid;
   gap: 0.5rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0.85rem 1rem 0;
 }
 
 @media (max-width: 639px) {
@@ -14980,10 +16479,47 @@ button.ds-nodes-stat:hover {
   line-height: 1.3;
 }
 
+.ds-srv-act-feed-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ds-srv-act-feed-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+}
+
+.ds-srv-act-feed-head-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  color: var(--muted);
+}
+
+.ds-srv-act-feed-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.ds-srv-act-feed-desc {
+  margin: 0.1rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
 .ds-srv-act-feed {
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  background: color-mix(in srgb, var(--surface) 35%, transparent);
   overflow: hidden;
 }
 
@@ -15061,30 +16597,27 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-act-filter--active {
-  color: #fff;
-  border-color: transparent;
-  background: var(--accent);
-  box-shadow: 0 2px 8px -2px var(--accent-glow);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
 }
 
 .ds-srv-act-filter--power.ds-srv-act-filter--active {
-  background: #059669;
+  border-color: color-mix(in srgb, #059669 45%, var(--border));
+  background: color-mix(in srgb, #059669 16%, var(--bg-elevated));
+  color: #6ee7b7;
 }
 
 .ds-srv-act-filter--files.ds-srv-act-filter--active {
-  background: #d97706;
-}
-
-.ds-srv-act-filter--settings.ds-srv-act-filter--active,
-.ds-srv-act-filter--access.ds-srv-act-filter--active,
-.ds-srv-act-filter--backups.ds-srv-act-filter--active,
-.ds-srv-act-filter--automation.ds-srv-act-filter--active,
-.ds-srv-act-filter--network.ds-srv-act-filter--active {
-  background: var(--accent);
+  border-color: color-mix(in srgb, #d97706 45%, var(--border));
+  background: color-mix(in srgb, #d97706 14%, var(--bg-elevated));
+  color: #fcd34d;
 }
 
 .ds-srv-act-filter--marketplace.ds-srv-act-filter--active {
-  background: #16a34a;
+  border-color: color-mix(in srgb, #16a34a 45%, var(--border));
+  background: color-mix(in srgb, #16a34a 14%, var(--bg-elevated));
+  color: #86efac;
 }
 
 .ds-srv-act-feed-meta {
@@ -15096,6 +16629,10 @@ button.ds-nodes-stat:hover {
 .ds-srv-act-feed-meta strong {
   color: var(--text);
   font-weight: 650;
+}
+
+.ds-srv-act-feed-meta-muted {
+  opacity: 0.7;
 }
 
 .ds-srv-act-notice {
@@ -15138,12 +16675,12 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-srv-act-timeline {
-  padding: 0.5rem 0.75rem 0.75rem;
+  padding: 0.85rem 1rem 1rem;
 }
 
 .ds-srv-act-day + .ds-srv-act-day {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
@@ -15180,24 +16717,24 @@ button.ds-nodes-stat:hover {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .ds-srv-act-event {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.65rem 0.7rem 0.65rem 0.85rem;
-  border-radius: 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 50%, transparent);
+  gap: 0.7rem;
+  padding: 0.7rem 0.8rem 0.7rem 0.95rem;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .ds-srv-act-event:hover {
-  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
-  background: color-mix(in srgb, var(--surface-hover) 35%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg-elevated));
 }
 
 .ds-srv-act-event-accent {
@@ -15216,6 +16753,17 @@ button.ds-nodes-stat:hover {
 
 .ds-srv-act-event-accent--files {
   background: var(--warning-fg, #fbbf24);
+}
+
+.ds-srv-act-event-accent--settings,
+.ds-srv-act-event-accent--access,
+.ds-srv-act-event-accent--automation,
+.ds-srv-act-event-accent--network {
+  background: var(--accent-hover);
+}
+
+.ds-srv-act-event-accent--backups {
+  background: color-mix(in srgb, var(--info-fg, #60a5fa) 90%, #fff);
 }
 
 .ds-srv-act-event-accent--marketplace {

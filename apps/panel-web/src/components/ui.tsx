@@ -56,11 +56,11 @@ export function PageHeader({
 }
 
 /** Full-page or route-level loading with skeleton preview. */
-export function PageLoading({ label = 'Loading…' }: { label?: string }) {
+export function PageLoading({ label }: { label?: string }) {
   return (
     <div className="ds-page-loading" role="status" aria-live="polite">
-      <Spinner className="h-6 w-6" />
-      <span>{label}</span>
+      <Spinner className="h-7 w-7" />
+      {label ? <span>{label}</span> : <span className="sr-only">Loading</span>}
     </div>
   );
 }

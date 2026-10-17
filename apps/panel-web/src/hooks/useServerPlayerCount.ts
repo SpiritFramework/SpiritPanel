@@ -47,9 +47,20 @@ export function useServerPlayerCount(server: ServerDetail, runtimeState: string 
       return;
     }
 
-    void refresh();
-    const timer = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(timer);
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      void refresh();
+    };
+    tick();
+    const timer = window.setInterval(tick, POLL_MS);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [running, refresh]);
 
   return { online, max, loading, running, unavailable, refresh };
