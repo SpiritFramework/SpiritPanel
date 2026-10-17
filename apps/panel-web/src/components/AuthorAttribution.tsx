@@ -78,20 +78,33 @@ export function AuthorAttribution({
     );
   }
 
+  const productName = (
+    <PanelName name={PANEL_PRODUCT} variant="compact" className="panel-name--attrib" />
+  );
+
   return (
     <div
       className={`ds-attrib-sidebar${onDark ? ' ds-attrib-sidebar--dark' : ''} ${className}`.trim()}
-      aria-label={`${PANEL_PRODUCT} version ${PANEL_VERSION}, built by ${PANEL_AUTHOR}`}
+      aria-label={`${PANEL_PRODUCT} version ${PANEL_VERSION}`}
     >
       <p className="ds-attrib-sidebar-product">
-        <PanelName name={PANEL_PRODUCT} variant="compact" className="panel-name--attrib" />
+        {authorDiscord ? (
+          <a
+            href={authorDiscord}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={`ds-attrib-sidebar-product-link${onDark ? ' ds-attrib-sidebar-product-link--dark' : ''}`}
+            aria-label={`Open ${PANEL_AUTHOR} Discord`}
+            title={`${PANEL_AUTHOR} Discord`}
+          >
+            {productName}
+          </a>
+        ) : (
+          productName
+        )}
         <span className={`ds-attrib-sidebar-version${onDark ? ' ds-attrib-sidebar-version--dark' : ''}`}>
           v{PANEL_VERSION}
         </span>
-      </p>
-      <p className="ds-attrib-sidebar-credit">
-        by{' '}
-        <AuthorLink onDark className={`ds-attrib-sidebar-author${onDark ? ' ds-attrib-sidebar-author--dark' : ''}`} />
       </p>
     </div>
   );

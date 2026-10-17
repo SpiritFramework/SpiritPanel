@@ -63,7 +63,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **Profile** respects branding hero stripe; server manage tab headers share slightly clearer title spacing.
 - **Nests & eggs redesigned** to match Admin Servers: clearer hero, clickable fleet stats, and a refreshed variables editor. Nest/egg **Save changes** now uses an explicit save action (egg manage previously used `type="submit"` with no form, so saves never fired). Nest detail and egg lists now return/show egg `logoUrl`s, with tighter typography spacing on those pages.
 - **My Servers redesigned** to match Support / Alerts: branded hero with clickable Online / Offline / Installing / Total stats, attention callouts, offline filter, and a panel wrapping search + fleet grid/list.
-- **Sidebar attribution** is a quiet footer credit (`Spirit-Panel v…` / `by SpiritFramework`) so it fits the nav without a cramped one-liner or boxed chip.
+- **Sidebar attribution** is a quiet footer (`Spirit-Panel v…` only — no “by SpiritFramework”); the product name links to the SpiritFramework Discord.
 - **Alerts are always on.** Server health, crashes, account security, and node-offline events go straight to each user’s inbox — no presets or custom watches to configure.
 - **Alerts inbox redesigned** to match My Servers / Support: branded hero, compact stats, filter pills, and a full-width expandable list. The sidebar link is gone; the bell next to Theme still opens `/alerts`.
 

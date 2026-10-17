@@ -29772,7 +29772,8 @@ button.ds-nodes-stat:hover {
   margin: 0;
 }
 
-.ds-attrib-sidebar-product .panel-name {
+.ds-attrib-sidebar-product .panel-name,
+.ds-attrib-sidebar-product-link {
   display: inline-block;
   min-width: 0;
   flex: 1 1 auto;
@@ -29781,30 +29782,29 @@ button.ds-nodes-stat:hover {
   white-space: nowrap;
 }
 
-.ds-attrib-sidebar-credit {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.ds-attrib-sidebar-product-link {
+  text-decoration: none;
+  border-radius: 0.2rem;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.ds-attrib-sidebar-product-link:hover {
+  opacity: 0.88;
+  filter: brightness(1.08);
+}
+
+.ds-attrib-sidebar-product-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.ds-attrib-sidebar-product-link--dark:hover {
+  opacity: 1;
+  filter: brightness(1.12);
 }
 
 .ds-attrib-sidebar-dot {
   display: none;
-}
-
-.ds-attrib-sidebar-author {
-  font-weight: 600;
-  text-decoration: none;
-  color: color-mix(in srgb, var(--text) 72%, var(--muted));
-  transition: color 0.15s ease;
-}
-
-.ds-attrib-sidebar-author:hover {
-  color: var(--accent-hover);
-}
-
-.ds-attrib-sidebar-author--dark {
-  color: rgba(255, 255, 255, 0.7);
 }
 
 .ds-attrib-sidebar-version {
