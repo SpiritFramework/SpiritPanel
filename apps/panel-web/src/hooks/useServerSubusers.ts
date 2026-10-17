@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { useServer } from '../context/ServerContext';
 import { useServerRouteId } from './useServerRouteId';
@@ -7,6 +7,7 @@ import {
   ALL_PERMISSION_KEYS,
   DEFAULT_INVITE_PERMISSIONS,
   matchesSubuserSearch,
+  sanitizePermissions,
   type SubuserSummary,
 } from '../lib/subuser-utils';
 
@@ -28,6 +29,7 @@ export function useServerSubusers() {
   const [removeTarget, setRemoveTarget] = useState<SubuserSummary | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const loadedRef = useRef(false);
 
   const filteredSubusers = useMemo(
     () => subusers.filter((s) => matchesSubuserSearch(s, search)),
@@ -42,33 +44,40 @@ export function useServerSubusers() {
   const avgPermissions = subusers.length > 0 ? Math.round(totalPermissionsGranted / subusers.length) : 0;
   const hasSearch = Boolean(search.trim());
 
-  async function load() {
+  const load = useCallback(async (opts?: { soft?: boolean }) => {
     if (!id) return;
-    setLoading(true);
+    const soft = Boolean(opts?.soft && loadedRef.current);
+    if (!soft) setLoading(true);
     setLoadError('');
     try {
       const list = await api.client.subusers(id);
       setSubusers(list as unknown as SubuserSummary[]);
+      loadedRef.current = true;
     } catch (err) {
-      setSubusers([]);
+      if (!soft) setSubusers([]);
       setLoadError(err instanceof Error ? err.message : 'Failed to load subusers');
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
 
   useEffect(() => {
+    loadedRef.current = false;
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [load]);
 
   async function addSubuser(e?: FormEvent) {
     e?.preventDefault();
     if (!id || !email.trim()) return;
+    const grants = sanitizePermissions(permissions);
+    if (grants.length === 0) {
+      setError('Select at least one permission');
+      return;
+    }
     setAdding(true);
     setError('');
     try {
-      await api.client.addSubuser(id, email.trim(), permissions);
+      await api.client.addSubuser(id, email.trim(), grants);
       setEmail('');
       setPermissions(DEFAULT_INVITE_PERMISSIONS);
       await load();
@@ -97,7 +106,7 @@ export function useServerSubusers() {
 
   function startEdit(subuser: SubuserSummary) {
     setEditingId(subuser.id);
-    setEditPermissions([...subuser.permissions]);
+    setEditPermissions(sanitizePermissions(subuser.permissions));
   }
 
   function cancelEdit() {
@@ -112,10 +121,15 @@ export function useServerSubusers() {
 
   async function saveEdit(subuserId: string) {
     if (!id) return;
+    const grants = sanitizePermissions(editPermissions);
+    if (grants.length === 0) {
+      setError('Select at least one permission');
+      return;
+    }
     setSavingEdit(true);
     setError('');
     try {
-      await api.client.updateSubuser(id, subuserId, editPermissions);
+      await api.client.updateSubuser(id, subuserId, grants);
       setEditingId(null);
       await load();
     } catch (err) {

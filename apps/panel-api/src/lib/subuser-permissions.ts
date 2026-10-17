@@ -26,6 +26,11 @@ export function validateSubuserPermissions(permissions: string[]): string[] {
     );
   }
 
+  // Live console requires the Wings websocket scope — grant it implicitly with control.console.
+  if (unique.includes('control.console') && !unique.includes('websocket.connect')) {
+    unique.push('websocket.connect');
+  }
+
   const invalid = unique.filter((p) => !ALLOWED.has(p));
   if (invalid.length > 0) {
     throw new InvalidSubuserPermissionsError(`Unknown permissions: ${invalid.join(', ')}`);

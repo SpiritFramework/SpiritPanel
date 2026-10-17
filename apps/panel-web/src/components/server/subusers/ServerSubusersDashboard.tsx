@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ConfirmModal } from '../../ConfirmModal';
 import { useServerSubusers } from '../../../hooks/useServerSubusers';
 import { SubusersHeader } from './SubusersHeader';
@@ -11,11 +11,14 @@ export function ServerSubusersDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const inviteRef = useRef<HTMLDivElement>(null);
 
-  async function handleRefresh() {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await sub.load();
-    window.setTimeout(() => setRefreshing(false), 400);
-  }
+    try {
+      await sub.load({ soft: true });
+    } finally {
+      window.setTimeout(() => setRefreshing(false), 280);
+    }
+  }, [sub.load]);
 
   function scrollToInvite() {
     inviteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -37,7 +40,7 @@ export function ServerSubusersDashboard() {
         />
 
         <div className="ds-srv-sub-body">
-          {!sub.loading ? (
+          {!sub.loading || sub.subusers.length > 0 ? (
             <SubusersStatsRow
               total={sub.subusers.length}
               avgPermissions={sub.avgPermissions}
@@ -58,7 +61,7 @@ export function ServerSubusersDashboard() {
           </div>
 
           <SubusersListPanel
-            loading={sub.loading}
+            loading={sub.loading && sub.subusers.length === 0}
             error={sub.loadError || sub.error}
             subusers={sub.subusers}
             filteredSubusers={sub.filteredSubusers}

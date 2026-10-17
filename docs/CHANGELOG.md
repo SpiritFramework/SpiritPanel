@@ -23,6 +23,11 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 - **Sidebar attribution** keeps `Spirit-Panel` and the version on one line (name left, version right).
 - **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
+- **Subuser invites** no longer send invalid `user.*` permissions (those were never grantable — subuser management stays owner-only). Permission catalog matches the API grant list; console also implies `websocket.connect`.
+
+### Changed
+
+- **Server Subusers** polished: Select all / Clear (+ per-group All), labeled Refresh, denser invite/list chrome, clearer empty/search copy.
 
 ## [1.3.4.5] - 2026-10-17
 

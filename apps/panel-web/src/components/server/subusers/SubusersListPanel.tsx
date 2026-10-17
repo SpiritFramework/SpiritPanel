@@ -42,7 +42,13 @@ export function SubusersListPanel({
         <Users className="h-4 w-4" aria-hidden />
         <div>
           <h3 className="ds-srv-sub-panel-title">People with access</h3>
-          <p className="ds-srv-sub-panel-meta">Manage permissions for users who can access this server</p>
+          <p className="ds-srv-sub-panel-meta">
+            {loading
+              ? 'Loading…'
+              : hasSearch
+                ? `Showing ${filteredSubusers.length} of ${subusers.length}`
+                : `${subusers.length} subuser${subusers.length === 1 ? '' : 's'}`}
+          </p>
         </div>
       </div>
 

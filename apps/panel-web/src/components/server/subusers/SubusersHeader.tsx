@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Users } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { StatusPill } from '../../ui';
 import { ServerEggIcon } from '../../ServerEggIcon';
 
@@ -38,12 +38,12 @@ export function SubusersHeader({
                 <span className="ds-srv-sub-header-route">Subusers</span>
                 <StatusPill
                   label={`${totalCount} member${totalCount === 1 ? '' : 's'}`}
-                  tone={totalCount > 0 ? 'success' : 'neutral'}
+                  tone={totalCount > 0 ? 'info' : 'neutral'}
                   compact
                 />
               </div>
               <p className="ds-srv-sub-header-meta truncate">
-                Grant panel users access with fine-grained permissions
+                Share this server with other panel users · owners manage invites
               </p>
             </div>
           </div>
@@ -55,19 +55,16 @@ export function SubusersHeader({
               title="Refresh subusers"
               aria-label="Refresh subusers"
               onClick={onRefresh}
+              disabled={refreshing}
             >
               <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
             <button type="button" className="ds-srv-sub-create-btn" onClick={onInvite}>
               <Plus className="h-3.5 w-3.5" aria-hidden />
-              <span>Invite user</span>
+              <span>Invite</span>
             </button>
           </div>
-        </div>
-
-        <div className="ds-srv-sub-header-kicker" aria-hidden>
-          <Users className="h-3 w-3" />
-          <span>Team access</span>
         </div>
       </div>
     </header>

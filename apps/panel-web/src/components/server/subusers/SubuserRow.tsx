@@ -2,7 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '../../Layout';
 import { UserAvatar } from '../../UserAvatar';
 import type { SubuserSummary } from '../../../lib/subuser-utils';
-import { permissionLabel, togglePermission } from '../../../lib/subuser-utils';
+import { permissionLabel } from '../../../lib/subuser-utils';
 import { SubuserPermissionGrid } from './SubuserPermissionGrid';
 
 export function SubuserRow({
@@ -75,17 +75,12 @@ export function SubuserRow({
 
           {expanded ? (
             <div className="ds-srv-sub-row-editor">
-              <SubuserPermissionGrid
-                permissions={editPermissions}
-                onToggle={(key, checked) =>
-                  onEditPermissionsChange(togglePermission(editPermissions, key, checked))
-                }
-              />
+              <SubuserPermissionGrid permissions={editPermissions} onChange={onEditPermissionsChange} />
               <div className="ds-srv-sub-row-editor-actions">
                 <Button variant="ghost" type="button" onClick={onCancelEdit}>
                   Cancel
                 </Button>
-                <Button type="button" disabled={saving} onClick={onSaveEdit}>
+                <Button type="button" disabled={saving || editPermissions.length === 0} onClick={onSaveEdit}>
                   {saving ? 'Saving…' : 'Save permissions'}
                 </Button>
               </div>

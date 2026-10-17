@@ -1,7 +1,6 @@
 import { UserPlus } from 'lucide-react';
 import { Button, Input } from '../../Layout';
 import { SubuserPermissionGrid } from './SubuserPermissionGrid';
-import { togglePermission } from '../../../lib/subuser-utils';
 
 export function SubusersInvitePanel({
   email,
@@ -24,7 +23,9 @@ export function SubusersInvitePanel({
         <UserPlus className="h-4 w-4" aria-hidden />
         <div>
           <h3 className="ds-srv-sub-invite-title">Invite subuser</h3>
-          <p className="ds-srv-sub-invite-meta">User must already have a panel account</p>
+          <p className="ds-srv-sub-invite-meta">
+            They need an existing panel account · Subuser management stays owner-only
+          </p>
         </div>
       </div>
 
@@ -44,13 +45,10 @@ export function SubusersInvitePanel({
           required
         />
 
-        <SubuserPermissionGrid
-          permissions={permissions}
-          onToggle={(key, checked) => onPermissionsChange(togglePermission(permissions, key, checked))}
-        />
+        <SubuserPermissionGrid permissions={permissions} onChange={onPermissionsChange} />
 
         <div className="ds-srv-sub-invite-actions">
-          <Button type="submit" disabled={adding || !email.trim()}>
+          <Button type="submit" disabled={adding || !email.trim() || permissions.length === 0}>
             <UserPlus className="h-3.5 w-3.5" />
             {adding ? 'Adding…' : 'Add subuser'}
           </Button>
