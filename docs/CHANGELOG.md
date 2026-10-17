@@ -21,7 +21,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
-- **Sidebar attribution** keeps `Spirit-Panel` and the version adjacent (no longer stretched apart by flex growth).
+- **Sidebar attribution** keeps `Spirit-Panel` and the version on one line (name left, version right).
 - **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
 
 ## [1.3.4.5] - 2026-10-17
