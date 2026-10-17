@@ -22,6 +22,7 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
   const [wordWrap, setWordWrap] = useState(false);
   const [showFind, setShowFind] = useState(false);
   const [findQuery, setFindQuery] = useState('');
+  const [findIndex, setFindIndex] = useState(0);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
@@ -43,20 +44,23 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
     [fileContent, language, shouldHighlight],
   );
 
-  const findMatches = useMemo(() => {
-    if (!findQuery.trim()) return 0;
-    const q = findQuery.toLowerCase();
+  const findMatchOffsets = useMemo(() => {
+    const q = findQuery.trim();
+    if (!q) return [] as number[];
+    const needle = q.toLowerCase();
     const hay = fileContent.toLowerCase();
-    let count = 0;
+    const offsets: number[] = [];
     let pos = 0;
     while (pos < hay.length) {
-      const idx = hay.indexOf(q, pos);
+      const idx = hay.indexOf(needle, pos);
       if (idx === -1) break;
-      count += 1;
-      pos = idx + q.length;
+      offsets.push(idx);
+      pos = idx + Math.max(1, needle.length);
     }
-    return count;
+    return offsets;
   }, [fileContent, findQuery]);
+
+  const findMatches = findMatchOffsets.length;
 
   const updateLineCount = useCallback((text: string) => {
     setLineCount(Math.max(1, text.split('\n').length));
@@ -82,6 +86,80 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
       highlightRef.current.scrollLeft = editor.scrollLeft;
     }
   }, []);
+
+  const scrollEditorToPos = useCallback(
+    (pos: number) => {
+      const el = editorRef.current;
+      if (!el) return;
+      const style = window.getComputedStyle(el);
+      const lineHeight = Number.parseFloat(style.lineHeight) || 20;
+      const linesBefore = el.value.slice(0, pos).split('\n').length - 1;
+      const target = Math.max(0, linesBefore * lineHeight - el.clientHeight / 3);
+      el.scrollTop = target;
+      syncScroll();
+    },
+    [syncScroll],
+  );
+
+  const revealFindMatch = useCallback(
+    (index: number, opts?: { focusEditor?: boolean }) => {
+      const el = editorRef.current;
+      const q = findQuery.trim();
+      if (!el || !q || findMatchOffsets.length === 0) return;
+      const next = ((index % findMatchOffsets.length) + findMatchOffsets.length) % findMatchOffsets.length;
+      const start = findMatchOffsets[next]!;
+      const end = start + q.length;
+      setFindIndex(next);
+      el.setSelectionRange(start, end);
+      scrollEditorToPos(start);
+      updateCursorFromSelection(el);
+      if (opts?.focusEditor) el.focus();
+    },
+    [findMatchOffsets, findQuery, scrollEditorToPos, updateCursorFromSelection],
+  );
+
+  const findNext = useCallback(() => {
+    if (!findMatchOffsets.length) return;
+    revealFindMatch(findIndex + 1);
+  }, [findIndex, findMatchOffsets.length, revealFindMatch]);
+
+  const findPrev = useCallback(() => {
+    if (!findMatchOffsets.length) return;
+    revealFindMatch(findIndex - 1);
+  }, [findIndex, findMatchOffsets.length, revealFindMatch]);
+
+  const openFind = useCallback(() => {
+    setShowFind(true);
+    requestAnimationFrame(() => {
+      findInputRef.current?.focus();
+      findInputRef.current?.select();
+    });
+  }, []);
+
+  const closeFind = useCallback(() => {
+    setShowFind(false);
+    setFindQuery('');
+    setFindIndex(0);
+    requestAnimationFrame(() => editorRef.current?.focus());
+  }, []);
+
+  const setFindQueryAndReset = useCallback((value: string) => {
+    setFindQuery(value);
+    setFindIndex(0);
+  }, []);
+
+  useEffect(() => {
+    if (!showFind) return;
+    const q = findQuery.trim();
+    if (!q || findMatchOffsets.length === 0) {
+      setFindIndex(0);
+      return;
+    }
+    revealFindMatch(0);
+    // Keep focus in the find box while typing.
+    requestAnimationFrame(() => findInputRef.current?.focus());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reveal first match when query/content changes
+  }, [findQuery, findMatchOffsets, showFind]);
 
   const loadFile = useCallback(async () => {
     if (!serverId || !filePath) return;
@@ -141,25 +219,34 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
   }, [savedContent, updateLineCount]);
 
   useEffect(() => {
-    if (!canWrite) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        if (!canWrite) return;
         e.preventDefault();
         void saveFile();
+        return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        setShowFind(true);
-        requestAnimationFrame(() => findInputRef.current?.focus());
+        e.stopPropagation();
+        openFind();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        if (!showFind || !findMatchOffsets.length) return;
+        e.preventDefault();
+        if (e.shiftKey) findPrev();
+        else findNext();
+        return;
       }
       if (e.key === 'Escape' && showFind) {
-        setShowFind(false);
-        setFindQuery('');
+        e.preventDefault();
+        closeFind();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canWrite, saveFile, showFind]);
+  }, [canWrite, closeFind, findMatchOffsets.length, findNext, findPrev, openFind, saveFile, showFind]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -253,8 +340,13 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
     showFind,
     setShowFind,
     findQuery,
-    setFindQuery,
+    setFindQuery: setFindQueryAndReset,
     findMatches,
+    findIndex,
+    findNext,
+    findPrev,
+    openFind,
+    closeFind,
     dirty,
     fileName,
     language,

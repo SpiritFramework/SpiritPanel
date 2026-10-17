@@ -19,6 +19,11 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sidebar attribution** keeps `Spirit-Panel` and the version adjacent (no longer stretched apart by flex growth).
+- **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
+
 ## [1.3.4.5] - 2026-10-17
 
 ### Security

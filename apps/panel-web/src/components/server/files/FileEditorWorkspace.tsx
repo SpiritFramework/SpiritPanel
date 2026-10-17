@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Download,
   FileCode2,
@@ -184,8 +186,8 @@ export function FileEditorWorkspace({ filePath }: { filePath: string }) {
             type="button"
             className={`ds-srv-fe-tool-btn${editor.showFind ? ' ds-srv-fe-tool-btn--active' : ''}`}
             onClick={() => {
-              editor.setShowFind((v) => !v);
-              if (!editor.showFind) requestAnimationFrame(() => editor.findInputRef.current?.focus());
+              if (editor.showFind) editor.closeFind();
+              else editor.openFind();
             }}
             title="Find (Ctrl+F)"
           >
@@ -214,22 +216,55 @@ export function FileEditorWorkspace({ filePath }: { filePath: string }) {
             type="search"
             value={editor.findQuery}
             onChange={(e) => editor.setFindQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) editor.findPrev();
+                else editor.findNext();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                editor.closeFind();
+              }
+            }}
             placeholder="Find in file…"
             className="ds-srv-fe-find-input"
             aria-label="Find in file"
+            autoComplete="off"
+            spellCheck={false}
           />
           <span className="ds-srv-fe-find-count">
-            {editor.findQuery.trim() ? `${editor.findMatches} match${editor.findMatches === 1 ? '' : 'es'}` : '—'}
+            {editor.findQuery.trim()
+              ? editor.findMatches > 0
+                ? `${editor.findIndex + 1} / ${editor.findMatches}`
+                : 'No matches'
+              : '—'}
           </span>
           <button
             type="button"
             className="ds-srv-fe-tool-btn"
+            aria-label="Previous match"
+            title="Previous (Shift+Enter)"
+            disabled={editor.findMatches === 0}
+            onClick={editor.findPrev}
+          >
+            <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="ds-srv-fe-tool-btn"
+            aria-label="Next match"
+            title="Next (Enter)"
+            disabled={editor.findMatches === 0}
+            onClick={editor.findNext}
+          >
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="ds-srv-fe-tool-btn"
             aria-label="Close find"
-            onClick={() => {
-              editor.setShowFind(false);
-              editor.setFindQuery('');
-              editor.editorRef.current?.focus();
-            }}
+            onClick={editor.closeFind}
           >
             <X className="h-3.5 w-3.5" aria-hidden />
           </button>
