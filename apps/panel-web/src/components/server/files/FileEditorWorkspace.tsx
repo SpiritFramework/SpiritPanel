@@ -349,7 +349,7 @@ export function FileEditorWorkspace({ filePath }: { filePath: string }) {
           </span>
           <span>{formatBytes(new TextEncoder().encode(editor.fileContent).length)}</span>
         </div>
-        {!editor.shouldHighlight && editor.fileContent.length >= 500_000 ? (
+        {!editor.shouldHighlight ? (
           <span className="ds-srv-fe-status-hint">Syntax highlighting disabled for large files</span>
         ) : null}
       </footer>

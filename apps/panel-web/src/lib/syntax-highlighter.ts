@@ -59,30 +59,58 @@ export function getLanguageFromFilename(filename: string): string {
   return langMap[ext] || '';
 }
 
-export function highlightCode(code: string, language: string): Token[] {
+/** Soft caps — above these we skip highlighting to avoid tab crashes (Aw Snap). */
+export const HIGHLIGHT_CHAR_LIMIT = 120_000;
+export const HIGHLIGHT_LINE_LIMIT = 4_000;
+export const HIGHLIGHT_TOKEN_LIMIT = 12_000;
 
-  // Skip highlighting for very large files to prevent UI freezing
-  if (code.length > 500000) {
-    return [{ type: 'text', content: code }];
+function mergeTokens(tokens: Token[]): Token[] {
+  if (tokens.length <= 1) return tokens;
+  const out: Token[] = [];
+  for (const token of tokens) {
+    const prev = out[out.length - 1];
+    if (prev && prev.type === token.type) {
+      prev.content += token.content;
+    } else {
+      out.push({ type: token.type, content: token.content });
+    }
   }
+  return out;
+}
 
-  if (!language) {
+export function highlightCode(code: string, language: string): Token[] {
+  // Skip highlighting for large / dense files — rendering tens of thousands of
+  // <span>s (or tokenizing them sync on paste) can OOM the Chromium tab.
+  if (!language || code.length > HIGHLIGHT_CHAR_LIMIT) {
     return [{ type: 'text', content: code }];
   }
 
   const lines = code.split('\n');
+  if (lines.length > HIGHLIGHT_LINE_LIMIT) {
+    return [{ type: 'text', content: code }];
+  }
+
   const tokens: Token[] = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i]!;
     const lineTokens = highlightLine(line, language);
-    tokens.push(...lineTokens);
+    for (const token of lineTokens) {
+      tokens.push(token);
+      if (tokens.length >= HIGHLIGHT_TOKEN_LIMIT) {
+        // Bail early: keep what we have + remainder as plain text.
+        const consumed = tokens.reduce((n, t) => n + t.content.length, 0);
+        const rest = code.slice(consumed);
+        if (rest) tokens.push({ type: 'text', content: rest });
+        return mergeTokens(tokens);
+      }
+    }
     if (i < lines.length - 1) {
       tokens.push({ type: 'text', content: '\n' });
     }
   }
 
-  return tokens;
+  return mergeTokens(tokens);
 }
 
 function highlightLine(line: string, language: string): Token[] {
@@ -190,15 +218,15 @@ function highlightLine(line: string, language: string): Token[] {
       continue;
     }
 
-    // Keywords and identifiers
-    if (/[a-zA-Z_$@]/.test(line[i])) {
-      let j = i;
-      while (j < line.length && /[a-zA-Z0-9_$-]/.test(line[j])) j++;
+    // Keywords and identifiers (include @/$ so lone "@" cannot stall the scanner).
+    if (/[a-zA-Z_$@]/.test(line[i]!)) {
+      let j = i + 1;
+      while (j < line.length && /[a-zA-Z0-9_$@-]/.test(line[j]!)) j++;
       const word = line.substring(i, j);
       const keywordSet = keywordSets[language];
       if (keywordSet && keywordSet.has(word)) {
         tokens.push({ type: 'keyword', content: word });
-      } else if (language === 'css' && line[i] === '@') {
+      } else if (line[i] === '@') {
         tokens.push({ type: 'keyword', content: word });
       } else {
         tokens.push({ type: 'text', content: word });
@@ -267,18 +295,27 @@ function highlightLineCSS(line: string): Token[] {
     }
 
     // Numbers with units (10px, 0.5em, etc)
-    if (/[0-9]/.test(line[i])) {
+    if (/[0-9]/.test(line[i]!)) {
       let j = i;
-      while (j < line.length && /[0-9.%]/.test(line[j])) j++;
+      while (j < line.length && /[0-9.%]/.test(line[j]!)) j++;
       // Include unit letters
-      while (j < line.length && /[a-zA-Z]/.test(line[j])) j++;
+      while (j < line.length && /[a-zA-Z]/.test(line[j]!)) j++;
       tokens.push({ type: 'number', content: line.substring(i, j) });
       i = j;
       continue;
     }
 
+    // At-rules (@media, @import, …) — consume '@' so the scanner never stalls.
+    if (line[i] === '@') {
+      let j = i + 1;
+      while (j < line.length && /[a-zA-Z0-9_-]/.test(line[j]!)) j++;
+      tokens.push({ type: 'keyword', content: line.substring(i, j) });
+      i = j;
+      continue;
+    }
+
     // Property names and selectors (before colon or bracket)
-    if (/[a-zA-Z_-]/.test(line[i])) {
+    if (/[a-zA-Z_-]/.test(line[i]!)) {
       let j = i;
       while (j < line.length && /[a-zA-Z0-9_-]/.test(line[j])) j++;
       const word = line.substring(i, j);
@@ -316,10 +353,9 @@ function highlightLineCSS(line: string): Token[] {
       continue;
     }
 
-    // Everything else (operators, brackets) - group with following non-whitespace
-    let j = i;
-    while (j < line.length && !/[a-zA-Z0-9_\-"'\s#]/.test(line[j])) j++;
-    if (j === i) j++; // Ensure we advance at least one character
+    // Everything else (operators, brackets, @rules) — always advance ≥1 char.
+    let j = i + 1;
+    while (j < line.length && !/[a-zA-Z0-9_\-"'\s#@]/.test(line[j]!)) j++;
     tokens.push({ type: 'text', content: line.substring(i, j) });
     i = j;
   }

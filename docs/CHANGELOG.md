@@ -23,6 +23,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 - **Sidebar attribution** keeps `Spirit-Panel` and the version on one line (name left, version right).
 - **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
+- **File editor** no longer crashes the tab (Aw, Snap) when typing `@` or pasting text that contains `@` — the syntax highlighter could infinite-loop on that character.
 - **Subuser invites** no longer send invalid `user.*` permissions (those were never grantable — subuser management stays owner-only). Permission catalog matches the API grant list; console also implies `websocket.connect`.
 - **FiveM marketplace GitHub installs** can target any repository branch (not only the default); non-default branch refs resolve via GitHub branch archives instead of failing as tags.
 

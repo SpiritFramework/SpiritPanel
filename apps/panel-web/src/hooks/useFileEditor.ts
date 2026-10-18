@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { fileBaseName } from '../lib/file-manager';
 import { parentPath } from '../lib/paths';
-import { getLanguageFromFilename, highlightCode } from '../lib/syntax-highlighter';
+import {
+  getLanguageFromFilename,
+  highlightCode,
+  HIGHLIGHT_CHAR_LIMIT,
+} from '../lib/syntax-highlighter';
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 const TAB = '\t';
-const HIGHLIGHT_LIMIT = 500_000;
 
 export function useFileEditor(serverId: string, filePath: string, canWrite: boolean) {
   const [fileContent, setFileContent] = useState('');
@@ -35,13 +38,15 @@ export function useFileEditor(serverId: string, filePath: string, canWrite: bool
   const fileExtension = fileName.includes('.') ? fileName.split('.').pop()?.toLowerCase() : '';
   const returnDir = parentPath(filePath);
 
-  const shouldHighlight = fileContent.length < HIGHLIGHT_LIMIT;
+  // Defer highlighting so paste / rapid typing don't block the textarea paint.
+  const deferredContent = useDeferredValue(fileContent);
+  const shouldHighlight = deferredContent.length <= HIGHLIGHT_CHAR_LIMIT;
   const highlightedTokens = useMemo(
     () =>
       shouldHighlight
-        ? highlightCode(fileContent, language)
-        : [{ type: 'text' as const, content: fileContent }],
-    [fileContent, language, shouldHighlight],
+        ? highlightCode(deferredContent, language)
+        : [{ type: 'text' as const, content: deferredContent }],
+    [deferredContent, language, shouldHighlight],
   );
 
   const findMatchOffsets = useMemo(() => {
