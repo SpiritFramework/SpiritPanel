@@ -8868,6 +8868,65 @@ button.ds-nodes-stat:hover {
   gap: 1rem;
 }
 
+.fm-script-page .ds-srv-plugins-detail-icon {
+  overflow: hidden;
+}
+
+.fm-script-branch-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.fm-script-branch-chips .mc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.fm-script-aside-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.fm-script-aside-list dt {
+  margin: 0 0 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fm-script-aside-list dd {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.fm-script-aside-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fm-script-aside-rows .fm-detail-row {
+  padding: 0.55rem 0.65rem;
+}
+
+.ds-srv-plugins-version-row--static {
+  cursor: default;
+}
+
+.ds-srv-plugins-version-row--static:hover {
+  background: transparent;
+}
+
 .fm-panel {
   border-radius: 1rem;
   border: 1px solid var(--border);

@@ -154,6 +154,31 @@ async function resolveLatestRelease(
   };
 }
 
+async function resolveBranchRef(
+  owner: string,
+  repo: string,
+  ref: string,
+  ctx?: GithubAuthContext,
+): Promise<ResolvedGithubRelease | null> {
+  try {
+    const branch = await githubFetch<{ name?: string }>(
+      `/repos/${owner}/${repo}/branches/${encodeURIComponent(ref)}`,
+      ctx,
+    );
+    const name = branch.name?.trim();
+    if (!name) return null;
+    return {
+      tag: name,
+      downloadUrl: codeloadBranchArchiveUrl(owner, repo, name),
+      archiveFolderName: predictArchiveFolder(repo, name),
+      source: 'branch',
+    };
+  } catch (err) {
+    if (httpStatusFromUnknown(err) === 404) return null;
+    throw err;
+  }
+}
+
 async function resolveExplicitRef(
   owner: string,
   repo: string,
@@ -170,22 +195,11 @@ async function resolveExplicitRef(
     return resolveFromRelease(owner, repo, release, assetName);
   }
 
-  let branch: string | null = null;
-  try {
-    branch = await fetchDefaultBranch(owner, repo, ctx);
-  } catch {
-    branch = null;
-  }
+  // Any matching branch (not only the default) can be installed via codeload.
+  const fromBranch = await resolveBranchRef(owner, repo, ref, ctx);
+  if (fromBranch) return fromBranch;
 
-  if (branch && branch.toLowerCase() === ref.toLowerCase()) {
-    return {
-      tag: branch,
-      downloadUrl: codeloadBranchArchiveUrl(owner, repo, branch),
-      archiveFolderName: predictArchiveFolder(repo, branch),
-      source: 'branch',
-    };
-  }
-
+  // Tags without a GitHub Release still resolve via the tag archive URL.
   return {
     tag: ref,
     downloadUrl: codeloadTagArchiveUrl(owner, repo, ref),

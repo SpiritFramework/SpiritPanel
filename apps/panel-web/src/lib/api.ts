@@ -2311,6 +2311,8 @@ export interface GithubRepoResolved {
   name: string;
   description: string;
   defaultBranch: string;
+  /** Branch names available for install (default first). */
+  branches?: string[];
   stars: number;
   forks: number;
   openIssues?: number;

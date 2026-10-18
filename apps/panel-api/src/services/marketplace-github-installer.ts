@@ -14,6 +14,7 @@ import {
   assertSafeCfgAction,
   assertSafeCfgResource,
   assertSafeGithubName,
+  assertSafeGithubRef,
   assertSafeMarketplacePath,
 } from '../lib/marketplace-safety.js';
 import {
@@ -114,10 +115,11 @@ export async function installGithubResource(
 
   const githubOwnerInput = assertSafeGithubName(config.githubOwner, 'GitHub owner');
   const githubRepoInput = assertSafeGithubName(config.githubRepo, 'GitHub repository');
+  const githubRef = assertSafeGithubRef(config.githubRef);
   const canonical = await canonicalGithubRepo(githubOwnerInput, githubRepoInput, { userId });
   const githubOwner = canonical.owner;
   const githubRepo = canonical.repo;
-  const safeConfig = { ...config, githubOwner, githubRepo };
+  const safeConfig = { ...config, githubOwner, githubRepo, githubRef };
 
   const wings = wingsForNode(check.server!.node);
   const paths = await resolveGithubInstallPaths(wings, check.server!.uuid, safeConfig.githubRepo, safeConfig);

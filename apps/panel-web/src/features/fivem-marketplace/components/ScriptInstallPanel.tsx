@@ -119,15 +119,47 @@ export function ScriptInstallPanel({
     if (useDetectedCfg) setCfgFile(detectedCfg);
   }, [useDetectedCfg, detectedCfg]);
 
+  useEffect(() => {
+    setGithubRef(suggested.githubRef);
+  }, [suggested.githubRef, resolved.owner, resolved.repo]);
+
   const installPath = useMemo(() => joinPath(parentFolder, folderName), [parentFolder, folderName]);
 
   const refOptions = useMemo(() => {
-    const opts = [{ value: 'latest-release', label: 'Latest release' }];
-    for (const r of resolved.releases ?? []) {
-      opts.push({ value: r.tag, label: r.prerelease ? `${r.tag} (pre)` : r.tag });
+    const releases = resolved.releases ?? [];
+    const branches =
+      resolved.branches?.length
+        ? resolved.branches
+        : resolved.defaultBranch
+          ? [resolved.defaultBranch]
+          : [];
+    const opts: Array<{ value: string; label: string; group: 'Releases' | 'Branches' }> = [];
+
+    if (releases.length > 0 || resolved.latestReleaseTag) {
+      opts.push({ value: 'latest-release', label: 'Latest release', group: 'Releases' });
+      for (const r of releases) {
+        opts.push({
+          value: r.tag,
+          label: r.prerelease ? `${r.tag} (pre-release)` : r.tag,
+          group: 'Releases',
+        });
+      }
     }
+
+    for (const branch of branches) {
+      const isDefault = branch.toLowerCase() === resolved.defaultBranch.toLowerCase();
+      opts.push({
+        value: branch,
+        label: isDefault ? `${branch} (default)` : branch,
+        group: 'Branches',
+      });
+    }
+
     return opts;
-  }, [resolved.releases]);
+  }, [resolved.branches, resolved.defaultBranch, resolved.latestReleaseTag, resolved.releases]);
+
+  const releaseOptions = refOptions.filter((o) => o.group === 'Releases');
+  const branchOptions = refOptions.filter((o) => o.group === 'Branches');
 
   const cfgPreview = `${cfgAction} ${cfgResource}`;
 
@@ -211,13 +243,33 @@ export function ScriptInstallPanel({
                   </button>
                 ) : null}
 
-                <FieldGroup label="Version" hint="Release or tag to download">
+                <FieldGroup
+                  label="Version"
+                  hint={
+                    branchOptions.length > 1
+                      ? 'Pick a release or any branch from this repository'
+                      : 'Release tag or branch to download'
+                  }
+                >
                   <SelectControl className="ds-field" value={githubRef} onChange={(e) => setGithubRef(e.target.value)}>
-                    {refOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    {releaseOptions.length > 0 ? (
+                      <optgroup label="Releases">
+                        {releaseOptions.map((o) => (
+                          <option key={`release:${o.value}`} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                    {branchOptions.length > 0 ? (
+                      <optgroup label="Branches">
+                        {branchOptions.map((o) => (
+                          <option key={`branch:${o.value}`} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
                   </SelectControl>
                 </FieldGroup>
               </div>
@@ -335,7 +387,7 @@ export function ScriptInstallPanel({
 
         <p className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
           <FolderOpen className="h-3.5 w-3.5" aria-hidden />
-          Downloads release, extracts files, and patches cfg if enabled
+          Downloads the selected release or branch archive, extracts files, and patches cfg if enabled
         </p>
       </aside>
 

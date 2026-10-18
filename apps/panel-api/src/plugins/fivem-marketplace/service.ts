@@ -196,7 +196,7 @@ export async function resolveFivemGithubRepo(ctx: FivemRequestContext, url: stri
       cfgResource: suggestCfgResource(installPath, resolved.repo),
       cfgAction: 'ensure' as const,
       cfgFile: layout.cfgFile,
-      githubRef: 'latest-release',
+      githubRef: resolved.suggested.githubRef,
       patchCfg: true,
     },
   };

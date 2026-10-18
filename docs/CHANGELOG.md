@@ -24,10 +24,13 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 - **Sidebar attribution** keeps `Spirit-Panel` and the version on one line (name left, version right).
 - **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
 - **Subuser invites** no longer send invalid `user.*` permissions (those were never grantable — subuser management stays owner-only). Permission catalog matches the API grant list; console also implies `websocket.connect`.
+- **FiveM marketplace GitHub installs** can target any repository branch (not only the default); non-default branch refs resolve via GitHub branch archives instead of failing as tags.
 
 ### Changed
 
 - **Server Subusers** polished: Select all / Clear (+ per-group All), labeled Refresh, denser invite/list chrome, clearer empty/search copy.
+- **FiveM script detail** aligned to Plugins project chrome: denser header/stats, sticky install card, release + branch lists, clearer install path/ref summary.
+- **FiveM install wizard** Version picker groups Releases and Branches (default branch labeled).
 
 ## [1.3.4.5] - 2026-10-17
 

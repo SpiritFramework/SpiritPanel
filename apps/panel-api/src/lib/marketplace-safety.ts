@@ -20,6 +20,21 @@ export function assertSafeGithubName(name: string, label: string): string {
   return trimmed;
 }
 
+/** Release tag, branch name, or special `latest-release` sentinel. */
+const GITHUB_REF_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9._\-\/]*[a-zA-Z0-9])?$/;
+
+export function assertSafeGithubRef(ref: string): string {
+  const trimmed = ref.trim();
+  if (!trimmed || trimmed.length > 191) {
+    throw badRequest('Invalid GitHub ref');
+  }
+  if (trimmed === 'latest-release') return trimmed;
+  if (trimmed.includes('..') || trimmed.includes('\\') || !GITHUB_REF_RE.test(trimmed)) {
+    throw badRequest('Invalid GitHub ref');
+  }
+  return trimmed;
+}
+
 export function assertSafeCfgResource(value: string): string {
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > 191) {

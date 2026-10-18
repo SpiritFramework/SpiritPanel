@@ -197,6 +197,8 @@ export interface GithubRepoResolved {
   name: string;
   description: string;
   defaultBranch: string;
+  /** Branch names available for install (default first, capped). */
+  branches: string[];
   stars: number;
   forks: number;
   openIssues: number;
@@ -225,6 +227,29 @@ export interface GithubRepoResolved {
   };
 }
 
+const BRANCH_LIST_LIMIT = 40;
+
+async function fetchRepoBranches(
+  owner: string,
+  repo: string,
+  defaultBranch: string,
+  ctx?: GithubAuthContext,
+): Promise<string[]> {
+  try {
+    const data = await githubFetch<Array<{ name?: string }>>(
+      `/repos/${owner}/${repo}/branches?per_page=${BRANCH_LIST_LIMIT}`,
+      ctx,
+    );
+    const names = data.map((b) => b.name?.trim()).filter((n): n is string => Boolean(n));
+    const unique = [...new Set(names)];
+    const defaultName = defaultBranch.trim();
+    if (!defaultName) return unique;
+    return [defaultName, ...unique.filter((n) => n.toLowerCase() !== defaultName.toLowerCase())];
+  } catch {
+    return defaultBranch.trim() ? [defaultBranch.trim()] : [];
+  }
+}
+
 const README_MAX_CHARS = 16_000;
 
 async function fetchRepoReadme(owner: string, repo: string, ctx?: GithubAuthContext): Promise<string | null> {
@@ -246,7 +271,7 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
   const parsed = parseGithubRepoInput(input);
   const { owner, repo } = await canonicalGithubRepo(parsed.owner, parsed.repo, ctx);
   // Public repos share one cache — avoids per-user GitHub stampedes.
-  const cacheKey = `public:${owner.toLowerCase()}/${repo.toLowerCase()}`;
+  const cacheKey = `public:v2:${owner.toLowerCase()}/${repo.toLowerCase()}`;
   const cached = resolveCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value;
@@ -258,17 +283,23 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
       throw Object.assign(new Error('Only public GitHub repositories are supported'), { statusCode: 400 });
     }
 
-    const [releasesResult, readme, latestReleaseResult] = await Promise.all([
+    const [releasesResult, readme, latestReleaseResult, branches] = await Promise.all([
       githubFetch<GithubReleaseListItem[]>(`/repos/${repoOwner}/${repoName}/releases?per_page=10`, ctx).catch(
         () => [] as GithubReleaseListItem[],
       ),
       fetchRepoReadme(repoOwner, repoName, ctx),
       resolveGithubRelease(repoOwner, repoName, 'latest-release', null, ctx).catch(() => null),
+      fetchRepoBranches(repoOwner, repoName, data.default_branch, ctx),
     ]);
 
     const releases = releasesResult;
-    const latestReleaseTag = latestReleaseResult?.tag ?? releases[0]?.tag_name ?? null;
+    const hasPublishedRelease = releases.length > 0 || latestReleaseResult?.source === 'release';
+    const latestReleaseTag =
+      latestReleaseResult?.source === 'release'
+        ? latestReleaseResult.tag
+        : (releases[0]?.tag_name ?? null);
     const installPath = suggestInstallPath(repoName);
+    const suggestedRef = hasPublishedRelease ? 'latest-release' : data.default_branch;
 
     return {
       owner: repoOwner,
@@ -277,6 +308,7 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
       name: data.name,
       description: data.description ?? '',
       defaultBranch: data.default_branch,
+      branches: branches.length > 0 ? branches : [data.default_branch],
       stars: data.stargazers_count,
       forks: data.forks_count ?? 0,
       openIssues: data.open_issues_count ?? 0,
@@ -298,7 +330,7 @@ export async function resolveGithubRepo(input: string, ctx?: GithubAuthContext):
         cfgResource: suggestCfgResource(installPath, repoName),
         cfgAction: 'ensure' as const,
         cfgFile: '/server.cfg',
-        githubRef: 'latest-release',
+        githubRef: suggestedRef,
         patchCfg: true,
       },
     };
