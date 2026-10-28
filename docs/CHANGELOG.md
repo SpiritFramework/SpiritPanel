@@ -19,6 +19,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+## [1.3.5.0] - 2026-10-28
+
 ### Added
 
 - **FeatherWings 1.4.3 runtime options.** Each server can start again after the node reconnects (a manual Stop or Kill skips the next restore) and can turn crash restarts on or off. Startup → Recovery edits those, and they are sent on the Wings server config. Node settings write crash detection, install exit-code checking, and Docker CPU shares into `config.yml` (replace the config and restart FeatherWings to apply).
