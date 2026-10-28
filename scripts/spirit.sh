@@ -1188,6 +1188,10 @@ action_update() {
   ok "Build complete"
 
   phase "Applying database migrations"
+  # First publish of this migration used Postgres quoting and failed on MySQL
+  # before any column was added. Clear that failed record so the corrected SQL
+  # can apply. Harmless when the migration never failed.
+  as_app "cd '${INSTALL_DIR}/apps/panel-api' && unset NODE_ENV && pnpm exec prisma migrate resolve --rolled-back 20261028120000_wings_runtime_options" >/dev/null 2>&1 || true
   if run_with_heartbeat "Applying migrations" \
     as_app "cd '${INSTALL_DIR}/apps/panel-api' && unset NODE_ENV && pnpm exec prisma migrate deploy"; then
     ok "Migrations applied"

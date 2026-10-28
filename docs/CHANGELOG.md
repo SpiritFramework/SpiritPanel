@@ -26,6 +26,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Database update** `20261028120000_wings_runtime_options` now uses MySQL syntax. The first version quoted table names with `"..."`, which MySQL rejects, so `prisma migrate deploy` stopped the panel update before restart.
 - **FeatherWings boot** skipped every server (`unexpected end of JSON input`) because `GET /api/remote/servers` omitted `process_configuration`. The daemon then 404s `/resources` and power actions cannot find the server. The list payload now includes that block.
 - **Sidebar attribution** keeps `Spirit-Panel` and the version on one line (name left, version right).
 - **File editor Find** actually jumps to matches (Enter / Shift+Enter, next/prev controls, Ctrl+F even when read-only) instead of only showing a match count.
