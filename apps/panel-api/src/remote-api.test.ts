@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseContainerStatusBody, inferContainerStateFromTransition, resolveContainerStateFromWebhook } from './lib/container-state.js';
 import { normalizeWingsLogLines } from './lib/wings-logs.js';
 import { parseEggJson, parseSftpUsername, generateDaemonToken } from '@spirit/shared';
-import { buildServerConfiguration, generateUuidShort } from './services/server-configuration.js';
+import { buildServerConfiguration, buildServerListItem, generateUuidShort } from './services/server-configuration.js';
 
 describe('egg parser', () => {
   it('parses PTDL_v2 egg', () => {
@@ -227,5 +227,112 @@ describe('server configuration builder', () => {
     assert.equal(config.settings.build.memory_limit, 2048);
     assert.equal(config.settings.allocations.default.port, 25565);
     assert.equal(config.process_configuration.stop.value, 'stop');
+  });
+
+  it('includes process_configuration on the Wings server list item', () => {
+    const uuid = '12345678-1234-1234-1234-123456789abc';
+    const server = {
+      id: '1',
+      uuid,
+      uuidShort: generateUuidShort(uuid),
+      externalId: null,
+      ownerId: 'u1',
+      nodeId: 'n1',
+      eggId: 'e1',
+      allocationId: 'a1',
+      name: 'Test Server',
+      description: '',
+      status: 'normal',
+      containerState: 'offline',
+      suspended: false,
+      oomDisabled: true,
+      skipScripts: false,
+      installStatus: 'installed',
+      installedAt: new Date(),
+      memory: 2048,
+      swap: 0,
+      disk: 10240,
+      io: 500,
+      cpu: 100,
+      threads: null,
+      startup: 'java -jar server.jar',
+      image: 'ghcr.io/pterodactyl/yolks:java_21',
+      allocationLimit: 1,
+      backupLimit: 0,
+      databaseLimit: 0,
+      preferSubdomain: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      egg: {
+        id: 'e1',
+        uuid: 'egg-uuid',
+        nestId: 'nest1',
+        author: 'test',
+        name: 'Vanilla',
+        description: '',
+        features: [],
+        dockerImages: { Java: 'ghcr.io/pterodactyl/yolks:java_21' },
+        fileDenylist: [],
+        configFiles: null,
+        configStartup: { done: 'Done' },
+        configLogs: null,
+        configStop: 'stop',
+        startup: '',
+        scriptInstall: '',
+        scriptEntry: 'bash',
+        scriptContainer: 'ghcr.io/pterodactyl/installers:debian',
+        scriptPrivileged: false,
+        forceOutgoingIp: false,
+        logoUrl: null,
+        enabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      node: {
+        id: 'n1',
+        uuid: 'node-uuid',
+        locationId: 'loc1',
+        name: 'Node 1',
+        description: '',
+        fqdn: 'node.example.com',
+        scheme: 'https',
+        behindProxy: false,
+        maintenanceMode: false,
+        memory: 0,
+        memoryOverallocate: 0,
+        disk: 0,
+        diskOverallocate: 0,
+        uploadSize: 100,
+        daemonTokenId: 'tid',
+        daemonTokenSecret: 'tsec',
+        daemonListen: 8080,
+        daemonSftp: 2022,
+        daemonBase: '/var/lib/pterodactyl/volumes',
+        publicIp: null,
+        domainBase: null,
+        cloudflareZoneId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      defaultAllocation: {
+        id: 'a1',
+        nodeId: 'n1',
+        ip: '0.0.0.0',
+        port: 25565,
+        alias: null,
+        notes: null,
+        assigned: true,
+        serverId: '1',
+        createdAt: new Date(),
+      },
+      extraAllocations: [],
+      variables: [],
+    };
+    const item = buildServerListItem(server);
+    assert.equal(item.uuid, uuid);
+    assert.equal(item.settings.uuid, uuid);
+    assert.equal(item.process_configuration.stop.value, 'stop');
+    assert.deepEqual(item.process_configuration.startup.done, ['Done']);
+    assert.ok(JSON.stringify(item).includes('"process_configuration"'));
   });
 });

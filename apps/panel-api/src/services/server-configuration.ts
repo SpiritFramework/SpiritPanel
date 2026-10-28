@@ -216,9 +216,14 @@ export function buildInstallScript(server: ServerWithRelations) {
 }
 
 export function buildServerListItem(server: ServerWithRelations) {
+  const config = buildServerConfiguration(server);
+  // FeatherWings unmarshals process_configuration as raw JSON on boot
+  // (server/manager.go). Omitting it yields "unexpected end of JSON input"
+  // and the daemon skips the server, so later /resources calls 404.
   return {
     uuid: server.uuid,
-    settings: buildServerConfiguration(server).settings,
+    settings: config.settings,
+    process_configuration: config.process_configuration,
   };
 }
 
