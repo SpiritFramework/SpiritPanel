@@ -948,6 +948,9 @@ export const api = {
         startup?: string;
         image?: string;
         variables?: Array<{ id: string; value: string }>;
+        crashDetectionEnabled?: boolean;
+        autoStartEnabled?: boolean;
+        autoStartDelay?: number;
       },
     ) =>
       request(`/client/servers/${id}/startup`, {
@@ -1749,6 +1752,9 @@ export interface AdminNodeDetail extends Omit<AdminNodeSummary, '_count'> {
   memoryOverallocate: number;
   diskOverallocate: number;
   uploadSize: number;
+  crashDetectionEnabled?: boolean;
+  checkInstallExitCode?: boolean;
+  cpuShares?: number;
   daemonTokenId: string;
   daemonBase: string;
   serverCount: number;
@@ -1837,6 +1843,9 @@ export interface UpdateAdminNodeInput {
   daemonSftp?: number;
   daemonBase?: string;
   uploadSize?: number;
+  crashDetectionEnabled?: boolean;
+  checkInstallExitCode?: boolean;
+  cpuShares?: number;
   publicIp?: string | null;
   domainBase?: string | null;
   cloudflareZoneId?: string | null;
@@ -2177,6 +2186,9 @@ export interface ServerDetail extends ServerSummary {
   disk: number;
   cpu: number;
   startup: string;
+  crashDetectionEnabled?: boolean;
+  autoStartEnabled?: boolean;
+  autoStartDelay?: number;
   installStatus: string;
   backupLimit?: number;
   databaseLimit?: number;

@@ -22,6 +22,7 @@ export function ServerConsolePage() {
     clearConsole,
     downloadConsole,
     sendCommand,
+    suggestCommand,
     reconnect,
   } = useServerLive();
 
@@ -67,6 +68,7 @@ export function ServerConsolePage() {
         onClear={clearConsole}
         downloadLog={downloadConsole}
         sendCommand={sendCommand}
+        suggestCommand={suggestCommand}
         emptyMessage={emptyMessage}
         liveStats={liveStats}
         limits={{ memory: server.memory, disk: server.disk, cpu: server.cpu }}

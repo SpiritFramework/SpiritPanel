@@ -22851,6 +22851,51 @@ button.ds-nodes-stat:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.ds-srv-stu-recovery {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.ds-srv-stu-recovery-body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.ds-srv-stu-recovery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 45%, transparent);
+}
+
+.ds-srv-stu-recovery-row:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ds-srv-stu-recovery-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ds-srv-stu-recovery-hint {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .ds-srv-stu-command-grid {
   display: grid;
   gap: 0.85rem;

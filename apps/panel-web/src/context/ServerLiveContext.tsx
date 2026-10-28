@@ -47,6 +47,7 @@ import {
   resolveEffectiveRuntimeState,
 } from '../lib/ws-stats';
 import { resolveConsoleCommandTransport } from '../lib/console-command';
+import type { ConsoleSuggestResponse } from '../lib/console-suggest';
 import { useServer } from './ServerContext';
 import { useToast } from './ToastContext';
 
@@ -64,6 +65,7 @@ interface ServerLiveContextValue {
   clearConsole: () => void;
   downloadConsole: () => void;
   sendCommand: (command: string) => void;
+  suggestCommand: (line: string, cursor: number) => Promise<ConsoleSuggestResponse | null>;
   reconnect: () => void;
 }
 
@@ -103,6 +105,7 @@ export function ServerLiveProvider({
   const [followScroll, setFollowScroll] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const suggestWaiters = useRef(new Map<string, (value: ConsoleSuggestResponse | null) => void>());
   const runtimeRef = useRef(normalizeRuntimeState(server.containerState ?? 'offline'));
   const connectionStatusRef = useRef<NodeConnectionStatus>('connecting');
   const uptimeAnchorRef = useRef<{ ms: number; at: number } | null>(null);
@@ -261,6 +264,21 @@ export function ServerLiveProvider({
             const next = parseRuntimeState(msg.args?.[0]);
             if (next) {
               handleRuntimeState(resolveEffectiveRuntimeState(runtimeRef.current, { state: next }));
+            }
+            return;
+          }
+
+          if (event === 'command suggestions') {
+            try {
+              const raw = msg.args?.[0];
+              const parsed = (typeof raw === 'string' ? JSON.parse(raw) : raw) as ConsoleSuggestResponse;
+              const waiter = suggestWaiters.current.get(parsed?.id);
+              if (waiter) {
+                suggestWaiters.current.delete(parsed.id);
+                waiter(parsed);
+              }
+            } catch {
+              /* Wings sent a suggestion payload the panel could not read. */
             }
             return;
           }
@@ -476,6 +494,28 @@ export function ServerLiveProvider({
     [id, liveApi, syncLines, toast],
   );
 
+  const suggestCommand = useCallback((line: string, cursor: number) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return Promise.resolve(null);
+    const id = crypto.randomUUID();
+    return new Promise<ConsoleSuggestResponse | null>((resolve) => {
+      const timer = window.setTimeout(() => {
+        suggestWaiters.current.delete(id);
+        resolve(null);
+      }, 1200);
+      suggestWaiters.current.set(id, (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      });
+      ws.send(
+        JSON.stringify({
+          event: 'suggest command',
+          args: [JSON.stringify({ id, line, cursor })],
+        }),
+      );
+    });
+  }, []);
+
   const value = useMemo<ServerLiveContextValue>(
     () => ({
       connectionStatus,
@@ -489,6 +529,7 @@ export function ServerLiveProvider({
       clearConsole,
       downloadConsole,
       sendCommand,
+      suggestCommand,
       reconnect: connect,
     }),
     [
@@ -503,6 +544,7 @@ export function ServerLiveProvider({
       uptimeMs,
       runtimeState,
       sendCommand,
+      suggestCommand,
     ],
   );
 

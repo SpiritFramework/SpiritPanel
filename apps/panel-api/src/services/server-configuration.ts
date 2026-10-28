@@ -164,6 +164,12 @@ export function buildServerConfiguration(server: ServerWithRelations) {
       environment,
       invocation,
       skip_egg_scripts: server.skipScripts,
+      crash_detection_enabled: server.crashDetectionEnabled !== false,
+      auto_start: {
+        enabled: server.autoStartEnabled !== false,
+        manually_stopped: Boolean(server.autoStartManuallyStopped),
+        delay: Math.max(0, server.autoStartDelay ?? 0),
+      },
       build: {
         memory_limit: server.memory,
         swap: server.swap,

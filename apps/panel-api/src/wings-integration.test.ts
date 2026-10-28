@@ -29,6 +29,9 @@ describe('wings config generation', () => {
     assert.match(yaml, /remote:/);
     assert.match(yaml, /token_id: abc123/);
     assert.match(yaml, /FeatherWings|Spirit-Panel/);
+    assert.match(yaml, /check_install_exit_code: false/);
+    assert.match(yaml, /cpu_shares: 1024/);
+    assert.match(yaml, /enabled: true/);
   });
 
   it('builds FeatherWings join-data bootstrap (base64 YAML)', () => {

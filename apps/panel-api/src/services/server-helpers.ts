@@ -44,6 +44,9 @@ export type WingsConfigNode = {
   daemonTokenId: string;
   daemonTokenSecret: string;
   uploadSize: number;
+  crashDetectionEnabled?: boolean;
+  checkInstallExitCode?: boolean;
+  cpuShares?: number;
 };
 
 /** Minimal bootstrap YAML for FeatherWings `configure --join-data` (base64-encoded). */
@@ -115,6 +118,11 @@ system:
   data: ${node.daemonBase}
   sftp:
     bind_port: ${node.daemonSftp}
+  crash_detection:
+    enabled: ${node.crashDetectionEnabled !== false}
+  check_install_exit_code: ${Boolean(node.checkInstallExitCode)}
+docker:
+  cpu_shares: ${node.cpuShares ?? 1024}
 remote: ${panelUrl}
 remote_query:
   timeout: 30

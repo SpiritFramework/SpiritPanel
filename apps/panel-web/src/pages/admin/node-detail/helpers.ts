@@ -51,6 +51,9 @@ export function formFromDetail(node: AdminNodeDetail): UpdateAdminNodeInput {
     daemonSftp: node.daemonSftp,
     daemonBase: node.daemonBase,
     uploadSize: node.uploadSize,
+    crashDetectionEnabled: node.crashDetectionEnabled ?? true,
+    checkInstallExitCode: node.checkInstallExitCode ?? false,
+    cpuShares: node.cpuShares ?? 1024,
     publicIp: node.publicIp ?? '',
     domainBase: node.domainBase ?? '',
     cloudflareZoneId: node.cloudflareZoneId ?? '',
@@ -74,6 +77,9 @@ export function nodeFormHasChanges(detail: AdminNodeDetail, form: UpdateAdminNod
     form.daemonSftp !== detail.daemonSftp ||
     (form.daemonBase ?? '') !== detail.daemonBase ||
     form.uploadSize !== detail.uploadSize ||
+    (form.crashDetectionEnabled ?? true) !== (detail.crashDetectionEnabled ?? true) ||
+    (form.checkInstallExitCode ?? false) !== (detail.checkInstallExitCode ?? false) ||
+    (form.cpuShares ?? 1024) !== (detail.cpuShares ?? 1024) ||
     (form.publicIp ?? '') !== (detail.publicIp ?? '') ||
     (form.domainBase ?? '') !== (detail.domainBase ?? '') ||
     (form.cloudflareZoneId ?? '') !== (detail.cloudflareZoneId ?? '')

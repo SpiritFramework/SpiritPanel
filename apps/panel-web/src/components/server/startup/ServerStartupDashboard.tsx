@@ -4,6 +4,7 @@ import { StartupHeader } from './StartupHeader';
 import { StartupStatsRow } from './StartupStatsRow';
 import { StartupCommandPanel } from './StartupCommandPanel';
 import { StartupPreviewPanel } from './StartupPreviewPanel';
+import { StartupRecoveryPanel } from './StartupRecoveryPanel';
 import { StartupVariablesPanel } from './StartupVariablesPanel';
 
 export function ServerStartupDashboard({
@@ -79,6 +80,14 @@ export function ServerStartupDashboard({
           />
           <StartupPreviewPanel resolvedStartup={stu.resolvedStartup} />
         </div>
+
+        <StartupRecoveryPanel
+          crashDetectionEnabled={stu.crashDetectionEnabled}
+          autoStartEnabled={stu.autoStartEnabled}
+          canUpdate={stu.canUpdate}
+          onCrashDetectionChange={stu.setCrashDetectionEnabled}
+          onAutoStartChange={stu.setAutoStartEnabled}
+        />
 
         <StartupVariablesPanel
           variables={stu.variables}

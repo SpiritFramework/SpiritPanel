@@ -1366,12 +1366,18 @@ export async function clientRoutes(app: FastifyInstance) {
         startup: z.string().min(1).max(8192).optional(),
         image: z.string().min(1).max(500).optional(),
         variables: z.array(z.object({ id: z.string(), value: z.string() })).optional(),
+        crashDetectionEnabled: z.boolean().optional(),
+        autoStartEnabled: z.boolean().optional(),
+        autoStartDelay: z.number().int().min(0).max(3600).optional(),
       })
       .refine(
         (data) =>
           data.startup !== undefined ||
           data.image !== undefined ||
-          (data.variables?.length ?? 0) > 0,
+          (data.variables?.length ?? 0) > 0 ||
+          data.crashDetectionEnabled !== undefined ||
+          data.autoStartEnabled !== undefined ||
+          data.autoStartDelay !== undefined,
         { message: 'Nothing to update' },
       )
       .parse(request.body);
@@ -1385,8 +1391,19 @@ export async function clientRoutes(app: FastifyInstance) {
     const server = await getAccessibleServer(id, request.user!.id, true);
     if (!server) return reply.status(404).send({ error: 'Not found' });
 
-    const updateData: { startup?: string; image?: string } = {};
+    const updateData: {
+      startup?: string;
+      image?: string;
+      crashDetectionEnabled?: boolean;
+      autoStartEnabled?: boolean;
+      autoStartDelay?: number;
+    } = {};
     if (body.startup !== undefined) updateData.startup = body.startup;
+    if (body.crashDetectionEnabled !== undefined) {
+      updateData.crashDetectionEnabled = body.crashDetectionEnabled;
+    }
+    if (body.autoStartEnabled !== undefined) updateData.autoStartEnabled = body.autoStartEnabled;
+    if (body.autoStartDelay !== undefined) updateData.autoStartDelay = body.autoStartDelay;
     if (body.image !== undefined) {
       const dockerImages = server.egg.dockerImages as Record<string, string>;
       const allowed = new Set(Object.values(dockerImages));
@@ -1429,6 +1446,10 @@ export async function clientRoutes(app: FastifyInstance) {
     if (body.startup !== undefined && body.startup !== server.startup) changes.push('startup command');
     if (body.image !== undefined && body.image !== server.image) changes.push('docker image');
     if (body.variables?.length) changes.push(`${body.variables.length} variable(s)`);
+    if (body.crashDetectionEnabled !== undefined) changes.push('crash detection');
+    if (body.autoStartEnabled !== undefined || body.autoStartDelay !== undefined) {
+      changes.push('auto start');
+    }
 
     await logServerActivity(request, {
       serverId: id,

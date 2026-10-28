@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type RefObject } from 'react';
 import { Send } from 'lucide-react';
 
 export function ConsoleInputBar({
@@ -8,6 +8,10 @@ export function ConsoleInputBar({
   onKeyDown,
   disabled,
   placeholder,
+  inputRef,
+  suggestions,
+  activeSuggestion = 0,
+  onPickSuggestion,
 }: {
   command: string;
   onCommandChange: (value: string) => void;
@@ -15,17 +19,41 @@ export function ConsoleInputBar({
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   disabled: boolean;
   placeholder: string;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  suggestions?: string[];
+  activeSuggestion?: number;
+  onPickSuggestion?: (index: number) => void;
 }) {
   return (
     <form className="ds-con-compose" onSubmit={onSubmit}>
       <label className="ds-con-sr-only" htmlFor="console-command-input">
         Server command
       </label>
+      {suggestions && suggestions.length > 1 ? (
+        <div className="ds-con-suggest" role="listbox" aria-label="Command suggestions">
+          {suggestions.slice(0, 12).map((item, index) => (
+            <button
+              key={`${item}-${index}`}
+              type="button"
+              role="option"
+              aria-selected={index === activeSuggestion}
+              className={`ds-con-suggest-item${index === activeSuggestion ? ' ds-con-suggest-item--active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onPickSuggestion?.(index);
+              }}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="ds-con-compose-inner">
         <span className="ds-con-prompt" aria-hidden>
           ❯
         </span>
         <input
+          ref={inputRef}
           id="console-command-input"
           className="ds-con-input"
           value={command}

@@ -122,6 +122,12 @@ model Node {
   domainBase           String?  @map("domain_base")
   /// Optional Cloudflare zone override when domainBase lives in a different zone.
   cloudflareZoneId     String?  @map("cloudflare_zone_id")
+  /// Node-wide FeatherWings crash detection (`system.crash_detection.enabled`). Written into config.yml.
+  crashDetectionEnabled Boolean @default(true) @map("crash_detection_enabled")
+  /// When true, a non-zero install script exit fails the install (`system.check_install_exit_code`).
+  checkInstallExitCode  Boolean @default(false) @map("check_install_exit_code")
+  /// Docker CFS weight for server containers (`docker.cpu_shares`). 1024 is the Wings default; 0 leaves the engine default.
+  cpuShares             Int     @default(1024) @map("cpu_shares")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -255,6 +261,14 @@ model Server {
   fivemMarketplaceAccess Boolean  @default(true) @map("fivem_marketplace_access")
   /// Billing/commercial gate for Minecraft Modrinth plugin installs.
   minecraftPluginsAccess Boolean  @default(true) @map("minecraft_plugins_access")
+  /// Per-server crash restart. Sent as settings.crash_detection_enabled so FeatherWings treats it as panel-owned.
+  crashDetectionEnabled Boolean @default(true) @map("crash_detection_enabled")
+  /// Allow FeatherWings to bring this server back after a daemon restart if it was running.
+  autoStartEnabled Boolean @default(true) @map("auto_start_enabled")
+  /// Set when the user stops or kills the server so a later Wings restart does not start it again.
+  autoStartManuallyStopped Boolean @default(false) @map("auto_start_manually_stopped")
+  /// Seconds FeatherWings waits before that restore. 0 starts immediately.
+  autoStartDelay Int @default(0) @map("auto_start_delay")
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
 

@@ -120,6 +120,10 @@ describe('server configuration builder', () => {
       suspended: false,
       oomDisabled: true,
       skipScripts: false,
+      crashDetectionEnabled: true,
+      autoStartEnabled: true,
+      autoStartManuallyStopped: false,
+      autoStartDelay: 0,
       installStatus: 'installed',
       installedAt: new Date(),
       memory: 2048,
@@ -227,6 +231,12 @@ describe('server configuration builder', () => {
     assert.equal(config.settings.build.memory_limit, 2048);
     assert.equal(config.settings.allocations.default.port, 25565);
     assert.equal(config.process_configuration.stop.value, 'stop');
+    assert.equal(config.settings.crash_detection_enabled, true);
+    assert.deepEqual(config.settings.auto_start, {
+      enabled: true,
+      manually_stopped: false,
+      delay: 0,
+    });
   });
 
   it('includes process_configuration on the Wings server list item', () => {
@@ -247,6 +257,10 @@ describe('server configuration builder', () => {
       suspended: false,
       oomDisabled: true,
       skipScripts: false,
+      crashDetectionEnabled: true,
+      autoStartEnabled: true,
+      autoStartManuallyStopped: false,
+      autoStartDelay: 0,
       installStatus: 'installed',
       installedAt: new Date(),
       memory: 2048,

@@ -464,6 +464,12 @@ system:
   data: /var/lib/pterodactyl/volumes
   sftp:
     bind_port: 2022
+  crash_detection:
+    enabled: true
+  check_install_exit_code: false
+
+docker:
+  cpu_shares: 1024
 
 remote: https://panel.example.com
 remote_query:

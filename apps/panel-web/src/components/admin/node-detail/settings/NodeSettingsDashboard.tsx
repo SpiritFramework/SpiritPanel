@@ -266,6 +266,40 @@ export function NodeSettingsDashboard({ ctrl }: { ctrl: NodeSettingsController }
               </div>
             </div>
           </NodeOverviewSection>
+
+          <NodeOverviewSection
+            icon={Shield}
+            title="FeatherWings behavior"
+            description="Written into config.yml. Replace the node config and restart FeatherWings to apply."
+          >
+            <div className="ds-nd-st-fields">
+              <Select
+                label="Crash detection"
+                value={(form.crashDetectionEnabled ?? true) ? 'yes' : 'no'}
+                onChange={(e) => setForm({ ...form, crashDetectionEnabled: e.target.value === 'yes' })}
+                hint="Node-wide. A server can still turn its own restart-after-crash off."
+              >
+                <option value="yes">Restart crashed servers</option>
+                <option value="no">Leave crashed servers stopped</option>
+              </Select>
+              <Select
+                label="Install script exit code"
+                value={(form.checkInstallExitCode ?? false) ? 'yes' : 'no'}
+                onChange={(e) => setForm({ ...form, checkInstallExitCode: e.target.value === 'yes' })}
+                hint="Off keeps the old behavior: a finished install is reported as successful."
+              >
+                <option value="no">Ignore non-zero exit</option>
+                <option value="yes">Fail install on non-zero exit</option>
+              </Select>
+              <Input
+                label="Docker CPU shares"
+                type="number"
+                value={String(form.cpuShares ?? 1024)}
+                onChange={(e) => setForm({ ...form, cpuShares: Number(e.target.value) })}
+                hint="1024 is the Wings default. 0 leaves the engine default (more weight on cgroup v2)."
+              />
+            </div>
+          </NodeOverviewSection>
         </div>
 
         <aside className="ds-nd-st-rail">

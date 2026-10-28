@@ -19,6 +19,11 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Added
+
+- **FeatherWings 1.4.3 runtime options.** Each server can start again after the node reconnects (a manual Stop or Kill skips the next restore) and can turn crash restarts on or off. Startup → Recovery edits those, and they are sent on the Wings server config. Node settings write crash detection, install exit-code checking, and Docker CPU shares into `config.yml` (replace the config and restart FeatherWings to apply).
+- **Console Tab completion** asks FeatherWings (`suggest command` → `command suggestions`) and inserts the returned range. Repeated Tab cycles when there is more than one match. Older Wings builds ignore the request.
+
 ### Fixed
 
 - **FeatherWings boot** skipped every server (`unexpected end of JSON input`) because `GET /api/remote/servers` omitted `process_configuration`. The daemon then 404s `/resources` and power actions cannot find the server. The list payload now includes that block.

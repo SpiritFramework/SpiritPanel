@@ -362,6 +362,14 @@ async function readWingsContainerState(wings: WingsClient, uuid: string): Promis
   }
 }
 
+/** Remember a user stop so the next FeatherWings boot does not start the server again. */
+async function setAutoStartManuallyStopped(serverId: string, manuallyStopped: boolean) {
+  await prisma.server.update({
+    where: { id: serverId },
+    data: { autoStartManuallyStopped: manuallyStopped },
+  });
+}
+
 /** Best-effort Kill to FeatherWings — never waits for the daemon soft-stop window. */
 async function sendKillBestEffort(wings: WingsClient, uuid: string): Promise<void> {
   try {
@@ -403,6 +411,7 @@ export async function powerServer(uuid: string, action: string) {
   if (action === 'kill') {
     // Do not call ensureServerOnWings / waitForOffline — those hang when the daemon is wedged.
     await sendKillBestEffort(wings, uuid);
+    await setAutoStartManuallyStopped(server.id, true);
     await forcePanelServerOffline(prisma, server);
     return;
   }
@@ -410,6 +419,7 @@ export async function powerServer(uuid: string, action: string) {
   if (action === 'stop') {
     await applyContainerStatusUpdate(prisma, server, 'stopping');
     await wings.power(uuid, 'stop');
+    await setAutoStartManuallyStopped(server.id, true);
     return;
   }
 
@@ -439,6 +449,7 @@ export async function powerServer(uuid: string, action: string) {
     // it finishes its stop window; the panel badge is at least clear.
     await wings.waitForOffline(uuid, 5_000).catch(() => false);
     await wings.power(uuid, 'start');
+    await setAutoStartManuallyStopped(server.id, false);
     suppressTransitionalContainerReports(uuid);
     await applyContainerStatusUpdate(prisma, server, 'starting');
     return;
@@ -446,11 +457,13 @@ export async function powerServer(uuid: string, action: string) {
 
   // Already running after a Wings reattach — treat Start as success and sync the badge.
   if (action === 'start' && (liveState === 'running' || liveState === 'starting')) {
+    await setAutoStartManuallyStopped(server.id, false);
     await applyContainerStatusUpdate(prisma, server, liveState);
     return;
   }
 
   await wings.power(uuid, action);
+  await setAutoStartManuallyStopped(server.id, false);
   if (action === 'start') {
     await applyContainerStatusUpdate(prisma, server, 'starting');
   }

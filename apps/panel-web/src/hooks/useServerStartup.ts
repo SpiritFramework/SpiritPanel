@@ -40,6 +40,8 @@ export function useServerStartup() {
 
   const [startup, setStartup] = useState(server.startup);
   const [image, setImage] = useState(server.image ?? '');
+  const [crashDetectionEnabled, setCrashDetectionEnabled] = useState(server.crashDetectionEnabled !== false);
+  const [autoStartEnabled, setAutoStartEnabled] = useState(server.autoStartEnabled !== false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -50,9 +52,17 @@ export function useServerStartup() {
   useEffect(() => {
     setStartup(server.startup);
     setImage(server.image ?? '');
+    setCrashDetectionEnabled(server.crashDetectionEnabled !== false);
+    setAutoStartEnabled(server.autoStartEnabled !== false);
     setValues({});
     setSaved(false);
-  }, [server.startup, server.image, server.variables]);
+  }, [
+    server.startup,
+    server.image,
+    server.variables,
+    server.crashDetectionEnabled,
+    server.autoStartEnabled,
+  ]);
 
   const currentValues = useMemo(
     () => Object.fromEntries(variables.map((v) => [v.id, values[v.id] ?? v.variableValue])),
@@ -85,7 +95,9 @@ export function useServerStartup() {
   const variablesChanged = editableVariables.some(
     (v) => (currentValues[v.id] ?? '') !== v.variableValue,
   );
-  const hasChanges = startupChanged || imageChanged || variablesChanged;
+  const crashChanged = crashDetectionEnabled !== (server.crashDetectionEnabled !== false);
+  const autoStartChanged = autoStartEnabled !== (server.autoStartEnabled !== false);
+  const hasChanges = startupChanged || imageChanged || variablesChanged || crashChanged || autoStartChanged;
 
   const filteredVariables = useMemo(
     () => variables.filter((v) => matchesVariableFilter(v, filter) && matchesVariableSearch(v, search)),
@@ -125,6 +137,16 @@ export function useServerStartup() {
     setSaved(false);
   }
 
+  function updateCrashDetection(value: boolean) {
+    setCrashDetectionEnabled(value);
+    setSaved(false);
+  }
+
+  function updateAutoStart(value: boolean) {
+    setAutoStartEnabled(value);
+    setSaved(false);
+  }
+
   async function saveAll() {
     if (!id || !canUpdate || !hasChanges) return;
     setSaving(true);
@@ -142,6 +164,8 @@ export function useServerStartup() {
               })),
             }
           : {}),
+        ...(crashChanged ? { crashDetectionEnabled } : {}),
+        ...(autoStartChanged ? { autoStartEnabled } : {}),
       });
       await refresh();
       setValues({});
@@ -156,6 +180,8 @@ export function useServerStartup() {
   function resetForm() {
     setStartup(server.startup);
     setImage(server.image ?? '');
+    setCrashDetectionEnabled(server.crashDetectionEnabled !== false);
+    setAutoStartEnabled(server.autoStartEnabled !== false);
     setValues({});
     setSaved(false);
     setError('');
@@ -197,6 +223,10 @@ export function useServerStartup() {
     hasActiveFilters,
     updateStartup,
     updateImage,
+    crashDetectionEnabled,
+    autoStartEnabled,
+    setCrashDetectionEnabled: updateCrashDetection,
+    setAutoStartEnabled: updateAutoStart,
     setVariableValue,
     saveAll,
     resetForm,
