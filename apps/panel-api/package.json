@@ -34,7 +34,7 @@
     "nodemailer": "^10.1.2",
     "otplib": "^13.4.1",
     "qrcode": "^1.5.4",
-    "zod": "^3.25.51"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
