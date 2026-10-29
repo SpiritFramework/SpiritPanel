@@ -11,6 +11,10 @@ dump.rdb
 # Release artifact, rebuilt on demand
 Spirit-Panel.zip
 
+# Host installer state (channel choice and last built commit)
+.spirit-channel
+.spirit-build-stamp
+
 # Vendored FeatherWings daemon source, kept local only
 FeatherWings-*/
 apps/panel-api/prisma/migrations/**/migration_lock.toml

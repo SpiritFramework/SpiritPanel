@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Focused tests for scripts/spirit.sh v2
+# Focused tests for scripts/spirit.sh v3
 #
 #   bash scripts/spirit.test.sh
 #
@@ -238,6 +238,67 @@ EOF
   cp "$TARGET" "$dir/scripts/spirit.sh"
 }
 
+# Git fixture: base commit tagged V1.0.0.0, origin/main one commit ahead (ONLY_ON_MAIN.md).
+# mode=ahead leaves the checkout on origin/main. mode=behind resets to the tagged parent.
+prepare_tracked_repo() {
+  local mode="${1:-ahead}"
+  INSTALL_DIR="$SANDBOX/panel"
+  export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+  make_fake_checkout "$INSTALL_DIR" "1.3.0.0"
+  (
+    cd "$INSTALL_DIR"
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test"
+    git add -A
+    git commit -q -m "base"
+    git tag V1.0.0.0
+  )
+  ORIGIN="$SANDBOX/origin.git"
+  git clone -q --bare "$INSTALL_DIR" "$ORIGIN"
+  (
+    cd "$INSTALL_DIR"
+    git remote add origin "$ORIGIN"
+    git checkout -q -b main
+    git push -q -u origin main
+    git push -q origin V1.0.0.0
+  )
+  STAGE="$SANDBOX/stage"
+  rm -rf "$STAGE"
+  git clone -q "$ORIGIN" "$STAGE"
+  (
+    cd "$STAGE"
+    git config user.email "test@example.com"
+    git config user.name "Test"
+    cat > apps/panel-api/package.json <<'EOF'
+{ "name": "@spirit/panel-api", "version": "1.3.0.3" }
+EOF
+    echo updated > ONLY_ON_MAIN.md
+    git add -A
+    git commit -q -m "bump"
+    git push -q origin HEAD:main
+  )
+  (
+    cd "$INSTALL_DIR"
+    git fetch -q origin
+    git checkout -q -B main origin/main
+    if [[ "$mode" == "behind" ]]; then
+      git reset -q --hard HEAD~1
+    fi
+  )
+  mkdir -p "$INSTALL_DIR/apps/panel-api"
+  cat > "$INSTALL_DIR/apps/panel-api/.env" <<'EOF'
+DATABASE_URL="mysql://spirit_panel:secretpw@127.0.0.1:3306/spirit_panel"
+API_URL="https://panel.example.com"
+EOF
+  if [[ "$mode" == "behind" ]]; then
+    cat > "$INSTALL_DIR/apps/panel-api/package.json" <<'EOF'
+{ "name": "@spirit/panel-api", "version": "1.3.0.0" }
+EOF
+  fi
+  touch "$SANDBOX/user-exists"
+}
+
 run_spirit() {
   local sandboxed="$SANDBOX/spirit.sh"
   sed \
@@ -284,8 +345,17 @@ expect_contains "$out" "update" "help"
 expect_contains "$out" "--domain" "help"
 done_test
 out="$(run_spirit --version)"
-it "prints script version 2.x"
-expect_contains "$out" "2.0." "version"
+it "prints script version 3.0.0"
+expect_contains "$out" "3.0.0" "version"
+done_test
+out="$(run_spirit --help)"
+it "help documents --channel and that --ref overrides it"
+expect_contains "$out" "--channel release|dev" "help"
+expect_contains "$out" "Overrides --channel" "help"
+expect_not_contains "$(cat "$TARGET")" "@{u}" "no upstream fallthrough"
+expect_not_contains "$(cat "$TARGET")" "--no-frozen-lockfile" "frozen"
+expect_contains "$(cat "$TARGET")" "pnpm install --frozen-lockfile" "frozen"
+expect_contains "$(cat "$TARGET")" "20261028120000_wings_runtime_options" "compat migration"
 done_test
 teardown_sandbox
 
@@ -423,6 +493,10 @@ expect_contains "$out" "Update complete" "output"
 expect_contains "$out" "Dumped database" "output"
 expect_contains "$out" "[1/7 ·" "progress"
 expect_contains "$out" "Almost done" "almost done"
+expect_contains "$out" "→ main" "dev ref"
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "dev" "saved channel"
+expect_contains "$(cat "$CMDLOG")" "pnpm install --frozen-lockfile" "frozen"
+expect_not_contains "$(cat "$CMDLOG")" "--no-frozen-lockfile" "frozen"
 done_test
 teardown_sandbox
 
@@ -501,6 +575,145 @@ it "help documents the required --domain flag"
 out="$(run_spirit --help)"
 expect_contains "$out" "--domain DOMAIN" "help"
 expect_contains "$out" "install --domain" "help"
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
+section "Channel"
+setup_sandbox
+# shellcheck disable=SC1090
+eval "$(sed -n '/^version_parts()/,/^}/p; /^version_cmp()/,/^}/p; /^version_gt()/,/^}/p; /^highest_version_tag()/,/^}/p' "$TARGET")"
+it "sorts release tags as four-part numbers"
+expect_eq "$(version_cmp V1.3.10.0 V1.3.9.0)" "1" "10 > 9"
+expect_eq "$(version_cmp V1.10.0.0 V1.9.0.0)" "1" "minor 10 > 9"
+expect_eq "$(version_cmp V1.3.5.0 V1.3.5.0)" "0" "equal"
+expect_eq "$(version_cmp V1.3.4.0 V1.3.4.10)" "-1" "patch"
+best="$(printf '%s\n' V1.9.0.0 V1.10.0.0 V1.3.5.0 V1.3.4.10 | highest_version_tag)"
+expect_eq "$best" "V1.10.0.0" "highest"
+done_test
+
+prepare_tracked_repo behind
+it "update -y with no channel file stays on dev when a release tag exists"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+expect_contains "$out" "→ main" "ref"
+expect_contains "$out" "Update complete" "output"
+[[ -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      dev update did not reach main"$'\n'
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "dev" "channel"
+expect_eq "$(git -C "$INSTALL_DIR" rev-parse HEAD)" "$(git -C "$INSTALL_DIR" rev-parse origin/main)" "head"
+done_test
+teardown_sandbox
+
+setup_sandbox
+prepare_tracked_repo ahead
+it "--channel release checks out the tag and does not follow main"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update --channel release -y < /dev/null)"
+expect_contains "$out" "→ V1.0.0.0" "ref"
+expect_contains "$out" "Update complete" "output"
+[[ ! -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      release update followed main"$'\n'
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "release" "channel"
+expect_eq "$(git -C "$INSTALL_DIR" rev-parse HEAD)" "$(git -C "$INSTALL_DIR" rev-parse V1.0.0.0^{commit})" "tag"
+git -C "$INSTALL_DIR" symbolic-ref -q HEAD >/dev/null 2>&1 && TEST_ERRORS+="      release checkout is not detached"$'\n'
+done_test
+teardown_sandbox
+
+setup_sandbox
+prepare_tracked_repo ahead
+printf 'release\n' > "$INSTALL_DIR/.spirit-channel"
+it "update -y reuses the saved release channel"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+expect_contains "$out" "→ V1.0.0.0" "ref"
+[[ ! -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      saved release followed main"$'\n'
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "release" "channel"
+expect_eq "$(git -C "$INSTALL_DIR" rev-parse HEAD)" "$(git -C "$INSTALL_DIR" rev-parse V1.0.0.0^{commit})" "tag"
+done_test
+teardown_sandbox
+
+setup_sandbox
+prepare_tracked_repo behind
+it "--ref wins over --channel for this run"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update --channel release --ref main -y < /dev/null)"
+expect_contains "$out" "→ main" "ref"
+expect_contains "$out" "overrides the channel" "note"
+[[ -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      --ref main did not check out main"$'\n'
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "release" "channel saved"
+expect_eq "$(git -C "$INSTALL_DIR" rev-parse HEAD)" "$(git -C "$INSTALL_DIR" rev-parse origin/main)" "head"
+done_test
+teardown_sandbox
+
+setup_sandbox
+prepare_tracked_repo ahead
+printf 'lock\n' > "$INSTALL_DIR/pnpm-lock.yaml"
+sha="$(git -C "$INSTALL_DIR" rev-parse HEAD)"
+lock="$(sha256sum "$INSTALL_DIR/pnpm-lock.yaml" | awk '{print $1}')"
+printf 'commit=%s\nlock=%s\nref=main\n' "$sha" "$lock" > "$INSTALL_DIR/.spirit-build-stamp"
+: > "$CMDLOG"
+it "skips pnpm install and build when commit and lockfile already match"
+out="$(SPIRIT_INSTALL_DIR="$INSTALL_DIR" SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit update -y < /dev/null)"
+expect_contains "$out" "Already up to date" "output"
+expect_contains "$out" "skipping dependency install and build" "output"
+expect_not_contains "$(cat "$CMDLOG")" "pnpm install" "no install"
+expect_not_contains "$(cat "$CMDLOG")" "pnpm build" "no build"
+expect_not_contains "$out" "Update complete" "did not rebuild"
+[[ -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      skip moved off main"$'\n'
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "dev" "channel"
+done_test
+teardown_sandbox
+
+setup_sandbox
+prepare_tracked_repo behind
+: > "$CMDLOG"
+it "failed migrate stops before restart and prints the backup path"
+out="$(SPIRIT_TEST_MIGRATE_FAIL=1 SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups" run_spirit update -y < /dev/null)"
+expect_contains "$out" "prisma migrate deploy failed" "output"
+expect_contains "$out" "Restore:" "backup"
+expect_contains "$out" "Stopped before restarting" "stop"
+expect_not_contains "$out" "Update complete" "not complete"
+expect_not_contains "$(cat "$CMDLOG")" "systemctl restart" "no restart"
+done_test
+teardown_sandbox
+
+# ---------------------------------------------------------------------------
+section "Install channel"
+setup_sandbox
+for b in nginx certbot redis-server mariadb mysql mysqld; do
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$SANDBOX/bin/$b"
+  chmod +x "$SANDBOX/bin/$b"
+done
+SRC="$SANDBOX/src"
+make_fake_checkout "$SRC" "1.3.0.0"
+(
+  cd "$SRC"
+  git init -q
+  git config user.email "test@example.com"
+  git config user.name "Test"
+  git add -A
+  git commit -q -m "base"
+  git tag V1.0.0.0
+  echo mainonly > ONLY_ON_MAIN.md
+  git add ONLY_ON_MAIN.md
+  git commit -q -m "bump"
+)
+ORIGIN="$SANDBOX/origin.git"
+git clone -q --bare "$SRC" "$ORIGIN"
+INSTALL_DIR="$SANDBOX/panel"
+export SPIRIT_TEST_INSTALL_DIR="$INSTALL_DIR"
+it "non-interactive install defaults to the latest release and skips apt"
+out="$(SPIRIT_REPO_URL="$ORIGIN" SPIRIT_INSTALL_DIR="$INSTALL_DIR" \
+  SPIRIT_BACKUP_DIR="$SANDBOX/backups" \
+  run_spirit install --domain panel.example.com --admin-email you@example.com --no-tls -y < /dev/null)"
+expect_contains "$out" "Spirit-Panel is installed" "output"
+expect_contains "$out" "skipping apt" "apt"
+expect_eq "$(tr -d '[:space:]' < "$INSTALL_DIR/.spirit-channel")" "release" "channel"
+[[ ! -f "$INSTALL_DIR/ONLY_ON_MAIN.md" ]] || TEST_ERRORS+="      release clone included main-only file"$'\n'
+expect_eq "$(git -C "$INSTALL_DIR" rev-parse HEAD)" "$(git -C "$ORIGIN" rev-parse V1.0.0.0^{commit})" "tag"
+expect_not_contains "$(cat "$CMDLOG")" "apt-get" "apt-get"
+expect_contains "$(cat "$CMDLOG")" "pnpm install --frozen-lockfile" "frozen"
 done_test
 teardown_sandbox
 

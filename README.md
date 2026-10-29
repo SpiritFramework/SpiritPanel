@@ -131,13 +131,13 @@ That opens a menu with **Install**, **Update**, **Status**, **Backup**, and **Un
 
 > Download it to a file rather than using `sudo bash <(curl ...)`. Process substitution passes bash a `/dev/fd` path from the calling shell, and `sudo` closes inherited descriptors, so that form dies with `/dev/fd/63: No such file or directory`.
 
-Unattended:
+Unattended (latest GitHub release; add `--channel dev` for unreleased `main`):
 
 ```bash
 sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
 ```
 
-Point DNS at the server **before** installing, so certbot can issue a certificate.
+Point DNS at the server **before** installing, so certbot can issue a certificate. The channel you pick is saved in the install directory and reused on later updates. `--ref` checks out a specific tag or branch for that run.
 
 #### Updating
 
@@ -147,7 +147,7 @@ Once installed, use the copy in the checkout:
 sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update
 ```
 
-Backs up `.env` and the database first, then rebuilds, migrates, and restarts. If the build or a migration fails it stops **before** restarting, so the running version stays up.
+Backs up `.env` and the database first, then checks out the saved channel (release tag or `main`), rebuilds, migrates, and restarts. If that commit is already built, install and build are skipped. If the build or a migration fails it stops **before** restarting, so the running version stays up, and the backup path is printed.
 
 #### Already have a checkout?
 

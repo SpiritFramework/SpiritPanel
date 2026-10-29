@@ -40,16 +40,31 @@ sudo bash /tmp/spirit.sh
 
 > **Do not use** `sudo bash <(curl ...)`. Process substitution gives bash a `/dev/fd/63` path belonging to the calling shell, and `sudo` closes inherited file descriptors before exec, so bash reports `/dev/fd/63: No such file or directory`. Download to a file, or pipe (`curl ... | sudo bash -s -- update -y`) when you do not need the interactive menu.
 
-This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, clones the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
+This is the only step that needs `sudo`, and it is the one path that covers the whole server rather than just the app. It installs Node 20, pnpm, MariaDB, Redis, nginx and certbot, creates the `spiritpanel` user, checks out the panel to `/home/spiritpanel/Spirit-Panel`, generates `.env` with real secrets, provisions the database, builds, installs the systemd unit and nginx site, requests a certificate, and prints the admin credentials.
 
-The script version is printed under the banner (`Script Version: 2.0.5`). If you still see `1.0.0`, you are on an old cached copy — re-download `/tmp/spirit.sh` from `main`.
+Before apt, the script checks that the OS is Ubuntu or Debian, warns (or stops) when free disk is very low, notes if ports 80 or 443 are already in use, and looks up the panel domain when one is known.
+
+Install and update then ask which line to run:
+
+1. **Latest release** — the newest GitHub Release that is not a draft and not a prerelease (the menu shows the tag, for example `V1.3.5.0`). That checkout stays on the tag.
+2. **Unreleased dev** — branch `main`, plus how many commits it is ahead of that release when the script can tell.
+
+The choice is saved in `/home/spiritpanel/Spirit-Panel/.spirit-channel` as the word `release` or `dev`. Later updates reuse it, and an interactive update still lets you switch.
+
+The script version is printed under the banner (`Script Version: 3.0.0`). If you still see `2.0.x` or `1.0.0`, you are on an old cached copy — re-download `/tmp/spirit.sh` from `main`.
 
 **Point DNS at the server first.** Certbot validates over HTTP, so the domain has to resolve before you run it. If issuance fails the installer leaves the panel serving plain HTTP and tells you the command to retry — it does not leave nginx in a broken state.
 
-Unattended:
+Unattended install tracks the **latest release** (not `main`):
 
 ```bash
 sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
+```
+
+Unreleased `main`:
+
+```bash
+sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com --channel dev -y
 ```
 
 
@@ -58,8 +73,9 @@ sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@ex
 | `--domain DOMAIN`       | Public panel domain — becomes `API_URL` and Wings `remote:` |
 | `--admin-email MAIL`    | Admin account, and the Let's Encrypt contact                |
 | `--admin-password PASS` | Admin password (12+ chars; generated if omitted)            |
+| `--channel release\|dev` | Latest GitHub release, or unreleased `main`. Saved to `.spirit-channel`. `-y` with no channel installs `release`. |
+| `--ref REF`             | Check out this branch or tag for this run. Overrides `--channel`. |
 | `--no-tls`              | Skip certbot — use behind an existing proxy or load balancer |
-| `--ref REF`             | Install a specific branch or tag                            |
 | `--force-nginx`         | Overwrite an existing nginx site config                     |
 | `--install-dir DIR`     | Install somewhere other than `/home/spiritpanel/Spirit-Panel` |
 | `-y`, `--yes`           | Never prompt                                                |
@@ -728,16 +744,30 @@ curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/sc
 sudo bash /tmp/spirit.sh update
 ```
 
+Interactive update asks for the same channel, defaulting to `.spirit-channel`. It prints the current commit and the target ref before it asks you to continue, for example `a1b2c3d → V1.3.5.0` or `a1b2c3d → main`.
+
+`-y` with no `--channel` keeps the saved channel. An install that has no `.spirit-channel` yet is treated as `dev`, because that is what it is running. A release install stays on the release tag until you switch to dev or a newer release is what the release channel checks out. It does not move on to `main` by itself.
+
+```bash
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --channel release -y
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --channel dev -y
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --ref V1.3.5.0 -y
+```
+
+`--ref` wins over the channel for that run only. The saved channel is unchanged unless you also pass `--channel`.
+
+If the saved commit and `pnpm-lock.yaml` hash already match the target, the updater skips `pnpm install` and `pnpm build`. Apt package indexes are not refreshed when Node 20+, MariaDB or MySQL (client and server), Redis, nginx, certbot, git, and curl are already installed. `pnpm install` uses `--frozen-lockfile`.
+
 Order of operations, which is what makes it safe to run on a live panel:
 
 1. Copies `.env`, copies `apps/panel-api/data/` (branding logos, ticket attachments, …), and runs `mysqldump` into `/var/backups/spirit-panel/<timestamp>/`. If the dump fails it stops and asks before going further.
-2. Updates the source — `git fetch` and a hard reset onto the tracked upstream, or the release tarball if the deploy was not a git checkout. Local modifications prompt to stash rather than being silently discarded.
-3. `pnpm install`, then `pnpm build`.
-4. `prisma migrate deploy`.
+2. Fetches and checks out **only** the selected ref — the release tag, or `main`. A release checkout does not fall through to `origin/main`. Zip/tarball deploys download that same ref. Local modifications prompt to stash rather than being silently discarded.
+3. `pnpm install --frozen-lockfile`, then `pnpm build`, unless that commit and lockfile were already built.
+4. `prisma migrate deploy`. One compatibility step runs `prisma migrate resolve --rolled-back 20261028120000_wings_runtime_options` first, so a previously failed copy of that migration can apply. That is the only one-off migration fix in the installer.
 5. Syncs `Content-Security-Policy` on the live nginx site from the shipped reference (so FeatherWings HTTPS probes stay allowed) without overwriting your `server_name`, TLS paths, or other customisations.
 6. Restarts the API, reloads nginx, then polls `/health`.
 
-**A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. Add `--ref V1.3.0.1` to move to a specific release, or `-y` to skip prompts.
+**A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. `status` prints the installed version, channel, commit, latest release, and whether `main` is ahead of that release.
 
 `.env`, `apps/panel-api/data/` (uploaded logos and ticket files), and `node_modules/` are never overwritten or deleted by the source sync. Zip/tarball sync also excludes `apps/panel-web/dist/`, `apps/panel-api/dist/`, and `packages/*/dist/` so a mid-update failure can still serve the previously built assets until `pnpm build` replaces them. Full nginx site replacement still requires `--force-nginx` (or a manual re-copy).
 

@@ -10,11 +10,19 @@
 #
 # Interactive menu by default. Non-interactive:
 #   sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
+#   sudo bash /tmp/spirit.sh install --domain panel.example.com --channel dev -y
 #   sudo bash /tmp/spirit.sh update -y
+#   sudo bash /tmp/spirit.sh update --channel release -y
+#
+# Channel (saved in ${INSTALL_DIR}/.spirit-channel):
+#   release  newest non-draft, non-prerelease GitHub Release (stays on that tag)
+#   dev      branch main
+# --ref REF overrides the channel for this run only.
 #
 set -uo pipefail
 
-SCRIPT_VERSION="2.0.7"
+SCRIPT_VERSION="3.0.0"
+export GIT_TERMINAL_PROMPT=0
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
 REPO_SLUG="${SPIRIT_REPO_SLUG:-SpiritFramework/SpiritPanel}"
@@ -284,9 +292,442 @@ ensure_app_home() {
 acquire_lock() {
   command -v flock >/dev/null 2>&1 || return 0
   mkdir -p /var/lock 2>/dev/null || return 0
-  exec 9>"/var/lock/spirit-panel.lock" 2>/dev/null || return 0
+  # Do not attach 2>/dev/null to this exec — exec redirections stick for the
+  # rest of the process, which would hide every later error.
+  exec 9>"/var/lock/spirit-panel.lock" || return 0
   flock -n 9 || die "Another spirit.sh run is already in progress.
 If that is wrong, remove /var/lock/spirit-panel.lock and try again."
+}
+
+# ---------------------------------------------------------------------------
+# Release channel (latest GitHub Release) vs dev (main)
+# ---------------------------------------------------------------------------
+
+CHANNEL_FILE() { printf '%s' "${INSTALL_DIR}/.spirit-channel"; }
+STAMP_FILE() { printf '%s' "${INSTALL_DIR}/.spirit-build-stamp"; }
+
+read_saved_channel() {
+  local f c
+  f="$(CHANNEL_FILE)"
+  [[ -f "$f" ]] || return 1
+  c="$(tr -d '[:space:]' < "$f")"
+  case "$c" in
+    release|dev) printf '%s' "$c"; return 0 ;;
+  esac
+  return 1
+}
+
+save_channel() {
+  [[ "$CHANNEL" == "release" || "$CHANNEL" == "dev" ]] || return 0
+  [[ -d "$INSTALL_DIR" ]] || return 0
+  printf '%s\n' "$CHANNEL" > "$(CHANNEL_FILE)"
+  chmod 644 "$(CHANNEL_FILE)" 2>/dev/null || true
+  chown "${APP_USER}:${APP_USER}" "$(CHANNEL_FILE)" 2>/dev/null || true
+}
+
+validate_ref() {
+  local ref="$1"
+  [[ -n "$ref" ]] || die "No git ref to check out."
+  [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || die "Invalid git ref: ${ref}"
+  [[ "$ref" != *".."* ]] || die "Invalid git ref: ${ref}"
+}
+
+version_parts() {
+  local v="${1#[Vv]}" a=0 b=0 c=0 d=0
+  IFS=. read -r a b c d _ <<< "$v"
+  a="${a:-0}"; b="${b:-0}"; c="${c:-0}"; d="${d:-0}"
+  [[ "$a" =~ ^[0-9]+$ ]] || a=0
+  [[ "$b" =~ ^[0-9]+$ ]] || b=0
+  [[ "$c" =~ ^[0-9]+$ ]] || c=0
+  [[ "$d" =~ ^[0-9]+$ ]] || d=0
+  printf '%s %s %s %s\n' "$a" "$b" "$c" "$d"
+}
+
+version_cmp() {
+  local a1 a2 a3 a4 b1 b2 b3 b4 i av bv
+  read -r a1 a2 a3 a4 <<< "$(version_parts "$1")"
+  read -r b1 b2 b3 b4 <<< "$(version_parts "$2")"
+  for i in 1 2 3 4; do
+    case $i in
+      1) av=$a1; bv=$b1 ;;
+      2) av=$a2; bv=$b2 ;;
+      3) av=$a3; bv=$b3 ;;
+      4) av=$a4; bv=$b4 ;;
+    esac
+    if (( 10#$av > 10#$bv )); then printf '%s' '1'; return; fi
+    if (( 10#$av < 10#$bv )); then printf '%s' '-1'; return; fi
+  done
+  printf '%s' '0'
+}
+
+version_gt() {
+  [[ "$(version_cmp "$1" "$2")" == "1" ]]
+}
+
+highest_version_tag() {
+  local best="" t
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    if [[ -z "$best" ]] || version_gt "$t" "$best"; then
+      best="$t"
+    fi
+  done
+  printf '%s' "$best"
+}
+
+source_remote_url() {
+  local url=""
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    url="$(git -c safe.directory="$INSTALL_DIR" -C "$INSTALL_DIR" remote get-url origin 2>/dev/null || true)"
+  fi
+  [[ -n "$url" ]] || url="$REPO_URL"
+  printf '%s' "$url"
+}
+
+repo_git() {
+  git -c safe.directory="$INSTALL_DIR" -C "$INSTALL_DIR" "$@"
+}
+
+github_curl() {
+  curl -fsSL --max-time 20 \
+    -H "Accept: application/vnd.github+json" \
+    -H "User-Agent: spirit-panel-installer/${SCRIPT_VERSION}" \
+    "$@"
+}
+
+latest_release_from_api() {
+  local body tag draft pre
+  body="$(github_curl "https://api.github.com/repos/${REPO_SLUG}/releases/latest" 2>/dev/null)" || return 1
+  [[ -n "$body" ]] || return 1
+  printf '%s' "$body" | grep -q '"tag_name"' || return 1
+  draft="$(printf '%s' "$body" | grep -oE '"draft"[[:space:]]*:[[:space:]]*(true|false)' | head -n1 || true)"
+  pre="$(printf '%s' "$body" | grep -oE '"prerelease"[[:space:]]*:[[:space:]]*(true|false)' | head -n1 || true)"
+  [[ "$draft" == *true* ]] && return 1
+  [[ "$pre" == *true* ]] && return 1
+  tag="$(printf '%s' "$body" | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -n1 | sed -E 's/.*"([^"]+)"$/\1/')"
+  [[ -n "$tag" ]] || return 1
+  printf '%s' "$tag"
+}
+
+latest_release_from_tags() {
+  local url tags best
+  url="$(source_remote_url)"
+  tags="$(git ls-remote --tags "$url" 2>/dev/null | awk '{print $2}' | sed 's#refs/tags/##' | sed 's/\^{}$//' | grep -E '^V[0-9]+(\.[0-9]+){3}$' | sort -u)" || return 1
+  [[ -n "$tags" ]] || return 1
+  best="$(printf '%s\n' "$tags" | highest_version_tag)"
+  [[ -n "$best" ]] || return 1
+  printf '%s' "$best"
+}
+
+latest_release_tag() {
+  if [[ -n "${LATEST_TAG_RESOLVED:-}" ]]; then
+    [[ "$LATEST_TAG_RESOLVED" == "-" ]] && return 1
+    printf '%s' "$LATEST_TAG_RESOLVED"
+    return 0
+  fi
+  local tag=""
+  tag="$(latest_release_from_api || true)"
+  if [[ -z "$tag" ]]; then
+    tag="$(latest_release_from_tags || true)"
+  fi
+  if [[ -z "$tag" ]]; then
+    LATEST_TAG_RESOLVED="-"
+    return 1
+  fi
+  LATEST_TAG_RESOLVED="$tag"
+  printf '%s' "$tag"
+}
+
+dev_ahead_count() {
+  local tag="$1" body ahead url main_sha tag_sha
+  [[ -n "$tag" ]] || return 1
+  body="$(github_curl "https://api.github.com/repos/${REPO_SLUG}/compare/${tag}...main" 2>/dev/null)" || body=""
+  if [[ -n "$body" ]]; then
+    ahead="$(printf '%s' "$body" | grep -oE '"ahead_by"[[:space:]]*:[[:space:]]*[0-9]+' | head -n1 | grep -oE '[0-9]+$' || true)"
+    if [[ -n "$ahead" ]]; then
+      printf '%s' "$ahead"
+      return 0
+    fi
+  fi
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    ahead="$(repo_git rev-list --count "${tag}..origin/main" 2>/dev/null || true)"
+    if [[ "$ahead" =~ ^[0-9]+$ ]]; then
+      printf '%s' "$ahead"
+      return 0
+    fi
+  fi
+  url="$(source_remote_url)"
+  main_sha="$(git ls-remote "$url" refs/heads/main 2>/dev/null | awk 'NR==1 {print $1}')"
+  tag_sha="$(git ls-remote "$url" "refs/tags/${tag}^{}" 2>/dev/null | awk 'NR==1 {print $1}')"
+  [[ -n "$tag_sha" ]] || tag_sha="$(git ls-remote "$url" "refs/tags/${tag}" 2>/dev/null | awk 'NR==1 {print $1}')"
+  if [[ -n "$main_sha" && -n "$tag_sha" && "$main_sha" == "$tag_sha" ]]; then
+    printf '0'
+    return 0
+  fi
+  return 1
+}
+
+prompt_channel() {
+  local tag="" ahead="" saved="" choice="" default_choice=1 dev_label
+  tag="$(latest_release_tag || true)"
+  if [[ -n "$tag" ]]; then
+    ahead="$(dev_ahead_count "$tag" || true)"
+  fi
+  saved="$(read_saved_channel || true)"
+  printf '\n  %sChoose a channel%s\n\n' "$C_BOLD" "$C_RESET"
+  if [[ -n "$tag" ]]; then
+    printf '  [1] Latest release (%s)\n' "$tag"
+  else
+    printf '  [1] Latest release (tag unavailable)\n'
+  fi
+  dev_label="Unreleased dev (main"
+  if [[ -n "$tag" && -n "$ahead" ]]; then
+    if [[ "$ahead" == "0" ]]; then
+      dev_label="${dev_label}, even with ${tag}"
+    elif [[ "$ahead" == "1" ]]; then
+      dev_label="${dev_label}, 1 commit ahead of ${tag}"
+    else
+      dev_label="${dev_label}, ${ahead} commits ahead of ${tag}"
+    fi
+  fi
+  dev_label="${dev_label})"
+  printf '  [2] %s\n\n' "$dev_label"
+  [[ "$saved" == "dev" ]] && default_choice=2
+  [[ "$saved" == "release" ]] && default_choice=1
+  choice="$(ask "Channel" "$default_choice")"
+  case "$choice" in
+    1|release) CHANNEL="release" ;;
+    2|dev) CHANNEL="dev" ;;
+    *) die "Unknown channel choice: ${choice}. Enter 1 (release) or 2 (dev)." ;;
+  esac
+  if [[ "$CHANNEL" == "release" && -z "$tag" ]]; then
+    die "Could not determine the latest release for ${REPO_SLUG}.
+Pass --channel dev, or --ref, and retry."
+  fi
+}
+
+resolve_channel() {
+  if [[ -n "$CHANNEL_FLAG" ]]; then
+    CHANNEL="$CHANNEL_FLAG"
+    return
+  fi
+  if [[ "$ASSUME_YES" != "1" && -t 0 ]]; then
+    prompt_channel
+    return
+  fi
+  if [[ "$COMMAND" == "install" ]]; then
+    CHANNEL="release"
+    info "No channel selected — using release"
+    return
+  fi
+  CHANNEL="$(read_saved_channel || true)"
+  if [[ "$CHANNEL" != "release" && "$CHANNEL" != "dev" ]]; then
+    CHANNEL="dev"
+    info "No saved channel — treating this install as dev (main)"
+  fi
+}
+
+resolve_target_ref() {
+  if [[ -n "$GIT_REF" ]]; then
+    TARGET_REF="$GIT_REF"
+    validate_ref "$TARGET_REF"
+    return
+  fi
+  if [[ "$CHANNEL" == "dev" ]]; then
+    TARGET_REF="main"
+    return
+  fi
+  TARGET_REF="$(latest_release_tag || true)"
+  [[ -n "$TARGET_REF" ]] || die "Could not determine the latest GitHub release for ${REPO_SLUG}.
+The API did not answer and no V* tag was found. Pass --channel dev or --ref, then retry."
+  validate_ref "$TARGET_REF"
+}
+
+lockfile_hash() {
+  local f="${INSTALL_DIR}/pnpm-lock.yaml"
+  [[ -f "$f" ]] || return 1
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$f" | awk '{print $1}'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$f" | awk '{print $1}'
+    return 0
+  fi
+  openssl dgst -sha256 "$f" | awk '{print $NF}'
+}
+
+stamp_get() {
+  local key="$1" file line
+  file="$(STAMP_FILE)"
+  [[ -f "$file" ]] || return 1
+  line="$(grep -E "^${key}=" "$file" | head -n1 | cut -d= -f2- | tr -d '\r')"
+  [[ -n "$line" ]] || return 1
+  printf '%s' "$line"
+}
+
+write_build_stamp() {
+  local commit="$1" ref="$2" lock
+  lock="$(lockfile_hash || true)"
+  [[ -n "$lock" ]] || return 0
+  cat > "$(STAMP_FILE)" <<EOF
+commit=${commit}
+lock=${lock}
+ref=${ref}
+EOF
+  chmod 644 "$(STAMP_FILE)" 2>/dev/null || true
+  chown "${APP_USER}:${APP_USER}" "$(STAMP_FILE)" 2>/dev/null || true
+}
+
+sources_unchanged() {
+  local target_sha="$1" head lock stamp_c stamp_l
+  [[ -n "$target_sha" ]] || return 1
+  head="$(repo_git rev-parse HEAD 2>/dev/null || true)"
+  [[ "$head" == "$target_sha" ]] || return 1
+  if ! repo_git diff --quiet HEAD -- . ':(exclude)pnpm-lock.yaml' 2>/dev/null; then
+    return 1
+  fi
+  lock="$(lockfile_hash || true)"
+  stamp_c="$(stamp_get commit || true)"
+  stamp_l="$(stamp_get lock || true)"
+  [[ -n "$lock" && "$stamp_c" == "$target_sha" && "$stamp_l" == "$lock" ]]
+}
+
+tarball_unchanged() {
+  local ref="$1" lock stamp_r stamp_l
+  [[ "$ref" =~ ^V[0-9]+(\.[0-9]+){3}$ ]] || return 1
+  lock="$(lockfile_hash || true)"
+  stamp_r="$(stamp_get ref || true)"
+  stamp_l="$(stamp_get lock || true)"
+  [[ -n "$lock" && "$stamp_r" == "$ref" && "$stamp_l" == "$lock" ]]
+}
+
+resolved_target_sha() {
+  local ref="$1" sha=""
+  if [[ "$ref" == "main" || "$ref" == "origin/main" ]]; then
+    sha="$(repo_git rev-parse --verify 'origin/main^{commit}' 2>/dev/null || true)"
+  else
+    sha="$(repo_git rev-parse --verify "${ref}^{commit}" 2>/dev/null || true)"
+    [[ -n "$sha" ]] || sha="$(repo_git rev-parse --verify "origin/${ref}^{commit}" 2>/dev/null || true)"
+  fi
+  [[ -n "$sha" ]] || return 1
+  printf '%s' "$sha"
+}
+
+# ---------------------------------------------------------------------------
+# Preflight (before apt)
+# ---------------------------------------------------------------------------
+
+disk_free_mb() {
+  local path="$1" kb
+  kb="$(df -Pk "$path" 2>/dev/null | tail -n1 | awk '{print $4}')"
+  [[ "$kb" =~ ^[0-9]+$ ]] || return 1
+  printf '%s' "$((kb / 1024))"
+}
+
+port_listening() {
+  local port="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltnH 2>/dev/null | grep -qE "[.:]${port}([[:space:]]|$)"
+    return $?
+  fi
+  if command -v netstat >/dev/null 2>&1; then
+    netstat -an 2>/dev/null | grep -E 'LISTEN|LISTENING' | grep -qE "[.:]${port}[[:space:]]" && return 0
+    return 1
+  fi
+  return 2
+}
+
+note_port() {
+  local port="$1" rc
+  port_listening "$port"
+  rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    info "Port ${port} is already in use"
+  fi
+}
+
+domain_resolves() {
+  local host="$1"
+  if getent hosts "$host" >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import socket,sys; socket.setdefaulttimeout(3); socket.getaddrinfo(sys.argv[1], None)' "$host" >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+preflight_host() {
+  local path avail_mb
+  printf '\n  %sPreflight%s\n' "$C_BOLD" "$C_RESET"
+  if [[ -d "$INSTALL_DIR" ]]; then
+    path="$INSTALL_DIR"
+  elif [[ -d "$(dirname "$INSTALL_DIR")" ]]; then
+    path="$(dirname "$INSTALL_DIR")"
+  else
+    path="/"
+  fi
+  avail_mb="$(disk_free_mb "$path" || true)"
+  if [[ -z "$avail_mb" ]]; then
+    warn "Could not check free disk space on ${path}"
+  elif (( avail_mb < 512 )); then
+    die "Only ${avail_mb} MB free on ${path}. Free at least 512 MB and retry."
+  elif (( avail_mb < 2048 )); then
+    warn "Low disk space: ${avail_mb} MB free on ${path} (2 GB recommended)"
+  else
+    ok "Disk: ${avail_mb} MB free"
+  fi
+  note_port 80
+  note_port 443
+  if [[ -n "${PANEL_DOMAIN:-}" ]]; then
+    if domain_resolves "$PANEL_DOMAIN"; then
+      ok "DNS: ${PANEL_DOMAIN} resolves"
+    else
+      warn "${PANEL_DOMAIN} does not resolve yet — TLS can fail until DNS points here"
+    fi
+  fi
+  printf '\n'
+}
+
+db_client_present() {
+  command -v mariadb >/dev/null 2>&1 && return 0
+  command -v mysql >/dev/null 2>&1 && return 0
+  return 1
+}
+
+db_server_present() {
+  command -v mariadbd >/dev/null 2>&1 && return 0
+  command -v mysqld >/dev/null 2>&1 && return 0
+  [[ -x /usr/sbin/mariadbd || -x /usr/sbin/mysqld ]] && return 0
+  if command -v dpkg-query >/dev/null 2>&1; then
+    dpkg-query -W -f '${Status}' mariadb-server 2>/dev/null | grep -q 'install ok installed' && return 0
+    dpkg-query -W -f '${Status}' mysql-server 2>/dev/null | grep -q 'install ok installed' && return 0
+  fi
+  return 1
+}
+
+redis_present() {
+  command -v redis-server >/dev/null 2>&1 && return 0
+  [[ -x /usr/bin/redis-server ]] && return 0
+  if command -v dpkg-query >/dev/null 2>&1; then
+    dpkg-query -W -f '${Status}' redis-server 2>/dev/null | grep -q 'install ok installed' && return 0
+  fi
+  return 1
+}
+
+prereqs_present() {
+  local current
+  current="$(node_major)"
+  [[ -n "$current" && "$current" -ge "$NODE_MAJOR" ]] || return 1
+  command -v git >/dev/null 2>&1 || return 1
+  command -v curl >/dev/null 2>&1 || return 1
+  command -v nginx >/dev/null 2>&1 || return 1
+  command -v certbot >/dev/null 2>&1 || return 1
+  db_server_present || return 1
+  db_client_present || return 1
+  redis_present || return 1
+  return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -464,12 +905,16 @@ apt_install() {
 }
 
 install_prerequisites() {
-  run_with_heartbeat "Updating apt indexes" \
-    bash -c 'apt-get update -qq >/dev/null 2>&1' || true
-  apt_install ca-certificates curl git gnupg unzip rsync openssl \
-    mariadb-server mariadb-client redis-server nginx \
-    certbot python3-certbot-nginx ||
-    die "apt install failed"
+  if prereqs_present; then
+    ok "Node, MariaDB/MySQL, Redis, nginx, certbot, git, and curl already present — skipping apt"
+  else
+    run_with_heartbeat "Updating apt indexes" \
+      bash -c 'apt-get update -qq >/dev/null 2>&1' || true
+    apt_install ca-certificates curl git gnupg unzip rsync openssl \
+      mariadb-server mariadb-client redis-server nginx \
+      certbot python3-certbot-nginx ||
+      die "apt install failed"
+  fi
   systemctl enable --now mariadb 2>/dev/null || systemctl enable --now mysql 2>/dev/null || true
   systemctl enable --now redis-server 2>/dev/null || systemctl enable --now redis 2>/dev/null || true
   systemctl enable --now nginx 2>/dev/null || true
@@ -490,28 +935,24 @@ create_app_user() {
 }
 
 fetch_source() {
+  local ref="${TARGET_REF:-main}"
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     ok "Existing checkout at ${INSTALL_DIR}"
+    info "Leaving the current checkout in place — run update to move to ${ref}"
     return
   fi
   if is_installed; then
     ok "Existing install at ${INSTALL_DIR}"
     return
   fi
+  validate_ref "$ref"
   mkdir -p "$(dirname "$INSTALL_DIR")"
-  local ref_args=()
-  [[ -n "$GIT_REF" ]] && ref_args=(--branch "$GIT_REF")
-  if [[ ${#ref_args[@]} -gt 0 ]]; then
-    run_with_heartbeat "Cloning repository" \
-      git clone --depth 1 "${ref_args[@]}" "$REPO_URL" "$INSTALL_DIR" 2>/dev/null ||
-      die "git clone failed from ${REPO_URL}"
-  else
-    run_with_heartbeat "Cloning repository" \
-      git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" 2>/dev/null ||
-      die "git clone failed from ${REPO_URL}"
+  if ! run_with_heartbeat "Cloning repository" \
+      git clone --depth 1 --branch "$ref" "$REPO_URL" "$INSTALL_DIR"; then
+    die "git clone failed from ${REPO_URL} (ref ${ref})"
   fi
   chown -R "${APP_USER}:${APP_USER}" "$INSTALL_DIR"
-  ok "Cloned to ${INSTALL_DIR}"
+  ok "Cloned ${ref} to ${INSTALL_DIR}"
 }
 
 # ---------------------------------------------------------------------------
@@ -623,7 +1064,7 @@ run_panel_installer() {
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
   phase_note "pnpm install (this can take several minutes)"
   run_with_heartbeat "Installing npm dependencies" \
-    as_app "${base} pnpm install --no-frozen-lockfile" ||
+    as_app "${base} pnpm install --frozen-lockfile" ||
     die "pnpm install failed"
   ok "Dependencies installed"
 
@@ -639,6 +1080,9 @@ run_panel_installer() {
   rm -f "$SUDOERS_FILE"
   [[ "$rc" -eq 0 ]] || die "Panel configuration failed (exit ${rc})"
   ok "Database, environment, and build ready"
+  local sha=""
+  sha="$(repo_git rev-parse HEAD 2>/dev/null || true)"
+  write_build_stamp "$sha" "${TARGET_REF:-}"
 }
 
 # ---------------------------------------------------------------------------
@@ -1001,6 +1445,76 @@ EOF
   info "Backup: ${BACKUP_PATH}"
 }
 
+preserve_installer_files() {
+  PRESERVE_CHANNEL="$(mktemp)"
+  PRESERVE_STAMP="$(mktemp)"
+  cp -a "$(CHANNEL_FILE)" "$PRESERVE_CHANNEL" 2>/dev/null || true
+  cp -a "$(STAMP_FILE)" "$PRESERVE_STAMP" 2>/dev/null || true
+}
+
+restore_installer_files() {
+  if [[ -n "${PRESERVE_CHANNEL:-}" && -s "$PRESERVE_CHANNEL" ]]; then
+    cp -a "$PRESERVE_CHANNEL" "$(CHANNEL_FILE)" 2>/dev/null || true
+  fi
+  if [[ -n "${PRESERVE_STAMP:-}" && -s "$PRESERVE_STAMP" ]]; then
+    cp -a "$PRESERVE_STAMP" "$(STAMP_FILE)" 2>/dev/null || true
+  fi
+  rm -f "${PRESERVE_CHANNEL:-}" "${PRESERVE_STAMP:-}" 2>/dev/null || true
+  PRESERVE_CHANNEL=""
+  PRESERVE_STAMP=""
+}
+
+fetch_origin() {
+  local ref="${TARGET_REF:-main}"
+  [[ "${ORIGIN_FETCHED:-0}" == "1" ]] && return 0
+  if run_with_heartbeat "Fetching source" \
+      as_app "cd '${INSTALL_DIR}' && git fetch --tags --prune origin >/dev/null 2>&1"; then
+    ORIGIN_FETCHED=1
+    return 0
+  fi
+  if [[ "$ref" == "main" || "$ref" == "origin/main" ]]; then
+    run_with_heartbeat "Fetching main" \
+      as_app "cd '${INSTALL_DIR}' && git fetch --prune --depth 1 origin main >/dev/null 2>&1" && {
+      ORIGIN_FETCHED=1
+      return 0
+    }
+  else
+    run_with_heartbeat "Fetching ${ref}" \
+      as_app "cd '${INSTALL_DIR}' && git fetch --prune --depth 1 origin tag '${ref}' >/dev/null 2>&1" && {
+      ORIGIN_FETCHED=1
+      return 0
+    }
+    run_with_heartbeat "Fetching ${ref}" \
+      as_app "cd '${INSTALL_DIR}' && git fetch --prune origin '${ref}' >/dev/null 2>&1" && {
+      ORIGIN_FETCHED=1
+      return 0
+    }
+  fi
+  return 1
+}
+
+checkout_target() {
+  local target="$1"
+  validate_ref "$target"
+  # Reset only to the selected ref. A release tag must not fall through to main.
+  if [[ "$target" == "main" || "$target" == "origin/main" ]]; then
+    as_app "cd '${INSTALL_DIR}' && git checkout -B main >/dev/null 2>&1 || true"
+    as_app "cd '${INSTALL_DIR}' && git reset --hard origin/main >/dev/null 2>&1" ||
+      die "Could not reset to main"
+    return
+  fi
+  if as_app "cd '${INSTALL_DIR}' && git rev-parse --verify --quiet 'refs/remotes/origin/${target}' >/dev/null 2>&1"; then
+    as_app "cd '${INSTALL_DIR}' && git checkout -B '${target}' >/dev/null 2>&1 || true"
+    as_app "cd '${INSTALL_DIR}' && git reset --hard 'origin/${target}' >/dev/null 2>&1" ||
+      die "Could not reset to ${target}"
+    return
+  fi
+  as_app "cd '${INSTALL_DIR}' && git -c advice.detachedHead=false checkout --detach '${target}' >/dev/null 2>&1" ||
+    die "Could not check out ${target}. A release install stays on that tag and does not fall back to main."
+  as_app "cd '${INSTALL_DIR}' && git reset --hard '${target}' >/dev/null 2>&1" ||
+    die "Could not reset to ${target}. A release install stays on that tag and does not fall back to main."
+}
+
 update_source_git() {
   local before after target
   before="$(as_app "cd '${INSTALL_DIR}' && git rev-parse --short HEAD" 2>/dev/null || echo unknown)"
@@ -1008,31 +1522,30 @@ update_source_git() {
   if ! as_app "cd '${INSTALL_DIR}' && git diff --quiet HEAD -- . ':(exclude)pnpm-lock.yaml'" 2>/dev/null; then
     warn "Local modifications detected in ${INSTALL_DIR}"
     if confirm "Stash them and continue?" "n"; then
-      as_app "cd '${INSTALL_DIR}' && git stash push -u -m 'spirit.sh update $(date -Iseconds)'" >/dev/null ||
+      preserve_installer_files
+      as_app "cd '${INSTALL_DIR}' && git stash push -u -m 'spirit.sh update $(date -Iseconds)'" >/dev/null || {
+        restore_installer_files
         die "git stash failed"
+      }
+      restore_installer_files
       ok "Changes stashed"
     else
       die "Cancelled. Commit or revert your changes, then re-run."
     fi
   fi
 
-  as_app "cd '${INSTALL_DIR}' && git fetch --tags --prune origin" >/dev/null 2>&1 ||
-    die "git fetch failed — check network access to ${REPO_URL}"
+  fetch_origin || die "git fetch failed — check network access to ${REPO_URL}"
 
-  target="${GIT_REF:-}"
-  if [[ -z "$target" ]]; then
-    target="$(as_app "cd '${INSTALL_DIR}' && git rev-parse --abbrev-ref --symbolic-full-name '@{u}'" 2>/dev/null || echo origin/main)"
-  fi
-
-  as_app "cd '${INSTALL_DIR}' && git -c advice.detachedHead=false reset --hard '${target}'" >/dev/null ||
-    die "git reset to ${target} failed"
+  target="${TARGET_REF:-}"
+  [[ -n "$target" ]] || die "No update ref resolved"
+  checkout_target "$target"
   after="$(as_app "cd '${INSTALL_DIR}' && git rev-parse --short HEAD" 2>/dev/null || echo unknown)"
-  ok "Updated ${before} -> ${after}"
+  ok "Updated ${before} -> ${after} (${target})"
 }
 
 update_source_tarball() {
   info "Not a git checkout — updating from the GitHub tarball"
-  local ref="${GIT_REF:-main}" tmp src
+  local ref="${TARGET_REF:-main}" tmp src
   tmp="$(mktemp -d)"
   # shellcheck disable=SC2064
   trap "rm -rf '$tmp'" RETURN
@@ -1096,13 +1609,22 @@ Example: sudo bash $0 install --domain panel.example.com --admin-email you@examp
   [[ "$PANEL_DOMAIN" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] ||
     die "Invalid domain: ${PANEL_DOMAIN}"
 
+  preflight_host
+  resolve_channel
+  resolve_target_ref
+
   if is_installed; then
     warn "Spirit-Panel already looks installed at ${INSTALL_DIR}"
     confirm "Re-run the installer over it?" "n" ||
       die "Nothing changed. Use option [2] to update instead."
   fi
 
-  printf '\n  %sInstalling Spirit-Panel%s for %s\n\n' "$C_BOLD" "$C_RESET" "$PANEL_DOMAIN"
+  printf '\n  %sInstalling Spirit-Panel%s for %s\n' "$C_BOLD" "$C_RESET" "$PANEL_DOMAIN"
+  printf '  Channel    %s\n' "$CHANNEL"
+  if [[ -n "$GIT_REF" ]]; then
+    info "--ref ${GIT_REF} overrides the channel for this run"
+  fi
+  printf '  Ref        %s\n\n' "$TARGET_REF"
 
   phase_begin 10 "wrapping up nginx, TLS, and health check"
 
@@ -1114,6 +1636,7 @@ Example: sudo bash $0 install --domain panel.example.com --admin-email you@examp
 
   phase "Fetching Spirit-Panel"
   fetch_source
+  save_channel
 
   phase "Securing Redis"
   configure_redis
@@ -1153,10 +1676,39 @@ action_update() {
   reexec_from_copy
   acquire_lock
 
-  local from_version
+  resolve_channel
+  resolve_target_ref
+
+  local from_version from_short target_sha
   from_version="$(panel_version)"
+  from_short="unknown"
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    from_short="$(repo_git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  fi
   printf '  %sUpdating Spirit-Panel%s (currently v%s)\n' "$C_BOLD" "$C_RESET" "$from_version"
+  printf '  Channel    %s\n' "$CHANNEL"
+  if [[ -n "$GIT_REF" ]]; then
+    info "--ref ${GIT_REF} overrides the channel for this run"
+  fi
+  printf '  %s → %s\n' "$from_short" "$TARGET_REF"
   printf '  The API will restart and be briefly unavailable.\n\n'
+
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    fetch_origin || die "git fetch failed — check network access to ${REPO_URL}"
+    target_sha="$(resolved_target_sha "$TARGET_REF" || true)"
+    if sources_unchanged "$target_sha"; then
+      save_channel
+      ok "Already up to date — skipping dependency install and build"
+      printf '\n'
+      return 0
+    fi
+  elif tarball_unchanged "$TARGET_REF"; then
+    save_channel
+    ok "Already up to date — skipping dependency install and build"
+    printf '\n'
+    return 0
+  fi
+
   confirm "Continue?" "y" || die "Cancelled."
   printf '\n'
 
@@ -1171,13 +1723,14 @@ action_update() {
   else
     update_source_tarball
   fi
+  save_channel
 
   phase "Installing dependencies"
   ensure_app_home
   install_pnpm
   local base="cd '${INSTALL_DIR}' && unset NODE_ENV &&"
   run_with_heartbeat "Installing npm dependencies" \
-    as_app "${base} pnpm install --no-frozen-lockfile" ||
+    as_app "${base} pnpm install --frozen-lockfile" ||
     die "pnpm install failed. Nothing was restarted — the running version is untouched."
   ok "Dependencies up to date"
 
@@ -1219,6 +1772,12 @@ action_update() {
     exit 1
   fi
 
+  local sha=""
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    sha="$(repo_git rev-parse HEAD 2>/dev/null || true)"
+  fi
+  write_build_stamp "$sha" "${TARGET_REF:-}"
+
   local to_version
   to_version="$(panel_version)"
   printf '\n%s%sUpdate complete.%s  v%s -> v%s\n\n' "$C_GREEN" "$C_BOLD" "$C_RESET" "$from_version" "$to_version"
@@ -1228,21 +1787,45 @@ action_update() {
 
 action_status() {
   is_installed || die "No Spirit-Panel install found at ${INSTALL_DIR}."
+  local channel commit latest ahead svc
+  channel="$(read_saved_channel || true)"
+  [[ -n "$channel" ]] || channel="unset (treated as dev on update)"
+  commit="unknown"
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    commit="$(repo_git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  fi
+  latest="$(latest_release_tag || true)"
+  [[ -n "$latest" ]] || latest="unknown"
   printf '  %sSpirit-Panel status%s\n\n' "$C_BOLD" "$C_RESET"
-  printf '    Version      %s\n' "$(panel_version)"
-  printf '    Directory    %s\n' "$INSTALL_DIR"
-  printf '    Panel URL    %s\n' "$(env_get API_URL || echo unset)"
-  local svc
+  printf '    Version         %s\n' "$(panel_version)"
+  printf '    Channel         %s\n' "$channel"
+  printf '    Commit          %s\n' "$commit"
+  printf '    Latest release  %s\n' "$latest"
+  if [[ "$latest" != "unknown" ]]; then
+    if ahead="$(dev_ahead_count "$latest")"; then
+      if [[ "$ahead" == "0" ]]; then
+        printf '    Dev             main matches %s\n' "$latest"
+      elif [[ "$ahead" == "1" ]]; then
+        printf '    Dev             main is 1 commit ahead of %s\n' "$latest"
+      else
+        printf '    Dev             main is %s commits ahead of %s\n' "$ahead" "$latest"
+      fi
+    else
+      printf '    Dev             main (could not compare to %s)\n' "$latest"
+    fi
+  fi
+  printf '    Directory       %s\n' "$INSTALL_DIR"
+  printf '    Panel URL       %s\n' "$(env_get API_URL || echo unset)"
   svc="$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo unknown)"
   if [[ "$svc" == "active" ]]; then
-    printf '    API service  %sactive%s\n' "$C_GREEN" "$C_RESET"
+    printf '    API service     %sactive%s\n' "$C_GREEN" "$C_RESET"
   else
-    printf '    API service  %s%s%s\n' "$C_RED" "$svc" "$C_RESET"
+    printf '    API service     %s%s%s\n' "$C_RED" "$svc" "$C_RESET"
   fi
   if health_check 3; then
-    printf '    Health       %sok%s\n\n' "$C_GREEN" "$C_RESET"
+    printf '    Health          %sok%s\n\n' "$C_GREEN" "$C_RESET"
   else
-    printf '    Health       %snot responding%s\n\n' "$C_YELLOW" "$C_RESET"
+    printf '    Health          %snot responding%s\n\n' "$C_YELLOW" "$C_RESET"
   fi
 }
 
@@ -1326,7 +1909,7 @@ Spirit-Panel installer/updater v${SCRIPT_VERSION}
 Usage:
   sudo bash spirit.sh                          Interactive menu
   sudo bash spirit.sh install --domain HOST [options]
-  sudo bash spirit.sh update [-y] [--ref REF]
+  sudo bash spirit.sh update [-y] [--channel release|dev] [--ref REF]
   sudo bash spirit.sh status | backup | uninstall
 
 Options:
@@ -1334,7 +1917,13 @@ Options:
   --admin-email MAIL      Admin + Let's Encrypt contact
   --admin-password PASS   Admin password (12+ chars; generated if omitted)
   --email MAIL            Let's Encrypt contact (defaults to --admin-email)
-  --ref REF               Git branch/tag (install clone or update target)
+  --channel release|dev   Latest GitHub release, or unreleased main
+                          Saved in the install dir as .spirit-channel.
+                          Install -y with no channel defaults to release.
+                          Update -y with no channel keeps the saved channel
+                          (missing file is treated as dev).
+  --ref REF               Git branch or tag for this run. Overrides --channel.
+                          A release checkout stays on that tag.
   --no-tls                Skip certbot
   --force-nginx           Overwrite existing nginx site
   --install-dir DIR       Override install path
@@ -1359,6 +1948,13 @@ ADMIN_EMAIL=""
 ADMIN_PASSWORD=""
 LETSENCRYPT_EMAIL=""
 GIT_REF=""
+CHANNEL=""
+CHANNEL_FLAG=""
+TARGET_REF=""
+LATEST_TAG_RESOLVED=""
+ORIGIN_FETCHED=0
+PRESERVE_CHANNEL=""
+PRESERVE_STAMP=""
 WANT_TLS=1
 FORCE_NGINX=0
 ASSUME_YES=0
@@ -1382,6 +1978,14 @@ while [[ $# -gt 0 ]]; do
     --admin-password) need_value "$@"; ADMIN_PASSWORD="$2"; shift 2 ;;
     --email) need_value "$@"; LETSENCRYPT_EMAIL="$2"; shift 2 ;;
     --ref) need_value "$@"; GIT_REF="$2"; shift 2 ;;
+    --channel)
+      need_value "$@"
+      case "$2" in
+        release|dev) CHANNEL_FLAG="$2" ;;
+        *) die "--channel must be release or dev (got '${2}')." ;;
+      esac
+      shift 2
+      ;;
     --no-tls) WANT_TLS=0; shift ;;
     --force-nginx) FORCE_NGINX=1; shift ;;
     --install-dir)
