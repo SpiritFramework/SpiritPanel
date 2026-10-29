@@ -345,8 +345,8 @@ expect_contains "$out" "update" "help"
 expect_contains "$out" "--domain" "help"
 done_test
 out="$(run_spirit --version)"
-it "prints script version 3.0.0"
-expect_contains "$out" "3.0.0" "version"
+it "prints script version 3.0.1"
+expect_contains "$out" "3.0.1" "version"
 done_test
 out="$(run_spirit --help)"
 it "help documents --channel and that --ref overrides it"

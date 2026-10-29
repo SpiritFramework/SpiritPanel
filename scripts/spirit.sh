@@ -21,7 +21,7 @@
 #
 set -uo pipefail
 
-SCRIPT_VERSION="3.0.0"
+SCRIPT_VERSION="3.0.1"
 export GIT_TERMINAL_PROMPT=0
 
 REPO_URL="${SPIRIT_REPO_URL:-https://github.com/SpiritFramework/SpiritPanel.git}"
@@ -507,12 +507,23 @@ Pass --channel dev, or --ref, and retry."
 }
 
 resolve_channel() {
+  local saved=""
   if [[ -n "$CHANNEL_FLAG" ]]; then
     CHANNEL="$CHANNEL_FLAG"
     return
   fi
-  if [[ "$ASSUME_YES" != "1" && -t 0 ]]; then
-    prompt_channel
+  saved="$(read_saved_channel || true)"
+  # A terminal always gets the release/dev question until a channel is saved.
+  # -y skips later confirmations, not this first choice. No TTY keeps the
+  # non-interactive default (new install: release, existing install: dev).
+  if [[ -t 0 ]]; then
+    if [[ "$ASSUME_YES" != "1" || ( "$saved" != "release" && "$saved" != "dev" ) ]]; then
+      prompt_channel
+      return
+    fi
+  fi
+  if [[ "$saved" == "release" || "$saved" == "dev" ]]; then
+    CHANNEL="$saved"
     return
   fi
   if [[ "$COMMAND" == "install" ]]; then
@@ -520,11 +531,8 @@ resolve_channel() {
     info "No channel selected — using release"
     return
   fi
-  CHANNEL="$(read_saved_channel || true)"
-  if [[ "$CHANNEL" != "release" && "$CHANNEL" != "dev" ]]; then
-    CHANNEL="dev"
-    info "No saved channel — treating this install as dev (main)"
-  fi
+  CHANNEL="dev"
+  info "No saved channel — treating this install as dev (main)"
 }
 
 resolve_target_ref() {
@@ -1920,15 +1928,16 @@ Options:
   --channel release|dev   Latest GitHub release, or unreleased main
                           Saved in the install dir as .spirit-channel.
                           Install -y with no channel defaults to release.
-                          Update -y with no channel keeps the saved channel
-                          (missing file is treated as dev).
+                          Update -y keeps a saved channel. On a terminal, a
+                          missing file still asks release or dev.
   --ref REF               Git branch or tag for this run. Overrides --channel.
                           A release checkout stays on that tag.
   --no-tls                Skip certbot
   --force-nginx           Overwrite existing nginx site
   --install-dir DIR       Override install path
   --user NAME             Override panel system user
-  -y, --yes               Never prompt
+  -y, --yes               Skip confirmations. A terminal still asks for a
+                          channel the first time none is saved.
   -V, --version           Print script version
   -h, --help              Show this help
 

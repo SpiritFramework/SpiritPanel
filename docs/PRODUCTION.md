@@ -746,7 +746,7 @@ sudo bash /tmp/spirit.sh update
 
 Interactive update asks for the same channel, defaulting to `.spirit-channel`. It prints the current commit and the target ref before it asks you to continue, for example `a1b2c3d → V1.3.5.0` or `a1b2c3d → main`.
 
-`-y` with no `--channel` keeps the saved channel. An install that has no `.spirit-channel` yet is treated as `dev`, because that is what it is running. A release install stays on the release tag until you switch to dev or a newer release is what the release channel checks out. It does not move on to `main` by itself.
+`-y` keeps a saved channel and skips the continue confirmation. On a terminal, the first update still asks release or dev when `.spirit-channel` is missing. With no terminal, that first update stays on `dev`. A release install stays on the release tag until you switch to dev or a newer release is what the release channel checks out. It does not move on to `main` by itself.
 
 ```bash
 sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --channel release -y
