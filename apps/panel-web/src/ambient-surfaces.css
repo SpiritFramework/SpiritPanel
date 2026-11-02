@@ -1,180 +1,6 @@
 /* ============================================================
-   Login branded sidebar — layered ambient animation
+   Shell stacking — atmosphere scenes are absolute under content
    ============================================================ */
-
-.login-brand-panel .login-bg-ambient {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.login-ambient-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(64px);
-  opacity: 0.55;
-  animation: login-ambient-drift 18s ease-in-out infinite;
-}
-
-.login-ambient-orb--1 {
-  width: 52%;
-  height: 48%;
-  top: -12%;
-  right: -10%;
-  background: var(--accent);
-  animation-duration: 16s;
-}
-
-.login-ambient-orb--2 {
-  width: 44%;
-  height: 40%;
-  bottom: -8%;
-  left: -12%;
-  background: var(--accent-secondary, var(--accent));
-  animation-delay: -6s;
-  animation-duration: 20s;
-}
-
-.login-ambient-orb--3 {
-  width: 28%;
-  height: 28%;
-  top: 42%;
-  left: 38%;
-  background: color-mix(in srgb, white 18%, var(--accent));
-  animation-delay: -11s;
-  animation-duration: 14s;
-  opacity: 0.35;
-}
-
-.login-bg-grain {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0.045;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
-}
-
-.login-shine-sweep {
-  position: absolute;
-  inset: -40% -60%;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    transparent 42%,
-    color-mix(in srgb, white 14%, transparent) 50%,
-    transparent 58%
-  );
-  animation: login-shine-sweep 9s ease-in-out infinite;
-  opacity: 0.35;
-}
-
-.login-brand-panel[data-login-bg="gradient"] .login-bg-canvas {
-  animation: login-gradient-breathe 14s ease-in-out infinite alternate;
-}
-
-.login-brand-panel[data-login-bg="gradient"] .login-bg-canvas::after {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  background:
-    radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 42%),
-    radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 38%, transparent), transparent 45%);
-  filter: blur(40px);
-  animation: login-ambient-drift 22s ease-in-out infinite;
-}
-
-.login-brand-panel .login-feature-item {
-  animation: login-feature-rise 0.6s ease-out both;
-}
-
-.login-brand-panel .login-feature-item:nth-child(1) { animation-delay: 0.1s; }
-.login-brand-panel .login-feature-item:nth-child(2) { animation-delay: 0.2s; }
-.login-brand-panel .login-feature-item:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes login-ambient-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(5%, -6%) scale(1.06); }
-  66% { transform: translate(-4%, 4%) scale(0.96); }
-}
-
-@keyframes login-shine-sweep {
-  0%, 100% { transform: translateX(-35%) rotate(-8deg); opacity: 0.2; }
-  50% { transform: translateX(35%) rotate(-8deg); opacity: 0.5; }
-}
-
-@keyframes login-gradient-breathe {
-  from { filter: brightness(0.92) saturate(1); }
-  to { filter: brightness(1.06) saturate(1.12); }
-}
-
-@keyframes login-feature-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ============================================================
-   Panel content ambient (dashboard + server pages)
-   ============================================================ */
-
-.ambient-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.ambient-backdrop-mesh {
-  position: absolute;
-  inset: -25%;
-  background:
-    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
-    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 12%, transparent), transparent 40%),
-    radial-gradient(circle at 55% 88%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 48%);
-  filter: blur(48px);
-  animation: ambient-mesh-drift 26s ease-in-out infinite;
-  opacity: 0.85;
-}
-
-.ambient-backdrop-glow {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 90% 55% at 50% -8%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 58%),
-    radial-gradient(ellipse 70% 45% at 100% 50%, color-mix(in srgb, var(--accent-secondary, var(--accent)) 8%, transparent), transparent 52%);
-  animation: ambient-glow-pulse 12s ease-in-out infinite alternate;
-}
-
-.ambient-backdrop-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
-}
-
-.ambient-backdrop--dense .ambient-backdrop-mesh {
-  opacity: 1;
-  filter: blur(36px);
-}
-
-.ambient-backdrop[data-panel-bg="none"] .ambient-backdrop-mesh,
-.ambient-backdrop[data-panel-bg="subtle"] .ambient-backdrop-mesh {
-  opacity: 0.55;
-}
-
-.ambient-backdrop[data-panel-bg="aurora"] .ambient-backdrop-mesh,
-.ambient-backdrop[data-panel-bg="waves"] .ambient-backdrop-mesh,
-.ambient-backdrop[data-panel-bg="fog"] .ambient-backdrop-mesh,
-.ambient-backdrop[data-panel-bg="horizon"] .ambient-backdrop-mesh {
-  animation-duration: 18s;
-  opacity: 1;
-}
 
 .mobile-shell-main,
 .server-shell-main {
@@ -186,17 +12,6 @@
 .server-shell-main > .server-shell-content {
   position: relative;
   z-index: 1;
-}
-
-@keyframes ambient-mesh-drift {
-  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
-  33% { transform: translate(4%, -3%) rotate(4deg) scale(1.06); }
-  66% { transform: translate(-3%, 2%) rotate(-3deg) scale(0.97); }
-}
-
-@keyframes ambient-glow-pulse {
-  from { opacity: 0.55; }
-  to { opacity: 1; }
 }
 
 /* ============================================================
@@ -451,48 +266,6 @@
   height: 1.25rem;
   border-radius: 6px;
   background: color-mix(in srgb, var(--preview-accent, #6366f1) 30%, transparent);
-}
-
-/* Login ambient intensity */
-.login-brand-panel[data-login-ambient="off"] .login-bg-ambient,
-.login-brand-panel[data-login-ambient="off"] .login-shine-sweep,
-.login-brand-panel[data-login-ambient="off"] .login-bg-grain {
-  display: none;
-}
-
-.login-brand-panel[data-login-ambient="standard"] .login-shine-sweep,
-.login-brand-panel[data-login-ambient="standard"] .login-ambient-orb--3 {
-  display: none;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb {
-  filter: blur(72px);
-  opacity: 0.72;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--1 {
-  width: 62%;
-  height: 56%;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--2 {
-  width: 52%;
-  height: 48%;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-ambient-orb--3 {
-  width: 36%;
-  height: 36%;
-  opacity: 0.5;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-bg-grain {
-  opacity: 0.07;
-}
-
-.login-brand-panel[data-login-ambient="cinematic"] .login-shine-sweep {
-  opacity: 0.55;
-  animation-duration: 7s;
 }
 
 /* Global polish tokens */
@@ -786,32 +559,13 @@
   background: color-mix(in srgb, var(--card-accent, var(--accent)) 12%, var(--bg-elevated));
 }
 
-[data-motion="reduced"] .login-ambient-orb,
-[data-motion="reduced"] .login-shine-sweep,
-[data-motion="reduced"] .ambient-backdrop-mesh,
-[data-motion="reduced"] .ambient-backdrop-glow,
-[data-motion="reduced"] .server-card--neon,
-[data-motion="reduced"] .panel-bg-aurora::after,
-[data-motion="reduced"] .panel-bg-waves::before,
-[data-motion="reduced"] .panel-bg-mesh::after,
-[data-motion="reduced"] .panel-bg-shimmer::after {
+[data-motion="reduced"] .server-card--neon {
   animation: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-ambient-orb,
-  .login-shine-sweep,
-  .login-brand-panel[data-login-bg="gradient"] .login-bg-canvas,
-  .login-brand-panel[data-login-bg="gradient"] .login-bg-canvas::after,
-  .ambient-backdrop-mesh,
-  .ambient-backdrop-glow,
   .server-card--neon {
     animation: none !important;
-  }
-
-  .login-brand-panel .login-feature-item {
-    animation: none;
-    opacity: 1;
   }
 }
 

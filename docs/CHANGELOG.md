@@ -22,6 +22,11 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Added
 
 - **Shell layout branding** — choose Sidebar or Navbar for the admin and client areas (Settings → Branding → Layout → Navigation). Phones keep a drawer in both modes. Server pages still use a left nav.
+- **Atmosphere scenes** — login and panel backdrops are a fresh set of layered animations (Aurora, Orbits, Constellation, Ripple, Beams, Tide, Ember, Lattice, Prism, Halo, Mist, Solid). Old preset IDs map across automatically.
+
+### Removed
+
+- Previous login/panel background presets (nebula, gradient, mesh, grid, and the rest of the old list).
 
 ### Fixed
 

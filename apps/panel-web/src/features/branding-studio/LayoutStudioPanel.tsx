@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import type { BrandingForm } from '../../components/admin/settings/settings-types';
 import type {
   AdminSidebarStyle,
+  AtmospherePreset,
   ClientSidebarStyle,
   ServerCardLayoutStyle,
   ServerSidebarStyle,
@@ -23,13 +24,14 @@ import {
   SIDEBAR_MATERIAL_OPTIONS,
   SURFACE_RADIUS_OPTIONS,
 } from '../../lib/branding-appearance';
+import { AtmosphereScene } from '../../components/AtmosphereScene';
 import { Checkbox } from '../../components/Checkbox';
 import type { PreviewSurface } from './StudioPreview';
 
 export type LayoutSubSection = 'atmosphere' | 'navigation' | 'cards' | 'finish';
 
 const SUBS: { id: LayoutSubSection; label: string; hint: string }[] = [
-  { id: 'atmosphere', label: 'Atmosphere', hint: 'Login & panel backdrops' },
+  { id: 'atmosphere', label: 'Atmosphere', hint: 'Animated login & panel scenes' },
   { id: 'navigation', label: 'Navigation', hint: 'Sidebars by area' },
   { id: 'cards', label: 'Cards', hint: 'Server card layouts' },
   { id: 'finish', label: 'Finish', hint: 'Corners, density, motion' },
@@ -187,10 +189,27 @@ export function LayoutStudioPanel({
   onSubSectionChange: (next: LayoutSubSection) => void;
   onPreviewSurface?: (surface: PreviewSurface) => void;
 }) {
-  const gradient = `linear-gradient(135deg, ${branding.accentColor}, ${branding.secondaryColor || branding.accentColor})`;
-
   function pickSurface(surface: PreviewSurface) {
     onPreviewSurface?.(surface);
+  }
+
+  function AtmospherePreview({
+    preset,
+    surface,
+  }: {
+    preset: AtmospherePreset;
+    surface: 'login' | 'panel';
+  }) {
+    return (
+      <div className="atm-preview-stage h-full w-full">
+        <AtmosphereScene
+          preset={preset}
+          surface="preview"
+          ambientLevel={surface === 'login' ? branding.loginAmbientLevel : undefined}
+          dense={surface === 'panel' ? branding.panelAmbient : false}
+        />
+      </div>
+    );
   }
 
   return (
@@ -220,8 +239,8 @@ export function LayoutStudioPanel({
         {subSection === 'atmosphere' ? (
           <div className="ds-blayout-block">
             <div className="ds-blayout-block-head">
-              <h4>Login backdrop</h4>
-              <p>Animated treatment on the public sign-in page.</p>
+              <h4>Login atmosphere</h4>
+              <p>Full animated scene behind the public sign-in hero.</p>
             </div>
             <SegmentGrid
               value={branding.loginAmbientLevel}
@@ -242,24 +261,19 @@ export function LayoutStudioPanel({
                   }}
                   label={opt.label}
                   description={opt.description}
-                  preview={
-                    <div
-                      className={`login-preview login-preview--${opt.id} h-full w-full`}
-                      style={{ '--preview-gradient': gradient } as CSSProperties}
-                    />
-                  }
+                  preview={<AtmospherePreview preset={opt.id} surface="login" />}
                 />
               ))}
             </div>
 
             <div className="ds-blayout-block-head ds-blayout-block-head--spaced">
-              <h4>Panel backdrop</h4>
-              <p>Ambient wash behind dashboards and server pages.</p>
+              <h4>Panel atmosphere</h4>
+              <p>Animated scene behind dashboards and server pages.</p>
             </div>
             <div className="ds-blayout-check">
               <Checkbox
-                label="Extra ambient mesh"
-                description="Drifting color mesh and grain over the main content area."
+                label="Stronger panel atmosphere"
+                description="Boost motion, glow, and grain over the main content area."
                 checked={branding.panelAmbient}
                 onChange={(panelAmbient) => {
                   pickSurface('client');
@@ -278,17 +292,7 @@ export function LayoutStudioPanel({
                   }}
                   label={opt.label}
                   description={opt.description}
-                  preview={
-                    <div
-                      className={`panel-preview panel-preview--${opt.id} h-full w-full`}
-                      style={
-                        {
-                          '--preview-accent-glow': branding.accentColor,
-                          '--preview-secondary-glow': branding.secondaryColor || branding.accentColor,
-                        } as CSSProperties
-                      }
-                    />
-                  }
+                  preview={<AtmospherePreview preset={opt.id} surface="panel" />}
                 />
               ))}
             </div>

@@ -8,6 +8,7 @@ import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
 import { normalizeAppearance } from '../lib/branding-appearance';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from './PanelName';
 import { AuthorAttribution } from './AuthorAttribution';
+import { AtmosphereScene } from './AtmosphereScene';
 
 const FEATURES = [
   {
@@ -51,17 +52,12 @@ export function AuthLayout({
         data-login-bg={appearance.loginBackground}
         data-login-ambient={appearance.loginAmbientLevel}
       >
-        <div className="login-bg-canvas pointer-events-none absolute inset-0" aria-hidden />
-        <div className="login-bg-ambient" aria-hidden>
-          <span className="login-ambient-orb login-ambient-orb--1" />
-          <span className="login-ambient-orb login-ambient-orb--2" />
-          <span className="login-ambient-orb login-ambient-orb--3" />
-        </div>
-        <div className="login-bg-overlay pointer-events-none absolute inset-0" aria-hidden />
-        <div className="login-bg-grain" aria-hidden />
-        <div className="login-shine-sweep" aria-hidden />
-        <div className="login-dot-grid pointer-events-none absolute inset-0 opacity-50" />
-        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+        <AtmosphereScene
+          preset={appearance.loginBackground}
+          surface="login"
+          ambientLevel={appearance.loginAmbientLevel}
+        />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/15 to-black/25" />
 
         <div className="ds-auth-hero-inner">
           <AuthHeroBrand

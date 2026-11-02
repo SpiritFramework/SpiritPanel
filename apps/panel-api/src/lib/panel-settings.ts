@@ -36,14 +36,52 @@ const themePreset = z.enum([
   'lavender', 'crimson', 'arctic', 'neon', 'copper', 'slate', 'grape', 'mint', 'sand', 'void', 'cherry',
 ]);
 const defaultThemeMode = z.enum(['system', 'light', 'dark']);
-const loginBackground = z.enum([
-  'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
-]);
-const panelBackground = z.enum([
-  'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
-]);
+const ATMOSPHERE_PRESETS = [
+  'aurora',
+  'orbits',
+  'constellation',
+  'ripple',
+  'beams',
+  'tide',
+  'ember',
+  'lattice',
+  'prism',
+  'halo',
+  'mist',
+  'solid',
+] as const;
+
+const LEGACY_ATMOSPHERE: Record<string, (typeof ATMOSPHERE_PRESETS)[number]> = {
+  gradient: 'orbits',
+  orbs: 'orbits',
+  mesh: 'orbits',
+  grid: 'lattice',
+  minimal: 'solid',
+  waves: 'tide',
+  stars: 'constellation',
+  spotlight: 'beams',
+  horizon: 'tide',
+  fog: 'mist',
+  circuit: 'lattice',
+  dawn: 'halo',
+  void: 'constellation',
+  nebula: 'constellation',
+  meteor: 'ember',
+  pulse: 'ripple',
+  shear: 'prism',
+  subtle: 'mist',
+  none: 'solid',
+  shimmer: 'mist',
+  bokeh: 'orbits',
+};
+
+const atmospherePreset = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  if ((ATMOSPHERE_PRESETS as readonly string[]).includes(value)) return value;
+  return LEGACY_ATMOSPHERE[value] ?? value;
+}, z.enum(ATMOSPHERE_PRESETS));
+const loginBackground = atmospherePreset;
+const panelBackground = atmospherePreset;
 const serverCardStyle = z.enum([
   'auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
 ]);
@@ -286,14 +324,32 @@ export interface BrandingSettings {
   themePreset?: 'default' | 'midnight' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'mono'
     | 'lavender' | 'crimson' | 'arctic' | 'neon' | 'copper' | 'slate' | 'grape' | 'mint' | 'sand' | 'void' | 'cherry';
   defaultThemeMode?: 'system' | 'light' | 'dark';
-  loginBackground?: 'gradient' | 'orbs' | 'mesh' | 'grid' | 'aurora' | 'minimal'
-    | 'waves' | 'stars' | 'beams' | 'ripple' | 'prism' | 'spotlight'
-    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'void'
-    | 'nebula' | 'meteor' | 'tide' | 'pulse' | 'shear';
-  panelBackground?: 'gradient' | 'subtle' | 'grid' | 'orbs' | 'none'
-    | 'aurora' | 'waves' | 'stars' | 'mesh' | 'shimmer' | 'bokeh' | 'prism'
-    | 'horizon' | 'ember' | 'fog' | 'circuit' | 'dawn' | 'halo'
-    | 'nebula' | 'meteor' | 'tide' | 'pulse' | 'shear';
+  loginBackground?:
+    | 'aurora'
+    | 'orbits'
+    | 'constellation'
+    | 'ripple'
+    | 'beams'
+    | 'tide'
+    | 'ember'
+    | 'lattice'
+    | 'prism'
+    | 'halo'
+    | 'mist'
+    | 'solid';
+  panelBackground?:
+    | 'aurora'
+    | 'orbits'
+    | 'constellation'
+    | 'ripple'
+    | 'beams'
+    | 'tide'
+    | 'ember'
+    | 'lattice'
+    | 'prism'
+    | 'halo'
+    | 'mist'
+    | 'solid';
   panelAmbient?: boolean;
   serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked'
     | 'poster' | 'split' | 'outline' | 'tile';
@@ -382,8 +438,8 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   loginMessage: 'Sign in to manage your game servers',
   themePreset: 'default',
   defaultThemeMode: 'dark',
-  loginBackground: 'nebula',
-  panelBackground: 'nebula',
+  loginBackground: 'aurora',
+  panelBackground: 'mist',
   panelAmbient: true,
   serverCardStyle: 'glass',
   shellLayout: 'sidebar',

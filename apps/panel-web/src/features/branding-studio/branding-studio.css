@@ -412,9 +412,25 @@
 }
 
 .ds-bstudio-mock-app {
+  position: relative;
   display: grid;
   grid-template-columns: 7.5rem minmax(0, 1fr);
   min-height: 22rem;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ds-bstudio-mock-app > .atm {
+  z-index: 0;
+}
+
+.ds-bstudio-mock-app > :not(.atm) {
+  position: relative;
+  z-index: 1;
+}
+
+.ds-bstudio-mock-login > .atm {
+  z-index: 0;
 }
 
 .ds-bstudio-mock-app--navbar {
@@ -948,14 +964,16 @@
 }
 
 .ds-blayout-card__preview {
-  height: 4.75rem;
-  background: var(--bg-elevated);
+  position: relative;
+  height: 5.5rem;
+  background: #05070d;
   overflow: hidden;
 }
 
 .ds-blayout-card__preview .branding-sidebar-frame,
 .ds-blayout-card__preview .branding-shell-frame,
 .ds-blayout-card__preview .branding-mock-card,
+.ds-blayout-card__preview .atm-preview-stage,
 .ds-blayout-card-stage {
   width: 100%;
   height: 100%;

@@ -22,55 +22,23 @@ export type ThemePreset =
 
 export type DefaultThemeMode = 'system' | 'light' | 'dark';
 
-export type LoginBackground =
-  | 'gradient'
-  | 'orbs'
-  | 'mesh'
-  | 'grid'
+/** Shared animated atmosphere presets for login hero and panel shells. */
+export type AtmospherePreset =
   | 'aurora'
-  | 'minimal'
-  | 'waves'
-  | 'stars'
-  | 'beams'
+  | 'orbits'
+  | 'constellation'
   | 'ripple'
-  | 'prism'
-  | 'spotlight'
-  | 'horizon'
-  | 'ember'
-  | 'fog'
-  | 'circuit'
-  | 'dawn'
-  | 'void'
-  | 'nebula'
-  | 'meteor'
+  | 'beams'
   | 'tide'
-  | 'pulse'
-  | 'shear';
-
-export type PanelBackground =
-  | 'gradient'
-  | 'subtle'
-  | 'grid'
-  | 'orbs'
-  | 'none'
-  | 'aurora'
-  | 'waves'
-  | 'stars'
-  | 'mesh'
-  | 'shimmer'
-  | 'bokeh'
-  | 'prism'
-  | 'horizon'
   | 'ember'
-  | 'fog'
-  | 'circuit'
-  | 'dawn'
+  | 'lattice'
+  | 'prism'
   | 'halo'
-  | 'nebula'
-  | 'meteor'
-  | 'tide'
-  | 'pulse'
-  | 'shear';
+  | 'mist'
+  | 'solid';
+
+export type LoginBackground = AtmospherePreset;
+export type PanelBackground = AtmospherePreset;
 
 export type ServerCardLayoutStyle =
   | 'banner'
@@ -126,8 +94,8 @@ export interface BrandingAppearance {
 export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
   themePreset: 'default',
   defaultThemeMode: 'dark',
-  loginBackground: 'nebula',
-  panelBackground: 'nebula',
+  loginBackground: 'aurora',
+  panelBackground: 'mist',
   panelAmbient: true,
   serverCardStyle: 'glass',
   shellLayout: 'sidebar',
@@ -145,14 +113,51 @@ export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
 };
 
 const THEME_PRESET_IDS = ['default', ...Object.keys(THEME_PALETTES)] as ThemePreset[];
-const LOGIN_BG_IDS: LoginBackground[] = [
-  'gradient', 'orbs', 'mesh', 'grid', 'aurora', 'minimal', 'waves', 'stars', 'beams', 'ripple', 'prism', 'spotlight',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'void', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
+const ATMOSPHERE_IDS: AtmospherePreset[] = [
+  'aurora',
+  'orbits',
+  'constellation',
+  'ripple',
+  'beams',
+  'tide',
+  'ember',
+  'lattice',
+  'prism',
+  'halo',
+  'mist',
+  'solid',
 ];
-const PANEL_BG_IDS: PanelBackground[] = [
-  'gradient', 'subtle', 'grid', 'orbs', 'none', 'aurora', 'waves', 'stars', 'mesh', 'shimmer', 'bokeh', 'prism',
-  'horizon', 'ember', 'fog', 'circuit', 'dawn', 'halo', 'nebula', 'meteor', 'tide', 'pulse', 'shear',
-];
+
+/** Map retired branding IDs onto the new atmosphere set. */
+const LEGACY_ATMOSPHERE: Record<string, AtmospherePreset> = {
+  gradient: 'orbits',
+  orbs: 'orbits',
+  mesh: 'orbits',
+  grid: 'lattice',
+  minimal: 'solid',
+  waves: 'tide',
+  stars: 'constellation',
+  spotlight: 'beams',
+  horizon: 'tide',
+  fog: 'mist',
+  circuit: 'lattice',
+  dawn: 'halo',
+  void: 'constellation',
+  nebula: 'constellation',
+  meteor: 'ember',
+  pulse: 'ripple',
+  shear: 'prism',
+  subtle: 'mist',
+  none: 'solid',
+  shimmer: 'mist',
+  bokeh: 'orbits',
+};
+
+function resolveAtmosphere(value: unknown, fallback: AtmospherePreset): AtmospherePreset {
+  if (typeof value !== 'string') return fallback;
+  if ((ATMOSPHERE_IDS as readonly string[]).includes(value)) return value as AtmospherePreset;
+  return LEGACY_ATMOSPHERE[value] ?? fallback;
+}
 const SERVER_CARD_LAYOUT_IDS: ServerCardLayoutStyle[] = [
   'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
 ];
@@ -190,60 +195,29 @@ export const DEFAULT_THEME_MODE_OPTIONS: { id: DefaultThemeMode; label: string; 
   { id: 'system', label: 'System', description: 'Match the visitor\'s OS preference' },
 ];
 
-export const LOGIN_BACKGROUND_OPTIONS: { id: LoginBackground; label: string; description: string }[] = [
-  { id: 'nebula', label: 'Nebula', description: 'Deep space clouds with drifting color blooms' },
-  { id: 'aurora', label: 'Aurora', description: 'Ribboned northern-lights bands' },
-  { id: 'meteor', label: 'Meteor', description: 'Streaking light trails across the dark' },
-  { id: 'tide', label: 'Tide', description: 'Rolling luminous swells along the base' },
-  { id: 'pulse', label: 'Pulse', description: 'Breathing radial heartbeats of accent light' },
-  { id: 'shear', label: 'Shear', description: 'Sliding diagonal light planes' },
-  { id: 'orbs', label: 'Orbs', description: 'Layered floating glow spheres' },
-  { id: 'mesh', label: 'Mesh', description: 'Soft morphing color fields' },
-  { id: 'waves', label: 'Waves', description: 'Flowing gradient swells' },
-  { id: 'stars', label: 'Stars', description: 'Dense twinkling star field' },
-  { id: 'ember', label: 'Ember', description: 'Warm rising spark particles' },
-  { id: 'beams', label: 'Beams', description: 'Rotating accent light rays' },
-  { id: 'spotlight', label: 'Spotlight', description: 'Slow sweeping stage light' },
-  { id: 'ripple', label: 'Ripple', description: 'Pulsing concentric rings' },
-  { id: 'prism', label: 'Prism', description: 'Chromatic shards of light' },
-  { id: 'fog', label: 'Fog', description: 'Soft mist layers across the panel' },
-  { id: 'horizon', label: 'Horizon', description: 'Glowing skyline wash along the base' },
-  { id: 'dawn', label: 'Dawn', description: 'Soft rising light from the bottom edge' },
-  { id: 'circuit', label: 'Circuit', description: 'Tech grid with pulsing nodes' },
-  { id: 'gradient', label: 'Gradient', description: 'Deep brand wash with drifting color bloom' },
-  { id: 'grid', label: 'Grid', description: 'Animated dot lattice' },
+export const ATMOSPHERE_OPTIONS: { id: AtmospherePreset; label: string; description: string }[] = [
+  { id: 'aurora', label: 'Aurora', description: 'Ribboned northern-light bands that drift across the dark' },
+  { id: 'orbits', label: 'Orbits', description: 'Large floating color spheres that slowly orbit' },
+  { id: 'constellation', label: 'Constellation', description: 'Twinkling star field with a soft nebula wash' },
+  { id: 'ripple', label: 'Ripple', description: 'Expanding accent rings pulsing from the center' },
+  { id: 'beams', label: 'Beams', description: 'Rotating light rays cutting through deep shadow' },
+  { id: 'tide', label: 'Tide', description: 'Rolling luminous swells along the lower edge' },
+  { id: 'ember', label: 'Ember', description: 'Rising spark particles with a warm underglow' },
+  { id: 'lattice', label: 'Lattice', description: 'Perspective tech grid that breathes and drifts' },
+  { id: 'prism', label: 'Prism', description: 'Sliding chromatic planes of accent color' },
+  { id: 'halo', label: 'Halo', description: 'Breathing radial bloom centered in the scene' },
+  { id: 'mist', label: 'Mist', description: 'Soft fog layers that drift and thicken' },
+  { id: 'solid', label: 'Solid', description: 'Quiet branded wash with no motion' },
 ];
 
-export const PANEL_BACKGROUND_OPTIONS: { id: PanelBackground; label: string; description: string }[] = [
-  { id: 'nebula', label: 'Nebula', description: 'Drifting cosmic color clouds' },
-  { id: 'aurora', label: 'Aurora', description: 'Soft shifting color bands' },
-  { id: 'meteor', label: 'Meteor', description: 'Quiet streaking light trails' },
-  { id: 'tide', label: 'Tide', description: 'Low rolling light along the edge' },
-  { id: 'pulse', label: 'Pulse', description: 'Centered breathing accent bloom' },
-  { id: 'shear', label: 'Shear', description: 'Sliding diagonal light planes' },
-  { id: 'horizon', label: 'Horizon', description: 'Low glow along the bottom edge' },
-  { id: 'dawn', label: 'Dawn', description: 'Gentle rising wash from below' },
-  { id: 'halo', label: 'Halo', description: 'Centered soft accent bloom' },
-  { id: 'waves', label: 'Waves', description: 'Gentle flowing motion' },
-  { id: 'orbs', label: 'Orbs', description: 'Slow ambient glow drift' },
-  { id: 'bokeh', label: 'Bokeh', description: 'Soft defocused light pools' },
-  { id: 'ember', label: 'Ember', description: 'Warm particle hints in corners' },
-  { id: 'stars', label: 'Stars', description: 'Subtle star particles' },
-  { id: 'mesh', label: 'Mesh', description: 'Blurred color mesh' },
-  { id: 'fog', label: 'Fog', description: 'Misty translucent layers' },
-  { id: 'shimmer', label: 'Shimmer', description: 'Diagonal light sweep' },
-  { id: 'prism', label: 'Prism', description: 'Diagonal spectral bands' },
-  { id: 'circuit', label: 'Circuit', description: 'Faint tech grid + nodes' },
-  { id: 'gradient', label: 'Gradient glow', description: 'Accent radials across the page' },
-  { id: 'grid', label: 'Grid', description: 'Faint geometric pattern' },
-  { id: 'none', label: 'None', description: 'Solid background only' },
-];
+export const LOGIN_BACKGROUND_OPTIONS = ATMOSPHERE_OPTIONS;
+export const PANEL_BACKGROUND_OPTIONS = ATMOSPHERE_OPTIONS;
 
 export const LOGIN_AMBIENT_LEVEL_OPTIONS: { id: LoginAmbientLevel; label: string; description: string }[] = [
-  { id: 'off', label: 'Off', description: 'Background preset only, no extra layers' },
-  { id: 'standard', label: 'Standard', description: 'Floating orbs without shine sweep' },
-  { id: 'enhanced', label: 'Enhanced', description: 'Orbs, grain, and light sweep' },
-  { id: 'cinematic', label: 'Cinematic', description: 'Stronger orbs, grain, and sweeping shine' },
+  { id: 'off', label: 'Off', description: 'Scene still shows, motion dialed way down' },
+  { id: 'standard', label: 'Standard', description: 'Clear motion at a calm intensity' },
+  { id: 'enhanced', label: 'Enhanced', description: 'Stronger glow, grain, and movement' },
+  { id: 'cinematic', label: 'Cinematic', description: 'Full intensity for the login hero' },
 ];
 export const SERVER_CARD_STYLE_OPTIONS: { id: ServerCardLayoutStyle; label: string; description: string; hint: string }[] = [
   { id: 'glass', label: 'Glass', description: 'Frosted body with accent icon ring', hint: 'Header row + stats panel' },
@@ -346,12 +320,8 @@ export function normalizeAppearance(data?: Partial<BrandingAppearance>): Brandin
     defaultThemeMode: isValid(data?.defaultThemeMode, ['system', 'light', 'dark'] as const)
       ? data.defaultThemeMode
       : DEFAULT_BRANDING_APPEARANCE.defaultThemeMode,
-    loginBackground: isValid(data?.loginBackground, LOGIN_BG_IDS)
-      ? data.loginBackground
-      : DEFAULT_BRANDING_APPEARANCE.loginBackground,
-    panelBackground: isValid(data?.panelBackground, PANEL_BG_IDS)
-      ? data.panelBackground
-      : DEFAULT_BRANDING_APPEARANCE.panelBackground,
+    loginBackground: resolveAtmosphere(data?.loginBackground, DEFAULT_BRANDING_APPEARANCE.loginBackground),
+    panelBackground: resolveAtmosphere(data?.panelBackground, DEFAULT_BRANDING_APPEARANCE.panelBackground),
     panelAmbient: typeof data?.panelAmbient === 'boolean' ? data.panelAmbient : DEFAULT_BRANDING_APPEARANCE.panelAmbient,
     serverCardStyle: (() => {
       const stored = data?.serverCardStyle as ServerCardStylePreference | undefined;

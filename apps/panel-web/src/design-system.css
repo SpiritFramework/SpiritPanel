@@ -669,35 +669,7 @@
   color: var(--accent-hover);
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Panel ambient backgrounds ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â visible but behind content ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
-.panel-bg-root::before {
-  opacity: 0.58;
-}
-
-.panel-bg-subtle::before {
-  opacity: 0.38;
-}
-
-.panel-bg-none::before {
-  opacity: 0;
-}
-
-.panel-bg-orbs::after {
-  opacity: 0.48;
-}
-
-.panel-bg-aurora::after,
-.panel-bg-waves::before,
-.panel-bg-mesh::after,
-.panel-bg-shimmer::after,
-.panel-bg-nebula::after,
-.panel-bg-tide::before,
-.panel-bg-pulse::before,
-.panel-bg-shear::after {
-  opacity: 0.72;
-}
-
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Icons (Lucide) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â consistent sizing ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Icons (Lucide) — consistent sizing */
 .ds-icon {
   width: 0.875rem;
   height: 0.875rem;

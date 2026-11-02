@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import type { BrandingForm } from '../../components/admin/settings/settings-types';
 import type { PanelGeneralSettings } from '../../lib/panel-settings';
 import { SERVER_CARD_STYLE_OPTIONS } from '../../lib/branding-appearance';
+import { AtmosphereScene } from '../../components/AtmosphereScene';
 import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
 import { sanitizeImageSrc } from '../../lib/safe-url';
 
@@ -74,8 +75,11 @@ export const StudioPreview = forwardRef<HTMLDivElement, StudioPreviewProps>(func
             data-login-bg={branding.loginBackground}
             data-login-ambient={branding.loginAmbientLevel}
           >
-            <div className="login-bg-canvas pointer-events-none absolute inset-0" aria-hidden />
-            <div className="login-bg-overlay pointer-events-none absolute inset-0" aria-hidden />
+            <AtmosphereScene
+              preset={branding.loginBackground}
+              surface="login"
+              ambientLevel={branding.loginAmbientLevel}
+            />
             <div className="ds-bstudio-mock-login__panel">
               {logo ? (
                 <img src={logo} alt="" className="ds-bstudio-mock-login__logo" />
@@ -97,10 +101,15 @@ export const StudioPreview = forwardRef<HTMLDivElement, StudioPreviewProps>(func
 
         {surface === 'client' || surface === 'admin' ? (
           <div
-            className={`ds-bstudio-mock-app ds-bstudio-mock-app--${branding.shellLayout} panel-preview panel-preview--${branding.panelBackground}`}
+            className={`ds-bstudio-mock-app ds-bstudio-mock-app--${branding.shellLayout} panel-bg-root`}
             data-panel-ambient={branding.panelAmbient ? 'on' : 'off'}
             data-shell-layout={branding.shellLayout}
           >
+            <AtmosphereScene
+              preset={branding.panelBackground}
+              surface="panel"
+              dense={branding.panelAmbient}
+            />
             {branding.shellLayout === 'navbar' ? (
               <header className="ds-bstudio-mock-navbar" data-sidebar-material={branding.sidebarMaterial}>
                 <div className="ds-bstudio-mock-navbar__brand">
@@ -184,7 +193,12 @@ export const StudioPreview = forwardRef<HTMLDivElement, StudioPreviewProps>(func
         ) : null}
 
         {surface === 'server' ? (
-          <div className={`ds-bstudio-mock-app panel-preview panel-preview--${branding.panelBackground}`}>
+          <div className="ds-bstudio-mock-app panel-bg-root">
+            <AtmosphereScene
+              preset={branding.panelBackground}
+              surface="panel"
+              dense={branding.panelAmbient}
+            />
             <aside
               className={`ds-bstudio-mock-sidebar ds-bstudio-mock-sidebar--${branding.serverSidebarStyle}`}
               data-sidebar-material={branding.sidebarMaterial}
