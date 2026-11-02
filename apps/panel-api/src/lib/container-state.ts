@@ -213,13 +213,15 @@ export async function applyContainerStatusUpdate(
 
   await prisma.server.update({ where: { id: server.id }, data });
 
-  if (existing) {
-    try {
-      const { evaluateServerLifecycleTransition } = await import('../services/alerts.js');
-      await evaluateServerLifecycleTransition(existing, previousState, state);
-    } catch {
-      // Alert evaluation must never block state updates.
-    }
+  if (existing && previousState !== state) {
+    // Wings waits on this HTTP response (status cron). SMTP and inbox writes
+    // must not hold that request open — a slow alert is what surfaces as
+    // "context deadline exceeded" and then a flapping node.
+    void import('../services/alerts.js')
+      .then(({ evaluateServerLifecycleTransition }) =>
+        evaluateServerLifecycleTransition(existing, previousState, state),
+      )
+      .catch(() => {});
   }
 }
 

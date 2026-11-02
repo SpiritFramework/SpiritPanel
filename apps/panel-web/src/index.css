@@ -3658,6 +3658,174 @@ body {
   box-shadow: 4px 0 24px -8px rgba(0, 0, 0, 0.25);
 }
 
+/* Branding shellLayout=navbar — desktop top bar for admin/client */
+.app-navbar {
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.85rem;
+  min-height: 3.25rem;
+}
+
+.app-navbar__brand {
+  flex-shrink: 0;
+  max-width: 13rem;
+}
+
+.app-navbar__brand .brand-mark {
+  gap: 0.55rem;
+  margin-inline: 0;
+  padding-block: 0.15rem;
+}
+
+.app-navbar__brand .brand-mark-logo,
+.app-navbar__brand .brand-mark-logo img {
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.55rem;
+}
+
+.app-navbar__brand .brand-mark-tagline {
+  display: none;
+}
+
+.app-navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-block: 0.15rem;
+}
+
+.app-navbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.app-navbar__link:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.app-navbar__link.is-active {
+  color: var(--accent-contrast, #fff);
+  background: var(--accent);
+  box-shadow: 0 4px 14px -4px var(--accent-glow);
+}
+
+.app-navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.app-navbar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--muted);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.app-navbar__icon-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.app-navbar__text-link {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.app-navbar__text-link:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.app-navbar__text-link--danger {
+  color: var(--danger-fg);
+}
+
+.app-navbar__text-link--danger:hover {
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+
+.app-navbar__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 9rem;
+  border-radius: 0.55rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.15s ease;
+}
+
+.app-navbar__user:hover {
+  background: var(--surface-hover);
+}
+
+.app-navbar__user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .app-navbar__link span {
+    display: none;
+  }
+
+  .app-navbar__link {
+    padding: 0.45rem;
+  }
+
+  .app-navbar__user-name {
+    display: none;
+  }
+}
+
 /* Mobile safe areas (notch / home indicator) */
 .safe-top {
   padding-top: max(0.625rem, env(safe-area-inset-top));

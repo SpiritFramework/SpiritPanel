@@ -12,6 +12,7 @@ import {
   type ServerCardLayoutStyle,
   type ServerListDefaultView,
   type ServerSidebarStyle,
+  type ShellLayout,
   type SidebarMaterial,
   type SurfaceRadius,
   type ThemePreset,
@@ -105,6 +106,7 @@ export interface PanelBranding {
   panelBackground: PanelBackground;
   panelAmbient: boolean;
   serverCardStyle: ServerCardLayoutStyle;
+  shellLayout: ShellLayout;
   adminSidebarStyle: AdminSidebarStyle;
   clientSidebarStyle: ClientSidebarStyle;
   serverSidebarStyle: ServerSidebarStyle;

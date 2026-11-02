@@ -47,6 +47,7 @@ const panelBackground = z.enum([
 const serverCardStyle = z.enum([
   'auto', 'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
 ]);
+const shellLayout = z.enum(['sidebar', 'navbar']);
 const adminSidebarStyle = z.enum(['default', 'rail', 'minimal', 'icons', 'boxed']);
 const clientSidebarStyle = z.enum(['default', 'floating', 'inset', 'pill', 'underline']);
 const serverSidebarStyle = z.enum(['default', 'compact', 'wide', 'icons', 'stacked']);
@@ -73,6 +74,7 @@ export const brandingSchema = z.object({
   panelBackground: panelBackground.optional(),
   panelAmbient: z.boolean().optional(),
   serverCardStyle: serverCardStyle.optional(),
+  shellLayout: shellLayout.optional(),
   adminSidebarStyle: adminSidebarStyle.optional(),
   clientSidebarStyle: clientSidebarStyle.optional(),
   serverSidebarStyle: serverSidebarStyle.optional(),
@@ -295,6 +297,7 @@ export interface BrandingSettings {
   panelAmbient?: boolean;
   serverCardStyle?: 'auto' | 'banner' | 'stripe' | 'glass' | 'edge' | 'neon' | 'minimal' | 'stacked'
     | 'poster' | 'split' | 'outline' | 'tile';
+  shellLayout?: 'sidebar' | 'navbar';
   adminSidebarStyle?: 'default' | 'rail' | 'minimal' | 'icons' | 'boxed';
   clientSidebarStyle?: 'default' | 'floating' | 'inset' | 'pill' | 'underline';
   serverSidebarStyle?: 'default' | 'compact' | 'wide' | 'icons' | 'stacked';
@@ -383,6 +386,7 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   panelBackground: 'nebula',
   panelAmbient: true,
   serverCardStyle: 'glass',
+  shellLayout: 'sidebar',
   adminSidebarStyle: 'rail',
   clientSidebarStyle: 'floating',
   serverSidebarStyle: 'compact',

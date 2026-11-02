@@ -97,37 +97,60 @@ export const StudioPreview = forwardRef<HTMLDivElement, StudioPreviewProps>(func
 
         {surface === 'client' || surface === 'admin' ? (
           <div
-            className={`ds-bstudio-mock-app panel-preview panel-preview--${branding.panelBackground}`}
+            className={`ds-bstudio-mock-app ds-bstudio-mock-app--${branding.shellLayout} panel-preview panel-preview--${branding.panelBackground}`}
             data-panel-ambient={branding.panelAmbient ? 'on' : 'off'}
+            data-shell-layout={branding.shellLayout}
           >
-            <aside
-              className={`ds-bstudio-mock-sidebar ds-bstudio-mock-sidebar--${
-                surface === 'admin' ? branding.adminSidebarStyle : branding.clientSidebarStyle
-              }`}
-              data-sidebar-material={branding.sidebarMaterial}
-            >
-              <div className="ds-bstudio-mock-sidebar__brand">
-                {logo ? (
-                  <img src={logo} alt="" />
-                ) : (
-                  <span style={panelNameGradientStyle()}>{panelNameInitial(brand)}</span>
-                )}
-                <span>{brand}</span>
-              </div>
-              <div className="ds-bstudio-mock-sidebar__nav">
-                <span className="is-active" />
-                <span />
-                <span />
-                <span />
-              </div>
-            </aside>
-            <main className="ds-bstudio-mock-main">
-              <header className="ds-bstudio-mock-topbar">
-                <span className="ds-bstudio-mock-topbar__title">
-                  {surface === 'admin' ? 'Administration' : 'Your servers'}
-                </span>
-                <span className="ds-bstudio-mock-topbar__chip" />
+            {branding.shellLayout === 'navbar' ? (
+              <header className="ds-bstudio-mock-navbar" data-sidebar-material={branding.sidebarMaterial}>
+                <div className="ds-bstudio-mock-navbar__brand">
+                  {logo ? (
+                    <img src={logo} alt="" />
+                  ) : (
+                    <span style={panelNameGradientStyle()}>{panelNameInitial(brand)}</span>
+                  )}
+                  <span>{brand}</span>
+                </div>
+                <div className="ds-bstudio-mock-navbar__links">
+                  <span className="is-active" />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <span className="ds-bstudio-mock-navbar__chip" />
               </header>
+            ) : (
+              <aside
+                className={`ds-bstudio-mock-sidebar ds-bstudio-mock-sidebar--${
+                  surface === 'admin' ? branding.adminSidebarStyle : branding.clientSidebarStyle
+                }`}
+                data-sidebar-material={branding.sidebarMaterial}
+              >
+                <div className="ds-bstudio-mock-sidebar__brand">
+                  {logo ? (
+                    <img src={logo} alt="" />
+                  ) : (
+                    <span style={panelNameGradientStyle()}>{panelNameInitial(brand)}</span>
+                  )}
+                  <span>{brand}</span>
+                </div>
+                <div className="ds-bstudio-mock-sidebar__nav">
+                  <span className="is-active" />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </aside>
+            )}
+            <main className="ds-bstudio-mock-main">
+              {branding.shellLayout === 'sidebar' ? (
+                <header className="ds-bstudio-mock-topbar">
+                  <span className="ds-bstudio-mock-topbar__title">
+                    {surface === 'admin' ? 'Administration' : 'Your servers'}
+                  </span>
+                  <span className="ds-bstudio-mock-topbar__chip" />
+                </header>
+              ) : null}
               {surface === 'admin' ? (
                 <div className={`ds-bstudio-mock-tabs ds-bstudio-mock-tabs--${branding.adminTabsStyle}`}>
                   <span className="is-active">Overview</span>

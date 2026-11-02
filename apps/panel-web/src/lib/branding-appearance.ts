@@ -91,6 +91,8 @@ export type ServerCardStylePreference = ServerCardLayoutStyle | 'auto';
 export type AdminSidebarStyle = 'default' | 'rail' | 'minimal' | 'icons' | 'boxed';
 export type ClientSidebarStyle = 'default' | 'floating' | 'inset' | 'pill' | 'underline';
 export type ServerSidebarStyle = 'default' | 'compact' | 'wide' | 'icons' | 'stacked';
+/** Admin & client shell: left sidebar or top navbar. Server pages keep a left nav. */
+export type ShellLayout = 'sidebar' | 'navbar';
 
 export type SurfaceRadius = 'default' | 'soft' | 'sharp';
 export type SidebarMaterial = 'glass' | 'solid' | 'frosted';
@@ -107,6 +109,7 @@ export interface BrandingAppearance {
   panelBackground: PanelBackground;
   panelAmbient: boolean;
   serverCardStyle: ServerCardLayoutStyle;
+  shellLayout: ShellLayout;
   adminSidebarStyle: AdminSidebarStyle;
   clientSidebarStyle: ClientSidebarStyle;
   serverSidebarStyle: ServerSidebarStyle;
@@ -127,6 +130,7 @@ export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
   panelBackground: 'nebula',
   panelAmbient: true,
   serverCardStyle: 'glass',
+  shellLayout: 'sidebar',
   adminSidebarStyle: 'rail',
   clientSidebarStyle: 'floating',
   serverSidebarStyle: 'compact',
@@ -153,6 +157,7 @@ const SERVER_CARD_LAYOUT_IDS: ServerCardLayoutStyle[] = [
   'banner', 'stripe', 'glass', 'edge', 'neon', 'minimal', 'stacked', 'poster', 'split', 'outline', 'tile',
 ];
 const SERVER_CARD_STYLE_IDS: ServerCardStylePreference[] = ['auto', ...SERVER_CARD_LAYOUT_IDS];
+const SHELL_LAYOUT_IDS: ShellLayout[] = ['sidebar', 'navbar'];
 const ADMIN_SIDEBAR_STYLE_IDS: AdminSidebarStyle[] = ['default', 'rail', 'minimal', 'icons', 'boxed'];
 const CLIENT_SIDEBAR_STYLE_IDS: ClientSidebarStyle[] = ['default', 'floating', 'inset', 'pill', 'underline'];
 const SERVER_SIDEBAR_STYLE_IDS: ServerSidebarStyle[] = ['default', 'compact', 'wide', 'icons', 'stacked'];
@@ -254,6 +259,21 @@ export const SERVER_CARD_STYLE_OPTIONS: { id: ServerCardLayoutStyle; label: stri
   { id: 'stacked', label: 'Stacked', description: 'Centered icon above the title', hint: 'Icon on top, text below' },
 ];
 
+export const SHELL_LAYOUT_OPTIONS: { id: ShellLayout; label: string; description: string; area: string }[] = [
+  {
+    id: 'sidebar',
+    label: 'Sidebar',
+    description: 'Classic left navigation for admin and client areas',
+    area: 'Admin & client shell',
+  },
+  {
+    id: 'navbar',
+    label: 'Navbar',
+    description: 'Top bar with horizontal links; phones still use a drawer',
+    area: 'Admin & client shell',
+  },
+];
+
 export const ADMIN_SIDEBAR_STYLE_OPTIONS: { id: AdminSidebarStyle; label: string; description: string; area: string }[] = [
   { id: 'default', label: 'Classic', description: 'Filled icons on the active page', area: 'Admin dashboard sidebar' },
   { id: 'rail', label: 'Accent rail', description: 'Vertical accent bar beside active links', area: 'Admin dashboard sidebar' },
@@ -339,6 +359,9 @@ export function normalizeAppearance(data?: Partial<BrandingAppearance>): Brandin
       if (isValid(stored, SERVER_CARD_LAYOUT_IDS)) return stored;
       return DEFAULT_BRANDING_APPEARANCE.serverCardStyle;
     })(),
+    shellLayout: isValid(data?.shellLayout, SHELL_LAYOUT_IDS)
+      ? data.shellLayout
+      : DEFAULT_BRANDING_APPEARANCE.shellLayout,
     adminSidebarStyle: isValid(data?.adminSidebarStyle, ADMIN_SIDEBAR_STYLE_IDS)
       ? data.adminSidebarStyle
       : DEFAULT_BRANDING_APPEARANCE.adminSidebarStyle,
@@ -377,6 +400,7 @@ export function applyAppearanceDataset(root: HTMLElement, appearance: BrandingAp
   root.dataset.themePreset = appearance.themePreset;
   root.dataset.loginBg = appearance.loginBackground;
   root.dataset.panelBg = appearance.panelBackground;
+  root.dataset.shellLayout = appearance.shellLayout;
   root.dataset.surfaceRadius = appearance.surfaceRadius;
   root.dataset.sidebarMaterial = appearance.sidebarMaterial;
   root.dataset.contentDensity = appearance.contentDensity;

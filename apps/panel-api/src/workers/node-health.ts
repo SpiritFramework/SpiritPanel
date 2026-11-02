@@ -6,11 +6,22 @@ import { evaluateNodeOfflineAlerts } from '../services/alerts.js';
 import { logWingsFailure } from '../lib/wings-sync.js';
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
+let probing = false;
 
 const POLL_MS = 15_000;
 const lastOnlineByNodeId = new Map<string, boolean>();
 
 async function probeAllNodes() {
+  if (probing) return;
+  probing = true;
+  try {
+    await probeAllNodesOnce();
+  } finally {
+    probing = false;
+  }
+}
+
+async function probeAllNodesOnce() {
   const nodes = await prisma.node.findMany();
   for (const node of nodes) {
     const probe = await probeNodeHealth(node);

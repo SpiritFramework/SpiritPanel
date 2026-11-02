@@ -8,15 +8,27 @@ export interface NodeHealthProbe {
   error: string | null;
 }
 
+/** One slow `GET /api/system` must not flip the node offline. Server list, admin
+ * servers, and the health worker all probe about every 15s with a 10s timeout.
+ * A single miss was marking the node offline, the next success marked it online
+ * and re-polled every server, and that load made the following probe miss again. */
+const ONLINE_GRACE_MS = 45_000;
+
+type RecentOnline = { at: number; wingsVersion: string | null };
+const recentOnline = new Map<string, RecentOnline>();
+
 export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
   try {
     const sys = await wingsForNode(node).getSystem();
-    return {
-      online: true,
-      wingsVersion: typeof sys.version === 'string' ? sys.version : null,
-      error: null,
-    };
+    const wingsVersion = typeof sys.version === 'string' ? sys.version : null;
+    recentOnline.set(node.id, { at: Date.now(), wingsVersion });
+    return { online: true, wingsVersion, error: null };
   } catch (e) {
+    const recent = recentOnline.get(node.id);
+    if (recent && Date.now() - recent.at < ONLINE_GRACE_MS) {
+      return { online: true, wingsVersion: recent.wingsVersion, error: null };
+    }
+    recentOnline.delete(node.id);
     return {
       online: false,
       wingsVersion: null,

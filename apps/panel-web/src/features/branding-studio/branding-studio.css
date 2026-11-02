@@ -417,6 +417,157 @@
   min-height: 22rem;
 }
 
+.ds-bstudio-mock-app--navbar {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.ds-bstudio-mock-navbar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+.ds-bstudio-mock-navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.ds-bstudio-mock-navbar__brand img,
+.ds-bstudio-mock-navbar__brand > span:first-child {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0.3rem;
+  object-fit: contain;
+}
+
+.ds-bstudio-mock-navbar__brand > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ds-bstudio-mock-navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-bstudio-mock-navbar__links > span {
+  display: block;
+  height: 0.55rem;
+  width: 1.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
+}
+
+.ds-bstudio-mock-navbar__links > span.is-active {
+  background: var(--accent);
+}
+
+.ds-bstudio-mock-navbar__chip {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
+  flex-shrink: 0;
+}
+
+.branding-shell-frame {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 4.75rem;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  border: 1px solid var(--border);
+}
+
+.branding-shell-frame--sidebar {
+  grid-template-columns: 2.1rem minmax(0, 1fr);
+}
+
+.branding-shell-frame--navbar {
+  grid-template-rows: 1.15rem minmax(0, 1fr);
+}
+
+.branding-shell-frame__side,
+.branding-shell-frame__top {
+  display: flex;
+  gap: 0.2rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.branding-shell-frame__side {
+  flex-direction: column;
+  align-items: center;
+  padding: 0.35rem 0.25rem;
+  border-right: 1px solid var(--border);
+}
+
+.branding-shell-frame__top {
+  align-items: center;
+  padding: 0.2rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.branding-shell-frame__mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.2rem;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.branding-shell-frame__chip {
+  display: block;
+  height: 0.35rem;
+  width: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
+}
+
+.branding-shell-frame__top .branding-shell-frame__chip {
+  width: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.branding-shell-frame__chip--active {
+  background: var(--accent);
+}
+
+.branding-shell-frame__body {
+  padding: 0.4rem;
+}
+
+.branding-shell-frame__block {
+  display: block;
+  height: 100%;
+  min-height: 2.4rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid var(--border);
+}
+
+.ds-blayout-grid--shell {
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  margin-bottom: 1.25rem;
+}
+
 .ds-bstudio-mock-sidebar {
   display: flex;
   flex-direction: column;
@@ -803,6 +954,7 @@
 }
 
 .ds-blayout-card__preview .branding-sidebar-frame,
+.ds-blayout-card__preview .branding-shell-frame,
 .ds-blayout-card__preview .branding-mock-card,
 .ds-blayout-card-stage {
   width: 100%;

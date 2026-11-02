@@ -19,6 +19,14 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Added
+
+- **Shell layout branding** — choose Sidebar or Navbar for the admin and client areas (Settings → Branding → Layout → Navigation). Phones keep a drawer in both modes. Server pages still use a left nav.
+
+### Fixed
+
+- **Node online/offline flap.** One slow FeatherWings health check was enough to mark the node offline. The next success marked it online and re-polled every server, which made the following check time out again. A node that answered recently stays online for 45 seconds across a missed check, and the dashboard no longer caches a failed check. Container status reports also return as soon as the database write finishes, so crash and offline alerts no longer hold Wings’ status sync open.
+
 ### Changed
 
 - **Installer 3.0.0** (`scripts/spirit.sh`): install and update ask for the latest GitHub release or unreleased `main`, save that choice in `.spirit-channel`, and skip `pnpm install` / `pnpm build` when the commit and lockfile are already built. **3.0.1:** `update -y` on a terminal still asks that question the first time no channel is saved.

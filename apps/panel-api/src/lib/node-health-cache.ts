@@ -1,5 +1,5 @@
 import type { Node } from '@prisma/client';
-import { wingsForNode } from '../services/wings-client.js';
+import { probeNodeHealth } from './node-health.js';
 
 export interface NodeHealthSnapshot {
   id: string;
@@ -44,15 +44,21 @@ export async function getNodeHealthSnapshot(
     capacity,
   };
 
-  let snapshot: NodeHealthSnapshot;
-  try {
-    const sys = await wingsForNode(node).getSystem();
-    snapshot = { ...base, online: true, version: sys.version };
-  } catch {
-    snapshot = { ...base, online: false, version: null };
-  }
+  const health = await probeNodeHealth(node);
+  const snapshot: NodeHealthSnapshot = {
+    ...base,
+    online: health.online,
+    version: health.wingsVersion,
+  };
 
-  cache.set(node.id, { expiresAt: Date.now() + CACHE_MS, snapshot });
+  // Pin successes so the dashboard does not call Wings on every refresh.
+  // Do not pin a failure — that held the badge offline for the whole cache window
+  // after a single timeout, then flipped back online on the next window.
+  if (health.online) {
+    cache.set(node.id, { expiresAt: Date.now() + CACHE_MS, snapshot });
+  } else {
+    cache.delete(node.id);
+  }
   return snapshot;
 }
 

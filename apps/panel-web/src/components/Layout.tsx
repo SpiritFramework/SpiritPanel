@@ -27,7 +27,7 @@ import {
   clientSidebarClassName,
   normalizeAppearance,
 } from '../lib/branding-appearance';
-import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink } from './Nav';
+import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink, TopNavItem } from './Nav';
 import { ThemeToggle } from './ThemeToggle';
 import { MobileShell } from './MobileShell';
 import { SelectControl } from './SelectControl';
@@ -38,8 +38,21 @@ import { RouteErrorBoundary } from './ErrorBoundary';
 
 export { SelectControl } from './SelectControl';
 
-function CommandPaletteButton() {
+function CommandPaletteButton({ compact = false }: { compact?: boolean }) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('open-command-palette'))}
+        className="app-navbar__icon-btn"
+        title="Search"
+        aria-label="Search"
+      >
+        <Search className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -92,6 +105,7 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const fullAdmin = isFullPanelAdmin(user);
+  const shellLayout = appearance.shellLayout;
 
   const visibleAdminGroups = adminGroups
     .map((group) => {
@@ -103,6 +117,8 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
       };
     })
     .filter((group) => group.links.length > 0);
+
+  const flatAdminLinks = visibleAdminGroups.flatMap((group) => group.links);
 
   const sidebar = (
     <>
@@ -150,9 +166,42 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
     </>
   );
 
+  const topbar =
+    shellLayout === 'navbar' ? (
+      <>
+        <div className="app-navbar__brand">
+          <BrandMark
+            name={branding.panelName}
+            subtitle={branding.tagline || 'Administration'}
+            logoUrl={branding.logoUrl || undefined}
+            homeTo="/admin"
+          />
+        </div>
+        <nav className="app-navbar__links" aria-label="Admin">
+          {flatAdminLinks.map(({ to, label, icon, exact }) => (
+            <TopNavItem key={to} to={to} end={exact} icon={icon} label={label} />
+          ))}
+        </nav>
+        <div className="app-navbar__actions">
+          <CommandPaletteButton compact />
+          <AlertBell />
+          <LiveAlertToasts />
+          <ThemeToggle compact />
+          <Link to="/servers" className="app-navbar__text-link" title="Client area">
+            Client
+          </Link>
+          <button type="button" onClick={logout} className="app-navbar__text-link app-navbar__text-link--danger">
+            Logout
+          </button>
+        </div>
+      </>
+    ) : undefined;
+
   return (
     <MobileShell
+      layout={shellLayout}
       sidebar={sidebar}
+      topbar={topbar}
       sidebarClassName={adminSidebarClassName(appearance.adminSidebarStyle)}
       contentClassName="w-full min-w-0"
       fillHeight={fillHeight}
@@ -174,6 +223,15 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const isAdmin = isStaffOrPanelAdmin(user);
+  const shellLayout = appearance.shellLayout;
+
+  const accountLinks = [
+    ...clientLinks,
+    ...(branding.ticketsEnabled !== false
+      ? [{ to: '/tickets', label: 'Support', icon: LifeBuoy }]
+      : []),
+    { to: '/profile', label: 'Profile', icon: User },
+  ];
 
   const sidebar = (
     <>
@@ -240,9 +298,45 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
     </>
   );
 
+  const topbar =
+    shellLayout === 'navbar' ? (
+      <>
+        <div className="app-navbar__brand">
+          <BrandMark
+            name={branding.panelName}
+            subtitle={branding.tagline || 'Game servers'}
+            logoUrl={branding.logoUrl || undefined}
+          />
+        </div>
+        <nav className="app-navbar__links" aria-label="Account">
+          {accountLinks.map(({ to, label, icon }) => (
+            <TopNavItem key={to} to={to} end={to === '/servers' || to === '/profile'} icon={icon} label={label} />
+          ))}
+          {isAdmin ? <TopNavItem to="/admin" icon={LayoutDashboard} label="Admin" /> : null}
+        </nav>
+        <div className="app-navbar__actions">
+          <CommandPaletteButton compact />
+          <AlertBell />
+          <LiveAlertToasts />
+          <ThemeToggle compact />
+          {user ? (
+            <Link to="/profile" className="app-navbar__user" title={user.username}>
+              <UserAvatar user={user} size="sm" ring className="shrink-0" />
+              <span className="app-navbar__user-name">{user.username}</span>
+            </Link>
+          ) : null}
+          <button type="button" onClick={logout} className="app-navbar__text-link app-navbar__text-link--danger">
+            Logout
+          </button>
+        </div>
+      </>
+    ) : undefined;
+
   return (
     <MobileShell
+      layout={shellLayout}
       sidebar={sidebar}
+      topbar={topbar}
       sidebarClassName={clientSidebarClassName(appearance.clientSidebarStyle)}
       contentClassName="w-full min-w-0"
       fillHeight={fillHeight}

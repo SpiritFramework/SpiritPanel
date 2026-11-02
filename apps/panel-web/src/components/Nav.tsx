@@ -113,6 +113,33 @@ export function TabNavItem({
   );
 }
 
+/** Compact horizontal link for the branding `navbar` shell layout. */
+export function TopNavItem({
+  to,
+  end,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  end?: boolean;
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      title={label}
+      className={({ isActive }) =>
+        `app-navbar__link${isActive ? ' is-active' : ''}`
+      }
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span>{label}</span>
+    </NavLink>
+  );
+}
+
 export function CompactBackLink({
   to,
   label,

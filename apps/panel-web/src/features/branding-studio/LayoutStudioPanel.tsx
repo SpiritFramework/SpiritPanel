@@ -5,6 +5,7 @@ import type {
   ClientSidebarStyle,
   ServerCardLayoutStyle,
   ServerSidebarStyle,
+  ShellLayout,
 } from '../../lib/branding-appearance';
 import {
   ADMIN_SIDEBAR_STYLE_OPTIONS,
@@ -18,6 +19,7 @@ import {
   SERVER_CARD_STYLE_OPTIONS,
   SERVER_LIST_VIEW_OPTIONS,
   SERVER_SIDEBAR_STYLE_OPTIONS,
+  SHELL_LAYOUT_OPTIONS,
   SIDEBAR_MATERIAL_OPTIONS,
   SURFACE_RADIUS_OPTIONS,
 } from '../../lib/branding-appearance';
@@ -106,6 +108,38 @@ function SidebarMock({
       <div className="branding-sidebar-frame__main">
         <span className="branding-sidebar-frame__bar" />
         <span className="branding-sidebar-frame__block" />
+      </div>
+    </div>
+  );
+}
+
+function ShellLayoutMock({ layout }: { layout: ShellLayout }) {
+  if (layout === 'navbar') {
+    return (
+      <div className="branding-shell-frame branding-shell-frame--navbar" aria-hidden>
+        <div className="branding-shell-frame__top">
+          <span className="branding-shell-frame__mark" />
+          <span className="branding-shell-frame__chip branding-shell-frame__chip--active" />
+          <span className="branding-shell-frame__chip" />
+          <span className="branding-shell-frame__chip" />
+          <span className="branding-shell-frame__chip" />
+        </div>
+        <div className="branding-shell-frame__body">
+          <span className="branding-shell-frame__block" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="branding-shell-frame branding-shell-frame--sidebar" aria-hidden>
+      <div className="branding-shell-frame__side">
+        <span className="branding-shell-frame__mark" />
+        <span className="branding-shell-frame__chip branding-shell-frame__chip--active" />
+        <span className="branding-shell-frame__chip" />
+        <span className="branding-shell-frame__chip" />
+      </div>
+      <div className="branding-shell-frame__body">
+        <span className="branding-shell-frame__block" />
       </div>
     </div>
   );
@@ -263,11 +297,39 @@ export function LayoutStudioPanel({
 
         {subSection === 'navigation' ? (
           <div className="ds-blayout-block">
+            <div className="ds-blayout-block-head">
+              <h4>Shell layout</h4>
+              <p>Admin and client areas — left sidebar or top navbar. Server pages keep a left nav.</p>
+            </div>
+            <div className="ds-blayout-grid ds-blayout-grid--shell">
+              {SHELL_LAYOUT_OPTIONS.map((opt) => (
+                <VisualCard
+                  key={opt.id}
+                  active={branding.shellLayout === opt.id}
+                  onClick={() => {
+                    pickSurface('client');
+                    onBrandingChange({
+                      ...branding,
+                      shellLayout: opt.id as ShellLayout,
+                    });
+                  }}
+                  label={opt.label}
+                  description={opt.description}
+                  badge={opt.area}
+                  preview={<ShellLayoutMock layout={opt.id} />}
+                />
+              ))}
+            </div>
+
             <div className="ds-blayout-nav-areas">
               <div className="ds-blayout-nav-area">
                 <div className="ds-blayout-block-head">
                   <h4>Admin sidebar</h4>
-                  <p>Users, servers, nodes, settings</p>
+                  <p>
+                    {branding.shellLayout === 'navbar'
+                      ? 'Styles the phone drawer (desktop uses the navbar)'
+                      : 'Users, servers, nodes, settings'}
+                  </p>
                 </div>
                 <div className="ds-blayout-grid ds-blayout-grid--nav">
                   {ADMIN_SIDEBAR_STYLE_OPTIONS.map((opt) => (

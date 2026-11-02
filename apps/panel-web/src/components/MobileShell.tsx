@@ -3,14 +3,16 @@ import { useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
 import { usePanelBackgroundClass } from '../hooks/usePanelBackgroundClass';
-import { normalizeAppearance, sidebarMaterialClassName } from '../lib/branding-appearance';
+import { normalizeAppearance, sidebarMaterialClassName, type ShellLayout } from '../lib/branding-appearance';
 import { AmbientBackdrop } from './AmbientBackdrop';
 
 const TICKET_CHAT_ROUTE = /^\/(?:admin\/)?tickets\/[^/]+$/;
 
-/** Admin/client app shell — drawer nav on phones, fixed sidebar from md up. */
+/** Admin/client app shell — drawer nav on phones; sidebar or top navbar from md up. */
 export function MobileShell({
   sidebar,
+  topbar,
+  layout = 'sidebar',
   headerTitle,
   sidebarClassName = '',
   contentClassName = 'w-full min-w-0',
@@ -18,6 +20,9 @@ export function MobileShell({
   children,
 }: {
   sidebar: ReactNode;
+  /** Desktop top navigation when `layout` is `navbar`. */
+  topbar?: ReactNode;
+  layout?: ShellLayout;
   headerTitle?: ReactNode;
   sidebarClassName?: string;
   contentClassName?: string;
@@ -28,6 +33,7 @@ export function MobileShell({
   const location = useLocation();
   const isTicketChat = TICKET_CHAT_ROUTE.test(location.pathname);
   const drawerId = useId();
+  const isNavbar = layout === 'navbar';
 
   useEffect(() => {
     setNavOpen(false);
@@ -55,8 +61,23 @@ export function MobileShell({
   const { branding } = useBranding();
   const materialClass = sidebarMaterialClassName(normalizeAppearance(branding).sidebarMaterial);
 
+  const asideVisibility = isNavbar
+    ? navOpen
+      ? 'translate-x-0'
+      : '-translate-x-full'
+    : navOpen
+      ? 'translate-x-0'
+      : '-translate-x-full md:translate-x-0';
+
+  const asideLayout = isNavbar
+    ? 'md:hidden'
+    : 'md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none';
+
   return (
-    <div className={`flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden ${panelBgClass}`}>
+    <div
+      className={`flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] overflow-hidden ${panelBgClass}`}
+      data-shell-layout={layout}
+    >
       {navOpen && (
         <button
           type="button"
@@ -68,9 +89,7 @@ export function MobileShell({
 
       <aside
         id={drawerId}
-        className={`glass-sidebar app-sidebar ${materialClass} fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out md:static md:z-auto md:w-56 md:max-w-none md:shrink-0 md:transform-none ${sidebarClassName} ${
-          navOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
+        className={`glass-sidebar app-sidebar ${materialClass} fixed inset-y-0 left-0 z-50 flex h-full w-[min(18rem,88vw)] max-w-[88vw] flex-col border-r border-[var(--glass-border)] transition-transform duration-200 ease-out ${asideLayout} ${sidebarClassName} ${asideVisibility}`}
       >
         <div className="flex items-center justify-end border-b border-[var(--border)] p-2 md:hidden">
           <button
@@ -85,7 +104,11 @@ export function MobileShell({
         {sidebar}
       </aside>
 
-      <div className={`mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden${isTicketChat ? ' mobile-shell-main--ticket' : ''}`}>
+      <div
+        className={`mobile-shell-main flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden${
+          isTicketChat ? ' mobile-shell-main--ticket' : ''
+        }`}
+      >
         {!isTicketChat ? <AmbientBackdrop /> : null}
         <header className="glass relative z-[1] flex shrink-0 items-center gap-2.5 border-b border-[var(--glass-border)] px-3 py-2.5 safe-top md:hidden">
           <button
@@ -100,6 +123,14 @@ export function MobileShell({
           </button>
           {headerTitle && <div className="min-w-0 flex-1 overflow-hidden">{headerTitle}</div>}
         </header>
+
+        {isNavbar && topbar ? (
+          <div
+            className={`app-navbar glass relative z-[1] hidden shrink-0 border-b border-[var(--glass-border)] md:flex ${materialClass}`}
+          >
+            {topbar}
+          </div>
+        ) : null}
 
         <main
           className={
