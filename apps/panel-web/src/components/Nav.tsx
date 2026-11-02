@@ -134,8 +134,10 @@ export function TopNavItem({
         `app-navbar__link${isActive ? ' is-active' : ''}`
       }
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span>{label}</span>
+      <span className="app-navbar__link-icon" aria-hidden>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="app-navbar__link-label">{label}</span>
     </NavLink>
   );
 }
