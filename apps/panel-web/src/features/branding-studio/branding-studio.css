@@ -442,32 +442,19 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.7rem;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  box-shadow: 0 8px 18px -16px rgba(0, 0, 0, 0.4);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
 }
 
 .ds-bstudio-mock-navbar__brand {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding-right: 0.55rem;
   font-size: 0.68rem;
   font-weight: 650;
   color: var(--text);
   flex-shrink: 0;
-}
-
-.ds-bstudio-mock-navbar__brand::after {
-  content: '';
-  position: absolute;
-  top: 15%;
-  bottom: 15%;
-  right: 0;
-  width: 1px;
-  background: color-mix(in srgb, var(--border) 85%, transparent);
 }
 
 .ds-bstudio-mock-navbar__brand img,
@@ -490,20 +477,16 @@
 .ds-bstudio-mock-navbar__links {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   flex: 1;
   min-width: 0;
-  padding: 0.18rem;
-  border-radius: 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
 }
 
 .ds-bstudio-mock-navbar__links > span {
   display: block;
   height: 0.55rem;
   width: 1.65rem;
-  border-radius: 0.35rem;
+  border-radius: 999px;
   background: color-mix(in srgb, var(--muted) 28%, transparent);
 }
 
@@ -515,8 +498,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
   flex-shrink: 0;
 }
 
@@ -609,15 +591,14 @@
 .branding-navbar-frame {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   width: 100%;
   height: 100%;
   min-height: 4.75rem;
-  padding: 0.55rem 0.5rem;
+  padding: 0.55rem 0.45rem;
   border-radius: 0.55rem;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  box-shadow: 0 8px 16px -14px rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
 .branding-navbar-frame__mark {
@@ -626,7 +607,6 @@
   border-radius: 0.2rem;
   background: var(--accent);
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 50%, transparent);
 }
 
 .branding-navbar-frame__links {
@@ -635,17 +615,13 @@
   gap: 0.2rem;
   flex: 1;
   min-width: 0;
-  padding: 0.18rem;
-  border-radius: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
 }
 
 .branding-navbar-frame__chip {
   display: block;
   height: 0.4rem;
   width: 1.15rem;
-  border-radius: 0.25rem;
+  border-radius: 0.2rem;
   background: color-mix(in srgb, var(--muted) 28%, transparent);
   flex-shrink: 0;
 }
@@ -659,10 +635,6 @@
   align-items: center;
   gap: 0.2rem;
   margin-left: auto;
-  padding: 0.15rem;
-  border-radius: 0.4rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 65%, transparent);
 }
 
 .branding-navbar-frame__dot {
@@ -672,25 +644,9 @@
   background: color-mix(in srgb, var(--muted) 35%, transparent);
 }
 
-.branding-navbar-frame--pills .branding-navbar-frame__links {
-  background: transparent;
-  border-color: transparent;
-  padding: 0;
-  gap: 0.25rem;
-}
-
 .branding-navbar-frame--pills .branding-navbar-frame__chip {
   border-radius: 999px;
   height: 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-}
-
-.branding-navbar-frame--underline .branding-navbar-frame__links {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  padding: 0;
 }
 
 .branding-navbar-frame--underline .branding-navbar-frame__chip {
@@ -719,25 +675,9 @@
   margin-left: 0;
 }
 
-.ds-bstudio-mock-navbar--pills .ds-bstudio-mock-navbar__links {
-  background: transparent;
-  border-color: transparent;
-  padding: 0;
-  gap: 0.3rem;
-}
-
 .ds-bstudio-mock-navbar--pills .ds-bstudio-mock-navbar__links > span {
   border-radius: 999px;
   height: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-}
-
-.ds-bstudio-mock-navbar--underline .ds-bstudio-mock-navbar__links {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  padding: 0;
 }
 
 .ds-bstudio-mock-navbar--underline .ds-bstudio-mock-navbar__links > span {
@@ -755,10 +695,6 @@
 .ds-bstudio-mock-navbar--compact .ds-bstudio-mock-navbar__links > span {
   width: 0.65rem;
   height: 0.65rem;
-}
-
-.ds-bstudio-mock-navbar--split .ds-bstudio-mock-navbar__brand::after {
-  display: none;
 }
 
 .ds-bstudio-mock-navbar--split .ds-bstudio-mock-navbar__links {

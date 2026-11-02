@@ -184,13 +184,10 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           ))}
         </nav>
         <div className="app-navbar__actions">
-          <div className="app-navbar__tools">
-            <CommandPaletteButton compact />
-            <AlertBell />
-            <LiveAlertToasts />
-            <ThemeToggle compact />
-          </div>
-          <span className="app-navbar__divider" aria-hidden />
+          <CommandPaletteButton compact />
+          <AlertBell />
+          <LiveAlertToasts />
+          <ThemeToggle compact />
           <Link to="/servers" className="app-navbar__text-link" title="Client area">
             Client
           </Link>
@@ -320,13 +317,10 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
           {isAdmin ? <TopNavItem to="/admin" icon={LayoutDashboard} label="Admin" /> : null}
         </nav>
         <div className="app-navbar__actions">
-          <div className="app-navbar__tools">
-            <CommandPaletteButton compact />
-            <AlertBell />
-            <LiveAlertToasts />
-            <ThemeToggle compact />
-          </div>
-          <span className="app-navbar__divider" aria-hidden />
+          <CommandPaletteButton compact />
+          <AlertBell />
+          <LiveAlertToasts />
+          <ThemeToggle compact />
           {user ? (
             <Link to="/profile" className="app-navbar__user" title={user.username}>
               <UserAvatar user={user} size="sm" ring className="shrink-0" />
