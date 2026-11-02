@@ -88,6 +88,7 @@ const serverCardStyle = z.enum([
 const shellLayout = z.enum(['sidebar', 'navbar']);
 const adminSidebarStyle = z.enum(['default', 'rail', 'minimal', 'icons', 'boxed']);
 const clientSidebarStyle = z.enum(['default', 'floating', 'inset', 'pill', 'underline']);
+const navbarStyle = z.enum(['default', 'pills', 'underline', 'compact', 'split']);
 const serverSidebarStyle = z.enum(['default', 'compact', 'wide', 'icons', 'stacked']);
 const surfaceRadius = z.enum(['default', 'soft', 'sharp']);
 const sidebarMaterial = z.enum(['glass', 'solid', 'frosted']);
@@ -115,6 +116,8 @@ export const brandingSchema = z.object({
   shellLayout: shellLayout.optional(),
   adminSidebarStyle: adminSidebarStyle.optional(),
   clientSidebarStyle: clientSidebarStyle.optional(),
+  adminNavbarStyle: navbarStyle.optional(),
+  clientNavbarStyle: navbarStyle.optional(),
   serverSidebarStyle: serverSidebarStyle.optional(),
   surfaceRadius: surfaceRadius.optional(),
   sidebarMaterial: sidebarMaterial.optional(),
@@ -356,6 +359,8 @@ export interface BrandingSettings {
   shellLayout?: 'sidebar' | 'navbar';
   adminSidebarStyle?: 'default' | 'rail' | 'minimal' | 'icons' | 'boxed';
   clientSidebarStyle?: 'default' | 'floating' | 'inset' | 'pill' | 'underline';
+  adminNavbarStyle?: 'default' | 'pills' | 'underline' | 'compact' | 'split';
+  clientNavbarStyle?: 'default' | 'pills' | 'underline' | 'compact' | 'split';
   serverSidebarStyle?: 'default' | 'compact' | 'wide' | 'icons' | 'stacked';
   surfaceRadius?: 'default' | 'soft' | 'sharp';
   sidebarMaterial?: 'glass' | 'solid' | 'frosted';
@@ -445,6 +450,8 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   shellLayout: 'sidebar',
   adminSidebarStyle: 'rail',
   clientSidebarStyle: 'floating',
+  adminNavbarStyle: 'default',
+  clientNavbarStyle: 'default',
   serverSidebarStyle: 'compact',
   surfaceRadius: 'default',
   sidebarMaterial: 'glass',

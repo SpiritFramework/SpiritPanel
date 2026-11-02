@@ -584,6 +584,123 @@
   margin-bottom: 1.25rem;
 }
 
+.ds-blayout-nav-area--solo {
+  margin-top: 0.25rem;
+}
+
+.branding-navbar-frame {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 100%;
+  min-height: 4.75rem;
+  padding: 0.55rem 0.45rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.branding-navbar-frame__mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.2rem;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.branding-navbar-frame__links {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.branding-navbar-frame__chip {
+  display: block;
+  height: 0.4rem;
+  width: 1.15rem;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
+  flex-shrink: 0;
+}
+
+.branding-navbar-frame__chip--active {
+  background: var(--accent);
+}
+
+.branding-navbar-frame__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.branding-navbar-frame__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+
+.branding-navbar-frame--pills .branding-navbar-frame__chip {
+  border-radius: 999px;
+  height: 0.5rem;
+}
+
+.branding-navbar-frame--underline .branding-navbar-frame__chip {
+  height: 0.28rem;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px solid color-mix(in srgb, var(--muted) 35%, transparent);
+}
+
+.branding-navbar-frame--underline .branding-navbar-frame__chip--active {
+  border-bottom-color: var(--accent);
+  background: transparent;
+}
+
+.branding-navbar-frame--compact .branding-navbar-frame__chip {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 0.2rem;
+}
+
+.branding-navbar-frame--split .branding-navbar-frame__links {
+  justify-content: center;
+}
+
+.branding-navbar-frame--split .branding-navbar-frame__actions {
+  margin-left: 0;
+}
+
+.ds-bstudio-mock-navbar--pills .ds-bstudio-mock-navbar__links > span {
+  border-radius: 999px;
+  height: 0.65rem;
+}
+
+.ds-bstudio-mock-navbar--underline .ds-bstudio-mock-navbar__links > span {
+  height: 0.35rem;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 2px solid color-mix(in srgb, var(--muted) 30%, transparent);
+}
+
+.ds-bstudio-mock-navbar--underline .ds-bstudio-mock-navbar__links > span.is-active {
+  border-bottom-color: var(--accent);
+  background: transparent;
+}
+
+.ds-bstudio-mock-navbar--compact .ds-bstudio-mock-navbar__links > span {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.ds-bstudio-mock-navbar--split .ds-bstudio-mock-navbar__links {
+  justify-content: center;
+}
+
 .ds-bstudio-mock-sidebar {
   display: flex;
   flex-direction: column;
@@ -972,6 +1089,7 @@
 
 .ds-blayout-card__preview .branding-sidebar-frame,
 .ds-blayout-card__preview .branding-shell-frame,
+.ds-blayout-card__preview .branding-navbar-frame,
 .ds-blayout-card__preview .branding-mock-card,
 .ds-blayout-card__preview .atm-preview-stage,
 .ds-blayout-card-stage {

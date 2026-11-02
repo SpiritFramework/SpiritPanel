@@ -111,7 +111,12 @@ export const StudioPreview = forwardRef<HTMLDivElement, StudioPreviewProps>(func
               dense={branding.panelAmbient}
             />
             {branding.shellLayout === 'navbar' ? (
-              <header className="ds-bstudio-mock-navbar" data-sidebar-material={branding.sidebarMaterial}>
+              <header
+                className={`ds-bstudio-mock-navbar ds-bstudio-mock-navbar--${
+                  surface === 'admin' ? branding.adminNavbarStyle : branding.clientNavbarStyle
+                }`}
+                data-sidebar-material={branding.sidebarMaterial}
+              >
                 <div className="ds-bstudio-mock-navbar__brand">
                   {logo ? (
                     <img src={logo} alt="" />

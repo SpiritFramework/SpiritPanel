@@ -3448,9 +3448,81 @@ body {
   font-weight: 600;
 }
 
+/* Navbar style presets */
+.app-navbar--pills .app-navbar__link {
+  border-radius: 999px;
+  padding-inline: 0.85rem;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.app-navbar--pills .app-navbar__link:hover {
+  background: var(--surface-hover);
+}
+
+.app-navbar--pills .app-navbar__link.is-active {
+  border-color: transparent;
+}
+
+.app-navbar--underline .app-navbar__links {
+  gap: 0.45rem;
+}
+
+.app-navbar--underline .app-navbar__link {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.55rem 0.35rem 0.45rem;
+  border-bottom: 2px solid transparent;
+}
+
+.app-navbar--underline .app-navbar__link:hover {
+  background: transparent;
+  color: var(--text);
+  border-bottom-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.app-navbar--underline .app-navbar__link.is-active {
+  color: var(--accent);
+  background: transparent;
+  box-shadow: none;
+  border-bottom-color: var(--accent);
+}
+
+.app-navbar--compact .app-navbar__link {
+  padding: 0.45rem;
+  gap: 0;
+}
+
+.app-navbar--compact .app-navbar__link span {
+  display: none;
+}
+
+.app-navbar--compact .app-navbar__links {
+  gap: 0.15rem;
+}
+
+.app-navbar--split .app-navbar__brand {
+  flex: 0 0 auto;
+}
+
+.app-navbar--split .app-navbar__links {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.app-navbar--split .app-navbar__actions {
+  margin-left: 0;
+  flex: 0 0 auto;
+}
+
 @media (max-width: 1100px) {
   .app-navbar__link span {
     display: none;
+  }
+
+  .app-navbar--split .app-navbar__links {
+    justify-content: flex-start;
   }
 
   .app-navbar__link {

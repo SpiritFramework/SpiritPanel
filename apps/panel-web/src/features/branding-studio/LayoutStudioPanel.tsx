@@ -4,24 +4,27 @@ import type {
   AdminSidebarStyle,
   AtmospherePreset,
   ClientSidebarStyle,
+  NavbarStyle,
   ServerCardLayoutStyle,
   ServerSidebarStyle,
   ShellLayout,
 } from '../../lib/branding-appearance';
 import {
+  ADMIN_NAVBAR_STYLE_OPTIONS,
   ADMIN_SIDEBAR_STYLE_OPTIONS,
   ADMIN_TABS_STYLE_OPTIONS,
+  CLIENT_NAVBAR_STYLE_OPTIONS,
   CLIENT_SIDEBAR_STYLE_OPTIONS,
   CONTENT_DENSITY_OPTIONS,
   LOGIN_AMBIENT_LEVEL_OPTIONS,
   LOGIN_BACKGROUND_OPTIONS,
   MOTION_PREFERENCE_OPTIONS,
+  NAV_MATERIAL_OPTIONS,
   PANEL_BACKGROUND_OPTIONS,
   SERVER_CARD_STYLE_OPTIONS,
   SERVER_LIST_VIEW_OPTIONS,
   SERVER_SIDEBAR_STYLE_OPTIONS,
   SHELL_LAYOUT_OPTIONS,
-  SIDEBAR_MATERIAL_OPTIONS,
   SURFACE_RADIUS_OPTIONS,
 } from '../../lib/branding-appearance';
 import { AtmosphereScene } from '../../components/AtmosphereScene';
@@ -32,7 +35,7 @@ export type LayoutSubSection = 'atmosphere' | 'navigation' | 'cards' | 'finish';
 
 const SUBS: { id: LayoutSubSection; label: string; hint: string }[] = [
   { id: 'atmosphere', label: 'Atmosphere', hint: 'Animated login & panel scenes' },
-  { id: 'navigation', label: 'Navigation', hint: 'Sidebars by area' },
+  { id: 'navigation', label: 'Navigation', hint: 'Sidebar or navbar by area' },
   { id: 'cards', label: 'Cards', hint: 'Server card layouts' },
   { id: 'finish', label: 'Finish', hint: 'Corners, density, motion' },
 ];
@@ -143,6 +146,24 @@ function ShellLayoutMock({ layout }: { layout: ShellLayout }) {
       <div className="branding-shell-frame__body">
         <span className="branding-shell-frame__block" />
       </div>
+    </div>
+  );
+}
+
+function NavbarMock({ style }: { style: NavbarStyle }) {
+  return (
+    <div className={`branding-navbar-frame branding-navbar-frame--${style}`} aria-hidden>
+      <span className="branding-navbar-frame__mark" />
+      <span className="branding-navbar-frame__links">
+        <span className="branding-navbar-frame__chip branding-navbar-frame__chip--active" />
+        <span className="branding-navbar-frame__chip" />
+        <span className="branding-navbar-frame__chip" />
+        <span className="branding-navbar-frame__chip" />
+      </span>
+      <span className="branding-navbar-frame__actions">
+        <span className="branding-navbar-frame__dot" />
+        <span className="branding-navbar-frame__dot" />
+      </span>
     </div>
   );
 }
@@ -303,7 +324,7 @@ export function LayoutStudioPanel({
           <div className="ds-blayout-block">
             <div className="ds-blayout-block-head">
               <h4>Shell layout</h4>
-              <p>Admin and client areas — left sidebar or top navbar. Server pages keep a left nav.</p>
+              <p>Admin and client areas. Server pages always keep a left nav.</p>
             </div>
             <div className="ds-blayout-grid ds-blayout-grid--shell">
               {SHELL_LAYOUT_OPTIONS.map((opt) => (
@@ -311,7 +332,7 @@ export function LayoutStudioPanel({
                   key={opt.id}
                   active={branding.shellLayout === opt.id}
                   onClick={() => {
-                    pickSurface('client');
+                    pickSurface(opt.id === 'navbar' ? 'admin' : 'client');
                     onBrandingChange({
                       ...branding,
                       shellLayout: opt.id as ShellLayout,
@@ -325,94 +346,144 @@ export function LayoutStudioPanel({
               ))}
             </div>
 
-            <div className="ds-blayout-nav-areas">
-              <div className="ds-blayout-nav-area">
-                <div className="ds-blayout-block-head">
-                  <h4>Admin sidebar</h4>
-                  <p>
-                    {branding.shellLayout === 'navbar'
-                      ? 'Styles the phone drawer (desktop uses the navbar)'
-                      : 'Users, servers, nodes, settings'}
-                  </p>
+            {branding.shellLayout === 'navbar' ? (
+              <div className="ds-blayout-nav-areas">
+                <div className="ds-blayout-nav-area">
+                  <div className="ds-blayout-block-head">
+                    <h4>Admin navbar</h4>
+                    <p>Desktop top bar — phones still use the admin drawer</p>
+                  </div>
+                  <div className="ds-blayout-grid ds-blayout-grid--nav">
+                    {ADMIN_NAVBAR_STYLE_OPTIONS.map((opt) => (
+                      <VisualCard
+                        key={opt.id}
+                        active={branding.adminNavbarStyle === opt.id}
+                        onClick={() => {
+                          pickSurface('admin');
+                          onBrandingChange({
+                            ...branding,
+                            adminNavbarStyle: opt.id as NavbarStyle,
+                          });
+                        }}
+                        label={opt.label}
+                        description={opt.description}
+                        preview={<NavbarMock style={opt.id} />}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="ds-blayout-grid ds-blayout-grid--nav">
-                  {ADMIN_SIDEBAR_STYLE_OPTIONS.map((opt) => (
-                    <VisualCard
-                      key={opt.id}
-                      active={branding.adminSidebarStyle === opt.id}
-                      onClick={() => {
-                        pickSurface('admin');
-                        onBrandingChange({
-                          ...branding,
-                          adminSidebarStyle: opt.id as AdminSidebarStyle,
-                        });
-                      }}
-                      label={opt.label}
-                      description={opt.description}
-                      preview={<SidebarMock prefix="admin" style={opt.id} />}
-                    />
-                  ))}
+
+                <div className="ds-blayout-nav-area">
+                  <div className="ds-blayout-block-head">
+                    <h4>Client navbar</h4>
+                    <p>My Servers, account, support</p>
+                  </div>
+                  <div className="ds-blayout-grid ds-blayout-grid--nav">
+                    {CLIENT_NAVBAR_STYLE_OPTIONS.map((opt) => (
+                      <VisualCard
+                        key={opt.id}
+                        active={branding.clientNavbarStyle === opt.id}
+                        onClick={() => {
+                          pickSurface('client');
+                          onBrandingChange({
+                            ...branding,
+                            clientNavbarStyle: opt.id as NavbarStyle,
+                          });
+                        }}
+                        label={opt.label}
+                        description={opt.description}
+                        preview={<NavbarMock style={opt.id} />}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              <div className="ds-blayout-nav-area">
-                <div className="ds-blayout-block-head">
-                  <h4>Client sidebar</h4>
-                  <p>My Servers, account, billing</p>
+            ) : (
+              <div className="ds-blayout-nav-areas">
+                <div className="ds-blayout-nav-area">
+                  <div className="ds-blayout-block-head">
+                    <h4>Admin sidebar</h4>
+                    <p>Users, servers, nodes, settings</p>
+                  </div>
+                  <div className="ds-blayout-grid ds-blayout-grid--nav">
+                    {ADMIN_SIDEBAR_STYLE_OPTIONS.map((opt) => (
+                      <VisualCard
+                        key={opt.id}
+                        active={branding.adminSidebarStyle === opt.id}
+                        onClick={() => {
+                          pickSurface('admin');
+                          onBrandingChange({
+                            ...branding,
+                            adminSidebarStyle: opt.id as AdminSidebarStyle,
+                          });
+                        }}
+                        label={opt.label}
+                        description={opt.description}
+                        preview={<SidebarMock prefix="admin" style={opt.id} />}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="ds-blayout-grid ds-blayout-grid--nav">
-                  {CLIENT_SIDEBAR_STYLE_OPTIONS.map((opt) => (
-                    <VisualCard
-                      key={opt.id}
-                      active={branding.clientSidebarStyle === opt.id}
-                      onClick={() => {
-                        pickSurface('client');
-                        onBrandingChange({
-                          ...branding,
-                          clientSidebarStyle: opt.id as ClientSidebarStyle,
-                        });
-                      }}
-                      label={opt.label}
-                      description={opt.description}
-                      preview={<SidebarMock prefix="client" style={opt.id} />}
-                    />
-                  ))}
+
+                <div className="ds-blayout-nav-area">
+                  <div className="ds-blayout-block-head">
+                    <h4>Client sidebar</h4>
+                    <p>My Servers, account, support</p>
+                  </div>
+                  <div className="ds-blayout-grid ds-blayout-grid--nav">
+                    {CLIENT_SIDEBAR_STYLE_OPTIONS.map((opt) => (
+                      <VisualCard
+                        key={opt.id}
+                        active={branding.clientSidebarStyle === opt.id}
+                        onClick={() => {
+                          pickSurface('client');
+                          onBrandingChange({
+                            ...branding,
+                            clientSidebarStyle: opt.id as ClientSidebarStyle,
+                          });
+                        }}
+                        label={opt.label}
+                        description={opt.description}
+                        preview={<SidebarMock prefix="client" style={opt.id} />}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="ds-blayout-nav-area">
-                <div className="ds-blayout-block-head">
-                  <h4>Server sidebar</h4>
-                  <p>Console, files, schedules</p>
-                </div>
-                <div className="ds-blayout-grid ds-blayout-grid--nav">
-                  {SERVER_SIDEBAR_STYLE_OPTIONS.map((opt) => (
-                    <VisualCard
-                      key={opt.id}
-                      active={branding.serverSidebarStyle === opt.id}
-                      onClick={() => {
-                        pickSurface('server');
-                        onBrandingChange({
-                          ...branding,
-                          serverSidebarStyle: opt.id as ServerSidebarStyle,
-                        });
-                      }}
-                      label={opt.label}
-                      description={opt.description}
-                      preview={<SidebarMock prefix="server" style={opt.id} />}
-                    />
-                  ))}
-                </div>
+            <div className="ds-blayout-nav-area ds-blayout-nav-area--solo">
+              <div className="ds-blayout-block-head ds-blayout-block-head--spaced">
+                <h4>Server sidebar</h4>
+                <p>Console, files, schedules — always a left nav inside a server</p>
+              </div>
+              <div className="ds-blayout-grid ds-blayout-grid--nav">
+                {SERVER_SIDEBAR_STYLE_OPTIONS.map((opt) => (
+                  <VisualCard
+                    key={opt.id}
+                    active={branding.serverSidebarStyle === opt.id}
+                    onClick={() => {
+                      pickSurface('server');
+                      onBrandingChange({
+                        ...branding,
+                        serverSidebarStyle: opt.id as ServerSidebarStyle,
+                      });
+                    }}
+                    label={opt.label}
+                    description={opt.description}
+                    preview={<SidebarMock prefix="server" style={opt.id} />}
+                  />
+                ))}
               </div>
             </div>
 
             <div className="ds-blayout-block-head ds-blayout-block-head--spaced">
-              <h4>Sidebar material</h4>
-              <p>How navigation surfaces treat blur and opacity.</p>
+              <h4>Nav material</h4>
+              <p>Blur and opacity for the sidebar, top bar, and phone drawer.</p>
             </div>
             <SegmentGrid
               value={branding.sidebarMaterial}
-              options={SIDEBAR_MATERIAL_OPTIONS}
+              options={NAV_MATERIAL_OPTIONS}
               onChange={(sidebarMaterial) => {
                 pickSurface('client');
                 onBrandingChange({ ...branding, sidebarMaterial });

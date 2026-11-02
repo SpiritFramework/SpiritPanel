@@ -25,6 +25,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   adminSidebarClassName,
   clientSidebarClassName,
+  navbarStyleClassName,
   normalizeAppearance,
 } from '../lib/branding-appearance';
 import { BrandMark, SideNavGroup, SideNavItem, SidebarFooterLink, TopNavItem } from './Nav';
@@ -203,6 +204,7 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
       sidebar={sidebar}
       topbar={topbar}
       sidebarClassName={adminSidebarClassName(appearance.adminSidebarStyle)}
+      navbarClassName={navbarStyleClassName(appearance.adminNavbarStyle)}
       contentClassName="w-full min-w-0"
       fillHeight={fillHeight}
       headerTitle={
@@ -338,6 +340,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
       sidebar={sidebar}
       topbar={topbar}
       sidebarClassName={clientSidebarClassName(appearance.clientSidebarStyle)}
+      navbarClassName={navbarStyleClassName(appearance.clientNavbarStyle)}
       contentClassName="w-full min-w-0"
       fillHeight={fillHeight}
       headerTitle={

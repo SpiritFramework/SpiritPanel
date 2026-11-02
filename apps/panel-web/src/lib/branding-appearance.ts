@@ -61,9 +61,13 @@ export type ClientSidebarStyle = 'default' | 'floating' | 'inset' | 'pill' | 'un
 export type ServerSidebarStyle = 'default' | 'compact' | 'wide' | 'icons' | 'stacked';
 /** Admin & client shell: left sidebar or top navbar. Server pages keep a left nav. */
 export type ShellLayout = 'sidebar' | 'navbar';
+/** Top-bar link chrome when shellLayout is navbar. */
+export type NavbarStyle = 'default' | 'pills' | 'underline' | 'compact' | 'split';
 
 export type SurfaceRadius = 'default' | 'soft' | 'sharp';
 export type SidebarMaterial = 'glass' | 'solid' | 'frosted';
+/** Same values as SidebarMaterial; applies to sidebar and navbar surfaces. */
+export type NavMaterial = SidebarMaterial;
 export type ContentDensity = 'comfortable' | 'compact' | 'spacious';
 export type MotionPreference = 'system' | 'full' | 'reduced';
 export type ServerListDefaultView = 'grid' | 'list';
@@ -80,6 +84,8 @@ export interface BrandingAppearance {
   shellLayout: ShellLayout;
   adminSidebarStyle: AdminSidebarStyle;
   clientSidebarStyle: ClientSidebarStyle;
+  adminNavbarStyle: NavbarStyle;
+  clientNavbarStyle: NavbarStyle;
   serverSidebarStyle: ServerSidebarStyle;
   surfaceRadius: SurfaceRadius;
   sidebarMaterial: SidebarMaterial;
@@ -101,6 +107,8 @@ export const DEFAULT_BRANDING_APPEARANCE: BrandingAppearance = {
   shellLayout: 'sidebar',
   adminSidebarStyle: 'rail',
   clientSidebarStyle: 'floating',
+  adminNavbarStyle: 'default',
+  clientNavbarStyle: 'default',
   serverSidebarStyle: 'compact',
   surfaceRadius: 'default',
   sidebarMaterial: 'glass',
@@ -165,6 +173,7 @@ const SERVER_CARD_STYLE_IDS: ServerCardStylePreference[] = ['auto', ...SERVER_CA
 const SHELL_LAYOUT_IDS: ShellLayout[] = ['sidebar', 'navbar'];
 const ADMIN_SIDEBAR_STYLE_IDS: AdminSidebarStyle[] = ['default', 'rail', 'minimal', 'icons', 'boxed'];
 const CLIENT_SIDEBAR_STYLE_IDS: ClientSidebarStyle[] = ['default', 'floating', 'inset', 'pill', 'underline'];
+const NAVBAR_STYLE_IDS: NavbarStyle[] = ['default', 'pills', 'underline', 'compact', 'split'];
 const SERVER_SIDEBAR_STYLE_IDS: ServerSidebarStyle[] = ['default', 'compact', 'wide', 'icons', 'stacked'];
 const SURFACE_RADIUS_IDS: SurfaceRadius[] = ['default', 'soft', 'sharp'];
 const SIDEBAR_MATERIAL_IDS: SidebarMaterial[] = ['glass', 'solid', 'frosted'];
@@ -237,32 +246,50 @@ export const SHELL_LAYOUT_OPTIONS: { id: ShellLayout; label: string; description
   {
     id: 'sidebar',
     label: 'Sidebar',
-    description: 'Classic left navigation for admin and client areas',
+    description: 'Left navigation for admin and client; style options below',
     area: 'Admin & client shell',
   },
   {
     id: 'navbar',
     label: 'Navbar',
-    description: 'Top bar with horizontal links; phones still use a drawer',
+    description: 'Top bar on desktop; phones keep a drawer',
     area: 'Admin & client shell',
   },
 ];
 
 export const ADMIN_SIDEBAR_STYLE_OPTIONS: { id: AdminSidebarStyle; label: string; description: string; area: string }[] = [
-  { id: 'default', label: 'Classic', description: 'Filled icons on the active page', area: 'Admin dashboard sidebar' },
-  { id: 'rail', label: 'Accent rail', description: 'Vertical accent bar beside active links', area: 'Admin dashboard sidebar' },
-  { id: 'icons', label: 'Icon forward', description: 'Larger icon tiles, denser visual nav', area: 'Admin dashboard sidebar' },
-  { id: 'boxed', label: 'Boxed links', description: 'Each item sits in its own bordered cell', area: 'Admin dashboard sidebar' },
-  { id: 'minimal', label: 'Minimal', description: 'Smaller icons, text-first navigation', area: 'Admin dashboard sidebar' },
+  { id: 'default', label: 'Classic', description: 'Filled icons on the active page', area: 'Admin left nav' },
+  { id: 'rail', label: 'Accent rail', description: 'Vertical accent bar beside active links', area: 'Admin left nav' },
+  { id: 'icons', label: 'Icon forward', description: 'Larger icon tiles, denser visual nav', area: 'Admin left nav' },
+  { id: 'boxed', label: 'Boxed links', description: 'Each item sits in its own bordered cell', area: 'Admin left nav' },
+  { id: 'minimal', label: 'Minimal', description: 'Smaller icons, text-first navigation', area: 'Admin left nav' },
 ];
 
 export const CLIENT_SIDEBAR_STYLE_OPTIONS: { id: ClientSidebarStyle; label: string; description: string; area: string }[] = [
-  { id: 'default', label: 'Classic', description: 'Flat section groups with dividers', area: 'My Servers & account area' },
-  { id: 'floating', label: 'Floating groups', description: 'Each nav group in its own card', area: 'My Servers & account area' },
-  { id: 'pill', label: 'Pills', description: 'Rounded pill links with soft active fill', area: 'My Servers & account area' },
-  { id: 'underline', label: 'Underline', description: 'Flat list with accent underline on active', area: 'My Servers & account area' },
-  { id: 'inset', label: 'Inset tray', description: 'Nav links sit in recessed wells', area: 'My Servers & account area' },
+  { id: 'default', label: 'Classic', description: 'Flat section groups with dividers', area: 'Client left nav' },
+  { id: 'floating', label: 'Floating groups', description: 'Each nav group in its own card', area: 'Client left nav' },
+  { id: 'pill', label: 'Pills', description: 'Rounded pill links with soft active fill', area: 'Client left nav' },
+  { id: 'underline', label: 'Underline', description: 'Flat list with accent underline on active', area: 'Client left nav' },
+  { id: 'inset', label: 'Inset tray', description: 'Nav links sit in recessed wells', area: 'Client left nav' },
 ];
+
+export const NAVBAR_STYLE_OPTIONS: { id: NavbarStyle; label: string; description: string; area: string }[] = [
+  { id: 'default', label: 'Classic', description: 'Filled active link in the top bar', area: 'Top navbar' },
+  { id: 'pills', label: 'Pills', description: 'Soft rounded chips for every link', area: 'Top navbar' },
+  { id: 'underline', label: 'Underline', description: 'Flat links with an accent underline', area: 'Top navbar' },
+  { id: 'compact', label: 'Compact icons', description: 'Icon-first links; labels hide sooner', area: 'Top navbar' },
+  { id: 'split', label: 'Split', description: 'Brand left, links centered, actions right', area: 'Top navbar' },
+];
+
+export const ADMIN_NAVBAR_STYLE_OPTIONS = NAVBAR_STYLE_OPTIONS.map((opt) => ({
+  ...opt,
+  area: 'Admin top bar',
+}));
+
+export const CLIENT_NAVBAR_STYLE_OPTIONS = NAVBAR_STYLE_OPTIONS.map((opt) => ({
+  ...opt,
+  area: 'Client top bar',
+}));
 
 export const SERVER_SIDEBAR_STYLE_OPTIONS: { id: ServerSidebarStyle; label: string; description: string; area: string }[] = [
   { id: 'default', label: 'Classic', description: 'Standard console / files / settings nav', area: 'Inside a server (left nav)' },
@@ -279,10 +306,12 @@ export const SURFACE_RADIUS_OPTIONS: { id: SurfaceRadius; label: string; descrip
 ];
 
 export const SIDEBAR_MATERIAL_OPTIONS: { id: SidebarMaterial; label: string; description: string }[] = [
-  { id: 'glass', label: 'Glass', description: 'Translucent gradient sidebar (default)' },
-  { id: 'frosted', label: 'Frosted', description: 'Heavy blur over panel background' },
+  { id: 'glass', label: 'Glass', description: 'Translucent gradient on sidebar and navbar' },
+  { id: 'frosted', label: 'Frosted', description: 'Heavy blur over the panel background' },
   { id: 'solid', label: 'Solid', description: 'Opaque surface, no blur' },
 ];
+
+export const NAV_MATERIAL_OPTIONS = SIDEBAR_MATERIAL_OPTIONS;
 
 export const CONTENT_DENSITY_OPTIONS: { id: ContentDensity; label: string; description: string }[] = [
   { id: 'comfortable', label: 'Comfortable', description: 'Standard padding and spacing' },
@@ -338,6 +367,12 @@ export function normalizeAppearance(data?: Partial<BrandingAppearance>): Brandin
     clientSidebarStyle: isValid(data?.clientSidebarStyle, CLIENT_SIDEBAR_STYLE_IDS)
       ? data.clientSidebarStyle
       : DEFAULT_BRANDING_APPEARANCE.clientSidebarStyle,
+    adminNavbarStyle: isValid(data?.adminNavbarStyle, NAVBAR_STYLE_IDS)
+      ? data.adminNavbarStyle
+      : DEFAULT_BRANDING_APPEARANCE.adminNavbarStyle,
+    clientNavbarStyle: isValid(data?.clientNavbarStyle, NAVBAR_STYLE_IDS)
+      ? data.clientNavbarStyle
+      : DEFAULT_BRANDING_APPEARANCE.clientNavbarStyle,
     serverSidebarStyle: isValid(data?.serverSidebarStyle, SERVER_SIDEBAR_STYLE_IDS)
       ? data.serverSidebarStyle
       : DEFAULT_BRANDING_APPEARANCE.serverSidebarStyle,
@@ -401,6 +436,11 @@ export function serverSidebarClassName(style: ServerSidebarStyle): string {
   if (style === 'icons') return 'server-sidebar sidebar-style-icons';
   if (style === 'stacked') return 'server-sidebar sidebar-style-stacked';
   return 'server-sidebar';
+}
+
+export function navbarStyleClassName(style: NavbarStyle): string {
+  if (style === 'default') return 'app-navbar';
+  return `app-navbar app-navbar--${style}`;
 }
 
 export function sidebarMaterialClassName(material: SidebarMaterial): string {

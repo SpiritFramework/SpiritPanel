@@ -15,6 +15,7 @@ export function MobileShell({
   layout = 'sidebar',
   headerTitle,
   sidebarClassName = '',
+  navbarClassName = 'app-navbar',
   contentClassName = 'w-full min-w-0',
   fillHeight = false,
   children,
@@ -25,6 +26,8 @@ export function MobileShell({
   layout?: ShellLayout;
   headerTitle?: ReactNode;
   sidebarClassName?: string;
+  /** Includes `app-navbar` plus optional style modifiers. */
+  navbarClassName?: string;
   contentClassName?: string;
   fillHeight?: boolean;
   children: ReactNode;
@@ -126,7 +129,7 @@ export function MobileShell({
 
         {isNavbar && topbar ? (
           <div
-            className={`app-navbar glass relative z-[1] hidden shrink-0 border-b border-[var(--glass-border)] md:flex ${materialClass}`}
+            className={`${navbarClassName} glass relative z-[1] hidden shrink-0 border-b border-[var(--glass-border)] md:flex ${materialClass}`}
           >
             {topbar}
           </div>
