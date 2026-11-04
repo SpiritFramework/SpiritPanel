@@ -2,7 +2,6 @@ import { CheckCircle2, Copy, RefreshCw, XCircle } from 'lucide-react';
 import type { NodeDiagnostics } from '../../../lib/api';
 import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
 import { AdminCopyButton, AdminInfoRow } from '../../../components/AdminDetailLayout';
-import { Button } from '../../../components/Layout';
 import { Spinner } from '../../../components/ui';
 import { useState } from 'react';
 
@@ -35,10 +34,10 @@ export function NodeDetailDiagnosticsTab({
         description="Verify FeatherWings can reach the panel and routing is configured"
         icon={RefreshCw}
         actions={
-          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={onRun}>
+          <button type="button" className="ds-nd-tool-btn" disabled={loading} onClick={onRun}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden />
             {loading ? 'Running…' : diagnostics ? 'Re-run' : 'Run diagnostics'}
-          </Button>
+          </button>
         }
       >
         {loading && !diagnostics ? (

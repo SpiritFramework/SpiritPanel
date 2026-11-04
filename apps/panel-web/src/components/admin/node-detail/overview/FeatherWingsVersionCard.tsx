@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { compareVersionStatus } from '@spirit/shared';
 import { api, type FeatherWingsReleaseInfo } from '../../../../lib/api';
-import { Button } from '../../../Layout';
 
 let releaseCache: FeatherWingsReleaseInfo | null = null;
 let releasePromise: Promise<FeatherWingsReleaseInfo> | null = null;
@@ -147,7 +146,7 @@ export function FeatherWingsVersionCard({
               href={release.releaseUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="ds-btn ds-btn--secondary ds-btn--sm"
+              className="ds-nd-tool-btn"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
               Release
@@ -173,17 +172,17 @@ export function FeatherWingsVersionCard({
             Running <strong>v{installedVersion}</strong> — update the host to{' '}
             <strong>v{release.latestVersion}</strong>, then restart FeatherWings.
           </p>
-          <div className="ds-nd-ov-fw-actions">
+          <div className="ds-nd-toolstrip ds-nd-toolstrip--compact" role="group" aria-label="Update helpers">
             {onCopyJoinData ? (
-              <Button type="button" variant="secondary" size="sm" onClick={onCopyJoinData}>
+              <button type="button" className="ds-nd-tool-btn" onClick={onCopyJoinData}>
                 <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
                 Join-data
-              </Button>
+              </button>
             ) : null}
-            <Button type="button" variant="ghost" size="sm" onClick={onDownloadConfig}>
+            <button type="button" className="ds-nd-tool-btn" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
-            </Button>
+            </button>
           </div>
         </div>
       ) : null}

@@ -14,7 +14,6 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import type { AdminNodeDetail } from '../../../lib/api';
-import { Button } from '../../Layout';
 import { StatusPill } from '../../ui';
 import { LocationFlag } from '../../LocationFlag';
 import type { NodeDetailTab } from '../../../pages/admin/node-detail/helpers';
@@ -161,21 +160,21 @@ export function NodeDetailHeader({
             </div>
           </div>
 
-          <div className="ds-nd-header-actions">
+          <div className="ds-nd-toolstrip" role="group" aria-label="Node actions">
             {onCopyJoinData ? (
-              <Button type="button" size="sm" onClick={onCopyJoinData}>
+              <button type="button" className="ds-nd-tool-btn" onClick={onCopyJoinData}>
                 <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
                 {copied ? 'Copied' : 'Join-data'}
-              </Button>
+              </button>
             ) : null}
-            <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
+            <button type="button" className="ds-nd-tool-btn" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onDiagnostics}>
+            </button>
+            <button type="button" className="ds-nd-tool-btn" onClick={onDiagnostics}>
               <Stethoscope className="h-3.5 w-3.5" aria-hidden />
               Diagnostics
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -352,17 +351,17 @@ export function NodeOverviewOfflineBanner({
           <strong>{detail.daemonSftp}</strong> (SFTP).
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="ds-nd-toolstrip ds-nd-toolstrip--compact" role="group" aria-label="Setup actions">
         {onCopyJoinData ? (
-          <Button type="button" size="sm" onClick={onCopyJoinData}>
+          <button type="button" className="ds-nd-tool-btn" onClick={onCopyJoinData}>
             <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
             Copy join-data
-          </Button>
+          </button>
         ) : null}
-        <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
+        <button type="button" className="ds-nd-tool-btn" onClick={onDownloadConfig}>
           <Download className="h-3.5 w-3.5" aria-hidden />
           Download config
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -4,7 +4,6 @@ import { formatAllocationAddress } from '../../../lib/allocation';
 import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
 import { NodeResourceMeter } from '../../../components/admin/node-detail/NodeResourceMeter';
 import { AdminServerStatusBadge } from '../../../components/admin/AdminServerStatus';
-import { Button } from '../../../components/Layout';
 import { EmptyState } from '../../../components/ui';
 import { formatResource } from '../../../lib/server-theme';
 import type { NodeDetailController } from './useNodeDetail';
@@ -29,10 +28,10 @@ export function NodeDetailServersTab({
         icon={Server}
         actions={
           detail.servers.length > 0 ? (
-            <Button type="button" variant="ghost" size="sm" onClick={onAnalytics}>
+            <button type="button" className="ds-nd-tool-btn" onClick={onAnalytics}>
               <Activity className="h-3.5 w-3.5" aria-hidden />
               Live analytics
-            </Button>
+            </button>
           ) : null
         }
       >
