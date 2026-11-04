@@ -12,7 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { AdminUserDetail } from '../../../lib/api';
-import { AccountStatus, RoleBadge } from '../../UserCard';
+import { RoleBadge } from '../../UserCard';
 import { UserAvatar } from '../../UserAvatar';
 import { StatusPill } from '../../ui';
 import type { UserDetailTab, UserDetailTone } from '../../../pages/admin/user-detail/helpers';
@@ -59,12 +59,14 @@ export function UserDetailHeader({
   onCopyEmail,
   copied,
   onManageAccount,
+  onViewServers,
 }: {
   detail: AdminUserDetail;
   isSelf?: boolean;
   onCopyEmail?: () => void;
   copied?: boolean;
   onManageAccount?: () => void;
+  onViewServers?: () => void;
 }) {
   const tone = getUserDetailTone(detail);
   const entityTone = userDetailEntityTone(tone);
@@ -75,17 +77,8 @@ export function UserDetailHeader({
     year: 'numeric',
   });
 
-  const statusLabel = detail.suspended
-    ? 'Suspended'
-    : detail.role === 'admin'
-      ? detail.rootAdmin
-        ? 'Root admin'
-        : 'Admin'
-      : detail.role === 'staff'
-        ? 'Staff'
-        : 'Active';
-
-  const statusTone = detail.suspended ? 'warning' : detail.role === 'admin' ? 'info' : 'success';
+  const statusLabel = detail.suspended ? 'Suspended' : 'Active';
+  const statusTone = detail.suspended ? 'warning' : 'success';
 
   const stats: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: Server, label: 'Owned', value: String(detail.serverCount) },
@@ -95,7 +88,9 @@ export function UserDetailHeader({
   ];
 
   return (
-    <header className={`ds-ud-header ds-adm-entity ds-ud-header--${tone} ds-adm-entity--${entityTone}`}>
+    <header
+      className={`ds-ud-header ds-adm-entity ds-ud-header--${tone} ds-adm-entity--${entityTone}`}
+    >
       <nav className="ds-ud-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/users">Users</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
@@ -103,49 +98,77 @@ export function UserDetailHeader({
       </nav>
 
       <div className="ds-ud-header-body">
+        <div className="ds-ud-header-glow" aria-hidden />
         <div className="ds-ud-header-accent" aria-hidden />
 
-        <div className="ds-ud-header-main ds-asd-header-main">
+        <div className="ds-ud-header-main">
           <div className="ds-ud-header-identity">
             <div className="ds-ud-header-avatar-wrap">
               <UserAvatar user={detail} size="lg" ring />
-              <span className={`ds-ud-header-pulse ds-ud-header-pulse--${tone}`} aria-hidden />
+              <span
+                className={`ds-ud-header-pulse ds-ud-header-pulse--${tone}`}
+                aria-hidden
+              />
             </div>
 
             <div className="min-w-0 flex-1">
+              <p className="ds-ud-header-eyebrow">User manage</p>
               <div className="ds-ud-header-title-row">
                 <h1 className="ds-ud-header-title">{name}</h1>
                 {isSelf ? <span className="ds-ud-header-self">You</span> : null}
-                <StatusPill label={statusLabel} tone={statusTone} pulse={!detail.suspended} />
+                <StatusPill
+                  label={statusLabel}
+                  tone={statusTone}
+                  pulse={!detail.suspended}
+                />
               </div>
 
-              <div className="ds-ud-header-email-row">
-                <Mail className="ds-icon ds-icon--sm opacity-70" aria-hidden />
-                <span className="truncate">{detail.email}</span>
+              <p className="ds-ud-header-meta">
+                <RoleBadge role={detail.role} rootAdmin={detail.rootAdmin} />
+                <span className="ds-ud-header-meta-sep" aria-hidden>
+                  ·
+                </span>
+                <span>@{detail.username}</span>
+              </p>
+
+              <div className="ds-ud-header-endpoint">
+                <span className="ds-ud-header-scheme" aria-hidden>
+                  <Mail className="h-3 w-3" />
+                </span>
+                <code className="ds-ud-header-fqdn-text">{detail.email}</code>
                 {onCopyEmail ? (
-                  <button type="button" className="ds-ud-header-email-copy" onClick={onCopyEmail}>
+                  <button
+                    type="button"
+                    className="ds-ud-header-fqdn-copy"
+                    onClick={onCopyEmail}
+                    aria-label="Copy email"
+                  >
                     <Copy className="h-3 w-3" aria-hidden />
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 ) : null}
               </div>
-
-              <div className="ds-ud-header-badges">
-                <RoleBadge role={detail.role} rootAdmin={detail.rootAdmin} />
-                <AccountStatus suspended={detail.suspended} />
-                <span className="ds-ud-header-tag">@{detail.username}</span>
-              </div>
             </div>
           </div>
 
-          {onManageAccount ? (
-            <div className="ds-ud-header-actions ds-adm-entity-actions">
-              <AdminToolButton type="button" onClick={onManageAccount}>
+          <div
+            className="ds-nd-toolstrip ds-adm-entity-actions ds-ud-header-actions"
+            role="group"
+            aria-label="User actions"
+          >
+            {onViewServers ? (
+              <AdminToolButton type="button" onClick={onViewServers}>
+                <Server className="h-3.5 w-3.5" aria-hidden />
+                Servers
+              </AdminToolButton>
+            ) : null}
+            {onManageAccount ? (
+              <AdminToolButton type="button" onClick={onManageAccount} primary>
                 <Settings className="h-3.5 w-3.5" aria-hidden />
                 Manage account
               </AdminToolButton>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
         <div className="ds-ud-header-stats" role="list" aria-label="User summary">
@@ -166,54 +189,47 @@ export function UserDetailHeader({
   );
 }
 
-export function UserDetailQuickDock({
-  items,
-}: {
-  items: { icon: LucideIcon; label: string; hint: string; onClick: () => void }[];
-}) {
-  return (
-    <nav className="ds-ud-dock" aria-label="Quick navigation">
-      {items.map((item) => (
-        <button key={item.label} type="button" className="ds-ud-dock-item" onClick={item.onClick}>
-          <span className="ds-ud-dock-icon" aria-hidden>
-            <item.icon className="ds-icon ds-icon--sm" />
-          </span>
-          <span className="ds-ud-dock-copy">
-            <span className="ds-ud-dock-label">{item.label}</span>
-            <span className="ds-ud-dock-hint">{item.hint}</span>
-          </span>
-          <ChevronRight className="ds-ud-dock-chevron ds-icon ds-icon--sm" aria-hidden />
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 export function UserDetailPanel({
   icon: Icon,
+  eyebrow,
   title,
   description,
   badge,
+  actions,
   children,
   className,
   tone,
 }: {
   icon: LucideIcon;
+  eyebrow?: string;
   title: string;
   description?: string;
-  badge?: string;
+  badge?: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   className?: string;
-  tone?: 'danger' | 'warning';
+  tone?: 'danger' | 'warning' | 'identity' | 'capacity' | 'connection' | 'trends';
 }) {
+  const sectionTone =
+    tone === 'danger'
+      ? 'danger'
+      : tone === 'identity' ||
+          tone === 'capacity' ||
+          tone === 'connection' ||
+          tone === 'trends'
+        ? tone
+        : 'default';
+
   return (
     <AdminSection
-      className={`ds-ud-panel${tone ? ` ds-ud-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      className={`ds-ud-panel${tone === 'warning' || tone === 'danger' ? ` ds-ud-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
       icon={Icon}
+      eyebrow={eyebrow}
       title={title}
       description={description}
       badge={badge}
-      tone={tone === 'danger' ? 'danger' : 'default'}
+      actions={actions}
+      tone={sectionTone}
     >
       {children}
     </AdminSection>
@@ -269,7 +285,10 @@ export function UserDetailUsageMeter({
       </div>
       {max > 0 ? (
         <div className="ds-ud-usage-meter-track" aria-hidden>
-          <span className="ds-ud-usage-meter-fill" style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }} />
+          <span
+            className="ds-ud-usage-meter-fill"
+            style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }}
+          />
         </div>
       ) : null}
       {hint ? <p className="ds-ud-usage-meter-hint">{hint}</p> : null}

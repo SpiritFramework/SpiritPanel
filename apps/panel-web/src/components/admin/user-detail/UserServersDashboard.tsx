@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { UserDetailController } from '../../../pages/admin/user-detail/useUserDetail';
 import { UserServersFleetOverview } from './servers/UserServersFleetOverview';
 import { UserServersListPanel } from './servers/UserServersListPanel';
-import { UserServersStatsRow } from './servers/UserServersStatsRow';
 import {
   computeUserServerFilterCounts,
   computeUserServerFleetStats,
@@ -72,8 +71,6 @@ export function UserServersDashboard({ ctrl }: { ctrl: UserDetailController }) {
 
   return (
     <div className="ds-ud-srv">
-      <UserServersStatsRow stats={stats} />
-
       {stats.owned > 0 ? (
         <UserServersFleetOverview
           stats={stats}

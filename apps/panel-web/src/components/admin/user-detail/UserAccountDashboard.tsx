@@ -34,7 +34,9 @@ export function UserAccountDashboard({
     <div className="ds-ud-account">
       <div className="ds-ud-account-grid">
         <UserDetailPanel
+          tone="identity"
           icon={User}
+          eyebrow="Profile"
           title="Personal details"
           description="Name, username, and email used across the panel"
         >
@@ -91,7 +93,9 @@ export function UserAccountDashboard({
         {fullAdmin ? (
           <>
             <UserDetailPanel
+              tone="connection"
               icon={Lock}
+              eyebrow="Security"
               title="Password"
               description="Leave blank to keep the current password"
             >
@@ -106,7 +110,9 @@ export function UserAccountDashboard({
             </UserDetailPanel>
 
             <UserDetailPanel
+              tone="capacity"
               icon={Shield}
+              eyebrow="Access"
               title="Permissions"
               description="What this user can access in the panel"
             >
@@ -142,7 +148,13 @@ export function UserAccountDashboard({
             </UserDetailPanel>
           </>
         ) : (
-          <UserDetailPanel icon={Shield} title="Permissions" description="Role assigned to this account">
+          <UserDetailPanel
+            tone="capacity"
+            icon={Shield}
+            eyebrow="Access"
+            title="Permissions"
+            description="Role assigned to this account"
+          >
             <RoleBadge role={detail.role} rootAdmin={detail.rootAdmin} />
           </UserDetailPanel>
         )}
@@ -150,6 +162,7 @@ export function UserAccountDashboard({
         {fullAdmin ? (
           <UserDetailPanel
             icon={Ban}
+            eyebrow="Status"
             title="Account status"
             description="Control whether this user can sign in"
             tone={(form.suspended ?? false) ? 'warning' : undefined}
@@ -171,7 +184,12 @@ export function UserAccountDashboard({
             ) : null}
           </UserDetailPanel>
         ) : (
-          <UserDetailPanel icon={Ban} title="Account status" description="Whether this user can sign in">
+          <UserDetailPanel
+            icon={Ban}
+            eyebrow="Status"
+            title="Account status"
+            description="Whether this user can sign in"
+          >
             <AccountStatus suspended={detail.suspended} />
           </UserDetailPanel>
         )}
@@ -179,6 +197,7 @@ export function UserAccountDashboard({
         {fullAdmin && !isSelf ? (
           <UserDetailPanel
             icon={Trash2}
+            eyebrow="Danger"
             title="Danger zone"
             description="Permanently remove this account — this cannot be undone"
             tone="danger"

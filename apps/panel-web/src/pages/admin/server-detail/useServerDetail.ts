@@ -22,7 +22,7 @@ export function useServerDetail(serverId: string, fullAdmin: boolean) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReinstall, setConfirmReinstall] = useState(false);
   const [wipeFiles, setWipeFiles] = useState(true);
-  const [copied, setCopied] = useState<'address' | 'id' | 'uuid' | null>(null);
+  const [copied, setCopied] = useState<'address' | 'id' | 'uuid' | 'owner-email' | null>(null);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState('');
@@ -169,7 +169,7 @@ export function useServerDetail(serverId: string, fullAdmin: boolean) {
     }
   }
 
-  async function copyText(text: string, key: 'address' | 'id' | 'uuid') {
+  async function copyText(text: string, key: 'address' | 'id' | 'uuid' | 'owner-email') {
     await navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);

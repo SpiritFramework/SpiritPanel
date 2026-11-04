@@ -85,10 +85,11 @@ export function ServerManageDashboard({
     <div className="ds-asd-manage">
       {fullAdmin ? (
         <ServerDetailPanel
+          tone={ownerChanged ? 'warning' : 'identity'}
           icon={User}
+          eyebrow="Access"
           title="Ownership"
           description="Transfer this server and all owner permissions to another account"
-          tone={ownerChanged ? 'warning' : undefined}
         >
           <Select
             label="Server owner"
@@ -124,7 +125,9 @@ export function ServerManageDashboard({
 
       {fullAdmin ? (
         <ServerDetailPanel
+          tone="identity"
           icon={Server}
+          eyebrow="Profile"
           title="Server details"
           description="Name and description shown to the owner"
         >
@@ -148,7 +151,9 @@ export function ServerManageDashboard({
 
       {fullAdmin ? (
         <ServerDetailPanel
+          tone="capacity"
           icon={HardDrive}
+          eyebrow="Resources"
           title="Resource limits"
           description="Memory, disk, and CPU — set to 0 for unlimited. Feature limits use 0 to disable."
         >
@@ -225,6 +230,7 @@ export function ServerManageDashboard({
 
       <ServerDetailPanel
         icon={Ban}
+        eyebrow="Status"
         title="Account status"
         description="Suspended servers cannot be started by the owner"
         tone={form.suspended ? 'warning' : undefined}
@@ -244,7 +250,9 @@ export function ServerManageDashboard({
 
       {fullAdmin ? (
         <ServerDetailPanel
+          tone="wings"
           icon={Zap}
+          eyebrow="Daemon"
           title="Power controls"
           description="Send power actions to the node daemon"
         >
@@ -297,7 +305,9 @@ export function ServerManageDashboard({
 
       {fullAdmin ? (
         <ServerDetailPanel
+          tone="connection"
           icon={RefreshCw}
+          eyebrow="Install"
           title="Reinstall server"
           description="Re-run the egg install script for this user's server"
         >
@@ -349,6 +359,7 @@ export function ServerManageDashboard({
       {fullAdmin ? (
         <ServerDetailPanel
           icon={AlertTriangle}
+          eyebrow="Danger"
           title="Danger zone"
           description="Permanently remove this server"
           tone="danger"

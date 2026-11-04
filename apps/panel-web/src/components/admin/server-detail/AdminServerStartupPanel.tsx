@@ -40,7 +40,9 @@ export function AdminServerStartupPanel({ serverId }: { serverId: string }) {
   if (loading) {
     return (
       <ServerDetailPanel
+        tone="wings"
         icon={Settings2}
+        eyebrow="Startup"
         title="Startup & environment"
         description="Command template, Docker image, and egg variables for this user's server"
       >
@@ -56,7 +58,9 @@ export function AdminServerStartupPanel({ serverId }: { serverId: string }) {
   if (!server) {
     return (
       <ServerDetailPanel
+        tone="wings"
         icon={Settings2}
+        eyebrow="Startup"
         title="Startup & environment"
         description="Command template, Docker image, and egg variables for this user's server"
       >

@@ -88,6 +88,8 @@ export function AdminServerDetail() {
             fullAdmin={fullAdmin}
             copied={ctrl.copied === 'address'}
             onCopyAddress={() => void ctrl.copyText(address, 'address')}
+            onManage={() => changeTab('manage')}
+            onNetwork={() => changeTab('network')}
           />
           <ServerDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
         </div>

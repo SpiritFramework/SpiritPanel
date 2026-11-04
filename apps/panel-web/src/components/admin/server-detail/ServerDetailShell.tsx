@@ -1,17 +1,27 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, Copy, ExternalLink, HardDrive, MapPin, User } from 'lucide-react';
+import {
+  ChevronRight,
+  Copy,
+  Cpu,
+  ExternalLink,
+  HardDrive,
+  MapPin,
+  MemoryStick,
+  Network,
+  Settings,
+  User,
+} from 'lucide-react';
 import type { AdminServerDetail } from '../../../lib/api';
 import { formatAllocationAddress } from '../../../lib/allocation';
 import { formatCpuLimit, formatResource, getServerTheme } from '../../../lib/server-theme';
-import { AdminServerStatusBadge } from '../AdminServerStatus';
 import { LocationFlag } from '../../LocationFlag';
 import { ServerEggIcon } from '../../ServerEggIcon';
-import { AlertBanner, StatusPill } from '../../ui';
+import { AdminSection, AdminToolButton } from '../primitives';
+import { StatusPill } from '../../ui';
 import type { ServerDetailTab, ServerDetailTone } from '../../../pages/admin/server-detail/helpers';
 import { getServerDetailTone } from '../../../pages/admin/server-detail/helpers';
-import { AdminSection, AdminToolButton } from '../primitives';
 
 export function ServerDetailTabNav({
   tabs,
@@ -42,7 +52,10 @@ export function ServerDetailTabNav({
   );
 }
 
-function toneToPill(tone: ServerDetailTone): { label: string; status: 'success' | 'warning' | 'info' | 'neutral' } {
+function toneToPill(tone: ServerDetailTone): {
+  label: string;
+  status: 'success' | 'warning' | 'info' | 'neutral' | 'danger';
+} {
   if (tone === 'suspended') return { label: 'Suspended', status: 'warning' };
   if (tone === 'installing') return { label: 'Installing', status: 'info' };
   if (tone === 'running') return { label: 'Running', status: 'success' };
@@ -54,37 +67,41 @@ export function ServerDetailHeader({
   fullAdmin,
   copied,
   onCopyAddress,
+  onManage,
+  onNetwork,
 }: {
   detail: AdminServerDetail;
   fullAdmin: boolean;
   copied?: boolean;
   onCopyAddress?: () => void;
+  onManage?: () => void;
+  onNetwork?: () => void;
 }) {
   const theme = getServerTheme(detail.egg.name);
   const tone = getServerDetailTone(detail);
+  const entityTone =
+    tone === 'running' ? 'online' : tone === 'suspended' || tone === 'installing' ? 'warn' : 'offline';
   const pill = toneToPill(tone);
   const address = formatAllocationAddress(detail.defaultAllocation, { fqdn: detail.node.fqdn });
-  const created = new Date(detail.createdAt).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 
   const stats: { icon: LucideIcon; label: string; value: string }[] = [
-    { icon: HardDrive, label: 'Memory', value: formatResource(detail.memory, 'MiB') },
+    { icon: MemoryStick, label: 'Memory', value: formatResource(detail.memory, 'MiB') },
     { icon: HardDrive, label: 'Disk', value: formatResource(detail.disk, 'MiB') },
-    { icon: HardDrive, label: 'CPU', value: formatCpuLimit(detail.cpu) },
+    { icon: Cpu, label: 'CPU', value: formatCpuLimit(detail.cpu) },
     { icon: User, label: 'Owner', value: detail.owner.username },
   ];
 
+  const nestLabel = detail.egg.nest.name;
+  const eggLabel = detail.egg.name;
+  const eggMeta =
+    nestLabel.toLowerCase() === eggLabel.toLowerCase()
+      ? nestLabel
+      : `${nestLabel} · ${eggLabel}`;
+
   return (
-    <header className={`ds-asd-header ds-adm-entity ds-asd-header--${tone} ds-adm-entity--${tone === 'running' ? 'online' : tone === 'suspended' || tone === 'installing' ? 'warn' : 'offline'}`}>
-      {detail.nodeOnline === false ? (
-        <AlertBanner tone="warning" className="mx-4 mt-3 md:mx-6">
-          Host node is offline
-          {detail.nodeReachabilityError ? ` — ${detail.nodeReachabilityError}` : ''}. Server status may be stale.
-        </AlertBanner>
-      ) : null}
+    <header
+      className={`ds-asd-header ds-adm-entity ds-asd-header--${tone} ds-adm-entity--${entityTone}`}
+    >
       <nav className="ds-asd-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/servers">Servers</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
@@ -92,40 +109,62 @@ export function ServerDetailHeader({
       </nav>
 
       <div className="ds-asd-header-body">
+        <div className="ds-asd-header-glow" aria-hidden />
         <div className="ds-asd-header-accent" style={{ background: theme.gradient }} aria-hidden />
 
         <div className="ds-asd-header-main">
           <div className="ds-asd-header-identity">
-            <div className="ds-asd-header-icon-wrap" style={{ background: theme.gradient }} aria-hidden>
-              <ServerEggIcon eggName={detail.egg.name} logoUrl={detail.egg.logoUrl} className="h-5 w-5" />
+            <div
+              className="ds-asd-header-icon-wrap"
+              style={{ background: theme.gradient }}
+              aria-hidden
+            >
+              <ServerEggIcon
+                eggName={detail.egg.name}
+                logoUrl={detail.egg.logoUrl}
+                className="h-5 w-5"
+              />
               <span className={`ds-asd-header-pulse ds-asd-header-pulse--${tone}`} />
             </div>
 
             <div className="min-w-0 flex-1">
+              <p className="ds-asd-header-eyebrow">Server manage</p>
               <div className="ds-asd-header-title-row">
                 <h1 className="ds-asd-header-title truncate">{detail.name}</h1>
-                <StatusPill label={pill.label} tone={pill.status} pulse={tone === 'running'} />
-                <AdminServerStatusBadge
-                  status={detail.status}
-                  suspended={detail.suspended}
-                  installStatus={detail.installStatus}
-                  containerState={detail.containerState}
-                  compact
+                <StatusPill
+                  label={pill.label}
+                  tone={pill.status}
+                  pulse={tone === 'running'}
                 />
               </div>
 
-              <p className="ds-asd-header-sub truncate">
-                {detail.egg.nest.name} · {detail.egg.name}
+              <p className="ds-asd-header-meta">
+                <span className="ds-asd-header-meta-loc">
+                  {detail.node.location.flagUrl ? (
+                    <LocationFlag url={detail.node.location.flagUrl} size="sm" />
+                  ) : (
+                    <MapPin className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                  )}
+                  <span>{eggMeta}</span>
+                </span>
+                <span className="ds-asd-header-meta-sep" aria-hidden>
+                  ·
+                </span>
+                <span>{detail.node.name}</span>
               </p>
 
-              <div className="ds-asd-header-address-row">
-                <MapPin className="ds-icon ds-icon--sm opacity-70" aria-hidden />
-                {detail.node.location.flagUrl ? (
-                  <LocationFlag url={detail.node.location.flagUrl} size="sm" />
-                ) : null}
-                <span className="ds-text-mono truncate">{address}</span>
+              <div className="ds-asd-header-endpoint">
+                <span className="ds-asd-header-scheme" aria-hidden>
+                  <Network className="h-3 w-3" />
+                </span>
+                <code className="ds-asd-header-fqdn-text">{address}</code>
                 {onCopyAddress ? (
-                  <button type="button" className="ds-asd-header-copy" onClick={onCopyAddress}>
+                  <button
+                    type="button"
+                    className="ds-asd-header-fqdn-copy"
+                    onClick={onCopyAddress}
+                    aria-label="Copy address"
+                  >
                     <Copy className="h-3 w-3" aria-hidden />
                     {copied ? 'Copied' : 'Copy'}
                   </button>
@@ -134,11 +173,27 @@ export function ServerDetailHeader({
             </div>
           </div>
 
-          <div className="ds-asd-header-actions ds-adm-entity-actions">
+          <div
+            className="ds-nd-toolstrip ds-adm-entity-actions ds-asd-header-actions"
+            role="group"
+            aria-label="Server actions"
+          >
+            {onNetwork ? (
+              <AdminToolButton type="button" onClick={onNetwork}>
+                <Network className="h-3.5 w-3.5" aria-hidden />
+                Network
+              </AdminToolButton>
+            ) : null}
+            {onManage ? (
+              <AdminToolButton type="button" onClick={onManage}>
+                <Settings className="h-3.5 w-3.5" aria-hidden />
+                Manage
+              </AdminToolButton>
+            ) : null}
             {fullAdmin ? (
-              <AdminToolButton to={`/admin/servers/${detail.id}/manage`}>
+              <AdminToolButton to={`/admin/servers/${detail.id}/manage`} primary>
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                Manage server
+                Open console
               </AdminToolButton>
             ) : null}
           </div>
@@ -156,69 +211,54 @@ export function ServerDetailHeader({
               </span>
             </div>
           ))}
-          <div className="ds-asd-header-stat" role="listitem">
-            <span className="ds-asd-header-stat-icon" aria-hidden>
-              <MapPin className="h-3.5 w-3.5" />
-            </span>
-            <span className="ds-asd-header-stat-copy">
-              <span className="ds-asd-header-stat-label">Created</span>
-              <span className="ds-asd-header-stat-value">{created}</span>
-            </span>
-          </div>
         </div>
       </div>
     </header>
   );
 }
 
-export function ServerDetailQuickDock({
-  items,
-}: {
-  items: { icon: LucideIcon; label: string; hint: string; onClick: () => void }[];
-}) {
-  return (
-    <nav className="ds-asd-dock" aria-label="Quick navigation">
-      {items.map((item) => (
-        <button key={item.label} type="button" className="ds-asd-dock-item" onClick={item.onClick}>
-          <span className="ds-asd-dock-icon" aria-hidden>
-            <item.icon className="ds-icon ds-icon--sm" />
-          </span>
-          <span className="ds-asd-dock-copy">
-            <span className="ds-asd-dock-label">{item.label}</span>
-            <span className="ds-asd-dock-hint">{item.hint}</span>
-          </span>
-          <ChevronRight className="ds-asd-dock-chevron ds-icon ds-icon--sm" aria-hidden />
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 export function ServerDetailPanel({
   icon: Icon,
+  eyebrow,
   title,
   description,
   badge,
+  actions,
   children,
   className,
   tone,
 }: {
   icon: LucideIcon;
+  eyebrow?: string;
   title: string;
   description?: string;
-  badge?: string;
+  badge?: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   className?: string;
-  tone?: 'danger' | 'warning';
+  tone?: 'danger' | 'warning' | 'identity' | 'capacity' | 'connection' | 'trends' | 'wings';
 }) {
+  const sectionTone =
+    tone === 'danger'
+      ? 'danger'
+      : tone === 'identity' ||
+          tone === 'capacity' ||
+          tone === 'connection' ||
+          tone === 'trends' ||
+          tone === 'wings'
+        ? tone
+        : 'default';
+
   return (
     <AdminSection
-      className={`ds-asd-panel${tone ? ` ds-asd-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      className={`ds-asd-panel${tone === 'warning' || tone === 'danger' ? ` ds-asd-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
       icon={Icon}
+      eyebrow={eyebrow}
       title={title}
       description={description}
       badge={badge}
-      tone={tone === 'danger' ? 'danger' : 'default'}
+      actions={actions}
+      tone={sectionTone}
     >
       {children}
     </AdminSection>

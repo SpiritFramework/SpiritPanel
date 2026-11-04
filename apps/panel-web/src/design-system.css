@@ -27887,31 +27887,38 @@ button.ds-nodes-stat:hover {
 .ds-ud-header-wrap {
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent) 12%);
-  background: var(--bg-elevated);
+  gap: 0;
+  border-radius: calc(var(--radius-xl, 0.9rem) + 0.05rem);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
   overflow: hidden;
-  box-shadow: var(--ds-shadow-card);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent),
+    var(--ds-shadow-card);
 }
 
 .ds-ud-header {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .ds-ud-header-crumb {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.55rem 1.15rem;
   font-size: 0.6875rem;
   color: var(--muted);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  background: color-mix(in srgb, var(--surface) 35%, transparent);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
 }
 
 .ds-ud-header-crumb a {
   color: var(--muted);
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .ds-ud-header-crumb a:hover {
@@ -27920,57 +27927,121 @@ button.ds-nodes-stat:hover {
 
 .ds-ud-header-body {
   position: relative;
-  padding: 1.1rem 1.25rem 1rem;
+  overflow: hidden;
+  padding: 1.15rem 1.2rem 1.05rem;
+}
+
+.ds-ud-header-glow {
+  position: absolute;
+  inset: -20% auto auto -8%;
+  width: min(28rem, 70%);
+  height: 12rem;
+  border-radius: 999px;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 68%);
+  opacity: 0.85;
+}
+
+.ds-ud-header--active .ds-ud-header-glow,
+.ds-ud-header--admin .ds-ud-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--success-fg) 16%, transparent), transparent 68%);
+}
+
+.ds-ud-header--suspended .ds-ud-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--warning-fg) 18%, transparent), transparent 68%);
+}
+
+.ds-ud-header--staff .ds-ud-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, #2dd4bf 18%, transparent), transparent 68%);
 }
 
 .ds-ud-header-accent {
   position: absolute;
-  inset: 0 auto 0 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 55%, color-mix(in srgb, var(--accent) 45%, #000) 100%);
+  background: linear-gradient(180deg, var(--accent-hover) 0%, color-mix(in srgb, var(--accent) 40%, transparent) 100%);
+}
+
+.ds-ud-header--active .ds-ud-header-accent,
+.ds-ud-header--admin .ds-ud-header-accent {
+  background: linear-gradient(180deg, var(--success-fg) 0%, color-mix(in srgb, var(--success-fg) 40%, transparent) 100%);
 }
 
 .ds-ud-header--suspended .ds-ud-header-accent {
-  background: linear-gradient(180deg, var(--warning-fg, #fbbf24) 0%, color-mix(in srgb, var(--warning-fg, #fbbf24) 55%, #000) 100%);
+  background: linear-gradient(180deg, var(--warning-fg, #fbbf24) 0%, color-mix(in srgb, var(--warning-fg, #fbbf24) 40%, transparent) 100%);
 }
 
 .ds-ud-header--staff .ds-ud-header-accent {
-  background: linear-gradient(180deg, #2dd4bf 0%, #0d9488 55%, color-mix(in srgb, #0d9488 45%, #000) 100%);
+  background: linear-gradient(180deg, #2dd4bf 0%, color-mix(in srgb, #0d9488 40%, transparent) 100%);
 }
 
 .ds-ud-header-main {
-  padding-left: 0.65rem;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-left: 0.7rem;
 }
 
 .ds-ud-header-identity {
   display: flex;
   align-items: flex-start;
-  gap: 0.9rem;
+  gap: 0.95rem;
   min-width: 0;
+  flex: 1;
 }
 
 .ds-ud-header-avatar-wrap {
   position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .ds-ud-header-pulse {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 9999px;
+  right: -2px;
+  bottom: -2px;
+  z-index: 1;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
   border: 2px solid var(--bg-elevated);
   background: var(--success-fg, #34d399);
+  pointer-events: none;
+}
+
+.ds-ud-header-pulse--active,
+.ds-ud-header-pulse--admin {
+  background: var(--success-fg, #34d399);
+  animation: ds-nd-pulse 2s ease-in-out infinite;
 }
 
 .ds-ud-header-pulse--suspended {
   background: var(--warning-fg, #fbbf24);
+  animation: none;
 }
 
 .ds-ud-header-pulse--staff {
   background: #2dd4bf;
+  animation: ds-nd-pulse 2s ease-in-out infinite;
+}
+
+.ds-ud-header-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .ds-ud-header-title-row {
@@ -27982,9 +28053,9 @@ button.ds-nodes-stat:hover {
 
 .ds-ud-header-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
 }
 
 .ds-ud-header-self {
@@ -27998,60 +28069,97 @@ button.ds-nodes-stat:hover {
   background: var(--accent-muted);
 }
 
-.ds-ud-header-email-row {
+.ds-ud-header-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.35rem;
+  gap: 0.35rem 0.45rem;
+  margin: 0.4rem 0 0;
   font-size: 0.8125rem;
   color: var(--muted);
+}
+
+.ds-ud-header-meta-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   min-width: 0;
 }
 
-.ds-ud-header-email-copy {
+.ds-ud-header-meta-sep {
+  opacity: 0.45;
+}
+
+.ds-ud-header-endpoint {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  max-width: 100%;
+  padding: 0.3rem 0.45rem 0.3rem 0.35rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.ds-ud-header-scheme {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.4rem;
+  color: var(--accent-hover);
+  background: var(--accent-muted);
+}
+
+.ds-ud-header-fqdn-text {
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-ud-header-fqdn-copy {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
+  margin-left: auto;
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border: 1px solid transparent;
+  background: transparent;
   font-size: 0.625rem;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--muted);
   cursor: pointer;
 }
 
-.ds-ud-header-email-copy:hover {
+.ds-ud-header-fqdn-copy:hover {
   color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
 }
 
-.ds-ud-header-badges {
+.ds-ud-header-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.55rem;
-}
-
-.ds-ud-header-tag {
-  padding: 0.15rem 0.45rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--surface) 45%, transparent);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--muted);
+  gap: 0.45rem;
 }
 
 .ds-ud-header-stats {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
   margin-top: 1rem;
-  padding-left: 0.65rem;
+  padding-left: 0.7rem;
 }
 
 @media (max-width: 720px) {
@@ -28065,10 +28173,10 @@ button.ds-nodes-stat:hover {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.7rem;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
 }
 
 .ds-ud-header-stat-icon {
@@ -28091,7 +28199,7 @@ button.ds-nodes-stat:hover {
 
 .ds-ud-header-stat-label {
   font-size: 0.5625rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
@@ -28104,75 +28212,22 @@ button.ds-nodes-stat:hover {
   color: var(--text);
 }
 
-.ds-ud-dock {
-  display: grid;
-  gap: 0.45rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 900px) {
-  .ds-ud-dock {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.ds-ud-dock-item {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--surface));
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.ds-ud-dock-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 35%, var(--bg-elevated));
-}
-
-.ds-ud-dock-icon {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: 0.55rem;
-  color: var(--accent-hover);
-  background: var(--accent-muted);
-}
-
-.ds-ud-dock-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.ds-ud-dock-label {
-  font-size: 0.75rem;
-  font-weight: 650;
-  color: var(--text);
-}
-
-.ds-ud-dock-hint {
-  font-size: 0.625rem;
-  color: var(--muted);
-}
-
-.ds-ud-dock-chevron {
-  flex-shrink: 0;
-  color: var(--muted);
-  opacity: 0.6;
-}
-
 .ds-ud-ov {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
+}
+
+.ds-ud-ov-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 960px) {
+  .ds-ud-ov-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .ds-ud-banner {
@@ -28200,26 +28255,6 @@ button.ds-nodes-stat:hover {
   margin: 0.15rem 0 0;
   font-size: 0.6875rem;
   opacity: 0.9;
-}
-
-.ds-ud-ov-bento {
-  display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 1024px) {
-  .ds-ud-ov-bento {
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.9fr);
-    align-items: start;
-  }
-}
-
-.ds-ud-ov-bento-main,
-.ds-ud-ov-bento-side {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
 }
 
 .ds-ud-panel {
@@ -30545,31 +30580,38 @@ button.ds-nodes-stat:hover {
 .ds-asd-header-wrap {
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-xl);
-  border: 1px solid color-mix(in srgb, var(--border) 75%, var(--accent) 12%);
-  background: var(--bg-elevated);
+  gap: 0;
+  border-radius: calc(var(--radius-xl, 0.9rem) + 0.05rem);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
   overflow: hidden;
-  box-shadow: var(--ds-shadow-card);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent),
+    var(--ds-shadow-card);
 }
 
 .ds-asd-header {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .ds-asd-header-crumb {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.55rem 1.15rem;
   font-size: 0.6875rem;
   color: var(--muted);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
-  background: color-mix(in srgb, var(--surface) 35%, transparent);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
 }
 
 .ds-asd-header-crumb a {
   color: var(--muted);
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .ds-asd-header-crumb a:hover {
@@ -30578,44 +30620,77 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-header-body {
   position: relative;
-  padding: 1.1rem 1.25rem 1rem;
+  overflow: hidden;
+  padding: 1.15rem 1.2rem 1.05rem;
+}
+
+.ds-asd-header-glow {
+  position: absolute;
+  inset: -20% auto auto -8%;
+  width: min(28rem, 70%);
+  height: 12rem;
+  border-radius: 999px;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 68%);
+  opacity: 0.85;
+}
+
+.ds-asd-header--running .ds-asd-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--success-fg) 16%, transparent), transparent 68%);
+}
+
+.ds-asd-header--offline .ds-asd-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, #94a3b8 16%, transparent), transparent 68%);
+}
+
+.ds-asd-header--installing .ds-asd-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, #22d3ee 18%, transparent), transparent 68%);
+}
+
+.ds-asd-header--suspended .ds-asd-header-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--warning-fg) 18%, transparent), transparent 68%);
 }
 
 .ds-asd-header-accent {
   position: absolute;
-  inset: 0 auto 0 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 55%, color-mix(in srgb, var(--accent) 45%, #000) 100%);
+  background: linear-gradient(180deg, var(--accent-hover) 0%, color-mix(in srgb, var(--accent) 40%, transparent) 100%);
 }
 
 .ds-asd-header--running .ds-asd-header-accent {
-  background: linear-gradient(180deg, #34d399 0%, #059669 55%, color-mix(in srgb, #059669 45%, #000) 100%);
+  background: linear-gradient(180deg, #34d399 0%, color-mix(in srgb, #059669 40%, transparent) 100%);
 }
 
 .ds-asd-header--offline .ds-asd-header-accent {
-  background: linear-gradient(180deg, #94a3b8 0%, #64748b 55%, color-mix(in srgb, #64748b 45%, #000) 100%);
+  background: linear-gradient(180deg, #94a3b8 0%, color-mix(in srgb, #64748b 40%, transparent) 100%);
 }
 
 .ds-asd-header--installing .ds-asd-header-accent {
-  background: linear-gradient(180deg, #22d3ee 0%, #0891b2 55%, color-mix(in srgb, #0891b2 45%, #000) 100%);
+  background: linear-gradient(180deg, #22d3ee 0%, color-mix(in srgb, #0891b2 40%, transparent) 100%);
 }
 
 .ds-asd-header--suspended .ds-asd-header-accent {
-  background: linear-gradient(180deg, var(--warning-fg, #fbbf24) 0%, color-mix(in srgb, var(--warning-fg, #fbbf24) 55%, #000) 100%);
+  background: linear-gradient(180deg, var(--warning-fg, #fbbf24) 0%, color-mix(in srgb, var(--warning-fg, #fbbf24) 40%, transparent) 100%);
 }
 
 .ds-asd-header-main {
+  position: relative;
+  z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding-left: 0.65rem;
+  padding-left: 0.7rem;
 }
 
 .ds-asd-header-identity {
   display: flex;
   align-items: flex-start;
-  gap: 0.9rem;
+  gap: 0.95rem;
   min-width: 0;
   flex: 1;
 }
@@ -30624,10 +30699,11 @@ button.ds-nodes-stat:hover {
   position: relative;
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3.15rem;
+  height: 3.15rem;
   flex-shrink: 0;
-  border-radius: 0.75rem;
+  align-self: flex-start;
+  border-radius: 0.95rem;
   color: white;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 15%, transparent);
 }
@@ -30636,15 +30712,18 @@ button.ds-nodes-stat:hover {
   position: absolute;
   right: -2px;
   bottom: -2px;
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 9999px;
+  z-index: 1;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
   border: 2px solid var(--bg-elevated);
   background: #94a3b8;
+  pointer-events: none;
 }
 
 .ds-asd-header-pulse--running {
   background: #34d399;
+  animation: ds-nd-pulse 2s ease-in-out infinite;
 }
 
 .ds-asd-header-pulse--installing {
@@ -30653,6 +30732,15 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-header-pulse--suspended {
   background: var(--warning-fg, #fbbf24);
+}
+
+.ds-asd-header-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .ds-asd-header-title-row {
@@ -30664,59 +30752,105 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-header-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
 }
 
-.ds-asd-header-sub {
-  margin: 0.2rem 0 0;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.ds-asd-header-address-row {
+.ds-asd-header-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
-  font-size: 0.75rem;
+  gap: 0.35rem 0.45rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
   color: var(--muted);
+}
+
+.ds-asd-header-meta-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   min-width: 0;
 }
 
-.ds-asd-header-copy {
+.ds-asd-header-meta-sep {
+  opacity: 0.45;
+}
+
+.ds-asd-header-endpoint {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  max-width: 100%;
+  padding: 0.3rem 0.45rem 0.3rem 0.35rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.ds-asd-header-scheme {
+  display: inline-grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.4rem;
+  color: var(--accent-hover);
+  background: var(--accent-muted);
+}
+
+.ds-asd-header-fqdn-text {
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-asd-header-fqdn-copy {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   flex-shrink: 0;
+  margin-left: auto;
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border: 1px solid transparent;
+  background: transparent;
   font-size: 0.625rem;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--muted);
   cursor: pointer;
 }
 
-.ds-asd-header-copy:hover {
+.ds-asd-header-fqdn-copy:hover {
   color: var(--text);
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
 }
 
 .ds-asd-header-actions {
-  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .ds-asd-header-stats {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
   margin-top: 1rem;
-  padding-left: 0.65rem;
+  padding-left: 0.7rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .ds-asd-header-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -30727,10 +30861,10 @@ button.ds-nodes-stat:hover {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.7rem;
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
 }
 
 .ds-asd-header-stat-icon {
@@ -30753,14 +30887,14 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-header-stat-label {
   font-size: 0.5625rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .ds-asd-header-stat-value {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -30769,77 +30903,30 @@ button.ds-nodes-stat:hover {
   white-space: nowrap;
 }
 
-.ds-asd-dock {
-  display: grid;
-  gap: 0.45rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.ds-asd-ov {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-@media (min-width: 900px) {
-  .ds-asd-dock {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.ds-asd-ov-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 960px) {
+  .ds-asd-ov-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.ds-asd-dock-item {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  background: color-mix(in srgb, var(--bg-elevated) 80%, var(--surface));
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.ds-asd-dock-item:hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent-muted) 35%, var(--bg-elevated));
-}
-
-.ds-asd-dock-icon {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: 0.55rem;
-  color: var(--accent-hover);
-  background: var(--accent-muted);
-}
-
-.ds-asd-dock-copy {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.ds-asd-dock-label {
-  font-size: 0.75rem;
-  font-weight: 650;
-  color: var(--text);
-}
-
-.ds-asd-dock-hint {
-  font-size: 0.625rem;
-  color: var(--muted);
-}
-
-.ds-asd-dock-chevron {
-  flex-shrink: 0;
-  color: var(--muted);
-  opacity: 0.6;
-}
-
-.ds-asd-ov,
 .ds-asd-manage,
-.ds-asd-act {
+.ds-asd-act,
+.ds-asd-network {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .ds-asd-banner {
@@ -30873,26 +30960,6 @@ button.ds-nodes-stat:hover {
   margin: 0.15rem 0 0;
   font-size: 0.6875rem;
   opacity: 0.9;
-}
-
-.ds-asd-ov-bento {
-  display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 1024px) {
-  .ds-asd-ov-bento {
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.9fr);
-    align-items: start;
-  }
-}
-
-.ds-asd-ov-bento-main,
-.ds-asd-ov-bento-side {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
 }
 
 .ds-asd-panel {
@@ -31039,7 +31106,7 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-tools-grid {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.45rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -31049,21 +31116,63 @@ button.ds-nodes-stat:hover {
   }
 }
 
+@media (min-width: 1100px) {
+  .ds-asd-tools-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .ds-asd-tools-link {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.55rem;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
   border-radius: var(--radius-md);
-  font-size: 0.6875rem;
-  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+  font-size: 0.75rem;
+  font-weight: 650;
   color: var(--text);
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .ds-asd-tools-link:hover {
-  background: color-mix(in srgb, var(--surface-hover) 80%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent-muted) 28%, var(--surface));
+}
+
+.ds-asd-tools-link-icon {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border-radius: 0.45rem;
+  color: var(--accent-hover);
+  background: var(--accent-muted);
+}
+
+.ds-asd-tools-link-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0.45;
+}
+
+.ds-asd-owner-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ds-asd-owner-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .ds-asd-owner-row {
@@ -31093,13 +31202,25 @@ button.ds-nodes-stat:hover {
 
 .ds-asd-meta-grid {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.55rem;
   margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .ds-asd-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .ds-asd-meta-item {
   display: grid;
   gap: 0.2rem;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 42%, transparent);
 }
 
 .ds-asd-meta-label {

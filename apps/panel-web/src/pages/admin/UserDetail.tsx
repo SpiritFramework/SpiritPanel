@@ -97,6 +97,7 @@ export function AdminUserDetail() {
             onCopyEmail={() => void ctrl.copyText(detail.email, 'email')}
             copied={ctrl.copied === 'email'}
             onManageAccount={() => changeTab('account')}
+            onViewServers={() => changeTab('servers')}
           />
           <UserDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
         </div>
