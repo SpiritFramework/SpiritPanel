@@ -3318,15 +3318,18 @@ button.ds-nodes-stat:hover {
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.15rem 0.75rem;
   margin-top: 1rem;
-  padding: 0.85rem 0 0 0.7rem;
-  border-top: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  margin-left: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
 }
 
 @media (min-width: 720px) {
   .ds-nd-header-stats {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -3335,10 +3338,7 @@ button.ds-nodes-stat:hover {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
-  padding: 0.5rem 0.55rem;
-  border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  padding: 0.35rem 0.15rem;
 }
 
 .ds-nd-header-stat-icon {
@@ -3937,17 +3937,18 @@ button.ds-nodes-stat:hover {
   display: block;
   padding: 1rem;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 3%, transparent);
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
 }
 
 .ds-nd-server-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elevated));
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .ds-nd-server-card-top {
@@ -3977,6 +3978,17 @@ button.ds-nodes-stat:hover {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+.ds-nd-server-meter-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .ds-nd-server-card-addr {
@@ -4096,21 +4108,35 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-nd-diag-card {
-  padding: 1rem;
+  padding: 0.9rem 1rem;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 3%, transparent);
 }
 
 .ds-nd-diag-card--ok {
   border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--success) 6%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--bg-elevated) 96%, transparent) 100%
+  );
 }
 
 .ds-nd-diag-card--bad {
   border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--danger) 6%, var(--bg-elevated)) 0%,
+    color-mix(in srgb, var(--bg-elevated) 96%, transparent) 100%
+  );
 }
 
 .ds-nd-diag-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -4119,15 +4145,33 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-nd-diag-card-value {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .ds-nd-diag-card-detail {
-  margin: 0.25rem 0 0;
+  margin: 0.3rem 0 0;
   font-size: 0.6875rem;
+  line-height: 1.4;
   color: var(--muted);
+}
+
+.ds-nd-diag-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.ds-nd-diag-tech {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
 .ds-nd-activity-list {
@@ -4194,16 +4238,35 @@ button.ds-nodes-stat:hover {
 }
 
 .ds-nd-notice {
-  margin-top: 0.75rem;
-  padding: 0.625rem 0.875rem;
+  margin-top: 0;
+  padding: 0.7rem 0.9rem;
   border-radius: var(--radius-md);
   font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-nd-notice-title {
+  margin: 0 0 0.25rem;
+  font-weight: 650;
+  color: var(--text);
 }
 
 .ds-nd-notice--success {
   border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
   background: color-mix(in srgb, var(--success) 8%, var(--surface));
   color: var(--success-fg);
+}
+
+.ds-nd-notice--danger {
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  color: var(--danger-fg);
+}
+
+.ds-nd-notice--info {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 
 .ds-nd-port-pills {
@@ -5813,6 +5876,10 @@ button.ds-nodes-stat:hover {
   box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 3%, transparent);
 }
 
+.ds-nd-ov-card--danger {
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+}
+
 .ds-nd-ov-card--capacity {
   width: 100%;
   border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
@@ -5858,11 +5925,13 @@ button.ds-nodes-stat:hover {
   color: var(--muted);
 }
 
-.ds-nd-ov-card-badge {
+.ds-nd-ov-card-badge,
+.ds-nd-ov-card-actions {
   margin-left: auto;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   max-width: 100%;
 }
 

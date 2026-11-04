@@ -8,7 +8,16 @@ import { EmptyState, Spinner } from './ui';
 
 type ConnectionCreds = { host: string; port: number; username: string; password: string };
 
-export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeFqdn?: string }) {
+export function DatabaseHostsPanel({
+  nodeId,
+  nodeFqdn,
+  embedded,
+}: {
+  nodeId: string;
+  nodeFqdn?: string;
+  /** When true, skip outer chrome (parent already provides a section header). */
+  embedded?: boolean;
+}) {
   const [hosts, setHosts] = useState<DatabaseHostSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'create' | DatabaseHostSummary | null>(null);
@@ -49,36 +58,45 @@ export function DatabaseHostsPanel({ nodeId, nodeFqdn }: { nodeId: string; nodeF
     }
   }
 
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]/50">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Database className="h-4 w-4 accent-text" />
-            <h3 className="text-sm font-semibold">Database hosts</h3>
-          </div>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            MySQL/MariaDB servers the panel connects to when users create databases on this node.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setSuccess('');
-            setError('');
-            setModal('create');
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add host
-        </Button>
-      </div>
+  const addHostButton = (
+    <Button
+      type="button"
+      variant={embedded ? 'secondary' : 'ghost'}
+      size="sm"
+      onClick={() => {
+        setSuccess('');
+        setError('');
+        setModal('create');
+      }}
+    >
+      <Plus className="h-3.5 w-3.5" />
+      Add host
+    </Button>
+  );
 
-      <div className="p-4">
-        <div className="mb-4 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2.5 text-xs leading-relaxed text-[var(--muted)]">
-          <p className="font-medium text-cyan-200/90">Connection is made from the panel server</p>
-          <p className="mt-1">
+  return (
+    <div className={embedded ? undefined : 'rounded-xl border border-[var(--border)] bg-[var(--surface)]/50'}>
+      {!embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 accent-text" />
+              <h3 className="text-sm font-semibold">Database hosts</h3>
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              MySQL/MariaDB servers the panel connects to when users create databases on this node.
+            </p>
+          </div>
+          {addHostButton}
+        </div>
+      ) : (
+        <div className="mb-3 flex justify-end">{addHostButton}</div>
+      )}
+
+      <div className={embedded ? undefined : 'p-4'}>
+        <div className="ds-nd-notice ds-nd-notice--info mb-4">
+          <p className="ds-nd-notice-title">Connection is made from the panel server</p>
+          <p>
             Use an address the panel can reach — typically this node&apos;s FQDN (
             <span className="font-mono text-[var(--text)]">{nodeFqdn || 'see node settings'}</span>
             ), not <span className="font-mono">127.0.0.1</span> unless MySQL runs on the same machine as the panel.

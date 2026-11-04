@@ -10,7 +10,7 @@ export function NodeDetailDatabasesTab({ nodeId, nodeFqdn }: { nodeId: string; n
         description="MySQL hosts available for servers on this node"
         icon={Database}
       >
-        <DatabaseHostsPanel nodeId={nodeId} nodeFqdn={nodeFqdn} />
+        <DatabaseHostsPanel nodeId={nodeId} nodeFqdn={nodeFqdn} embedded />
       </NodeDetailPanel>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+/** Shared section chrome for node detail tabs — matches overview cards. */
 export function NodeDetailPanel({
   title,
   description,
@@ -17,20 +18,22 @@ export function NodeDetailPanel({
   actions?: ReactNode;
 }) {
   return (
-    <section className={`ds-nd-panel${tone === 'danger' ? ' ds-nd-panel--danger' : ''}`}>
-      <header className="ds-nd-panel-head">
+    <section
+      className={`ds-nd-ov-card${tone === 'danger' ? ' ds-nd-ov-card--danger' : ''}`}
+    >
+      <header className="ds-nd-ov-card-head">
         {Icon ? (
-          <span className="ds-nd-panel-icon" aria-hidden>
+          <span className="ds-nd-ov-card-icon" aria-hidden>
             <Icon className="ds-icon ds-icon--sm" />
           </span>
         ) : null}
         <div className="min-w-0 flex-1">
-          <h2 className="ds-nd-panel-title">{title}</h2>
-          {description ? <p className="ds-nd-panel-desc">{description}</p> : null}
+          <h2 className="ds-nd-ov-card-title">{title}</h2>
+          {description ? <p className="ds-nd-ov-card-desc">{description}</p> : null}
         </div>
-        {actions ? <div className="shrink-0">{actions}</div> : null}
+        {actions ? <div className="ds-nd-ov-card-actions">{actions}</div> : null}
       </header>
-      <div className="ds-nd-panel-body">{children}</div>
+      <div className="ds-nd-ov-card-body">{children}</div>
     </section>
   );
 }

@@ -9,7 +9,6 @@ import {
   Gauge,
   HardDrive,
   MapPin,
-  Network,
   Server,
   ShieldCheck,
   Stethoscope,
@@ -76,20 +75,20 @@ export function NodeDetailHeader({
     year: 'numeric',
   });
 
+  const portValue =
+    detail.allocationCount > 0
+      ? `${detail.assignedAllocations} used · ${freeAllocations} free`
+      : 'None';
+
   const stats: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: Server, label: 'Servers', value: String(detail.serverCount) },
-    {
-      icon: Gauge,
-      label: 'Ports',
-      value: detail.allocationCount > 0 ? `${detail.assignedAllocations}/${detail.allocationCount}` : 'None',
-    },
-    { icon: Network, label: 'Free ports', value: String(freeAllocations) },
+    { icon: Gauge, label: 'Ports', value: portValue },
     {
       icon: HardDrive,
       label: 'Wings',
       value: wingsVersion ? `v${wingsVersion}` : detail.online ? 'Connected' : 'Offline',
     },
-    { icon: MapPin, label: 'Region', value: detail.location.short },
+    { icon: MapPin, label: 'Region', value: detail.location.short.toUpperCase() },
   ];
 
   return (

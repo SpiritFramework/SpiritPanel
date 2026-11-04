@@ -193,7 +193,7 @@ export function NodeDetailAllocationsTab({ ctrl }: { ctrl: NodeDetailController 
 
   return (
     <div className="ds-nd-body">
-      <NodeDetailPanel title="Create allocations" description="Bind IP addresses and port ranges" icon={Gauge}>
+      <NodeDetailPanel title="Add ports" description="Bind an IP and port range for game servers on this node" icon={Gauge}>
         <div className="ds-nd-alloc-create">
           <Input
             label="Bind IP"

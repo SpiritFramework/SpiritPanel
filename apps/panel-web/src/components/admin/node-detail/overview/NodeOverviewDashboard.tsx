@@ -1,18 +1,9 @@
 import {
-  Activity,
-  ClipboardCopy,
   Cpu,
-  Download,
   Fingerprint,
   Gauge,
   Globe,
-  MapPin,
-  Network,
-  Server,
-  ShieldCheck,
   Terminal,
-  Wifi,
-  WifiOff,
   Wrench,
 } from 'lucide-react';
 import type { AdminNodeDetail } from '../../../../lib/api';
@@ -23,11 +14,9 @@ import {
   NodeOverviewCopyField,
   NodeOverviewEndpoint,
   NodeOverviewOfflineBanner,
-  NodeOverviewQuickDock,
   NodeOverviewSection,
   NodeOverviewSpec,
 } from '../NodeDetailShell';
-import { formatLocationLabel } from '../../../LocationFlag';
 import { StatusPill } from '../../../ui';
 
 type OverviewNav = {
@@ -51,9 +40,6 @@ export function NodeOverviewDashboard({
   const wingsSystem = parseWingsSystem(detail.system);
   const wingsVersion =
     detail.system && typeof detail.system.version === 'string' ? detail.system.version : null;
-  const statusTone = detail.maintenanceMode ? 'warning' : detail.online ? 'success' : 'danger';
-  const statusLabel = detail.maintenanceMode ? 'Maintenance' : detail.online ? 'Online' : 'Offline';
-  const StatusIcon = detail.maintenanceMode ? Wrench : detail.online ? Wifi : WifiOff;
 
   const liveBadge = detail.liveUsage ? (
     <StatusPill
@@ -62,25 +48,6 @@ export function NodeOverviewDashboard({
       compact
     />
   ) : undefined;
-
-  const dockItems = [
-    { icon: ClipboardCopy, label: 'Join-data', hint: 'For featherwings configure', onClick: nav.copyJoinData },
-    { icon: Download, label: 'Wings config', hint: 'Download YAML', onClick: nav.downloadConfig },
-    { icon: ShieldCheck, label: 'Diagnostics', hint: 'Test connectivity', onClick: nav.onDiagnostics },
-    {
-      icon: Gauge,
-      label: 'Allocations',
-      hint: `${detail.allocationCount} ports`,
-      onClick: nav.onAllocations,
-    },
-    {
-      icon: Server,
-      label: 'Servers',
-      hint: `${detail.serverCount} deployed`,
-      onClick: nav.onServers,
-    },
-    { icon: Activity, label: 'Analytics', hint: 'Live & history', onClick: nav.onAnalytics },
-  ];
 
   return (
     <div className="ds-nd-ov">
@@ -91,61 +58,6 @@ export function NodeOverviewDashboard({
           onCopyJoinData={nav.copyJoinData}
         />
       ) : null}
-
-      <section
-        className={`ds-nd-ov-summary ds-nd-ov-summary--${detail.maintenanceMode ? 'maintenance' : detail.online ? 'online' : 'offline'}`}
-        aria-label="Node status summary"
-      >
-        <div className="ds-nd-ov-summary-main">
-          <span className="ds-nd-ov-summary-icon" aria-hidden>
-            <StatusIcon className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <div className="ds-nd-ov-summary-title-row">
-              <h2 className="ds-nd-ov-summary-title">{detail.name}</h2>
-              <StatusPill label={statusLabel} tone={statusTone} compact pulse={detail.online && !detail.maintenanceMode} />
-            </div>
-            <p className="ds-nd-ov-summary-sub">
-              {formatLocationLabel(detail.location)}
-              <span aria-hidden> · </span>
-              {detail.scheme.toUpperCase()}://{detail.fqdn}
-              {detail.behindProxy ? <span aria-hidden> · proxied</span> : null}
-            </p>
-          </div>
-        </div>
-
-        <div className="ds-nd-ov-summary-metrics" role="list">
-          <SummaryMetric icon={Server} label="Servers" value={String(detail.serverCount)} />
-          <SummaryMetric
-            icon={Network}
-            label="Ports"
-            value={
-              detail.allocationCount > 0
-                ? `${detail.assignedAllocations}/${detail.allocationCount}`
-                : 'None'
-            }
-          />
-          <SummaryMetric
-            icon={MapPin}
-            label="Region"
-            value={detail.location.short || '—'}
-          />
-          <SummaryMetric
-            icon={Cpu}
-            label="Host"
-            value={wingsSystem?.cpuCount ? `${wingsSystem.cpuCount} cores` : detail.online ? '—' : 'Offline'}
-          />
-        </div>
-      </section>
-
-      <NodeOverviewQuickDock items={dockItems} />
-
-      <FeatherWingsVersionCard
-        installedVersion={wingsVersion}
-        online={detail.online}
-        onDownloadConfig={nav.downloadConfig}
-        onCopyJoinData={nav.copyJoinData}
-      />
 
       <NodeOverviewSection
         icon={Gauge}
@@ -170,10 +82,16 @@ export function NodeOverviewDashboard({
         )}
       </NodeOverviewSection>
 
+      <FeatherWingsVersionCard
+        installedVersion={wingsVersion}
+        online={detail.online}
+        onDownloadConfig={nav.downloadConfig}
+        onCopyJoinData={nav.copyJoinData}
+      />
+
       <div className="ds-nd-ov-grid-3">
-        <NodeOverviewSection icon={Globe} title="Endpoints" description="How clients and Wings connect">
+        <NodeOverviewSection icon={Globe} title="Connection" description="How Wings and clients reach this node">
           <div className="ds-nd-ov-endpoint-grid">
-            <NodeOverviewEndpoint label="FQDN" value={detail.fqdn} />
             <NodeOverviewEndpoint
               label="Panel API"
               value={`${detail.scheme}://${detail.fqdn}:${detail.daemonListen}`}
@@ -182,7 +100,6 @@ export function NodeOverviewDashboard({
             <NodeOverviewEndpoint label="SFTP" value={`${detail.fqdn}:${detail.daemonSftp}`} mono />
             <NodeOverviewEndpoint label="Data path" value={detail.daemonBase} mono />
             <NodeOverviewEndpoint label="Max upload" value={`${detail.uploadSize} MB`} />
-            <NodeOverviewEndpoint label="Region" value={formatLocationLabel(detail.location)} />
           </div>
           <div className="ds-nd-ov-tags">
             {detail.behindProxy ? <span className="ds-nd-tag">Behind proxy</span> : null}
@@ -196,7 +113,7 @@ export function NodeOverviewDashboard({
           </div>
         </NodeOverviewSection>
 
-        <NodeOverviewSection icon={Fingerprint} title="Identity" description="Panel identifiers for this node">
+        <NodeOverviewSection icon={Fingerprint} title="Panel identity" description="Identifiers used by the panel and daemon">
           <NodeOverviewCopyField
             label="Node UUID"
             value={detail.uuid}
@@ -245,28 +162,6 @@ export function NodeOverviewDashboard({
           )}
         </NodeOverviewSection>
       </div>
-    </div>
-  );
-}
-
-function SummaryMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Server;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="ds-nd-ov-summary-metric" role="listitem">
-      <span className="ds-nd-ov-summary-metric-icon" aria-hidden>
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="ds-nd-ov-summary-metric-copy">
-        <span className="ds-nd-ov-summary-metric-label">{label}</span>
-        <span className="ds-nd-ov-summary-metric-value">{value}</span>
-      </span>
     </div>
   );
 }

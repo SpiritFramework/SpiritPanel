@@ -25,23 +25,32 @@ export function NodeDetailDiagnosticsTab({
     setTimeout(() => setCopiedRemote(false), 1500);
   }
 
+  const remoteConfigured = Boolean(diagnostics?.remote.expected);
+  const wingsOnline = Boolean(diagnostics?.wings.online);
+
   return (
     <div className="ds-nd-body">
       <NodeDetailPanel
         title="Connectivity check"
         description="Verify FeatherWings can reach the panel and routing is configured"
         icon={RefreshCw}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={onRun}>
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Running diagnostics…' : diagnostics ? 'Re-run diagnostics' : 'Run diagnostics'}
+        actions={
+          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={onRun}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden />
+            {loading ? 'Running…' : diagnostics ? 'Re-run' : 'Run diagnostics'}
           </Button>
-          {loading ? <Spinner className="h-4 w-4" /> : null}
-        </div>
-        {error ? (
-          <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-            {error}
+        }
+      >
+        {loading && !diagnostics ? (
+          <div className="ds-nd-diag-loading">
+            <Spinner className="h-4 w-4" />
+            <span>Running connectivity checks…</span>
+          </div>
+        ) : null}
+        {error ? <p className="ds-nd-notice ds-nd-notice--danger">{error}</p> : null}
+        {!diagnostics && !loading && !error ? (
+          <p className="ds-text-sm ds-text-muted">
+            Run diagnostics to check daemon reachability, remote URL, console routing, and SFTP.
           </p>
         ) : null}
       </NodeDetailPanel>
@@ -51,20 +60,20 @@ export function NodeDetailDiagnosticsTab({
           <div className="ds-nd-diag-grid">
             <DiagCard
               label="Wings daemon"
-              ok={diagnostics.wings.online}
-              value={diagnostics.wings.online ? diagnostics.wings.wingsVersion ?? 'Online' : 'Offline'}
+              ok={wingsOnline}
+              value={wingsOnline ? diagnostics.wings.wingsVersion ?? 'Online' : 'Offline'}
               detail={diagnostics.wings.error ?? undefined}
             />
             <DiagCard
               label="Remote URL"
-              ok={Boolean(diagnostics.remote.expected)}
-              value={diagnostics.wings.online ? 'Configured' : 'Unreachable'}
+              ok={remoteConfigured}
+              value={remoteConfigured ? (wingsOnline ? 'Reachable path set' : 'Configured') : 'Missing'}
               detail={diagnostics.remote.hint}
             />
             <DiagCard
               label="Console routing"
-              ok={diagnostics.wings.online}
-              value="Checked"
+              ok={wingsOnline}
+              value={wingsOnline ? 'Ready' : 'Needs Wings online'}
               detail={diagnostics.console.hint}
             />
             <DiagCard
@@ -76,7 +85,7 @@ export function NodeDetailDiagnosticsTab({
           </div>
 
           <NodeDetailPanel title="Technical details" description="Raw values used by the panel and Wings" icon={Copy}>
-            <dl className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+            <dl className="ds-nd-diag-tech">
               <AdminInfoRow label="Panel URL" value={diagnostics.panel.url} mono truncate />
               <AdminInfoRow label="API URL" value={diagnostics.panel.apiUrl} mono truncate />
               <AdminInfoRow label="Expected remote" value={diagnostics.remote.expected} mono truncate />
@@ -113,13 +122,13 @@ function DiagCard({
 }) {
   return (
     <div className={`ds-nd-diag-card${ok ? ' ds-nd-diag-card--ok' : ' ds-nd-diag-card--bad'}`}>
-      <div className="flex items-center gap-1.5">
+      <div className="ds-nd-diag-card-label">
         {ok ? (
-          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success-fg)]" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success-fg)]" aria-hidden />
         ) : (
-          <XCircle className="h-3.5 w-3.5 text-[var(--danger-fg)]" />
+          <XCircle className="h-3.5 w-3.5 text-[var(--danger-fg)]" aria-hidden />
         )}
-        <span className="ds-nd-diag-card-label">{label}</span>
+        <span>{label}</span>
       </div>
       <p className="ds-nd-diag-card-value">{value}</p>
       {detail ? <p className="ds-nd-diag-card-detail">{detail}</p> : null}
