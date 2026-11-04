@@ -5,9 +5,11 @@ import {
   ChevronRight,
   Key,
   LayoutDashboard,
+  Link2,
   Mail,
   Server,
   Shield,
+  Terminal,
   User,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -18,6 +20,8 @@ import { StatusPill } from '../ui';
 export const PROFILE_TABS = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'security', label: 'Security', icon: Shield },
+  { id: 'oauth', label: 'OAuth', icon: Link2 },
+  { id: 'ssh', label: 'SSH keys', icon: Terminal },
   { id: 'keys', label: 'API keys', icon: Key },
 ] as const;
 

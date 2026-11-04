@@ -303,7 +303,9 @@ export function ProfilePage() {
           </>
         )}
 
-        {tab === 'security' && <SecuritySettings />}
+        {tab === 'security' && <SecuritySettings section="security" />}
+        {tab === 'oauth' && <SecuritySettings section="oauth" />}
+        {tab === 'ssh' && <SecuritySettings section="ssh" />}
 
         {tab === 'keys' && (
           <div className="ds-prof-stack">

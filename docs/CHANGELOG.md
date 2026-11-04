@@ -35,6 +35,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Profile tabs** — Security keeps password and 2FA; Discord and GitHub token move to OAuth; SSH keys get their own tab.
 - **Installer 3.0.0** (`scripts/spirit.sh`): install and update ask for the latest GitHub release or unreleased `main`, save that choice in `.spirit-channel`, and skip `pnpm install` / `pnpm build` when the commit and lockfile are already built. **3.0.1:** `update -y` on a terminal still asks that question the first time no channel is saved.
 
 ## [1.3.5.0] - 2026-10-28

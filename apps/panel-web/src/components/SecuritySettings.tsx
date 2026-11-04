@@ -993,7 +993,9 @@ function DiscordPanel({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-export function SecuritySettings() {
+export type SecuritySettingsSection = 'security' | 'oauth' | 'ssh';
+
+export function SecuritySettings({ section = 'security' }: { section?: SecuritySettingsSection }) {
   const { branding } = useBranding();
   const [twoFa, setTwoFa] = useState<TwoFactorStatus | null>(null);
   const [githubConfigured, setGithubConfigured] = useState(false);
@@ -1004,68 +1006,108 @@ export function SecuritySettings() {
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
     try {
-      const [status, github, discord, ssh] = await Promise.all([
-        api.twoFactorStatus(),
-        api.githubPatStatus(),
-        api.discordStatus(),
-        api.sshKeys(),
-      ]);
-      setTwoFa(status);
-      setGithubConfigured(github.configured);
-      setDiscordLinked(discord.linked);
-      setSshCount(ssh.length);
+      if (section === 'security') {
+        const status = await api.twoFactorStatus();
+        setTwoFa(status);
+      } else if (section === 'oauth') {
+        const [github, discord] = await Promise.all([api.githubPatStatus(), api.discordStatus()]);
+        setGithubConfigured(github.configured);
+        setDiscordLinked(discord.linked);
+      } else {
+        const ssh = await api.sshKeys();
+        setSshCount(ssh.length);
+      }
     } catch {
       /* surfaced on individual panels */
     } finally {
       setOverviewLoading(false);
     }
-  }, []);
+  }, [section]);
 
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
 
-  const items: SecurityOverviewItem[] = [
-    { id: 'password', label: 'Password', value: 'Set', ok: true, icon: KeyRound },
-    {
-      id: '2fa',
-      label: 'Two-factor',
-      value: twoFa?.enabled ? 'Enabled' : 'Off',
-      ok: Boolean(twoFa?.enabled),
-      icon: ShieldCheck,
-    },
-    {
-      id: 'discord',
-      label: 'Discord',
-      value: discordLinked ? 'Linked' : 'Not linked',
-      ok: discordLinked,
-      icon: DiscordIcon,
-    },
-    {
-      id: 'github',
-      label: 'GitHub',
-      value: githubConfigured ? 'Linked' : 'Not linked',
-      ok: githubConfigured,
-      icon: Github,
-    },
-    {
-      id: 'ssh',
-      label: 'SSH keys',
-      value: sshCount === 0 ? 'None' : `${sshCount}`,
-      ok: sshCount > 0,
-      icon: Terminal,
-    },
-  ];
+  const items: SecurityOverviewItem[] =
+    section === 'security'
+      ? [
+          { id: 'password', label: 'Password', value: 'Set', ok: true, icon: KeyRound },
+          {
+            id: '2fa',
+            label: 'Two-factor',
+            value: twoFa?.enabled ? 'Enabled' : 'Off',
+            ok: Boolean(twoFa?.enabled),
+            icon: ShieldCheck,
+          },
+        ]
+      : section === 'oauth'
+        ? [
+            {
+              id: 'discord',
+              label: 'Discord',
+              value: discordLinked ? 'Linked' : 'Not linked',
+              ok: discordLinked,
+              icon: DiscordIcon,
+            },
+            {
+              id: 'github',
+              label: 'GitHub',
+              value: githubConfigured ? 'Linked' : 'Not linked',
+              ok: githubConfigured,
+              icon: Github,
+            },
+          ]
+        : [
+            {
+              id: 'ssh',
+              label: 'SSH keys',
+              value: sshCount === 0 ? 'None' : `${sshCount}`,
+              ok: sshCount > 0,
+              icon: Terminal,
+            },
+          ];
+
+  const overviewLabel =
+    section === 'oauth' ? 'OAuth status' : section === 'ssh' ? 'SSH status' : 'Security score';
+  const overviewHints =
+    section === 'oauth'
+      ? {
+          high: 'Accounts linked — marketplace and Discord sign-in are ready.',
+          mid: 'One provider linked — connect the other below if you need it.',
+          low: 'Link Discord or GitHub below when you need them.',
+        }
+      : section === 'ssh'
+        ? {
+            high: 'SSH keys on file for SFTP access.',
+            mid: 'Add another key if you use more than one machine.',
+            low: 'Add an SSH key below to use SFTP without a password.',
+          }
+        : undefined;
 
   return (
     <div className="ds-prof-stack ds-sec-page">
-      <ProfileSecurityOverview items={items} loading={overviewLoading} />
+      <ProfileSecurityOverview
+        items={items}
+        loading={overviewLoading}
+        label={overviewLabel}
+        hints={overviewHints}
+      />
 
-      <PasswordPanel minPasswordLength={branding.minPasswordLength} onChanged={loadOverview} />
-      <TwoFactorPanel onChanged={loadOverview} />
-      <DiscordPanel onChanged={loadOverview} />
-      <GithubPatPanel onChanged={loadOverview} />
-      <SshKeysPanel onChanged={loadOverview} />
+      {section === 'security' ? (
+        <>
+          <PasswordPanel minPasswordLength={branding.minPasswordLength} onChanged={loadOverview} />
+          <TwoFactorPanel onChanged={loadOverview} />
+        </>
+      ) : null}
+
+      {section === 'oauth' ? (
+        <>
+          <DiscordPanel onChanged={loadOverview} />
+          <GithubPatPanel onChanged={loadOverview} />
+        </>
+      ) : null}
+
+      {section === 'ssh' ? <SshKeysPanel onChanged={loadOverview} /> : null}
     </div>
   );
 }

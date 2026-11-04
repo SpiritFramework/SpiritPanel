@@ -303,7 +303,7 @@ export async function authRoutes(app: FastifyInstance) {
     const settings = await getDiscordAuthSettings();
     if (!isDiscordAuthReady(settings)) {
       if (intent === 'link') {
-        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=disabled'));
+        return reply.redirect(panelRedirect('/profile?tab=oauth&discord_error=disabled'));
       }
       return reply.redirect(discordLoginErrorRedirect('disabled'));
     }
@@ -314,7 +314,7 @@ export async function authRoutes(app: FastifyInstance) {
       if (reply.sent) return;
       const linkUserId = query.linkToken ? verifyDiscordLinkIntent(query.linkToken) : null;
       if (!linkUserId || linkUserId !== request.user!.id) {
-        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=reauth'));
+        return reply.redirect(panelRedirect('/profile?tab=oauth&discord_error=reauth'));
       }
       userId = request.user!.id;
     }
@@ -337,7 +337,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     if (query.error || !query.code || !state) {
       if (intent === 'link') {
-        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=denied'));
+        return reply.redirect(panelRedirect('/profile?tab=oauth&discord_error=denied'));
       }
       return reply.redirect(discordLoginErrorRedirect(query.error === 'access_denied' ? 'denied' : 'failed'));
     }
@@ -346,7 +346,7 @@ export async function authRoutes(app: FastifyInstance) {
     if (!isDiscordAuthReady(settings)) {
       return reply.redirect(
         intent === 'link'
-          ? panelRedirect('/profile?tab=security&discord_error=disabled')
+          ? panelRedirect('/profile?tab=oauth&discord_error=disabled')
           : discordLoginErrorRedirect('disabled'),
       );
     }
@@ -361,21 +361,21 @@ export async function authRoutes(app: FastifyInstance) {
     if (!identity) {
       return reply.redirect(
         intent === 'link'
-          ? panelRedirect('/profile?tab=security&discord_error=failed')
+          ? panelRedirect('/profile?tab=oauth&discord_error=failed')
           : discordLoginErrorRedirect('failed'),
       );
     }
 
     if (intent === 'link') {
       if (!state.userId) {
-        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=failed'));
+        return reply.redirect(panelRedirect('/profile?tab=oauth&discord_error=failed'));
       }
       const taken = await prisma.user.findFirst({
         where: { discordId: identity.id, NOT: { id: state.userId } },
         select: { id: true },
       });
       if (taken) {
-        return reply.redirect(panelRedirect('/profile?tab=security&discord_error=taken'));
+        return reply.redirect(panelRedirect('/profile?tab=oauth&discord_error=taken'));
       }
       await prisma.user.update({
         where: { id: state.userId },
@@ -391,7 +391,7 @@ export async function authRoutes(app: FastifyInstance) {
         description: `Linked Discord @${identity.handle}`,
         properties: { discordId: identity.id },
       });
-      return reply.redirect(panelRedirect('/profile?tab=security&discord=linked'));
+      return reply.redirect(panelRedirect('/profile?tab=oauth&discord=linked'));
     }
 
     const user = await prisma.user.findUnique({ where: { discordId: identity.id } });
