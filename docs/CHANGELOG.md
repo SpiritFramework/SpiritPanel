@@ -35,6 +35,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Node overview** — status summary strip, offline banner first, clearer quick actions, and polished capacity / FeatherWings / detail cards.
 - **My Servers announcement** — sits under the fleet header (not above the page) with a cleaner banner that matches the page callouts.
 - **Suspended server power notice** — clear banner above the server content instead of a cramped sidebar message; power buttons lock for owners until unsuspended.
 - **Profile tabs** — Security keeps password and 2FA; Discord and GitHub token move to OAuth; SSH keys get their own tab.

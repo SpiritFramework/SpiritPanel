@@ -6,9 +6,13 @@ import {
   Fingerprint,
   Gauge,
   Globe,
+  MapPin,
+  Network,
   Server,
   ShieldCheck,
   Terminal,
+  Wifi,
+  WifiOff,
   Wrench,
 } from 'lucide-react';
 import type { AdminNodeDetail } from '../../../../lib/api';
@@ -25,6 +29,7 @@ import {
   NodeOverviewSpec,
 } from '../NodeDetailShell';
 import { formatLocationLabel } from '../../../LocationFlag';
+import { StatusPill } from '../../../ui';
 
 type OverviewNav = {
   onDiagnostics: () => void;
@@ -53,9 +58,17 @@ export function NodeOverviewDashboard({
       ? Math.min(100, Math.round((detail.assignedAllocations / detail.allocationCount) * 100))
       : 0;
 
-  const liveBadge = detail.liveUsage
-    ? `${detail.liveUsage.liveServerCount}/${detail.liveUsage.serverCount} live`
-    : undefined;
+  const statusTone = detail.maintenanceMode ? 'warning' : detail.online ? 'success' : 'danger';
+  const statusLabel = detail.maintenanceMode ? 'Maintenance' : detail.online ? 'Online' : 'Offline';
+  const StatusIcon = detail.maintenanceMode ? Wrench : detail.online ? Wifi : WifiOff;
+
+  const liveBadge = detail.liveUsage ? (
+    <StatusPill
+      label={`${detail.liveUsage.liveServerCount}/${detail.liveUsage.serverCount} live`}
+      tone={detail.liveUsage.liveServerCount > 0 ? 'success' : 'neutral'}
+      compact
+    />
+  ) : undefined;
 
   const dockItems = [
     { icon: ClipboardCopy, label: 'Join-data', hint: 'For featherwings configure', onClick: nav.copyJoinData },
@@ -78,6 +91,60 @@ export function NodeOverviewDashboard({
 
   return (
     <div className="ds-nd-ov">
+      {!detail.online ? (
+        <NodeOverviewOfflineBanner
+          detail={detail}
+          onDownloadConfig={nav.downloadConfig}
+          onCopyJoinData={nav.copyJoinData}
+        />
+      ) : null}
+
+      <section
+        className={`ds-nd-ov-summary ds-nd-ov-summary--${detail.maintenanceMode ? 'maintenance' : detail.online ? 'online' : 'offline'}`}
+        aria-label="Node status summary"
+      >
+        <div className="ds-nd-ov-summary-main">
+          <span className="ds-nd-ov-summary-icon" aria-hidden>
+            <StatusIcon className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="ds-nd-ov-summary-title-row">
+              <h2 className="ds-nd-ov-summary-title">{detail.name}</h2>
+              <StatusPill label={statusLabel} tone={statusTone} compact pulse={detail.online && !detail.maintenanceMode} />
+            </div>
+            <p className="ds-nd-ov-summary-sub">
+              {formatLocationLabel(detail.location)}
+              <span aria-hidden> · </span>
+              {detail.scheme.toUpperCase()}://{detail.fqdn}
+              {detail.behindProxy ? <span aria-hidden> · proxied</span> : null}
+            </p>
+          </div>
+        </div>
+
+        <div className="ds-nd-ov-summary-metrics" role="list">
+          <SummaryMetric icon={Server} label="Servers" value={String(detail.serverCount)} />
+          <SummaryMetric
+            icon={Network}
+            label="Ports"
+            value={
+              detail.allocationCount > 0
+                ? `${detail.assignedAllocations}/${detail.allocationCount}`
+                : 'None'
+            }
+          />
+          <SummaryMetric
+            icon={MapPin}
+            label="Region"
+            value={detail.location.short || '—'}
+          />
+          <SummaryMetric
+            icon={Cpu}
+            label="Host"
+            value={wingsSystem?.cpuCount ? `${wingsSystem.cpuCount} cores` : detail.online ? '—' : 'Offline'}
+          />
+        </div>
+      </section>
+
       <NodeOverviewQuickDock items={dockItems} />
 
       <div className="ds-nd-ov-bento">
@@ -183,7 +250,9 @@ export function NodeOverviewDashboard({
               <span className="ds-nd-ov-notes-label">Notes</span>
               <p className="ds-nd-ov-notes-text">{detail.description}</p>
             </div>
-          ) : null}
+          ) : (
+            <p className="ds-nd-ov-notes-empty">No notes set for this node.</p>
+          )}
         </NodeOverviewSection>
 
         <NodeOverviewSection
@@ -212,14 +281,28 @@ export function NodeOverviewDashboard({
           )}
         </NodeOverviewSection>
       </div>
+    </div>
+  );
+}
 
-      {!detail.online ? (
-        <NodeOverviewOfflineBanner
-          detail={detail}
-          onDownloadConfig={nav.downloadConfig}
-          onCopyJoinData={nav.copyJoinData}
-        />
-      ) : null}
+function SummaryMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Server;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="ds-nd-ov-summary-metric" role="listitem">
+      <span className="ds-nd-ov-summary-metric-icon" aria-hidden>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="ds-nd-ov-summary-metric-copy">
+        <span className="ds-nd-ov-summary-metric-label">{label}</span>
+        <span className="ds-nd-ov-summary-metric-value">{value}</span>
+      </span>
     </div>
   );
 }
