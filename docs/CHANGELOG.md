@@ -35,9 +35,17 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
-- **Node capacity panel** — Capacity & resources redesigned into live usage rings, assigned meters, limits, and port allocation; FeatherWings version is a compact full-width bar above it.
+- **Admin UI chrome** — lists, create flows, and detail shells share `ds-adm` primitives (headers, KPIs, sections, callouts) for a consistent admin look.
+- **Node detail** — full manage page polish across shell, overview, settings sections, quieter actions, and tabs; Capacity & resources uses live usage rings, assigned meters, limits, and port allocation with FeatherWings version as a compact bar above.
 - **Node manage hero** — redesigned header with status atmosphere, clearer endpoint chip, and tighter actions/stats.
 - **Node overview** — status summary strip, offline banner first, clearer quick actions, and polished capacity / FeatherWings / detail cards.
+- **Node Database hosts** — redesigned host list (callout, KPIs, cards); Add/Edit host modal uses sectioned Identity / Connection / Capacity chrome with live endpoint preview and sticky footer.
+- **Location detail** — overview / settings / nodes aligned to admin detail chrome with a sticky save bar.
+- **Add location modal** — sectioned Identity / Flag form, live preview chip, and sticky footer.
+- **Admin user & server detail** — servers tabs match compact My Servers cards/rows (owner avatar; node cards also show location).
+- **Announce** — page content uses the shared centered `Page` shell like other admin pages.
+- **My Servers** — cards and list rows show the location flag beside the short code when the node has a flag URL.
+- **Tickets off** — when branding disables tickets, admin Support nav and ticket routes stay hidden for clients.
 - **My Servers announcement** — sits under the fleet header (not above the page) with a cleaner banner that matches the page callouts.
 - **Suspended server power notice** — clear banner above the server content instead of a cramped sidebar message; power buttons lock for owners until unsuspended.
 - **Profile tabs** — Security keeps password and 2FA; Discord and GitHub token move to OAuth; SSH keys get their own tab.
