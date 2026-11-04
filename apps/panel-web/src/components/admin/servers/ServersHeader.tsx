@@ -64,7 +64,7 @@ export function ServersHeader({
             icon: Server,
             label: 'Nodes',
             value: stats.nodes,
-            tone: tone === 'warn' ? 'warning' : undefined,
+            tone: tone === 'alert' ? 'warning' : undefined,
           },
         ]}
       />
