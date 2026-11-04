@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import type { AdminNodeDetail } from '../../../../lib/api';
 import { parseWingsSystem } from '../../../../lib/node-admin';
-import { NodeLimitSummary } from '../NodeResourceMeter';
 import { NodeOverviewResourceRings } from './NodeOverviewResourceRings';
 import { FeatherWingsVersionCard } from './FeatherWingsVersionCard';
 import {
@@ -52,12 +51,6 @@ export function NodeOverviewDashboard({
   const wingsSystem = parseWingsSystem(detail.system);
   const wingsVersion =
     detail.system && typeof detail.system.version === 'string' ? detail.system.version : null;
-  const freeAllocations = detail.allocationCount - detail.assignedAllocations;
-  const portPercent =
-    detail.allocationCount > 0
-      ? Math.min(100, Math.round((detail.assignedAllocations / detail.allocationCount) * 100))
-      : 0;
-
   const statusTone = detail.maintenanceMode ? 'warning' : detail.online ? 'success' : 'danger';
   const statusLabel = detail.maintenanceMode ? 'Maintenance' : detail.online ? 'Online' : 'Offline';
   const StatusIcon = detail.maintenanceMode ? Wrench : detail.online ? Wifi : WifiOff;
@@ -157,39 +150,16 @@ export function NodeOverviewDashboard({
             className="ds-nd-ov-card--capacity"
           >
             {detail.capacity ? (
-              <>
-                <NodeOverviewResourceRings capacity={detail.capacity} liveUsage={detail.liveUsage} />
-
-                <div className="ds-nd-ov-capacity-footer">
-                  <div className="ds-nd-ov-capacity-limits">
-                    <p className="ds-nd-ov-capacity-label">Node limits</p>
-                    <NodeLimitSummary
-                      memory={detail.memory}
-                      memoryOverallocate={detail.memoryOverallocate}
-                      disk={detail.disk}
-                      diskOverallocate={detail.diskOverallocate}
-                    />
-                  </div>
-
-                  {detail.allocationCount > 0 ? (
-                    <div className="ds-nd-ov-capacity-ports">
-                      <div className="ds-nd-ov-ports-head">
-                        <span>Port allocation</span>
-                        <span className="ds-text-mono">{portPercent}%</span>
-                      </div>
-                      <div className="ds-progress" aria-hidden>
-                        <div
-                          className={`ds-progress-fill ds-progress-fill--${portPercent >= 90 ? 'bad' : portPercent >= 75 ? 'warn' : 'good'}`}
-                          style={{ width: `${Math.max(portPercent > 0 ? 4 : 0, portPercent)}%` }}
-                        />
-                      </div>
-                      <p className="ds-nd-ov-ports-meta">
-                        {detail.assignedAllocations} assigned · {freeAllocations} available
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </>
+              <NodeOverviewResourceRings
+                capacity={detail.capacity}
+                liveUsage={detail.liveUsage}
+                memory={detail.memory}
+                memoryOverallocate={detail.memoryOverallocate}
+                disk={detail.disk}
+                diskOverallocate={detail.diskOverallocate}
+                allocationCount={detail.allocationCount}
+                assignedAllocations={detail.assignedAllocations}
+              />
             ) : (
               <p className="ds-text-sm ds-text-muted">No capacity data available for this node.</p>
             )}

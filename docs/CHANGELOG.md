@@ -35,6 +35,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Node capacity panel** — Capacity & resources redesigned into live usage rings, assigned meters, limits, and port allocation.
+- **Node manage hero** — redesigned header with status atmosphere, clearer endpoint chip, and tighter actions/stats.
 - **Node overview** — status summary strip, offline banner first, clearer quick actions, and polished capacity / FeatherWings / detail cards.
 - **My Servers announcement** — sits under the fleet header (not above the page) with a cleaner banner that matches the page callouts.
 - **Suspended server power notice** — clear banner above the server content instead of a cramped sidebar message; power buttons lock for owners until unsuspended.

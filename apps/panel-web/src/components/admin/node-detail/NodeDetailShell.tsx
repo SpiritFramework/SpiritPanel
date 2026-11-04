@@ -81,13 +81,13 @@ export function NodeDetailHeader({
     {
       icon: Gauge,
       label: 'Ports',
-      value: `${detail.assignedAllocations}/${detail.allocationCount}`,
+      value: detail.allocationCount > 0 ? `${detail.assignedAllocations}/${detail.allocationCount}` : 'None',
     },
-    { icon: Network, label: 'Free', value: String(freeAllocations) },
+    { icon: Network, label: 'Free ports', value: String(freeAllocations) },
     {
       icon: HardDrive,
       label: 'Wings',
-      value: wingsVersion ?? (detail.online ? 'Connected' : 'Offline'),
+      value: wingsVersion ? `v${wingsVersion}` : detail.online ? 'Connected' : 'Offline',
     },
     { icon: MapPin, label: 'Region', value: detail.location.short },
   ];
@@ -101,16 +101,18 @@ export function NodeDetailHeader({
       </nav>
 
       <div className="ds-nd-header-body">
+        <div className="ds-nd-header-glow" aria-hidden />
         <div className="ds-nd-header-accent" aria-hidden />
 
         <div className="ds-nd-header-main">
           <div className="ds-nd-header-identity">
             <div className="ds-nd-header-icon-wrap" aria-hidden>
-              <HardDrive className="ds-icon" />
+              <HardDrive className="h-5 w-5" />
               <span className={`ds-nd-header-pulse ds-nd-header-pulse--${statusTone}`} />
             </div>
 
             <div className="min-w-0 flex-1">
+              <p className="ds-nd-header-eyebrow">Node manage</p>
               <div className="ds-nd-header-title-row">
                 <h1 className="ds-nd-header-title">{detail.name}</h1>
                 <StatusPill
@@ -121,20 +123,30 @@ export function NodeDetailHeader({
               </div>
 
               <p className="ds-nd-header-meta">
-                <span className="inline-flex items-center gap-1">
+                <span className="ds-nd-header-meta-loc">
                   {detail.location.flagUrl ? (
                     <LocationFlag url={detail.location.flagUrl} size="sm" />
-                  ) : null}
-                  {detail.location.short}
+                  ) : (
+                    <MapPin className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                  )}
+                  <span>
+                    {detail.location.short}
+                    <span className="ds-nd-header-meta-sep" aria-hidden>
+                      ·
+                    </span>
+                    {detail.location.long}
+                  </span>
                 </span>
                 <span className="ds-nd-header-meta-sep" aria-hidden>
                   ·
                 </span>
-                <span>{detail.location.long}</span>
+                <span>Since {createdLabel}</span>
               </p>
 
-              <div className="ds-nd-header-fqdn">
+              <div className="ds-nd-header-endpoint">
+                <span className="ds-nd-header-scheme">{detail.scheme.toUpperCase()}</span>
                 <code className="ds-nd-header-fqdn-text">{detail.fqdn}</code>
+                {detail.behindProxy ? <span className="ds-nd-header-proxy">Proxied</span> : null}
                 {onCopyFqdn ? (
                   <button
                     type="button"
@@ -147,23 +159,17 @@ export function NodeDetailHeader({
                   </button>
                 ) : null}
               </div>
-
-              <div className="ds-nd-header-tags">
-                <span className="ds-nd-header-tag">{detail.scheme.toUpperCase()}</span>
-                {detail.behindProxy ? <span className="ds-nd-header-tag">Behind proxy</span> : null}
-                <span className="ds-nd-header-tag">Since {createdLabel}</span>
-              </div>
             </div>
           </div>
 
           <div className="ds-nd-header-actions">
             {onCopyJoinData ? (
-              <Button type="button" variant="secondary" size="sm" onClick={onCopyJoinData}>
+              <Button type="button" size="sm" onClick={onCopyJoinData}>
                 <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
                 {copied ? 'Copied' : 'Join-data'}
               </Button>
             ) : null}
-            <Button type="button" variant="ghost" size="sm" onClick={onDownloadConfig}>
+            <Button type="button" variant="secondary" size="sm" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
             </Button>
