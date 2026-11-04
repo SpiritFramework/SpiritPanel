@@ -6,6 +6,14 @@
   gap: 1rem;
 }
 
+.ds-servers-announce:empty {
+  display: none;
+}
+
+.ds-servers-announce .panel-announcement {
+  width: 100%;
+}
+
 .ds-servers-fleet {
   position: relative;
   overflow: hidden;

@@ -21,21 +21,26 @@ export function ServerSidebar({
   navGroups,
   showPower,
   powering,
-  powerNotice,
   onPower,
   startBlockedForInstall = false,
+  powerLocked = false,
 }: {
   navGroups: NavGroup[];
   showPower: boolean;
   powering: string | null;
-  powerNotice: string;
   onPower: (action: 'start' | 'restart' | 'stop' | 'kill') => void;
   startBlockedForInstall?: boolean;
+  powerLocked?: boolean;
 }) {
   const { server } = useServer();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const access = getServerAccess(server);
+  const disabledReason = powerLocked
+    ? 'Unavailable while server is suspended'
+    : startBlockedForInstall
+      ? 'Unavailable while server is installing'
+      : undefined;
 
   return (
     <aside
@@ -69,7 +74,6 @@ export function ServerSidebar({
       {showPower ? (
         <div className="ds-srv-sidebar-power">
           <p className="ds-srv-sidebar-power-label">Power</p>
-          {powerNotice ? <p className="ds-srv-sidebar-power-notice">{powerNotice}</p> : null}
           <div className="ds-srv-power-grid">
             {access.canStart ? (
               <PowerButton
@@ -77,7 +81,8 @@ export function ServerSidebar({
                 icon={Play}
                 tone="start"
                 loading={powering === 'start'}
-                disabled={startBlockedForInstall}
+                disabled={powerLocked || startBlockedForInstall}
+                title={disabledReason}
                 onClick={() => onPower('start')}
               />
             ) : null}
@@ -87,6 +92,8 @@ export function ServerSidebar({
                 icon={RotateCw}
                 tone="neutral"
                 loading={powering === 'restart'}
+                disabled={powerLocked}
+                title={powerLocked ? disabledReason : undefined}
                 onClick={() => onPower('restart')}
               />
             ) : null}
@@ -96,6 +103,8 @@ export function ServerSidebar({
                 icon={Square}
                 tone="stop"
                 loading={powering === 'stop'}
+                disabled={powerLocked}
+                title={powerLocked ? disabledReason : undefined}
                 onClick={() => onPower('stop')}
               />
             ) : null}
@@ -105,6 +114,8 @@ export function ServerSidebar({
                 icon={Skull}
                 tone="kill"
                 loading={powering === 'kill'}
+                disabled={powerLocked}
+                title={powerLocked ? disabledReason : undefined}
                 onClick={() => onPower('kill')}
               />
             ) : null}
@@ -128,6 +139,7 @@ function PowerButton({
   tone,
   loading,
   disabled,
+  title,
   onClick,
 }: {
   label: string;
@@ -135,13 +147,14 @@ function PowerButton({
   tone: 'start' | 'neutral' | 'stop' | 'kill';
   loading: boolean;
   disabled?: boolean;
+  title?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       disabled={loading || disabled}
-      title={disabled ? 'Unavailable while server is installing' : label}
+      title={title ?? label}
       onClick={onClick}
       className={`ds-srv-power-btn ds-srv-power-btn--${tone}${loading ? ' ds-srv-power-btn--loading' : ''}`}
     >

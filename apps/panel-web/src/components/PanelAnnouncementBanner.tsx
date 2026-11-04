@@ -67,7 +67,9 @@ export function PanelAnnouncementBanner({
 
   return (
     <article
-      className={`panel-announcement panel-announcement--${tone}${compact ? ' panel-announcement--compact' : ''}`}
+      className={`panel-announcement panel-announcement--${tone}${compact ? ' panel-announcement--compact' : ''}${
+        location === 'servers' ? ' panel-announcement--servers' : ''
+      }`}
       role="status"
       aria-live="polite"
     >
@@ -81,8 +83,8 @@ export function PanelAnnouncementBanner({
             <Megaphone className="h-3 w-3" aria-hidden />
             {meta.label}
           </span>
+          <h2 className="panel-announcement__title">{headline}</h2>
         </div>
-        <h2 className="panel-announcement__title">{headline}</h2>
         <p className="panel-announcement__message whitespace-pre-wrap">{announcement.message}</p>
       </div>
       {dismiss && announcement.dismissible ? (

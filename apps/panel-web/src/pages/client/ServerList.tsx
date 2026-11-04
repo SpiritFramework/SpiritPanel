@@ -225,10 +225,6 @@ export function ServerListPage() {
   return (
     <ClientLayout>
       <Page>
-        <div className="mb-4">
-          <PanelAnnouncementBanner location="servers" />
-        </div>
-
         <section className="ds-servers-page" aria-label="Your servers">
           <header className="ds-servers-fleet">
             {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
@@ -320,6 +316,10 @@ export function ServerListPage() {
               </div>
             ) : null}
           </header>
+
+          <div className="ds-servers-announce">
+            <PanelAnnouncementBanner location="servers" />
+          </div>
 
           {attentionCallout ? (
             <AttentionCallout

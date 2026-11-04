@@ -17,7 +17,9 @@ import {
   Users,
   Store,
   Package,
+  ShieldBan,
   WifiOff,
+  X,
 } from 'lucide-react';
 import { Suspense, useEffect, useState } from 'react';
 import { ServerProvider, useServer } from '../context/ServerContext';
@@ -138,6 +140,7 @@ export function ServerShellInner() {
     installPhase,
   });
   const serverOnline = !server.suspended && isServerRunning(runtimeState);
+  const powerLockedBySuspend = server.suspended && !adminSupport;
   const { ping, state: pingState } = useServerPing(server.id, serverOnline);
   const uptimeMs = live?.uptimeMs ?? null;
   const playerCount = useServerPlayerCount(server, runtimeState);
@@ -155,6 +158,12 @@ export function ServerShellInner() {
 
   function requestPower(action: 'start' | 'restart' | 'stop' | 'kill') {
     setPowerNotice('');
+    if (powerLockedBySuspend) {
+      setPowerNotice(
+        'This server is suspended. Power controls are locked until an administrator unsuspends it.',
+      );
+      return;
+    }
     if (action === 'start' && startBlockedForInstall) {
       setPowerNotice(
         'This server is still installing. Wait for installation to finish — you can watch progress on the Console tab.',
@@ -192,9 +201,9 @@ export function ServerShellInner() {
         navGroups={navGroups}
         showPower={showPower}
         powering={powering}
-        powerNotice={powerNotice}
         onPower={requestPower}
         startBlockedForInstall={startBlockedForInstall}
+        powerLocked={powerLockedBySuspend}
       />
 
       {/* Main content */}
@@ -256,9 +265,9 @@ export function ServerShellInner() {
             <MobilePowerBar
               access={access}
               powering={powering}
-              powerNotice={powerNotice}
               onPower={requestPower}
               startBlockedForInstall={startBlockedForInstall}
+              powerLocked={powerLockedBySuspend}
               iconsOnly={isConsoleRoute}
             />
           ) : null}
@@ -284,20 +293,57 @@ export function ServerShellInner() {
           />
         </div>
 
-        {server.nodeReachable === false ? (
-          <div
-            className={`ds-srv-node-notice relative z-[1] mx-3 mt-2 md:mx-5 md:mt-0${isConsoleRoute ? ' ds-srv-node-notice--console' : ''}`}
-            role="status"
-          >
-            <span className="ds-srv-node-notice-icon" aria-hidden>
-              <WifiOff className="h-4 w-4" />
-            </span>
-            <span className="ds-srv-node-notice-copy">
-              <strong>Node unreachable</strong>
-              <span>The panel can’t reach FeatherWings on this host, so console and power controls won’t work until it comes back.</span>
-            </span>
-          </div>
-        ) : null}
+        <div
+          className={`ds-srv-shell-notices relative z-[1] mx-3 mt-2 md:mx-5 md:mt-0${isConsoleRoute ? ' ds-srv-shell-notices--console' : ''}`}
+        >
+          {server.suspended ? (
+            <div className="ds-srv-shell-notice ds-srv-shell-notice--warn" role="status">
+              <span className="ds-srv-shell-notice-icon" aria-hidden>
+                <ShieldBan className="h-4 w-4" />
+              </span>
+              <span className="ds-srv-shell-notice-copy">
+                <strong>Server suspended</strong>
+                <span>
+                  {adminSupport
+                    ? 'This server is suspended for the owner. You can still use admin support controls.'
+                    : 'Power controls are locked until an administrator unsuspends this server. Contact support if you need help.'}
+                </span>
+              </span>
+            </div>
+          ) : null}
+
+          {server.nodeReachable === false ? (
+            <div className="ds-srv-shell-notice ds-srv-shell-notice--warn" role="status">
+              <span className="ds-srv-shell-notice-icon" aria-hidden>
+                <WifiOff className="h-4 w-4" />
+              </span>
+              <span className="ds-srv-shell-notice-copy">
+                <strong>Node unreachable</strong>
+                <span>
+                  The panel can’t reach FeatherWings on this host, so console and power controls won’t work until it
+                  comes back.
+                </span>
+              </span>
+            </div>
+          ) : null}
+
+          {powerNotice ? (
+            <div className="ds-srv-shell-notice ds-srv-shell-notice--info" role="alert">
+              <span className="ds-srv-shell-notice-copy">
+                <strong>Power</strong>
+                <span>{powerNotice}</span>
+              </span>
+              <button
+                type="button"
+                className="ds-srv-shell-notice-dismiss"
+                aria-label="Dismiss notice"
+                onClick={() => setPowerNotice('')}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : null}
+        </div>
 
         <main
           className={`server-shell-content relative z-[1] min-h-0 flex-1 md:p-5 ${
@@ -348,6 +394,7 @@ function PowerButton({
   variant,
   loading,
   disabled,
+  title,
   onClick,
   compact,
   iconsOnly,
@@ -357,6 +404,7 @@ function PowerButton({
   variant: 'start' | 'restart' | 'stop';
   loading: boolean;
   disabled?: boolean;
+  title?: string;
   onClick: () => void;
   compact?: boolean;
   iconsOnly?: boolean;
@@ -376,7 +424,7 @@ function PowerButton({
     <button
       type="button"
       disabled={loading || disabled}
-      title={disabled ? 'Unavailable while server is installing' : label}
+      title={title ?? (disabled ? 'Unavailable' : label)}
       aria-label={label}
       onClick={onClick}
       style={styleByVariant[variant]}
@@ -397,28 +445,26 @@ function PowerButton({
 function MobilePowerBar({
   access,
   powering,
-  powerNotice,
   onPower,
   startBlockedForInstall = false,
+  powerLocked = false,
   iconsOnly = false,
 }: {
   access: ReturnType<typeof getServerAccess>;
   powering: string | null;
-  powerNotice: string;
   onPower: (action: 'start' | 'restart' | 'stop' | 'kill') => void;
   startBlockedForInstall?: boolean;
+  powerLocked?: boolean;
   iconsOnly?: boolean;
 }) {
+  const disabledReason = powerLocked
+    ? 'Unavailable while server is suspended'
+    : startBlockedForInstall
+      ? 'Unavailable while server is installing'
+      : undefined;
+
   return (
     <div className={`border-t border-[var(--border)] ${iconsOnly ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
-      {powerNotice ? (
-        <p
-          className="mb-2 rounded-md border px-2.5 py-2 text-xs leading-relaxed"
-          style={{ borderColor: 'var(--info-border)', background: 'var(--info-bg)', color: 'var(--info-fg)' }}
-        >
-          {powerNotice}
-        </p>
-      ) : null}
       <div className="flex flex-wrap gap-1.5">
         {access.canStart ? (
           <PowerButton
@@ -428,7 +474,8 @@ function MobilePowerBar({
             compact
             iconsOnly={iconsOnly}
             loading={powering === 'start'}
-            disabled={startBlockedForInstall}
+            disabled={powerLocked || startBlockedForInstall}
+            title={disabledReason}
             onClick={() => onPower('start')}
           />
         ) : null}
@@ -440,6 +487,8 @@ function MobilePowerBar({
             compact
             iconsOnly={iconsOnly}
             loading={powering === 'restart'}
+            disabled={powerLocked}
+            title={powerLocked ? disabledReason : undefined}
             onClick={() => onPower('restart')}
           />
         ) : null}
@@ -452,6 +501,8 @@ function MobilePowerBar({
               compact
               iconsOnly={iconsOnly}
               loading={powering === 'stop'}
+              disabled={powerLocked}
+              title={powerLocked ? disabledReason : undefined}
               onClick={() => onPower('stop')}
             />
             <PowerButton
@@ -461,6 +512,8 @@ function MobilePowerBar({
               compact
               iconsOnly={iconsOnly}
               loading={powering === 'kill'}
+              disabled={powerLocked}
+              title={powerLocked ? disabledReason : undefined}
               onClick={() => onPower('kill')}
             />
           </>

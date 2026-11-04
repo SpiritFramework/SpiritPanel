@@ -14945,6 +14945,105 @@ button.ds-nodes-stat:hover {
 /* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Server overview bar ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 
 /* Server node unreachable notice (shell banner above console / server pages) */
+.ds-srv-shell-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ds-srv-shell-notices:empty {
+  display: none;
+}
+
+.ds-srv-shell-notices--console {
+  margin-bottom: 0.15rem;
+}
+
+.ds-srv-shell-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+
+.ds-srv-shell-notice--warn {
+  border-color: color-mix(in srgb, var(--warning-fg) 32%, var(--border));
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--warning-bg) 78%, transparent), transparent 58%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.ds-srv-shell-notice--info {
+  border-color: color-mix(in srgb, var(--info-border, var(--border)) 70%, var(--border));
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--info-bg) 78%, transparent), transparent 58%),
+    color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.ds-srv-shell-notice-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--warning-fg) 28%, var(--border));
+  background: color-mix(in srgb, var(--warning-bg) 85%, var(--bg-elevated));
+  color: var(--warning-fg);
+}
+
+.ds-srv-shell-notice--info .ds-srv-shell-notice-icon {
+  border-color: color-mix(in srgb, var(--info-fg) 28%, var(--border));
+  background: color-mix(in srgb, var(--info-bg) 85%, var(--bg-elevated));
+  color: var(--info-fg);
+}
+
+.ds-srv-shell-notice-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.ds-srv-shell-notice-copy strong {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.ds-srv-shell-notice-copy span {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.ds-srv-shell-notice-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ds-srv-shell-notice-dismiss:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-hover) 80%, transparent);
+}
+
+/* Legacy alias kept for any external references */
 .ds-srv-node-notice {
   display: flex;
   align-items: center;
@@ -15293,17 +15392,6 @@ button.ds-nodes-stat:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--muted) 85%, transparent);
-}
-
-.ds-srv-sidebar-power-notice {
-  margin: 0 0 0.45rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.45rem;
-  border: 1px solid var(--info-border);
-  background: var(--info-bg);
-  color: var(--info-fg);
-  font-size: 0.625rem;
-  line-height: 1.35;
 }
 
 .ds-srv-power-grid {
