@@ -23,7 +23,7 @@ import { DiscordIcon } from './icons/DiscordIcon';
 import { NodeOverviewSection } from './admin/node-detail/NodeDetailShell';
 import { Button, Input, Textarea } from './Layout';
 import { ConfirmModal } from './ConfirmModal';
-import { Spinner } from './ui';
+import { Spinner, StatusPill } from './ui';
 import {
   ProfileSecurityOverview,
   type SecurityOverviewItem,
@@ -40,11 +40,13 @@ function SecurityBadge({
   inactiveLabel: string;
   loading?: boolean;
 }) {
-  const tone = loading ? 'pending' : active ? 'on' : 'off';
   return (
-    <span className={`ds-sec-badge ds-sec-badge--${tone}`} title={loading ? 'Checking…' : undefined}>
-      <span className="ds-sec-badge-dot" aria-hidden />
-      {loading ? '…' : active ? activeLabel : inactiveLabel}
+    <span title={loading ? 'Checking…' : undefined}>
+      <StatusPill
+        label={loading ? '…' : active ? activeLabel : inactiveLabel}
+        tone={loading ? 'neutral' : active ? 'success' : 'neutral'}
+        compact
+      />
     </span>
   );
 }

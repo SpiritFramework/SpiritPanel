@@ -5263,14 +5263,9 @@ button.ds-nodes-stat:hover {
 .ds-nd-ov-card-badge {
   margin-left: auto;
   flex-shrink: 0;
-  font-size: 0.625rem;
-  font-weight: 600;
-  padding: 0.2rem 0.55rem;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--success) 12%, var(--surface));
-  color: var(--success-fg);
-  border: 1px solid color-mix(in srgb, var(--success) 25%, var(--border));
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
 }
 
 .ds-nd-ov-card-body {
@@ -32199,53 +32194,6 @@ button.ds-nodes-stat:hover {
 .ds-sec-copy-sm strong {
   color: var(--text);
   font-weight: 600;
-}
-
-.ds-sec-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.22rem 0.55rem 0.22rem 0.45rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 0.6875rem;
-  font-weight: 650;
-  letter-spacing: 0;
-  line-height: 1.2;
-  text-transform: none;
-  white-space: nowrap;
-}
-
-.ds-sec-badge--on {
-  border-color: color-mix(in srgb, var(--success-fg, #22c55e) 28%, var(--border));
-  background: color-mix(in srgb, var(--success-bg, #14532d) 35%, var(--surface));
-  color: var(--success-fg, #4ade80);
-}
-
-.ds-sec-badge--off {
-  border-color: color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  color: var(--muted);
-}
-
-.ds-sec-badge--pending {
-  border-color: color-mix(in srgb, var(--border) 90%, transparent);
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
-  color: var(--muted);
-}
-
-.ds-sec-badge-dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
-  opacity: 1;
-}
-
-.ds-sec-badge--pending .ds-sec-badge-dot {
-  opacity: 0.45;
-  box-shadow: none;
 }
 
 .ds-sec-loading {
