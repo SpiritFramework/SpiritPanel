@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
-  ChevronRight,
   Cpu,
   Gauge,
   HardDrive,
@@ -12,16 +10,13 @@ import {
   Network,
   PlayCircle,
   RefreshCw,
-  Server,
   TrendingUp,
 } from 'lucide-react';
 import { api, type NodeStatsResponse } from '../../../../lib/api';
-import { formatActivityTime } from '../../../../lib/activity';
 import { usageTone } from '../../../../lib/node-capacity';
 import { formatBytes } from '../../../../lib/stats';
 import { formatResource, formatResourceAmount } from '../../../../lib/server-theme';
 import { ChartSyncProvider, UsageChart } from '../../../UsageChart';
-import { AdminServerStatusBadge } from '../../AdminServerStatus';
 import { AdminSection } from '../../primitives';
 
 const RANGES = [
@@ -382,22 +377,6 @@ export function NodeAnalyticsDashboard({ nodeId }: { nodeId: string }) {
           </div>
         </AnalyticsBlock>
       </div>
-
-      {stats.servers.length > 0 ? (
-        <AnalyticsBlock
-          tone="fleet"
-          icon={Server}
-          eyebrow="Workload"
-          title="Servers"
-          description={`${stats.servers.length} server${stats.servers.length === 1 ? '' : 's'} on this node`}
-        >
-          <ul className="ds-nd-an-fleet">
-            {stats.servers.map((server) => (
-              <ServerWorkloadCard key={server.id} server={server} />
-            ))}
-          </ul>
-        </AnalyticsBlock>
-      ) : null}
     </div>
   );
 }
@@ -411,7 +390,7 @@ function AnalyticsBlock({
   badge,
   children,
 }: {
-  tone: 'trends' | 'capacity' | 'fleet';
+  tone: 'trends' | 'capacity';
   icon: LucideIcon;
   eyebrow: string;
   title: string;
@@ -499,148 +478,6 @@ function CapacityMetric({
           style={{ width: `${Math.max(assignedPercent > 0 ? 4 : 0, assignedPercent)}%` }}
         />
       </div>
-    </div>
-  );
-}
-
-function ServerWorkloadCard({ server }: { server: NodeStatsResponse['servers'][number] }) {
-  const hasLive = server.live !== null;
-  const memPct =
-    server.memory > 0 && hasLive
-      ? Math.min(100, (server.live!.memoryBytes / (server.memory * 1024 * 1024)) * 100)
-      : 0;
-  const diskPct =
-    server.disk > 0 && hasLive
-      ? Math.min(100, (server.live!.diskBytes / (server.disk * 1024 * 1024)) * 100)
-      : 0;
-  const cpuPct = hasLive ? Math.min(100, server.live!.cpu) : 0;
-  const initial = (server.name.trim().charAt(0) || 'S').toUpperCase();
-
-  const sourceLabel =
-    server.liveSource === 'wings'
-      ? 'Live from Wings'
-      : server.liveSource === 'snapshot' && server.live
-        ? `Snapshot · ${formatActivityTime(server.live.recordedAt)}`
-        : 'No telemetry yet';
-
-  const sourceTone =
-    server.liveSource === 'wings' ? 'live' : server.liveSource === 'snapshot' ? 'snapshot' : 'offline';
-
-  const hottest = Math.max(memPct, diskPct, cpuPct);
-  const pressureTone = hasLive ? usageTone(hottest) : 'offline';
-
-  return (
-    <li>
-      <Link
-        to={`/admin/servers/${server.id}`}
-        className={`ds-nd-an-server ds-nd-an-server--${pressureTone}`}
-      >
-        <div className="ds-nd-an-server-top">
-          <span className="ds-nd-an-server-mark" aria-hidden>
-            {initial}
-          </span>
-          <div className="ds-nd-an-server-identity">
-            <p className="ds-nd-an-server-name">{server.name}</p>
-            <span className={`ds-nd-an-server-source ds-nd-an-server-source--${sourceTone}`}>
-              {sourceLabel}
-            </span>
-          </div>
-          <div className="ds-nd-an-server-status">
-            <AdminServerStatusBadge
-              status={server.status}
-              suspended={server.suspended}
-              installStatus={server.installStatus ?? undefined}
-              containerState={server.containerState}
-              compact
-            />
-            <ChevronRight className="ds-nd-an-server-chevron" aria-hidden />
-          </div>
-        </div>
-
-        <div className="ds-nd-an-server-metrics" role="group" aria-label={`${server.name} resource pressure`}>
-          <ServerMetric
-            icon={MemoryStick}
-            label="RAM"
-            percent={memPct}
-            primary={hasLive ? formatBytes(server.live!.memoryBytes) : '—'}
-            secondary={formatResource(server.memory, 'MiB')}
-          />
-          <ServerMetric
-            icon={HardDrive}
-            label="Disk"
-            percent={diskPct}
-            primary={hasLive ? formatBytes(server.live!.diskBytes) : '—'}
-            secondary={formatResource(server.disk, 'MiB')}
-          />
-          <ServerMetric
-            icon={Cpu}
-            label="CPU"
-            percent={cpuPct}
-            primary={hasLive ? `${server.live!.cpu.toFixed(0)}%` : '—'}
-            secondary={`${server.cpu}%`}
-          />
-        </div>
-
-        {hasLive ? (
-          <div className="ds-nd-an-server-foot">
-            <span className="ds-nd-an-server-net">
-              <Network className="h-3 w-3" aria-hidden />
-              <span>
-                ↓ {formatBytes(server.live!.networkRxBytes)}
-                <span className="ds-nd-an-server-net-sep">·</span>
-                ↑ {formatBytes(server.live!.networkTxBytes)}
-              </span>
-            </span>
-            <span className="ds-nd-an-server-open">Open server</span>
-          </div>
-        ) : (
-          <div className="ds-nd-an-server-foot ds-nd-an-server-foot--empty">
-            <span>No live or snapshot samples yet</span>
-            <span className="ds-nd-an-server-open">Open server</span>
-          </div>
-        )}
-      </Link>
-    </li>
-  );
-}
-
-function ServerMetric({
-  icon: Icon,
-  label,
-  percent,
-  primary,
-  secondary,
-}: {
-  icon: LucideIcon;
-  label: string;
-  percent: number;
-  primary: string;
-  secondary: string;
-}) {
-  const tone = percent > 0 ? usageTone(percent) : null;
-  const fillClass =
-    tone === 'warning' ? 'ds-progress-fill--warn' : tone === 'danger' ? 'ds-progress-fill--bad' : 'ds-progress-fill--good';
-
-  return (
-    <div className={`ds-nd-an-server-metric${tone ? ` ds-nd-an-server-metric--${tone}` : ''}`}>
-      <div className="ds-nd-an-server-metric-head">
-        <span className="ds-nd-an-server-metric-label">
-          <Icon className="h-3 w-3" aria-hidden />
-          {label}
-        </span>
-        <strong className="ds-nd-an-server-metric-pct">{percent > 0 ? `${Math.round(percent)}%` : '—'}</strong>
-      </div>
-      <div className="ds-progress ds-nd-an-server-metric-bar" aria-hidden>
-        <div
-          className={`ds-progress-fill ${fillClass}`}
-          style={{ width: `${Math.max(percent > 0 ? 4 : 0, percent)}%` }}
-        />
-      </div>
-      <p className="ds-nd-an-server-metric-values">
-        <span className="font-mono">{primary}</span>
-        <span className="ds-nd-an-server-metric-sep">/</span>
-        <span className="font-mono opacity-65">{secondary}</span>
-      </p>
     </div>
   );
 }

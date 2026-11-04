@@ -1,4 +1,7 @@
 import { LayoutGrid, List, Search, Server, Users } from 'lucide-react';
+import type { ServerSummary } from '../../../../lib/api';
+import { ServerCard } from '../../../ServerCard';
+import { ServerListTable } from '../../../ServerListRow';
 import { EmptyState } from '../../../ui';
 import {
   AdminFilterChips,
@@ -6,8 +9,6 @@ import {
   AdminSegmentedControl,
   AdminToolButton,
 } from '../../primitives';
-import { UserServerFleetCard } from './UserServerFleetCard';
-import { UserServerTableRow } from './UserServerTableRow';
 import { UserSharedAccessCard } from './UserSharedAccessCard';
 import type {
   UserOwnedServer,
@@ -29,6 +30,34 @@ const STATUS_OPTIONS: { id: UserServerStatusFilter; label: string }[] = [
   { id: 'installing', label: 'Installing' },
   { id: 'suspended', label: 'Suspended' },
 ];
+
+function toServerSummary(server: UserOwnedServer): ServerSummary {
+  const allocation = server.defaultAllocation ?? (() => {
+    const [ip = '0.0.0.0', portRaw = '0'] = server.address.split(':');
+    return { ip, port: Number(portRaw) || 0, alias: null as string | null };
+  })();
+
+  return {
+    id: server.id,
+    uuid: server.uuid ?? server.id,
+    name: server.name,
+    description: server.description ?? undefined,
+    status: server.status,
+    suspended: server.suspended,
+    installStatus: server.installStatus,
+    containerState: server.containerState ?? undefined,
+    memory: server.memory,
+    disk: server.disk,
+    cpu: server.cpu,
+    egg: { name: server.egg, logoUrl: server.eggLogoUrl },
+    node: {
+      name: server.node,
+      fqdn: server.nodeFqdn,
+      maintenanceMode: server.nodeMaintenanceMode,
+    },
+    defaultAllocation: allocation,
+  };
+}
 
 export function UserServersListPanel({
   ownedServers,
@@ -72,6 +101,7 @@ export function UserServersListPanel({
     (showOwned ? filteredOwned.length : 0) + (showShared ? filteredShared.length : 0);
   const isEmpty = totalCount === 0;
   const noMatches = !isEmpty && filteredCount === 0;
+  const ownedSummaries = filteredOwned.map(toServerSummary);
 
   return (
     <AdminSection
@@ -103,7 +133,7 @@ export function UserServersListPanel({
               label: (
                 <>
                   <List className="h-3.5 w-3.5" aria-hidden />
-                  Table
+                  List
                 </>
               ),
             },
@@ -182,33 +212,23 @@ export function UserServersListPanel({
               ) : null}
 
               {viewMode === 'cards' ? (
-                <ul className="ds-nd-list-card-grid ds-ud-srv-card-grid">
-                  {filteredOwned.map((server) => (
-                    <li key={server.id}>
-                      <UserServerFleetCard server={server} />
-                    </li>
+                <div className="ds-servers-fleet-grid ds-servers-fleet-grid--compact">
+                  {ownedSummaries.map((summary) => (
+                    <ServerCard
+                      key={summary.id}
+                      server={summary}
+                      href={`/admin/servers/${summary.id}`}
+                      footerLabel={summary.node.name}
+                      compact
+                    />
                   ))}
-                </ul>
-              ) : (
-                <div className="ds-ud-srv-table-wrap">
-                  <table className="ds-ud-srv-table">
-                    <thead>
-                      <tr>
-                        <th>Server</th>
-                        <th>Node</th>
-                        <th>Connection</th>
-                        <th>Created</th>
-                        <th>Status</th>
-                        <th aria-hidden />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOwned.map((server) => (
-                        <UserServerTableRow key={server.id} server={server} />
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
+              ) : (
+                <ServerListTable
+                  servers={ownedSummaries}
+                  compact
+                  hrefFor={(server) => `/admin/servers/${server.id}`}
+                />
               )}
             </section>
           ) : null}

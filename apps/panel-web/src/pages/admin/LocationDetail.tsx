@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
+import { LocationDetailSaveBar } from '../../components/admin/location-detail/LocationDetailSaveBar';
 import {
-  LocationDetailHeaderShell,
+  LocationDetailHeader,
   LocationDetailTabNav,
   type LocationDetailTab,
 } from '../../components/admin/location-detail/LocationDetailShell';
 import { LocationNodesDashboard } from '../../components/admin/location-detail/LocationNodesDashboard';
+import { LocationOverviewDashboard } from '../../components/admin/location-detail/LocationOverviewDashboard';
 import { LocationSettingsDashboard } from '../../components/admin/location-detail/LocationSettingsDashboard';
 import { AdminDetailNotFound } from '../../components/AdminDetailLayout';
 import { AdminLayout } from '../../components/Layout';
 import { api, type AdminLocationDetail, type UpdateAdminLocationInput } from '../../lib/api';
 
 function readLocationTab(value: string | null): LocationDetailTab {
-  return value === 'nodes' ? 'nodes' : 'settings';
+  if (value === 'nodes') return 'nodes';
+  if (value === 'settings' || value === 'manage') return 'settings';
+  return 'overview';
 }
 
 export function AdminLocationDetail() {
@@ -112,7 +116,7 @@ export function AdminLocationDetail() {
     setSearchParams(
       (current) => {
         const params = new URLSearchParams(current);
-        if (next === 'settings') params.delete('tab');
+        if (next === 'overview') params.delete('tab');
         else params.set('tab', next);
         return params;
       },
@@ -122,6 +126,7 @@ export function AdminLocationDetail() {
 
   const tabs = useMemo(
     () => [
+      { id: 'overview' as const, label: 'Overview' },
       { id: 'settings' as const, label: 'Settings' },
       { id: 'nodes' as const, label: 'Nodes', count: detail?.nodeCount },
     ],
@@ -150,14 +155,29 @@ export function AdminLocationDetail() {
 
   return (
     <AdminLayout>
-      <form onSubmit={(e) => void save(e)} className="ds-loc-page">
-        <LocationDetailHeaderShell
-          detail={detail}
-          onViewNodes={() => changeTab('nodes')}
-          onCopyUuid={() => void copyText(detail.uuid, 'uuid')}
-          copied={copied === 'uuid'}
-          tabNav={<LocationDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />}
-        />
+      <form onSubmit={(e) => void save(e)} className="ds-loc-page ds-ud-page">
+        <div className="ds-loc-header-wrap ds-ud-header-wrap">
+          <LocationDetailHeader
+            detail={detail}
+            onViewNodes={() => changeTab('nodes')}
+            onManage={() => changeTab('settings')}
+            onCopyUuid={() => void copyText(detail.uuid, 'uuid')}
+            copied={copied === 'uuid'}
+          />
+          <LocationDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
+        </div>
+
+        {tab === 'overview' ? (
+          <LocationOverviewDashboard
+            detail={detail}
+            copied={copied}
+            copyText={copyText}
+            nav={{
+              onSettings: () => changeTab('settings'),
+              onNodes: () => changeTab('nodes'),
+            }}
+          />
+        ) : null}
 
         {tab === 'settings' ? (
           <LocationSettingsDashboard
@@ -167,19 +187,25 @@ export function AdminLocationDetail() {
               setForm,
               saving,
               error,
-              saved,
               hasChanges,
               confirmDelete,
               setConfirmDelete,
-              copied,
-              resetForm,
               deleteLocation,
-              copyText,
             }}
           />
-        ) : (
-          <LocationNodesDashboard detail={detail} />
-        )}
+        ) : null}
+
+        {tab === 'nodes' ? <LocationNodesDashboard detail={detail} /> : null}
+
+        {tab === 'settings' || hasChanges || saved ? (
+          <LocationDetailSaveBar
+            hasChanges={hasChanges}
+            saving={saving}
+            error={error}
+            saved={saved}
+            resetForm={resetForm}
+          />
+        ) : null}
       </form>
     </AdminLayout>
   );

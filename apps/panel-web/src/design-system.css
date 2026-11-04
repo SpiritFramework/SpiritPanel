@@ -15444,6 +15444,31 @@ button.ds-nodes-stat:hover {
   border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
 }
 
+.ds-loc-header-pulse--empty {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  animation: none;
+}
+
+.ds-loc-node-preview-status {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #6ee7b7;
+}
+
+.ds-loc-node-preview-status--maint {
+  color: #fde68a;
+}
+
+.ds-loc-node-list-icon--maint {
+  color: var(--warning-fg, #fde68a);
+}
+
+.ds-loc-node-list-chip--maint {
+  color: var(--warning-fg, #fbbf24);
+  background: color-mix(in srgb, var(--warning, #f59e0b) 16%, transparent);
+}
+
 /* ============================================================
    Locations list (ds-locs-*)
    ============================================================ */

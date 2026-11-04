@@ -589,6 +589,78 @@
   animation: ds-servers-fade-in 0.28s ease both;
 }
 
+.ds-servers-fleet-grid--compact {
+  gap: 0.75rem;
+}
+
+.server-card--compact .server-card-body {
+  padding-left: 0.85rem !important;
+  padding-right: 0.85rem !important;
+  padding-bottom: 0.85rem !important;
+}
+
+.server-card--compact .server-card-foot {
+  margin-top: 0.55rem;
+}
+
+.server-card--compact .server-card-actions {
+  padding: 0.45rem 0.85rem;
+}
+
+.server-card--compact .server-card-actions a {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+  font-size: 0.625rem;
+}
+
+.server-card--compact .server-card-banner,
+.server-card--compact .server-card-poster {
+  min-height: 0;
+  padding-top: 0.75rem;
+  padding-bottom: 0.85rem;
+}
+
+.server-card--compact .server-card-glass-head,
+.server-card--compact .server-card-stripe-head,
+.server-card--compact .server-card-edge-head,
+.server-card--compact .server-card-neon-head,
+.server-card--compact .server-card-minimal-head,
+.server-card--compact .server-card-tile-head {
+  padding-top: 0.75rem;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+}
+
+.ds-servers-rows--compact {
+  gap: 0.4rem;
+}
+
+.ds-servers-row--compact {
+  gap: 0.5rem 0.65rem;
+  padding: 0.6rem 0.7rem 0.6rem 0.8rem;
+  border-radius: 0.8rem;
+}
+
+.ds-servers-row--compact .ds-servers-row-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.6rem;
+}
+
+.ds-servers-row--compact .ds-servers-row-title {
+  font-size: 0.8125rem;
+}
+
+.ds-servers-row--compact .ds-servers-row-sub {
+  font-size: 0.625rem;
+}
+
+.ds-servers-row--compact .ds-servers-row-chip,
+.ds-servers-row--compact .ds-servers-row-resource {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.625rem;
+}
+
 @keyframes ds-servers-fade-in {
   from {
     opacity: 0;

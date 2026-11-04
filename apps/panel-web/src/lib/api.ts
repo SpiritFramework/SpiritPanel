@@ -84,15 +84,23 @@ export interface AdminUserDetail extends AdminUserSummary {
   activityCount: number;
   servers: Array<{
     id: string;
+    uuid?: string;
     name: string;
+    description?: string | null;
     status: string;
     suspended: boolean;
     installStatus?: string;
     containerState?: string | null;
+    memory?: number;
+    disk?: number;
+    cpu?: number;
     node: string;
+    nodeFqdn?: string;
+    nodeMaintenanceMode?: boolean;
     egg: string;
     eggLogoUrl?: string | null;
     address: string;
+    defaultAllocation?: { ip: string; port: number; alias?: string | null };
     createdAt: string;
   }>;
   subuserAccess: Array<{
@@ -1782,15 +1790,19 @@ export interface AdminNodeDetail extends Omit<AdminNodeSummary, '_count'> {
   liveUsage: NodeLiveUsageSummary | null;
   servers: Array<{
     id: string;
+    uuid?: string;
     name: string;
+    description?: string | null;
     status: string;
     suspended: boolean;
     installStatus?: string;
     containerState?: string | null;
     memory?: number;
     disk?: number;
+    cpu?: number;
     owner: { username: string };
-    defaultAllocation: { ip: string; port: number };
+    egg: { name: string; logoUrl?: string | null };
+    defaultAllocation: { ip: string; port: number; alias?: string | null };
   }>;
   allocations: AdminNodeAllocation[];
   recentActivity: ActivityLogEntry[];

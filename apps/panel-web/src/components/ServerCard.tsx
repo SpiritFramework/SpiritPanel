@@ -25,14 +25,32 @@ const BANNER_PATTERN =
 
 interface ServerCardProps {
   server: ServerSummary;
+  /** Main card destination. Defaults to `/servers/:id`. */
+  href?: string;
+  consoleHref?: string;
+  filesHref?: string;
+  /** Replaces the node name in the card footer (e.g. owner on node detail). */
+  footerLabel?: string;
+  /** Tighter padding and type for dense admin embeds (node/user detail). */
+  compact?: boolean;
 }
 
-export function ServerCard({ server }: ServerCardProps) {
+export function ServerCard({
+  server,
+  href,
+  consoleHref,
+  filesHref,
+  footerLabel,
+  compact = false,
+}: ServerCardProps) {
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const theme = getServerTheme(server.egg.name);
   const cardStyle = resolveServerCardStyle(appearance.serverCardStyle);
   const [copied, setCopied] = useState(false);
+  const to = href ?? `/servers/${server.id}`;
+  const consoleTo = consoleHref ?? `/servers/${server.id}/console`;
+  const filesTo = filesHref ?? `/servers/${server.id}/files`;
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
@@ -52,36 +70,41 @@ export function ServerCard({ server }: ServerCardProps) {
 
   return (
     <article
-      className={`server-card server-card--${cardStyle} group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border)] transition duration-150 hover:-translate-y-0.5 hover:border-[var(--accent)]/35`}
+      className={`server-card server-card--${cardStyle}${compact ? ' server-card--compact' : ''} group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border)] transition duration-150 hover:-translate-y-0.5 hover:border-[var(--accent)]/35`}
       style={cardVars}
     >
       {cardStyle === 'neon' && <div className="server-card-neon-mesh" aria-hidden />}
 
       <Link
-        to={`/servers/${server.id}`}
+        to={to}
         className="relative flex flex-1 flex-col"
         onMouseEnter={() => prefetchServerTab('console')}
         onFocus={() => prefetchServerTab('console')}
       >
-        <CardHeader server={server} theme={theme} cardStyle={cardStyle} />
+        <CardHeader server={server} theme={theme} cardStyle={cardStyle} compact={compact} />
 
-        <div className={`relative flex flex-1 flex-col ${
-          cardStyle === 'banner' || cardStyle === 'poster'
-            ? '-mt-2.5 px-4 pb-4'
-            : cardStyle === 'split'
-              ? 'px-4 pb-4 pt-2'
-              : 'px-4 pb-4 pt-1'
-        }`}>
+        <div
+          className={`server-card-body relative flex flex-1 flex-col ${
+            cardStyle === 'banner' || cardStyle === 'poster'
+              ? '-mt-2.5 px-4 pb-4'
+              : cardStyle === 'split'
+                ? 'px-4 pb-4 pt-2'
+                : 'px-4 pb-4 pt-1'
+          }`}
+        >
           <CardBody
             server={server}
             address={address}
             copied={copied}
             flat={cardStyle === 'minimal' || cardStyle === 'outline'}
+            compact={compact}
             onCopyAddress={copyAddress}
           />
 
-          <div className="mt-3 flex items-center justify-between gap-2 px-0.5">
-            <span className="truncate text-[11px] text-[var(--muted)]">{server.node.name}</span>
+          <div className="server-card-foot mt-3 flex items-center justify-between gap-2 px-0.5">
+            <span className="truncate text-[11px] text-[var(--muted)]">
+              {footerLabel ?? server.node.name}
+            </span>
             <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]">
               Open
               <ChevronRight className="h-4 w-4" />
@@ -90,9 +113,9 @@ export function ServerCard({ server }: ServerCardProps) {
         </div>
       </Link>
 
-      <div className="relative flex gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)]/50 px-4 py-2.5">
-        <QuickLink to={`/servers/${server.id}/console`} icon={Terminal} label="Console" />
-        <QuickLink to={`/servers/${server.id}/files`} icon={FolderOpen} label="Files" />
+      <div className="server-card-actions relative flex gap-2 border-t border-[var(--border)] bg-[var(--bg-elevated)]/50 px-4 py-2.5">
+        <QuickLink to={consoleTo} icon={Terminal} label="Console" />
+        <QuickLink to={filesTo} icon={FolderOpen} label="Files" />
       </div>
     </article>
   );
@@ -102,21 +125,29 @@ function CardHeader({
   server,
   theme,
   cardStyle,
+  compact = false,
 }: {
   server: ServerSummary;
   theme: ReturnType<typeof getServerTheme>;
   cardStyle: ReturnType<typeof resolveServerCardStyle>;
+  compact?: boolean;
 }) {
   const iconBox = (
     <div
-      className={`server-card-icon-box flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+      className={`server-card-icon-box flex shrink-0 items-center justify-center rounded-xl ${
+        compact ? 'h-9 w-9' : 'h-11 w-11'
+      } ${
         cardStyle === 'banner' || cardStyle === 'poster'
           ? 'bg-black/25 ring-1 ring-white/15 shadow-lg'
           : 'rounded-lg'
       }`}
       style={cardStyle === 'banner' || cardStyle === 'poster' ? undefined : { borderColor: theme.accent }}
     >
-      <ServerEggIcon eggName={server.egg.name} logoUrl={server.egg.logoUrl} className="h-6 w-6" />
+      <ServerEggIcon
+        eggName={server.egg.name}
+        logoUrl={server.egg.logoUrl}
+        className={compact ? 'h-5 w-5' : 'h-6 w-6'}
+      />
     </div>
   );
 
@@ -125,20 +156,20 @@ function CardHeader({
   const titleBlock = (
     <div className="min-w-0 flex-1">
       <p
-        className={`text-[11px] font-semibold uppercase tracking-wider leading-snug ${
-          titleOnDark ? 'text-white/55' : 'text-[var(--muted)]'
-        }`}
+        className={`font-semibold uppercase tracking-wider leading-snug ${
+          compact ? 'text-[10px]' : 'text-[11px]'
+        } ${titleOnDark ? 'text-white/55' : 'text-[var(--muted)]'}`}
       >
         {theme.label}
       </p>
       <h3
-        className={`mt-1 line-clamp-2 font-semibold leading-snug ${
-          titleOnDark ? 'text-base text-white' : 'text-base text-[var(--text)]'
-        }`}
+        className={`mt-0.5 line-clamp-2 font-semibold leading-snug ${
+          compact ? 'text-sm' : 'text-base'
+        } ${titleOnDark ? 'text-white' : 'text-[var(--text)]'}`}
       >
         {server.name}
       </h3>
-      {server.description && (
+      {!compact && server.description ? (
         <p
           className={`mt-1.5 line-clamp-1 text-xs leading-relaxed ${
             titleOnDark ? 'text-white/60' : 'text-[var(--muted)]'
@@ -146,7 +177,7 @@ function CardHeader({
         >
           {server.description}
         </p>
-      )}
+      ) : null}
     </div>
   );
 
@@ -267,17 +298,25 @@ function CardBody({
   address,
   copied,
   flat,
+  compact = false,
   onCopyAddress,
 }: {
   server: ServerSummary;
   address: string;
   copied: boolean;
   flat?: boolean;
+  compact?: boolean;
   onCopyAddress: (e: React.MouseEvent) => void;
 }) {
   return (
-    <div className={`flex flex-1 flex-col ${flat ? 'border-t border-[var(--border)] pt-3' : 'glass-panel rounded-xl p-3'}`}>
-      <div className="mb-3 flex items-start justify-between gap-2">
+    <div
+      className={`flex flex-1 flex-col ${
+        flat
+          ? `border-t border-[var(--border)] ${compact ? 'pt-2' : 'pt-3'}`
+          : `glass-panel rounded-xl ${compact ? 'p-2.5' : 'p-3'}`
+      }`}
+    >
+      <div className={`flex items-start justify-between gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
         <div className="ds-servers-card-status min-w-0">
           <ServerStatusBadge
             status={server.status}
@@ -295,7 +334,7 @@ function CardBody({
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1 rounded-lg bg-[var(--bg-elevated)] px-2.5 py-2.5">
+        <div className={`min-w-0 flex-1 rounded-lg bg-[var(--bg-elevated)] ${compact ? 'px-2 py-2' : 'px-2.5 py-2.5'}`}>
           <p className="text-[11px] font-medium uppercase tracking-wide leading-snug text-[var(--muted)]">Address</p>
           <p className="mt-0.5 truncate font-mono text-xs font-medium leading-snug">{address}</p>
         </div>
@@ -303,7 +342,9 @@ function CardBody({
           type="button"
           onClick={onCopyAddress}
           aria-label={copied ? 'Copied' : 'Copy address'}
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition ${
+          className={`flex shrink-0 items-center justify-center rounded-lg border transition ${
+            compact ? 'h-9 w-9' : 'h-11 w-11'
+          } ${
             copied
               ? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-fg)]'
               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)]'
@@ -313,7 +354,11 @@ function CardBody({
         </button>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--border)] pt-2.5 text-[11px] leading-snug text-[var(--muted)]">
+      <div
+        className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--border)] text-[11px] leading-snug text-[var(--muted)] ${
+          compact ? 'mt-2 pt-2' : 'mt-2.5 pt-2.5'
+        }`}
+      >
         <span className="inline-flex items-center gap-1">
           <MemoryStick className="h-3 w-3 shrink-0" />
           {formatResource(server.memory ?? 0, 'MiB')}

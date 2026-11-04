@@ -20,26 +20,52 @@ import { ServerEggIcon } from './ServerEggIcon';
 import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
 
-export function ServerListTable({ servers }: { servers: ServerSummary[] }) {
+export function ServerListTable({
+  servers,
+  hrefFor,
+  metaLabelFor,
+  compact = false,
+}: {
+  servers: ServerSummary[];
+  hrefFor?: (server: ServerSummary) => string;
+  /** Replaces the node chip label (e.g. owner on node detail). */
+  metaLabelFor?: (server: ServerSummary) => string;
+  compact?: boolean;
+}) {
   return (
-    <ul className="ds-servers-rows" aria-label="Server list">
+    <ul className={`ds-servers-rows${compact ? ' ds-servers-rows--compact' : ''}`} aria-label="Server list">
       {servers.map((server) => (
         <li key={server.id}>
-          <ServerListRow server={server} />
+          <ServerListRow
+            server={server}
+            href={hrefFor?.(server)}
+            metaLabel={metaLabelFor?.(server)}
+            compact={compact}
+          />
         </li>
       ))}
     </ul>
   );
 }
 
-function ServerListRow({ server }: { server: ServerSummary }) {
+function ServerListRow({
+  server,
+  href: hrefProp,
+  metaLabel,
+  compact = false,
+}: {
+  server: ServerSummary;
+  href?: string;
+  metaLabel?: string;
+  compact?: boolean;
+}) {
   const navigate = useNavigate();
   const { branding } = useBranding();
   const appearance = normalizeAppearance(branding);
   const theme = getServerTheme(server.egg.name);
   const cardStyle = resolveServerCardStyle(appearance.serverCardStyle);
   const [copied, setCopied] = useState(false);
-  const href = `/servers/${server.id}`;
+  const href = hrefProp ?? `/servers/${server.id}`;
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
@@ -66,7 +92,7 @@ function ServerListRow({ server }: { server: ServerSummary }) {
 
   return (
     <div
-      className="ds-servers-row group"
+      className={`ds-servers-row group${compact ? ' ds-servers-row--compact' : ''}`}
       style={{ '--row-accent': theme.accent, '--row-glow': theme.glow } as React.CSSProperties}
       role="link"
       tabIndex={0}
@@ -86,8 +112,8 @@ function ServerListRow({ server }: { server: ServerSummary }) {
         <ServerEggIcon
           eggName={server.egg.name}
           logoUrl={server.egg.logoUrl}
-          className="h-5 w-5"
-          iconClassName="h-5 w-5 text-white/90"
+          className={compact ? 'h-4 w-4' : 'h-5 w-5'}
+          iconClassName={compact ? 'h-4 w-4 text-white/90' : 'h-5 w-5 text-white/90'}
         />
       </span>
 
@@ -110,7 +136,7 @@ function ServerListRow({ server }: { server: ServerSummary }) {
         </button>
         <span className="ds-servers-row-chip">
           <MapPin className="h-3 w-3" aria-hidden />
-          <span className="truncate">{server.node.name}</span>
+          <span className="truncate">{metaLabel ?? server.node.name}</span>
         </span>
       </span>
 
