@@ -14,7 +14,7 @@ import {
 import type { AdminLocationDetail, UpdateAdminLocationInput } from '../../../lib/api';
 import { LocationFlag } from '../../LocationFlag';
 import { Button, Input } from '../../Layout';
-import { LocationOverviewSection } from './LocationDetailShell';
+import { AdminSection } from '../primitives';
 
 export type LocationSettingsController = {
   detail: AdminLocationDetail;
@@ -57,10 +57,13 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
     <div className="ds-nd-st">
       <div className="ds-nd-st-grid">
         <div className="ds-nd-st-main">
-          <LocationOverviewSection
+          <AdminSection
+            tone="identity"
             icon={MapPin}
+            eyebrow="Region profile"
             title="Identity"
             description="Short code and display name shown across the panel"
+            className="ds-nd-st-block"
           >
             <div className="ds-nd-st-fields">
               <Input
@@ -83,12 +86,15 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
               The short code appears on node cards and filters. Changing it updates badges everywhere
               this location is referenced.
             </p>
-          </LocationOverviewSection>
+          </AdminSection>
 
-          <LocationOverviewSection
+          <AdminSection
+            tone="connection"
             icon={ImageIcon}
+            eyebrow="Appearance"
             title="Branding"
             description="Optional flag image for region badges"
+            className="ds-nd-st-block"
           >
             <div className="ds-nd-st-fields ds-nd-st-fields-span">
               <Input
@@ -112,12 +118,15 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
                 Leave empty to show the default map pin on location rows and node region badges.
               </p>
             )}
-          </LocationOverviewSection>
+          </AdminSection>
 
-          <LocationOverviewSection
+          <AdminSection
+            tone="danger"
             icon={Trash2}
+            eyebrow="Irreversible"
             title="Danger zone"
             description="Permanently remove this location"
+            className="ds-nd-st-block"
           >
             {!confirmDelete ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -162,14 +171,17 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
                 </div>
               </div>
             )}
-          </LocationOverviewSection>
+          </AdminSection>
         </div>
 
         <div className="ds-nd-st-rail">
-          <LocationOverviewSection
+          <AdminSection
+            tone="wings"
             icon={Fingerprint}
+            eyebrow="References"
             title="Identifiers"
             description="Internal panel references"
+            className="ds-nd-st-block"
           >
             <dl className="ds-loc-id-list">
               <div className="ds-loc-id-row">
@@ -209,13 +221,16 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
                 {copied === 'uuid' ? 'Copied UUID' : 'Copy UUID'}
               </Button>
             </div>
-          </LocationOverviewSection>
+          </AdminSection>
 
-          <LocationOverviewSection
+          <AdminSection
+            tone="fleet"
             icon={Network}
+            eyebrow="Capacity"
             title="Fleet snapshot"
             description="Nodes assigned to this region"
             badge={String(detail.nodeCount)}
+            className="ds-nd-st-block"
           >
             <div className="ds-loc-fleet-stats">
               <div className="ds-loc-fleet-stat">
@@ -254,7 +269,7 @@ export function LocationSettingsDashboard({ ctrl }: { ctrl: LocationSettingsCont
                 ) : null}
               </ul>
             )}
-          </LocationOverviewSection>
+          </AdminSection>
         </div>
       </div>
 

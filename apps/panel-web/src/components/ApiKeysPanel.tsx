@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { ModalShell } from './ModalShell';
 import { AccountSection } from './account/AccountShell';
+import { AdminSection } from './admin/primitives';
 import { Button, Input } from './Layout';
 import { Spinner } from './ui';
 import type { ApiKeySummary, CreatedApiKey } from '../lib/api';
@@ -52,6 +53,7 @@ export function ApiKeysPanel({
   onCreate,
   onDelete,
   allowApplicationKeys,
+  chrome = 'account',
 }: {
   title: string;
   description: string;
@@ -63,12 +65,20 @@ export function ApiKeysPanel({
   onCreate?: (data: { memo: string; keyType?: 'account' | 'application' }) => Promise<CreatedApiKey>;
   onDelete?: (id: string) => Promise<void>;
   allowApplicationKeys?: boolean;
+  /** Admin user detail uses AdminSection; profile keeps AccountSection. */
+  chrome?: 'account' | 'admin';
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const canManage = Boolean(onCreate && onDelete);
+  const sectionActions = canManage ? (
+    <Button type="button" onClick={() => setShowCreate(true)}>
+      <Plus className="h-3.5 w-3.5" />
+      Create key
+    </Button>
+  ) : undefined;
 
   async function handleDelete(id: string) {
     if (!onDelete) return;
@@ -84,104 +94,110 @@ export function ApiKeysPanel({
     }
   }
 
-  return (
-    <>
-      <AccountSection
-        title={title}
-        description={description}
-        icon={Key}
-        actions={
-          canManage ? (
-            <Button type="button" onClick={() => setShowCreate(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Create key
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="account-keys-layout">
-          <div className="account-auth-strip" aria-label="Authentication format">
-            <div>
-              <span className="account-auth-label">Authorization</span>
-              <code>Bearer {'{identifier}.{token}'}</code>
-            </div>
-            <div>
-              <span className="account-auth-label">Base URL</span>
-              <code>{apiBase}</code>
-            </div>
+  const keysBody = (
+    <div className="account-keys-layout">
+      <div className="account-auth-strip" aria-label="Authentication format">
+        <div>
+          <span className="account-auth-label">Authorization</span>
+          <code>Bearer {'{identifier}.{token}'}</code>
+        </div>
+        <div>
+          <span className="account-auth-label">Base URL</span>
+          <code>{apiBase}</code>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Spinner className="h-6 w-6" />
+        </div>
+      ) : keys.length === 0 ? (
+        <div className="account-keys-empty">
+          <span className="account-keys-empty-icon">
+            <Key className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-medium">No API keys yet</p>
+            <p className="mt-0.5 max-w-sm text-xs text-[var(--muted)]">
+              {canManage
+                ? 'Create a key to authenticate scripts against this API. The secret is only shown once.'
+                : 'This user has no API keys.'}
+            </p>
           </div>
-
-          {error ? (
-            <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-bg)] px-3 py-2 text-xs text-[var(--danger-fg)]">
-              {error}
-            </div>
+          {canManage ? (
+            <Button type="button" variant="subtle" onClick={() => setShowCreate(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              Create your first key
+            </Button>
           ) : null}
-
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Spinner className="h-6 w-6" />
-            </div>
-          ) : keys.length === 0 ? (
-            <div className="account-keys-empty">
-              <span className="account-keys-empty-icon">
-                <Key className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-medium">No API keys yet</p>
-                <p className="mt-0.5 max-w-sm text-xs text-[var(--muted)]">
-                  {canManage
-                    ? 'Create a key to authenticate scripts against this API. The secret is only shown once.'
-                    : 'This user has no API keys.'}
-                </p>
+        </div>
+      ) : (
+        <ul className="account-key-list">
+          {keys.map((key) => (
+            <li key={key.id} className="account-key-row">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="account-key-memo truncate">{key.memo || 'Untitled key'}</p>
+                  <span className="account-key-type">{keyTypeLabel(key.keyType)}</span>
+                </div>
+                <p className="account-key-id truncate">{key.identifier}</p>
+              </div>
+              <div className="account-key-meta">
+                <span className="account-key-meta-item">
+                  <Clock className="h-3 w-3" />
+                  {formatRelative(key.lastUsedAt)}
+                </span>
+                <span className="account-key-meta-item hidden md:inline-flex">
+                  Created {formatKeyTime(key.createdAt)}
+                </span>
               </div>
               {canManage ? (
-                <Button type="button" variant="subtle" onClick={() => setShowCreate(true)}>
-                  <Plus className="h-3.5 w-3.5" />
-                  Create your first key
-                </Button>
+                <button
+                  type="button"
+                  disabled={deletingId === key.id}
+                  onClick={() => handleDelete(key.id)}
+                  className="account-key-revoke"
+                  aria-label="Revoke key"
+                >
+                  {deletingId === key.id ? (
+                    <Spinner className="h-4 w-4" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
               ) : null}
-            </div>
-          ) : (
-            <ul className="account-key-list">
-              {keys.map((key) => (
-                <li key={key.id} className="account-key-row">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="account-key-memo truncate">{key.memo || 'Untitled key'}</p>
-                      <span className="account-key-type">{keyTypeLabel(key.keyType)}</span>
-                    </div>
-                    <p className="account-key-id truncate">{key.identifier}</p>
-                  </div>
-                  <div className="account-key-meta">
-                    <span className="account-key-meta-item">
-                      <Clock className="h-3 w-3" />
-                      {formatRelative(key.lastUsedAt)}
-                    </span>
-                    <span className="account-key-meta-item hidden md:inline-flex">
-                      Created {formatKeyTime(key.createdAt)}
-                    </span>
-                  </div>
-                  {canManage ? (
-                    <button
-                      type="button"
-                      disabled={deletingId === key.id}
-                      onClick={() => handleDelete(key.id)}
-                      className="account-key-revoke"
-                      aria-label="Revoke key"
-                    >
-                      {deletingId === key.id ? (
-                        <Spinner className="h-4 w-4" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </AccountSection>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {chrome === 'admin' ? (
+        <AdminSection
+          tone="identity"
+          icon={Key}
+          eyebrow="Credentials"
+          title={title}
+          description={description}
+          badge={String(keys.length)}
+          actions={sectionActions}
+        >
+          {keysBody}
+        </AdminSection>
+      ) : (
+        <AccountSection title={title} description={description} icon={Key} actions={sectionActions}>
+          {keysBody}
+        </AccountSection>
+      )}
 
       {showCreate && canManage && onCreate ? (
         <CreateApiKeyModal

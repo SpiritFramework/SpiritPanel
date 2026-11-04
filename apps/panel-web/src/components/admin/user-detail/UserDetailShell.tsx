@@ -8,6 +8,7 @@ import {
   Key,
   Mail,
   Server,
+  Settings,
   Users,
 } from 'lucide-react';
 import type { AdminUserDetail } from '../../../lib/api';
@@ -16,6 +17,7 @@ import { UserAvatar } from '../../UserAvatar';
 import { StatusPill } from '../../ui';
 import type { UserDetailTab, UserDetailTone } from '../../../pages/admin/user-detail/helpers';
 import { getUserDetailTone, userDisplayName } from '../../../pages/admin/user-detail/helpers';
+import { AdminSection, AdminToolButton } from '../primitives';
 
 export function UserDetailTabNav({
   tabs,
@@ -27,12 +29,12 @@ export function UserDetailTabNav({
   onChange: (tab: UserDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="User sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="User sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -46,18 +48,26 @@ export function UserDetailTabNav({
   );
 }
 
+function userDetailEntityTone(tone: UserDetailTone): 'online' | 'warn' | 'offline' {
+  if (tone === 'suspended') return 'warn';
+  return 'online';
+}
+
 export function UserDetailHeader({
   detail,
   isSelf,
   onCopyEmail,
   copied,
+  onManageAccount,
 }: {
   detail: AdminUserDetail;
   isSelf?: boolean;
   onCopyEmail?: () => void;
   copied?: boolean;
+  onManageAccount?: () => void;
 }) {
   const tone = getUserDetailTone(detail);
+  const entityTone = userDetailEntityTone(tone);
   const name = userDisplayName(detail);
   const joined = new Date(detail.createdAt).toLocaleDateString(undefined, {
     month: 'short',
@@ -85,8 +95,8 @@ export function UserDetailHeader({
   ];
 
   return (
-    <header className={`ds-ud-header ds-ud-header--${tone}`}>
-      <nav className="ds-ud-header-crumb" aria-label="Breadcrumb">
+    <header className={`ds-ud-header ds-adm-entity ds-ud-header--${tone} ds-adm-entity--${entityTone}`}>
+      <nav className="ds-ud-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/users">Users</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <span className="truncate">@{detail.username}</span>
@@ -95,7 +105,7 @@ export function UserDetailHeader({
       <div className="ds-ud-header-body">
         <div className="ds-ud-header-accent" aria-hidden />
 
-        <div className="ds-ud-header-main">
+        <div className="ds-ud-header-main ds-asd-header-main">
           <div className="ds-ud-header-identity">
             <div className="ds-ud-header-avatar-wrap">
               <UserAvatar user={detail} size="lg" ring />
@@ -127,6 +137,15 @@ export function UserDetailHeader({
               </div>
             </div>
           </div>
+
+          {onManageAccount ? (
+            <div className="ds-ud-header-actions ds-adm-entity-actions">
+              <AdminToolButton type="button" onClick={onManageAccount}>
+                <Settings className="h-3.5 w-3.5" aria-hidden />
+                Manage account
+              </AdminToolButton>
+            </div>
+          ) : null}
         </div>
 
         <div className="ds-ud-header-stats" role="list" aria-label="User summary">
@@ -188,21 +207,16 @@ export function UserDetailPanel({
   tone?: 'danger' | 'warning';
 }) {
   return (
-    <section
+    <AdminSection
       className={`ds-ud-panel${tone ? ` ds-ud-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      icon={Icon}
+      title={title}
+      description={description}
+      badge={badge}
+      tone={tone === 'danger' ? 'danger' : 'default'}
     >
-      <header className="ds-ud-panel-head">
-        <span className="ds-ud-panel-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="ds-ud-panel-title">{title}</h2>
-          {description ? <p className="ds-ud-panel-desc">{description}</p> : null}
-        </div>
-        {badge ? <span className="ds-ud-panel-badge">{badge}</span> : null}
-      </header>
-      <div className="ds-ud-panel-body">{children}</div>
-    </section>
+      {children}
+    </AdminSection>
   );
 }
 

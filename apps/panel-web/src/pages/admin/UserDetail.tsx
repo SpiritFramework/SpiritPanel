@@ -96,6 +96,7 @@ export function AdminUserDetail() {
             isSelf={isSelf}
             onCopyEmail={() => void ctrl.copyText(detail.email, 'email')}
             copied={ctrl.copied === 'email'}
+            onManageAccount={() => changeTab('account')}
           />
           <UserDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
         </div>
@@ -124,6 +125,7 @@ export function AdminUserDetail() {
         {tab === 'keys' ? (
           <div className="ds-ud-keys">
             <ApiKeysPanel
+              chrome="admin"
               title={`API keys for @${detail.username}`}
               description={
                 !fullAdmin

@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, Copy, Egg, Layers, Server, User } from 'lucide-react';
+import { ChevronRight, Copy, Egg, Layers, Server, Upload, User } from 'lucide-react';
 import type { AdminNestDetail } from '../../../lib/api';
 import { StatusPill } from '../../ui';
 import type { NestDetailTab } from '../../../pages/admin/nest-detail/helpers';
 import { NEST_GRADIENT } from '../../../pages/admin/nest-detail/helpers';
+import { AdminSection, AdminToolButton } from '../primitives';
 
 export function NestDetailTabNav({
   tabs,
@@ -17,12 +18,12 @@ export function NestDetailTabNav({
   onChange: (tab: NestDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="Nest sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="Nest sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -57,8 +58,10 @@ export function NestDetailHeader({
   ];
 
   return (
-    <header className={`ds-nst-header${hasEggs ? '' : ' ds-nst-header--empty'}`}>
-      <nav className="ds-nst-header-crumb" aria-label="Breadcrumb">
+    <header
+      className={`ds-nst-header ds-adm-entity${hasEggs ? '' : ' ds-nst-header--empty'} ds-adm-entity--${hasEggs ? 'online' : 'offline'}`}
+    >
+      <nav className="ds-nst-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/nests">Nests</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <span className="truncate">{detail.name}</span>
@@ -91,10 +94,11 @@ export function NestDetailHeader({
           </div>
 
           {fullAdmin && onImport ? (
-            <div className="ds-nst-header-actions">
-              <button type="button" className="ds-nst-header-action" onClick={onImport}>
+            <div className="ds-nst-header-actions ds-adm-entity-actions">
+              <AdminToolButton type="button" onClick={onImport} primary>
+                <Upload className="h-3.5 w-3.5" aria-hidden />
                 Import egg
-              </button>
+              </AdminToolButton>
             </div>
           ) : null}
         </div>
@@ -158,21 +162,16 @@ export function NestDetailPanel({
   tone?: 'danger' | 'warning';
 }) {
   return (
-    <section
+    <AdminSection
       className={`ds-nst-panel${tone ? ` ds-nst-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      icon={Icon}
+      title={title}
+      description={description}
+      badge={badge}
+      tone={tone === 'danger' ? 'danger' : 'default'}
     >
-      <header className="ds-nst-panel-head">
-        <span className="ds-nst-panel-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="ds-nst-panel-title">{title}</h2>
-          {description ? <p className="ds-nst-panel-desc">{description}</p> : null}
-        </div>
-        {badge ? <span className="ds-nst-panel-badge">{badge}</span> : null}
-      </header>
-      <div className="ds-nst-panel-body">{children}</div>
-    </section>
+      {children}
+    </AdminSection>
   );
 }
 

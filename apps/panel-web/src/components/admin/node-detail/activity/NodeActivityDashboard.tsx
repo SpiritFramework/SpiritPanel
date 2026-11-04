@@ -7,6 +7,7 @@ import {
   getNodeActivityChangeTags,
 } from '../../../../lib/node-activity';
 import { EmptyState } from '../../../ui';
+import { AdminSection } from '../../primitives';
 import { NodeOverviewSection } from '../NodeDetailShell';
 
 type NodeActivityEntry = ActivityLogEntry & { properties?: Record<string, unknown> | null };
@@ -16,34 +17,29 @@ export function NodeActivityDashboard({ detail }: { detail: AdminNodeDetail }) {
   const groups = groupActivityByDate(entries as ActivityEntry[]);
   const lastChange = entries[0]?.timestamp;
 
+  const summaryBadge = (
+    <div className="ds-nd-ac-summary" aria-label="Activity summary">
+      <span className="ds-nd-ac-summary-stat">
+        <strong>{entries.length}</strong>
+        <span>recorded</span>
+      </span>
+      {lastChange ? (
+        <span className="ds-nd-ac-summary-stat">
+          <strong>{formatActivityTime(lastChange)}</strong>
+          <span>latest</span>
+        </span>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="ds-nd-body ds-nd-ac">
-      <header className="ds-nd-ac-topbar">
-        <div className="min-w-0">
-          <h2 className="ds-nd-ac-title">Panel changes</h2>
-          <p className="ds-nd-ac-subtitle">
-            Settings edits, Wings config downloads, token rotations, and allocation changes on this node.
-          </p>
-        </div>
-        <div className="ds-nd-ac-summary" aria-label="Activity summary">
-          <span className="ds-nd-ac-summary-stat">
-            <strong>{entries.length}</strong>
-            <span>recorded</span>
-          </span>
-          {lastChange ? (
-            <span className="ds-nd-ac-summary-stat">
-              <strong>{formatActivityTime(lastChange)}</strong>
-              <span>latest</span>
-            </span>
-          ) : null}
-        </div>
-      </header>
-
       {entries.length === 0 ? (
         <NodeOverviewSection
           icon={ClipboardList}
           title="No panel changes yet"
           description="Edits to this node, config downloads, and allocation updates will appear here."
+          badge={summaryBadge}
         >
           <EmptyState
             title="Nothing to show"
@@ -51,21 +47,29 @@ export function NodeActivityDashboard({ detail }: { detail: AdminNodeDetail }) {
           />
         </NodeOverviewSection>
       ) : (
-        <div className="ds-nd-ac-timeline">
-          {groups.map((group) => (
-            <section key={group.label} className="ds-nd-ac-group">
-              <header className="ds-nd-ac-date">
-                <span className="ds-nd-ac-date-label">{group.label}</span>
-                <span className="ds-nd-ac-date-count">{group.entries.length}</span>
-              </header>
-              <ul className="ds-nd-ac-list">
-                {group.entries.map((entry) => (
-                  <NodeActivityRow key={entry.id} entry={entry as NodeActivityEntry} />
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <AdminSection
+          icon={ClipboardList}
+          title="Panel changes"
+          description="Settings edits, Wings config downloads, token rotations, and allocation changes on this node."
+          badge={summaryBadge}
+          className="ds-nd-ac-panel"
+        >
+          <div className="ds-nd-ac-timeline">
+            {groups.map((group) => (
+              <section key={group.label} className="ds-nd-ac-group">
+                <header className="ds-nd-ac-date">
+                  <span className="ds-nd-ac-date-label">{group.label}</span>
+                  <span className="ds-nd-ac-date-count">{group.entries.length}</span>
+                </header>
+                <ul className="ds-nd-ac-list">
+                  {group.entries.map((entry) => (
+                    <NodeActivityRow key={entry.id} entry={entry as NodeActivityEntry} />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </AdminSection>
       )}
     </div>
   );

@@ -13,11 +13,11 @@ import {
   serverProvisionPayload,
   type ServerProvisionFormState,
 } from '../../lib/server-provision';
-import { AdminSettingsPanel } from '../AdminDetailLayout';
 import { Button, Input, Select } from '../Layout';
 import { formatLocationLabel } from '../LocationFlag';
 import { Checkbox } from '../Checkbox';
 import { Spinner } from '../ui';
+import { AdminSection } from './primitives';
 
 type AllocationRow = {
   id: string;
@@ -172,11 +172,13 @@ export function ServerProvisionForm({
   );
 
   return (
-    <form onSubmit={submit} className="space-y-5">
-      <AdminSettingsPanel
+    <form onSubmit={submit} className="ds-nd-create-form space-y-5">
+      <AdminSection
+        tone="identity"
+        icon={Server}
+        eyebrow="Server profile"
         title="Server details"
         description="Display name and account that owns this server"
-        icon={Server}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
@@ -200,12 +202,14 @@ export function ServerProvisionForm({
             ))}
           </Select>
         </div>
-      </AdminSettingsPanel>
+      </AdminSection>
 
-      <AdminSettingsPanel
+      <AdminSection
+        tone="wings"
+        icon={Egg}
+        eyebrow="Template"
         title="Software"
         description="Egg template determines install script, startup command, and environment"
-        icon={Egg}
       >
         <Select
           label="Egg"
@@ -291,12 +295,14 @@ export function ServerProvisionForm({
             )}
           </div>
         )}
-      </AdminSettingsPanel>
+      </AdminSection>
 
-      <AdminSettingsPanel
+      <AdminSection
+        tone="connection"
+        icon={Gauge}
+        eyebrow="Placement"
         title="Infrastructure"
         description="Node, primary port, and feature limits for this server"
-        icon={Gauge}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Select
@@ -370,12 +376,14 @@ export function ServerProvisionForm({
             </p>
           )}
         </div>
-      </AdminSettingsPanel>
+      </AdminSection>
 
-      <AdminSettingsPanel
+      <AdminSection
+        tone="capacity"
+        icon={Zap}
+        eyebrow="Limits"
         title="Resources"
         description="Memory, disk, and CPU limits enforced by Wings — 0 = unlimited"
-        icon={Zap}
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <Input
@@ -403,7 +411,7 @@ export function ServerProvisionForm({
             hint="0 = unlimited"
           />
         </div>
-      </AdminSettingsPanel>
+      </AdminSection>
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>

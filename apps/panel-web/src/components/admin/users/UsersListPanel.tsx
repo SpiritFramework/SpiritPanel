@@ -1,8 +1,13 @@
 import { LayoutGrid, List, Plus, Search, Users } from 'lucide-react';
 import type { AdminUserSummary } from '../../../lib/api';
 import { AdminUserTable } from '../../AdminUserRow';
-import { Button, Card } from '../../Layout';
 import { DsIcon, EmptyState, Skeleton } from '../../ui';
+import {
+  AdminFilterChips,
+  AdminSection,
+  AdminSegmentedControl,
+  AdminToolButton,
+} from '../primitives';
 import { UserFleetCard } from './UserFleetCard';
 import type { UserFleetFilter } from './user-fleet-utils';
 
@@ -52,9 +57,14 @@ export function UsersListPanel({
   onCreate: () => void;
 }) {
   return (
-    <Card title="All accounts">
-      <div className="ds-usr-list-panel">
-      <div className="ds-nodes-toolbar mb-3">
+    <AdminSection
+      icon={Users}
+      eyebrow="Inventory"
+      title="All accounts"
+      description="Search, filter, and open any panel account"
+      badge={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : undefined}
+    >
+      <div className="ds-nd-list-toolbar">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
           <input
@@ -65,53 +75,54 @@ export function UsersListPanel({
             aria-label="Search users"
           />
         </div>
-        <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-          <button
-            type="button"
-            className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-            onClick={() => onViewModeChange('table')}
-            aria-pressed={viewMode === 'table'}
-          >
-            <List className="h-3.5 w-3.5" aria-hidden />
-            Table
-          </button>
-          <button
-            type="button"
-            className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-            onClick={() => onViewModeChange('cards')}
-            aria-pressed={viewMode === 'cards'}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-            Cards
-          </button>
-        </div>
+        <AdminSegmentedControl
+          label="View mode"
+          value={viewMode}
+          onChange={(id) => onViewModeChange(id as 'table' | 'cards')}
+          options={[
+            {
+              id: 'table',
+              label: (
+                <>
+                  <List className="h-3.5 w-3.5" aria-hidden />
+                  Table
+                </>
+              ),
+            },
+            {
+              id: 'cards',
+              label: (
+                <>
+                  <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                  Cards
+                </>
+              ),
+            },
+          ]}
+        />
       </div>
 
-      <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Account filters">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            role="tab"
-            aria-selected={statusFilter === opt.id}
-            className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}${
-              opt.id === 'suspended' && filterCounts.suspended > 0 ? ' ds-nodes-status-pill--alert' : ''
-            }`}
-            onClick={() => onStatusFilterChange(opt.id)}
-          >
-            {opt.label}
-            <span className="ds-nodes-status-count">{filterCounts[opt.id]}</span>
-          </button>
-        ))}
-      </div>
+      <AdminFilterChips
+        label="Account filters"
+        value={statusFilter}
+        onChange={(id) => onStatusFilterChange(id as UserFleetFilter)}
+        options={FILTER_OPTIONS.map((opt) => ({
+          id: opt.id,
+          label: opt.label,
+          count: filterCounts[opt.id],
+          alert: opt.id === 'suspended' && filterCounts.suspended > 0,
+        }))}
+      />
 
-      <div className="ds-nodes-results-meta mb-3">
+      <div className="ds-nd-list-meta">
         <span>
           Showing <strong>{users.length}</strong>
           {hasActiveFilters ? ` of ${allCount}` : ''} accounts
         </span>
-        {lastUpdated ? (
-          <span className="ds-text-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
+        {hasActiveFilters ? (
+          <button type="button" className="ds-nd-list-clear" onClick={onClearFilters}>
+            Clear filters
+          </button>
         ) : null}
       </div>
 
@@ -123,9 +134,9 @@ export function UsersListPanel({
             ))}
           </div>
         ) : (
-          <div className="ds-usr-card-grid" aria-hidden>
+          <div className="ds-nd-list-card-grid" aria-hidden>
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="ds-usr-card-skeleton" />
+              <Skeleton key={i} className="ds-nd-list-card-skeleton" />
             ))}
           </div>
         )
@@ -140,27 +151,24 @@ export function UsersListPanel({
           }
           action={
             hasActiveFilters ? (
-              <Button type="button" variant="secondary" onClick={onClearFilters}>
-                Clear filters
-              </Button>
+              <AdminToolButton onClick={onClearFilters}>Clear filters</AdminToolButton>
             ) : fullAdmin ? (
-              <Button type="button" onClick={onCreate}>
-                <Plus className="h-4 w-4" />
+              <AdminToolButton onClick={onCreate} primary>
+                <Plus className="h-3.5 w-3.5" />
                 Create user
-              </Button>
+              </AdminToolButton>
             ) : undefined
           }
         />
       ) : viewMode === 'table' ? (
         <AdminUserTable users={users} currentUserId={currentUserId} />
       ) : (
-        <div className="ds-usr-card-grid">
+        <div className="ds-nd-list-card-grid">
           {users.map((user) => (
             <UserFleetCard key={user.id} user={user} isSelf={user.id === currentUserId} />
           ))}
         </div>
       )}
-      </div>
-    </Card>
+    </AdminSection>
   );
 }

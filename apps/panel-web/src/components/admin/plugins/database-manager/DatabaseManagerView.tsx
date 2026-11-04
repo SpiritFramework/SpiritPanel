@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight, Database, Sparkles, Table2 } from 'lucide-react';
+import { Database, Sparkles, Table2 } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { AdminLayout, Page } from '../../../Layout';
 import { NodeOverviewSection } from '../../node-detail/NodeDetailShell';
 import { Checkbox } from '../../../Checkbox';
 import { AdminEditLoading } from '../../AdminEditLayout';
-import { AlertBanner, StatusPill } from '../../../ui';
+import { AdminHero } from '../../primitives';
+import { AlertBanner } from '../../../ui';
 
 type DatabaseManagerSettings = {
   enabled: boolean;
@@ -84,38 +84,14 @@ export function AdminDatabaseManagerView() {
   return (
     <AdminLayout>
       <Page className="ds-plg-page">
-        <div className="ds-plg-header-wrap">
-          <header className={`ds-plg-header ds-plg-header--${live ? 'live' : 'idle'}`}>
-            <nav className="ds-plg-header-crumb" aria-label="Breadcrumb">
-              <Link to="/admin">Admin</Link>
-              <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
-              <Link to="/admin/plugins">Plugins</Link>
-              <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
-              <span>Database Manager</span>
-            </nav>
-
-            <div className="ds-plg-header-body">
-              <div className="ds-plg-header-accent" aria-hidden />
-              <div className="ds-plg-header-main">
-                <div className="ds-plg-header-identity">
-                  <div className="ds-plg-header-icon-wrap" aria-hidden>
-                    <Database className="ds-icon" />
-                    <span className={`ds-plg-header-pulse ds-plg-header-pulse--${live ? 'live' : 'idle'}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="ds-plg-header-title-row">
-                      <h1 className="ds-plg-header-title">Database Manager</h1>
-                      <StatusPill label={live ? 'Live' : 'Off'} tone={live ? 'success' : 'neutral'} pulse={live} />
-                    </div>
-                    <p className="ds-plg-header-meta">
-                      In-panel MySQL browser for server databases. Create, credentials, and delete stay on Databases —
-                      this adds an optional browse/SQL experience when enabled.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </header>
+        <div className="ds-nd-list-top">
+          <AdminHero
+            eyebrow="Plugins · Database"
+            title="Database Manager"
+            description="In-panel MySQL browser for server databases. Create, credentials, and delete stay on Databases — this adds an optional browse/SQL experience when enabled."
+            pill={live ? 'Live' : 'Off'}
+            pillTone={live ? 'ok' : 'neutral'}
+          />
         </div>
 
         {error ? (

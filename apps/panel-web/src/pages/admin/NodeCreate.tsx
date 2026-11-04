@@ -1,36 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowRight,
-  CheckCircle2,
-  Circle,
-  Download,
-  HardDrive,
-  MapPin,
-  Network,
-  Plus,
-  Terminal,
-} from 'lucide-react';
+import { ArrowRight, HardDrive, MapPin, Network, Plus, Terminal } from 'lucide-react';
 import { api, type AdminLocationSummary } from '../../lib/api';
 import {
   DEFAULT_NODE_FORM,
-  NODE_CREATE_GRADIENT,
   nodeFormToPayload,
   nodeSetupProgress,
   type NodeFormState,
 } from '../../lib/node-admin';
 import { NodeFormFields } from '../../components/admin/NodeFormFields';
-import {
-  AdminDetailBody,
-  AdminDetailHero,
-  AdminDetailManageLayout,
-  AdminDetailPage,
-  AdminFormStatus,
-  AdminQuickLink,
-  AdminSidebarCard,
-} from '../../components/AdminDetailLayout';
+import { AdminDetailBody, AdminDetailPage, AdminFormStatus } from '../../components/AdminDetailLayout';
 import { AdminLayout, Button } from '../../components/Layout';
 import { Spinner } from '../../components/ui';
+import {
+  AdminFormDock,
+  AdminHero,
+  AdminKpiStrip,
+  AdminPageStack,
+  AdminStepProgress,
+  AdminToolButton,
+} from '../../components/admin/primitives';
 
 export function AdminNodeCreate() {
   const navigate = useNavigate();
@@ -41,6 +30,13 @@ export function AdminNodeCreate() {
   const [error, setError] = useState('');
 
   const progress = nodeSetupProgress(form);
+  const nextHint = !form.locationId
+    ? 'Select a location to continue.'
+    : !form.name.trim()
+      ? 'Enter a node name to continue.'
+      : !form.fqdn.trim()
+        ? 'Enter the FQDN to continue.'
+        : 'Credentials and Wings config generate on the next page.';
 
   useEffect(() => {
     api.admin
@@ -73,127 +69,120 @@ export function AdminNodeCreate() {
   return (
     <AdminLayout>
       <AdminDetailPage breadcrumb={[{ label: 'Nodes', to: '/admin/nodes' }, { label: 'Add node' }]}>
-        <AdminDetailHero
-          gradient={NODE_CREATE_GRADIENT}
-          icon={HardDrive}
-          title="Add Wings node"
-          subtitle="Register a new daemon host — credentials and config are generated automatically"
-          stats={[
-            { icon: MapPin, label: 'Locations', value: String(locations.length) },
-            { icon: Network, label: 'Scheme', value: form.scheme.toUpperCase() },
-            { icon: Terminal, label: 'Daemon port', value: form.daemonListen || '8080' },
-            { icon: Download, label: 'Setup', value: `${progress.done}/${progress.total} ready` },
-          ]}
-          actions={
-            <Link to="/admin/nodes">
-              <Button type="button" variant="ghost" className="border border-white/15 bg-black/20 text-white hover:bg-black/30">
-                Cancel
-              </Button>
-            </Link>
-          }
-        />
-
         <AdminDetailBody>
-          {loadingLocations ? (
-            <div className="flex justify-center py-20">
-              <Spinner className="h-8 w-8" />
-            </div>
-          ) : locations.length === 0 ? (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-8 text-center">
-              <MapPin className="mx-auto h-8 w-8 text-amber-400" />
-              <p className="mt-3 text-sm font-medium text-amber-100">No locations yet</p>
-              <p className="mt-1 text-xs text-amber-200/70">Create a location before adding your first node.</p>
-              <Link to="/admin/locations" className="mt-4 inline-block">
-                <Button type="button">Manage locations</Button>
-              </Link>
-            </div>
-          ) : (
-            <form onSubmit={submit}>
-              <AdminDetailManageLayout
-                sidebar={
-                  <>
-                    <AdminSidebarCard title="Setup checklist">
-                      <ul className="space-y-2.5">
-                        {progress.steps.map((step) => (
-                          <li key={step.id} className="flex items-center gap-2.5 text-xs">
-                            {step.done ? (
-                              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
-                            ) : (
-                              <Circle className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-                            )}
-                            <span className={step.done ? 'text-[var(--text)]' : 'text-[var(--muted)]'}>{step.label}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-                        <div
-                          className="h-full rounded-full bg-[var(--accent)] transition-all"
-                          style={{ width: `${(progress.done / progress.total) * 100}%` }}
-                        />
-                      </div>
-                    </AdminSidebarCard>
+          <AdminPageStack className=" ds-nd-create">
+            <AdminHero
+              eyebrow="Daemon host"
+              title="Add Wings node"
+              description="Register a new FeatherWings host. Token and config are generated automatically after create."
+              actions={<AdminToolButton to="/admin/nodes">Cancel</AdminToolButton>}
+            />
 
-                    <AdminSidebarCard title="After creation">
-                      <ol className="space-y-2 text-[11px] leading-relaxed text-[var(--muted)]">
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-[var(--text)]">1.</span>
-                          On the node page, copy join-data (or download the Wings YAML).
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-[var(--text)]">2.</span>
-                          Install FeatherWings, then run{' '}
-                          <code className="text-[10px]">sudo featherwings configure</code> and paste join-data.
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-[var(--text)]">3.</span>
-                          Start Wings and run diagnostics to confirm connectivity.
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="font-semibold text-[var(--text)]">4.</span>
-                          Create port allocations, then deploy servers.
-                        </li>
-                      </ol>
-                    </AdminSidebarCard>
+            <AdminKpiStrip
+              label="Draft summary"
+              columns={4}
+              items={[
+                { icon: MapPin, label: 'Locations', value: locations.length },
+                { icon: Network, label: 'Scheme', value: form.scheme.toUpperCase() },
+                { icon: Terminal, label: 'API port', value: form.daemonListen || '8080' },
+                { icon: HardDrive, label: 'Setup', value: `${progress.done}/${progress.total}` },
+              ]}
+            />
 
-                    <AdminSidebarCard title="Resources">
-                      <AdminQuickLink
-                        icon={MapPin}
-                        label="Locations"
-                        hint={`${locations.length} region${locations.length === 1 ? '' : 's'}`}
-                        onClick={() => navigate('/admin/locations')}
-                      />
-                      <AdminQuickLink
-                        icon={HardDrive}
-                        label="All nodes"
-                        hint="Back to node list"
-                        onClick={() => navigate('/admin/nodes')}
-                      />
-                    </AdminSidebarCard>
-                  </>
-                }
-              >
-                <NodeFormFields form={form} setForm={setForm} locations={locations} />
-
-                <AdminFormStatus error={error} />
-
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <Button type="submit" disabled={saving || !progress.ready}>
-                    <Plus className="h-3.5 w-3.5" />
-                    {saving ? 'Creating node…' : 'Create node'}
-                    {!saving && <ArrowRight className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Link to="/admin/nodes">
-                    <Button type="button" variant="ghost">
-                      Cancel
-                    </Button>
-                  </Link>
-                  {!progress.ready && (
-                    <p className="text-xs text-[var(--muted)]">Select a location and fill in name + FQDN to continue.</p>
-                  )}
+            {loadingLocations ? (
+              <div className="ds-nd-create-loading">
+                <Spinner className="h-7 w-7" />
+                <p>Loading locations…</p>
+              </div>
+            ) : locations.length === 0 ? (
+              <div className="ds-nd-create-empty">
+                <span className="ds-nd-create-empty-icon" aria-hidden>
+                  <MapPin className="h-5 w-5" />
+                </span>
+                <h2 className="ds-nd-create-empty-title">No locations yet</h2>
+                <p className="ds-nd-create-empty-desc">
+                  Create a region first, then come back to register your Wings host.
+                </p>
+                <Link to="/admin/locations">
+                  <Button type="button">Manage locations</Button>
+                </Link>
+              </div>
+            ) : (
+              <form className="ds-nd-create-layout" onSubmit={submit}>
+                <div className="ds-nd-create-main">
+                  <AdminStepProgress steps={progress.steps} />
+                  <NodeFormFields form={form} setForm={setForm} locations={locations} />
+                  <AdminFormStatus error={error} />
                 </div>
-              </AdminDetailManageLayout>
-            </form>
-          )}
+
+                <aside className="ds-nd-create-aside">
+                  <section className="ds-nd-create-aside-card">
+                    <p className="ds-nd-create-aside-eyebrow">Next</p>
+                    <h2 className="ds-nd-create-aside-title">After creation</h2>
+                    <ol className="ds-nd-create-aside-steps">
+                      <li>
+                        <span>1</span>
+                        Copy join-data or download the Wings YAML from the node page.
+                      </li>
+                      <li>
+                        <span>2</span>
+                        Install FeatherWings, then run <code>sudo featherwings configure</code> and paste
+                        join-data.
+                      </li>
+                      <li>
+                        <span>3</span>
+                        Start Wings and run diagnostics to confirm connectivity.
+                      </li>
+                      <li>
+                        <span>4</span>
+                        Create port allocations, then deploy servers.
+                      </li>
+                    </ol>
+                  </section>
+
+                  <section className="ds-nd-create-aside-card">
+                    <p className="ds-nd-create-aside-eyebrow">Jump</p>
+                    <h2 className="ds-nd-create-aside-title">Resources</h2>
+                    <div className="ds-nd-create-aside-links">
+                      <Link to="/admin/locations" className="ds-nd-create-aside-link">
+                        <MapPin className="h-3.5 w-3.5" aria-hidden />
+                        <span>
+                          <strong>Locations</strong>
+                          <em>
+                            {locations.length} region{locations.length === 1 ? '' : 's'}
+                          </em>
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                      </Link>
+                      <Link to="/admin/nodes" className="ds-nd-create-aside-link">
+                        <HardDrive className="h-3.5 w-3.5" aria-hidden />
+                        <span>
+                          <strong>All nodes</strong>
+                          <em>Back to node list</em>
+                        </span>
+                        <ArrowRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                      </Link>
+                    </div>
+                  </section>
+                </aside>
+
+                <AdminFormDock
+                  title={progress.ready ? 'Ready to create' : 'Almost there'}
+                  hint={nextHint}
+                  actions={
+                    <>
+                      <AdminToolButton to="/admin/nodes">Cancel</AdminToolButton>
+                      <Button type="submit" disabled={saving || !progress.ready}>
+                        <Plus className="h-3.5 w-3.5" />
+                        {saving ? 'Creating…' : 'Create node'}
+                        {!saving ? <ArrowRight className="h-3.5 w-3.5" /> : null}
+                      </Button>
+                    </>
+                  }
+                />
+              </form>
+            )}
+          </AdminPageStack>
         </AdminDetailBody>
       </AdminDetailPage>
     </AdminLayout>

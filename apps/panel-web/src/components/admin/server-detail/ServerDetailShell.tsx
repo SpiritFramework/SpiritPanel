@@ -8,10 +8,10 @@ import { formatCpuLimit, formatResource, getServerTheme } from '../../../lib/ser
 import { AdminServerStatusBadge } from '../AdminServerStatus';
 import { LocationFlag } from '../../LocationFlag';
 import { ServerEggIcon } from '../../ServerEggIcon';
-import { Button } from '../../Layout';
 import { AlertBanner, StatusPill } from '../../ui';
 import type { ServerDetailTab, ServerDetailTone } from '../../../pages/admin/server-detail/helpers';
 import { getServerDetailTone } from '../../../pages/admin/server-detail/helpers';
+import { AdminSection, AdminToolButton } from '../primitives';
 
 export function ServerDetailTabNav({
   tabs,
@@ -23,12 +23,12 @@ export function ServerDetailTabNav({
   onChange: (tab: ServerDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="Server sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="Server sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -78,14 +78,14 @@ export function ServerDetailHeader({
   ];
 
   return (
-    <header className={`ds-asd-header ds-asd-header--${tone}`}>
+    <header className={`ds-asd-header ds-adm-entity ds-asd-header--${tone} ds-adm-entity--${tone === 'running' ? 'online' : tone === 'suspended' || tone === 'installing' ? 'warn' : 'offline'}`}>
       {detail.nodeOnline === false ? (
         <AlertBanner tone="warning" className="mx-4 mt-3 md:mx-6">
           Host node is offline
           {detail.nodeReachabilityError ? ` — ${detail.nodeReachabilityError}` : ''}. Server status may be stale.
         </AlertBanner>
       ) : null}
-      <nav className="ds-asd-header-crumb" aria-label="Breadcrumb">
+      <nav className="ds-asd-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/servers">Servers</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <span className="truncate">{detail.name}</span>
@@ -134,14 +134,12 @@ export function ServerDetailHeader({
             </div>
           </div>
 
-          <div className="ds-asd-header-actions">
+          <div className="ds-asd-header-actions ds-adm-entity-actions">
             {fullAdmin ? (
-              <Link to={`/admin/servers/${detail.id}/manage`}>
-                <Button type="button" variant="secondary" size="sm">
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  Manage server
-                </Button>
-              </Link>
+              <AdminToolButton to={`/admin/servers/${detail.id}/manage`}>
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Manage server
+              </AdminToolButton>
             ) : null}
           </div>
         </div>
@@ -214,21 +212,16 @@ export function ServerDetailPanel({
   tone?: 'danger' | 'warning';
 }) {
   return (
-    <section
+    <AdminSection
       className={`ds-asd-panel${tone ? ` ds-asd-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      icon={Icon}
+      title={title}
+      description={description}
+      badge={badge}
+      tone={tone === 'danger' ? 'danger' : 'default'}
     >
-      <header className="ds-asd-panel-head">
-        <span className="ds-asd-panel-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="ds-asd-panel-title">{title}</h2>
-          {description ? <p className="ds-asd-panel-desc">{description}</p> : null}
-        </div>
-        {badge ? <span className="ds-asd-panel-badge">{badge}</span> : null}
-      </header>
-      <div className="ds-asd-panel-body">{children}</div>
-    </section>
+      {children}
+    </AdminSection>
   );
 }
 

@@ -1,7 +1,5 @@
-import { Link } from 'react-router-dom';
-import { ChevronRight, Egg, Layers, Plus, RefreshCw, Upload } from 'lucide-react';
-import { Button } from '../../Layout';
-import { StatusPill } from '../../ui';
+import { Egg, Layers, Plus, RefreshCw, Upload } from 'lucide-react';
+import { AdminHero, AdminKpiStrip, AdminToolButton } from '../primitives';
 import { getNestFleetTone, type NestFleetStats } from './nest-fleet-utils';
 
 export function NestsHeader({
@@ -29,93 +27,52 @@ export function NestsHeader({
           ? `${stats.disabled} disabled egg${stats.disabled === 1 ? '' : 's'}`
           : `${stats.eggs} egg${stats.eggs === 1 ? '' : 's'} ready`;
 
-  const headerStats = [
-    { icon: Layers, label: 'Nests', value: String(stats.nests) },
-    { icon: Egg, label: 'Eggs', value: String(stats.eggs) },
-    { icon: Layers, label: 'With eggs', value: String(stats.withEggs) },
-    { icon: Egg, label: 'Deployed', value: String(stats.deployed) },
-  ];
+  const pillTone = tone === 'warning' ? 'warn' : tone === 'healthy' ? 'ok' : 'neutral';
 
   return (
-    <div className="ds-adm-nest-header-wrap">
-      <header className={`ds-adm-nest-header ds-adm-nest-header--${tone}`}>
-        <nav className="ds-adm-nest-header-crumb" aria-label="Breadcrumb">
-          <Link to="/admin">Admin</Link>
-          <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
-          <span>Nests & eggs</span>
-        </nav>
-
-        <div className="ds-adm-nest-header-body">
-          <div className="ds-adm-nest-header-accent" aria-hidden />
-
-          <div className="ds-adm-nest-header-main">
-            <div className="ds-adm-nest-header-identity">
-              <div
-                className="ds-adm-nest-header-icon-wrap"
-                style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 45%, #2e1065 100%)' }}
-                aria-hidden
-              >
-                <Layers className="ds-icon" />
-                <span className={`ds-adm-nest-header-pulse ds-adm-nest-header-pulse--${tone}`} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="ds-adm-nest-header-title-row">
-                  <h1 className="ds-adm-nest-header-title">Nests & eggs</h1>
-                  <StatusPill
-                    label={statusLabel}
-                    tone={tone === 'warning' ? 'warning' : tone === 'healthy' ? 'success' : 'neutral'}
-                    pulse={tone === 'warning'}
-                  />
-                </div>
-                <p className="ds-adm-nest-header-meta">
-                  Group PTDL eggs into nests, tune startup variables, and keep templates ready to provision
-                </p>
-              </div>
-            </div>
-
-            <div className="ds-adm-nest-header-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={onRefresh}
-                disabled={refreshing}
-                aria-label="Refresh nests"
-              >
-                <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
-                Refresh
-              </Button>
-              {fullAdmin ? (
-                <>
-                  <Button type="button" variant="secondary" size="sm" onClick={onImport}>
-                    <Upload className="h-3.5 w-3.5" aria-hidden />
-                    Import egg
-                  </Button>
-                  <Button type="button" size="sm" onClick={onCreate}>
-                    <Plus className="h-3.5 w-3.5" aria-hidden />
-                    Create nest
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="ds-adm-nest-header-stats" role="list" aria-label="Template summary">
-            {headerStats.map((stat) => (
-              <div key={stat.label} className="ds-adm-nest-header-stat" role="listitem">
-                <span className="ds-adm-nest-header-stat-icon" aria-hidden>
-                  <stat.icon className="h-3.5 w-3.5" />
-                </span>
-                <span className="ds-adm-nest-header-stat-copy">
-                  <span className="ds-adm-nest-header-stat-label">{stat.label}</span>
-                  <span className="ds-adm-nest-header-stat-value">{stat.value}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </header>
+    <div className="ds-nd-list-top">
+      <AdminHero
+        eyebrow="Templates"
+        title="Nests & eggs"
+        description="Group PTDL eggs into nests, tune startup variables, and keep templates ready to provision"
+        pill={statusLabel}
+        pillTone={pillTone}
+        actions={
+          <>
+            <AdminToolButton onClick={onRefresh} disabled={refreshing} aria-label="Refresh nests">
+              <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              Refresh
+            </AdminToolButton>
+            {fullAdmin ? (
+              <>
+                <AdminToolButton onClick={onImport}>
+                  <Upload className="h-3.5 w-3.5" aria-hidden />
+                  Import egg
+                </AdminToolButton>
+                <AdminToolButton onClick={onCreate} primary>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Create nest
+                </AdminToolButton>
+              </>
+            ) : null}
+          </>
+        }
+      />
+      <AdminKpiStrip
+        label="Template summary"
+        columns={4}
+        items={[
+          { icon: Layers, label: 'Nests', value: stats.nests },
+          { icon: Egg, label: 'Eggs', value: stats.eggs },
+          { icon: Layers, label: 'With eggs', value: stats.withEggs },
+          {
+            icon: Egg,
+            label: 'Deployed',
+            value: stats.deployed,
+            tone: stats.deployed > 0 ? 'success' : undefined,
+          },
+        ]}
+      />
     </div>
   );
 }

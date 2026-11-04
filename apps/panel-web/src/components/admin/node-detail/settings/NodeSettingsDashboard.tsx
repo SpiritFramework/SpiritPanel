@@ -22,6 +22,7 @@ import { formatLocationLabel } from '../../../LocationFlag';
 import { Button, Input, Select, Textarea } from '../../../Layout';
 import { NodeSettingsUsageSnapshot } from './NodeSettingsUsageSnapshot';
 import { formatResource } from '../../../../lib/server-theme';
+import { AdminSection } from '../../primitives';
 
 export type NodeSettingsController = {
   detail: AdminNodeDetail;
@@ -572,21 +573,18 @@ function SettingsBlock({
   children: ReactNode;
 }) {
   return (
-    <section className={`ds-nd-st-block ds-nd-st-block--${tone}`}>
-      <header className="ds-nd-st-block-head">
-        <span className="ds-nd-st-block-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="ds-nd-st-block-eyebrow">{eyebrow}</p>
-          <h2 className="ds-nd-st-block-title">{title}</h2>
-          <p className="ds-nd-st-block-desc">{description}</p>
-        </div>
-        {badge ? <div className="ds-nd-st-block-badge">{badge}</div> : null}
-        {actions ? <div className="ds-nd-st-block-actions">{actions}</div> : null}
-      </header>
-      <div className="ds-nd-st-block-body">{children}</div>
-    </section>
+    <AdminSection
+      tone={tone}
+      icon={Icon}
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      badge={badge}
+      actions={actions}
+      className="ds-nd-st-block"
+    >
+      {children}
+    </AdminSection>
   );
 }
 

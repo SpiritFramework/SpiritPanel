@@ -3,6 +3,7 @@ import { ArrowUpRight, HardDrive, Network, Plus, Server, Wrench } from 'lucide-r
 import type { AdminLocationDetail } from '../../../lib/api';
 import { Button } from '../../Layout';
 import { EmptyState } from '../../ui';
+import { AdminSection, AdminToolButton } from '../primitives';
 
 type LocationNode = AdminLocationDetail['nodes'][number];
 
@@ -61,40 +62,42 @@ export function LocationNodesDashboard({ detail }: { detail: AdminLocationDetail
 
   return (
     <div className="ds-loc-nodes">
-      <header className="ds-loc-nodes-head">
-        <div>
-          <h2 className="ds-loc-nodes-title">Nodes in {detail.short}</h2>
-          <p className="ds-loc-nodes-subtitle">
-            {detail.nodes.length === 0
-              ? 'No Wings nodes are assigned to this region.'
-              : `${activeCount} active · ${maintenanceCount} maintenance · ${detail.serverCount} servers total`}
-          </p>
-        </div>
-        <Link to="/admin/nodes">
-          <Button type="button" variant="secondary" size="sm">
+      <AdminSection
+        tone="fleet"
+        icon={Network}
+        eyebrow="Region fleet"
+        title={`Nodes in ${detail.short}`}
+        description={
+          detail.nodes.length === 0
+            ? 'No Wings nodes are assigned to this region.'
+            : `${activeCount} active · ${maintenanceCount} maintenance · ${detail.serverCount} servers total`
+        }
+        badge={String(detail.nodes.length)}
+        actions={
+          <AdminToolButton to="/admin/nodes">
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Add node
-          </Button>
-        </Link>
-      </header>
-
-      {detail.nodes.length === 0 ? (
-        <div className="ds-loc-nodes-empty">
-          <EmptyState
-            title="No nodes in this region"
-            description="Create a node and assign it to this location to start hosting servers here."
-          />
-          <Link to="/admin/nodes">
-            <Button type="button">Go to nodes</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="ds-loc-nodes-grid">
-          {detail.nodes.map((node) => (
-            <LocationNodeCard key={node.id} node={node} />
-          ))}
-        </div>
-      )}
+          </AdminToolButton>
+        }
+      >
+        {detail.nodes.length === 0 ? (
+          <div className="ds-loc-nodes-empty">
+            <EmptyState
+              title="No nodes in this region"
+              description="Create a node and assign it to this location to start hosting servers here."
+            />
+            <Link to="/admin/nodes">
+              <Button type="button">Go to nodes</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="ds-loc-nodes-grid">
+            {detail.nodes.map((node) => (
+              <LocationNodeCard key={node.id} node={node} />
+            ))}
+          </div>
+        )}
+      </AdminSection>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutGrid, List, Puzzle, Search } from 'lucide-react';
 import { api, type AdminPanelPlugin } from '../../lib/api';
-import { AdminLayout, Card, Page } from '../../components/Layout';
+import { AdminLayout, Page } from '../../components/Layout';
 import { PluginFleetCard } from '../../components/admin/plugins/PluginFleetCard';
 import { PluginFleetTable } from '../../components/admin/plugins/PluginFleetTable';
 import { PluginsFleetOverview } from '../../components/admin/plugins/PluginsFleetOverview';
@@ -12,6 +12,12 @@ import {
   matchesPluginSearch,
   type PluginFleetFilter,
 } from '../../components/admin/plugins/plugin-fleet-utils';
+import {
+  AdminFilterChips,
+  AdminPageStack,
+  AdminSection,
+  AdminSegmentedControl,
+} from '../../components/admin/primitives';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AlertBanner, EmptyState, Skeleton } from '../../components/ui';
 
@@ -118,108 +124,117 @@ export function AdminPluginsPage() {
   return (
     <AdminLayout>
       <Page className="ds-plg-page">
-        <PluginsHeader stats={fleetStats} refreshing={refreshing} onRefresh={() => void refresh()} />
+        <AdminPageStack>
+          <PluginsHeader stats={fleetStats} refreshing={refreshing} onRefresh={() => void refresh()} />
 
-        {error ? (
-          <AlertBanner tone="error" className="mb-4">
-            {error}
-          </AlertBanner>
-        ) : null}
+          {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
 
-        <PluginsFleetOverview />
+          <PluginsFleetOverview />
 
-        <Card title="Installed plugins">
-          <div className="ds-nodes-toolbar mb-3">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search plugins, games, server tabs…"
-                className="ds-field ds-field--icon-left w-full"
-                aria-label="Search plugins"
+          <AdminSection
+            icon={Puzzle}
+            eyebrow="Inventory"
+            title="Installed plugins"
+            description="Search, filter, and toggle built-in panel extensions"
+            badge={
+              lastUpdated
+                ? `Updated ${lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+                : undefined
+            }
+          >
+            <div className="ds-nd-list-toolbar">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search plugins, games, server tabs…"
+                  className="ds-field ds-field--icon-left w-full"
+                  aria-label="Search plugins"
+                />
+              </div>
+              <AdminSegmentedControl
+                label="View mode"
+                value={viewMode}
+                onChange={(id) => setViewMode(id as PluginsViewMode)}
+                options={[
+                  {
+                    id: 'cards',
+                    label: (
+                      <>
+                        <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                        Cards
+                      </>
+                    ),
+                  },
+                  {
+                    id: 'table',
+                    label: (
+                      <>
+                        <List className="h-3.5 w-3.5" aria-hidden />
+                        Table
+                      </>
+                    ),
+                  },
+                ]}
               />
             </div>
-            <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('cards')}
-                aria-pressed={viewMode === 'cards'}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-                Cards
-              </button>
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('table')}
-                aria-pressed={viewMode === 'table'}
-              >
-                <List className="h-3.5 w-3.5" aria-hidden />
-                Table
-              </button>
-            </div>
-          </div>
 
-          <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Plugin filters">
-            {FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                role="tab"
-                aria-selected={statusFilter === opt.id}
-                className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}`}
-                onClick={() => setStatusFilter(opt.id)}
-              >
-                {opt.label}
-                <span className="ds-nodes-status-pill-count">{filterCounts[opt.id]}</span>
-              </button>
-            ))}
-            {hasActiveFilters ? (
-              <button type="button" className="ds-nodes-clear-filters" onClick={clearFilters}>
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-
-          {lastUpdated ? (
-            <p className="ds-text-xs ds-text-muted mb-3">
-              Updated {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          ) : null}
-
-          {filtered.length === 0 ? (
-            <EmptyState
-              icon={<Puzzle className="h-8 w-8" />}
-              title={hasActiveFilters ? 'No matching plugins' : 'No plugins installed'}
-              description={
-                hasActiveFilters
-                  ? 'Try a different search or filter.'
-                  : 'Built-in plugins will appear here after the panel API starts.'
-              }
+            <AdminFilterChips
+              label="Plugin filters"
+              value={statusFilter}
+              onChange={(id) => setStatusFilter(id as PluginFleetFilter)}
+              options={FILTER_OPTIONS.map((opt) => ({
+                id: opt.id,
+                label: opt.label,
+                count: filterCounts[opt.id],
+              }))}
             />
-          ) : viewMode === 'table' ? (
-            <PluginFleetTable rows={filtered} busyId={busyId} onToggle={(p) => void togglePlugin(p)} />
-          ) : (
-            <div className="ds-plg-card-grid">
-              {filtered.map((plugin) => (
-                <PluginFleetCard
-                  key={plugin.id}
-                  plugin={plugin}
-                  busy={busyId === plugin.id}
-                  onToggle={() => void togglePlugin(plugin)}
-                />
-              ))}
-            </div>
-          )}
 
-          {refreshing && plugins.length > 0 ? (
-            <div className="ds-plg-card-grid mt-3" aria-hidden>
-              <Skeleton className="ds-plg-card-skeleton" />
+            <div className="ds-nd-list-meta">
+              <span>
+                Showing <strong>{filtered.length}</strong>
+                {hasActiveFilters ? ` of ${plugins.length}` : ''} plugins
+              </span>
+              {hasActiveFilters ? (
+                <button type="button" className="ds-nd-list-clear" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
             </div>
-          ) : null}
-        </Card>
+
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={<Puzzle className="h-8 w-8" />}
+                title={hasActiveFilters ? 'No matching plugins' : 'No plugins installed'}
+                description={
+                  hasActiveFilters
+                    ? 'Try a different search or filter.'
+                    : 'Built-in plugins will appear here after the panel API starts.'
+                }
+              />
+            ) : viewMode === 'table' ? (
+              <PluginFleetTable rows={filtered} busyId={busyId} onToggle={(p) => void togglePlugin(p)} />
+            ) : (
+              <div className="ds-plg-card-grid">
+                {filtered.map((plugin) => (
+                  <PluginFleetCard
+                    key={plugin.id}
+                    plugin={plugin}
+                    busy={busyId === plugin.id}
+                    onToggle={() => void togglePlugin(plugin)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {refreshing && plugins.length > 0 ? (
+              <div className="ds-plg-card-grid mt-3" aria-hidden>
+                <Skeleton className="ds-plg-card-skeleton" />
+              </div>
+            ) : null}
+          </AdminSection>
+        </AdminPageStack>
       </Page>
     </AdminLayout>
   );

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card } from '../../Layout';
+import { ClipboardList } from 'lucide-react';
+import { AdminSection } from '../primitives';
 import { ConfirmModal } from '../../ConfirmModal';
 import { ActivityHeader } from '../../server/activity/ActivityHeader';
 import { ActivityStatsRow } from '../../server/activity/ActivityStatsRow';
@@ -54,13 +55,19 @@ export function ServerActivityDashboard({
           hasActiveFilters={activity.totals.hasActiveFilters}
         />
 
-        <Card title="Activity log">
+        <AdminSection
+          tone="trends"
+          icon={ClipboardList}
+          eyebrow="Audit"
+          title="Activity log"
+          description="Recent power, install, and panel actions for this server"
+        >
           <ActivityFeedPanel
             fetchPage={activity.fetchPage}
             refreshKey={`${detail.id}-${activity.refreshToken}`}
             onTotalsChange={activity.setTotals}
           />
-        </Card>
+        </AdminSection>
       </div>
 
       <ConfirmModal

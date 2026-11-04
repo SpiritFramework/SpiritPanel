@@ -1,31 +1,22 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowRight,
-  CheckCircle2,
-  Circle,
-  Egg,
-  HardDrive,
-  Server,
-  Terminal,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Egg, HardDrive, Server, Terminal, Users } from 'lucide-react';
 import { ServerProvisionForm } from '../../components/admin/ServerProvisionForm';
-import {
-  AdminDetailBody,
-  AdminDetailHero,
-  AdminDetailManageLayout,
-  AdminDetailPage,
-  AdminQuickLink,
-  AdminSidebarCard,
-} from '../../components/AdminDetailLayout';
+import { AdminDetailBody, AdminDetailPage } from '../../components/AdminDetailLayout';
 import {
   DEFAULT_SERVER_PROVISION_FORM,
-  SERVER_PROVISION_GRADIENT,
   serverProvisionProgress,
   type ServerProvisionFormState,
 } from '../../lib/server-provision';
 import { AdminLayout, Button } from '../../components/Layout';
+import {
+  AdminFormDock,
+  AdminHero,
+  AdminKpiStrip,
+  AdminPageStack,
+  AdminStepProgress,
+  AdminToolButton,
+} from '../../components/admin/primitives';
 
 type ProgressInfo = {
   form: ServerProvisionFormState;
@@ -65,96 +56,109 @@ export function AdminServerCreate() {
   return (
     <AdminLayout>
       <AdminDetailPage breadcrumb={[{ label: 'Servers', to: '/admin/servers' }, { label: 'Provision server' }]}>
-        <AdminDetailHero
-          gradient={SERVER_PROVISION_GRADIENT}
-          icon={Server}
-          title="Provision server"
-          subtitle="Create a new game server and start installation on a Wings node"
-          stats={[
-            { icon: Users, label: 'Owner', value: progressInfo.form.ownerId ? 'Selected' : '—' },
-            { icon: Egg, label: 'Egg', value: progressInfo.eggName ?? '—' },
-            { icon: HardDrive, label: 'Node', value: progressInfo.nodeName ?? '—' },
-            {
-              icon: Terminal,
-              label: 'Ready',
-              value: `${progress.done}/${progress.total}`,
-            },
-          ]}
-          actions={
-            <Link to="/admin/servers">
-              <Button type="button" variant="ghost" className="border border-white/15 bg-black/20 text-white hover:bg-black/30">
-                Cancel
-              </Button>
-            </Link>
-          }
-        />
-
         <AdminDetailBody>
-          <AdminDetailManageLayout
-            sidebar={
-              <>
-                <AdminSidebarCard title="Provisioning checklist">
-                  <ul className="space-y-2.5">
-                    {progress.steps.map((step) => (
-                      <li key={step.id} className="flex items-center gap-2.5 text-xs">
-                        {step.done ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-400" />
-                        ) : (
-                          <Circle className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-                        )}
-                        <span className={step.done ? 'text-[var(--text)]' : 'text-[var(--muted)]'}>{step.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-all"
-                      style={{ width: `${(progress.done / progress.total) * 100}%` }}
-                    />
-                  </div>
-                </AdminSidebarCard>
+          <AdminPageStack className=" ds-nd-create">
+            <AdminHero
+              eyebrow="Provisioning"
+              title="Provision server"
+              description="Create a new game server and start installation on a Wings node"
+              actions={<AdminToolButton to="/admin/servers">Cancel</AdminToolButton>}
+            />
 
-                <AdminSidebarCard title="After provisioning">
-                  <ol className="space-y-2 text-[11px] leading-relaxed text-[var(--muted)]">
-                    <li className="flex gap-2">
-                      <span className="font-semibold text-[var(--text)]">1.</span>
+            <AdminKpiStrip
+              label="Draft summary"
+              columns={4}
+              items={[
+                {
+                  icon: Users,
+                  label: 'Owner',
+                  value: progressInfo.form.ownerId ? 'Selected' : '—',
+                },
+                { icon: Egg, label: 'Egg', value: progressInfo.eggName ?? '—' },
+                { icon: HardDrive, label: 'Node', value: progressInfo.nodeName ?? '—' },
+                { icon: Terminal, label: 'Ready', value: `${progress.done}/${progress.total}` },
+              ]}
+            />
+
+            <div className="ds-nd-create-layout">
+              <div className="ds-nd-create-main">
+                <AdminStepProgress steps={progress.steps} label="Provisioning checklist" />
+                <ServerProvisionForm onCreated={handleCreated} onProgressChange={handleProgress} />
+              </div>
+
+              <aside className="ds-nd-create-aside">
+                <section className="ds-nd-create-aside-card">
+                  <p className="ds-nd-create-aside-eyebrow">Next</p>
+                  <h2 className="ds-nd-create-aside-title">After provisioning</h2>
+                  <ol className="ds-nd-create-aside-steps">
+                    <li>
+                      <span>1</span>
                       Installation runs automatically on the selected node.
                     </li>
-                    <li className="flex gap-2">
-                      <span className="font-semibold text-[var(--text)]">2.</span>
+                    <li>
+                      <span>2</span>
                       You&apos;ll be taken to the server console to watch install output.
                     </li>
-                    <li className="flex gap-2">
-                      <span className="font-semibold text-[var(--text)]">3.</span>
+                    <li>
+                      <span>3</span>
                       The owner can manage the server from their client area once install completes.
                     </li>
                   </ol>
-                </AdminSidebarCard>
+                </section>
 
-                <AdminSidebarCard title="Resources">
-                  <AdminQuickLink icon={HardDrive} label="Nodes" hint="Manage Wings hosts" onClick={() => navigate('/admin/nodes')} />
-                  <AdminQuickLink icon={Egg} label="Nests & eggs" hint="Service templates" onClick={() => navigate('/admin/nests')} />
-                  <AdminQuickLink icon={Server} label="All servers" hint="Back to server list" onClick={() => navigate('/admin/servers')} />
-                </AdminSidebarCard>
-              </>
-            }
-          >
-            <ServerProvisionForm onCreated={handleCreated} onProgressChange={handleProgress} />
+                <section className="ds-nd-create-aside-card">
+                  <p className="ds-nd-create-aside-eyebrow">Jump</p>
+                  <h2 className="ds-nd-create-aside-title">Resources</h2>
+                  <div className="ds-nd-create-aside-links">
+                    <Link to="/admin/nodes" className="ds-nd-create-aside-link">
+                      <HardDrive className="h-3.5 w-3.5" aria-hidden />
+                      <span>
+                        <strong>Nodes</strong>
+                        <em>Manage Wings hosts</em>
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                    </Link>
+                    <Link to="/admin/nests" className="ds-nd-create-aside-link">
+                      <Egg className="h-3.5 w-3.5" aria-hidden />
+                      <span>
+                        <strong>Nests & eggs</strong>
+                        <em>Service templates</em>
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                    </Link>
+                    <Link to="/admin/servers" className="ds-nd-create-aside-link">
+                      <Server className="h-3.5 w-3.5" aria-hidden />
+                      <span>
+                        <strong>All servers</strong>
+                        <em>Back to server list</em>
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                    </Link>
+                  </div>
+                </section>
+              </aside>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-4">
-              <Link to="/admin/servers">
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </Link>
-              {progress.ready && (
-                <p className="text-xs text-green-400/90">
-                  Ready to provision
-                  <ArrowRight className="ml-1 inline h-3 w-3" />
-                </p>
-              )}
+              <AdminFormDock
+                title={progress.ready ? 'Ready to provision' : 'Complete the checklist'}
+                hint={
+                  progress.ready
+                    ? 'Installation starts as soon as the server is created.'
+                    : 'Select owner, egg, node, and allocation to continue.'
+                }
+                actions={
+                  <>
+                    <AdminToolButton to="/admin/servers">Cancel</AdminToolButton>
+                    {progress.ready ? (
+                      <Button type="button" disabled>
+                        Use the form Create button above
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
+                  </>
+                }
+              />
             </div>
-          </AdminDetailManageLayout>
+          </AdminPageStack>
         </AdminDetailBody>
       </AdminDetailPage>
     </AdminLayout>

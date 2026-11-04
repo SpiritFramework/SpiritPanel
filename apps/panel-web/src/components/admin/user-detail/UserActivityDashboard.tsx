@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Card } from '../../Layout';
+import { ClipboardList } from 'lucide-react';
+import { AdminSection } from '../primitives';
 import type { ActivityEntry } from '../../../lib/activity';
 import type { UserDetailController } from '../../../pages/admin/user-detail/useUserDetail';
 import { useUserActivity } from '../../../pages/admin/user-detail/useUserActivity';
@@ -64,14 +65,20 @@ export function UserActivityDashboard({ ctrl }: { ctrl: UserDetailController }) 
         />
       ) : null}
 
-      <Card title="Activity log">
+      <AdminSection
+        tone="trends"
+        icon={ClipboardList}
+        eyebrow="Audit"
+        title="Activity log"
+        description="Recent panel and server actions for this account"
+      >
         <UserActivityFeedPanel
           fetchPage={activity.fetchPage}
           refreshKey={`${detail.id}-${activity.refreshToken}`}
           onTotalsChange={activity.setTotals}
           onLoadedEntriesChange={setLoadedEntries}
         />
-      </Card>
+      </AdminSection>
     </div>
   );
 }

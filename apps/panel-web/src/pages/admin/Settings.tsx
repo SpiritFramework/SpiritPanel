@@ -38,7 +38,6 @@ import {
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
-import { NodeOverviewSection } from '../../components/admin/node-detail/NodeDetailShell';
 import {
   SettingsHeader,
   isSettingsTab,
@@ -52,6 +51,7 @@ import {
   type BrandingForm,
   type SmtpForm,
 } from '../../components/admin/settings/settings-types';
+import { AdminSection } from '../../components/admin/primitives';
 import { ColorField } from '../../components/BrandingFields';
 import { BrandingStudio } from '../../features/branding-studio';
 import { Checkbox } from '../../components/Checkbox';
@@ -550,15 +550,27 @@ export function AdminSettings() {
 
                   {tab === 'features' && (
                     <>
-                      <NodeOverviewSection title="Registration" description="Control whether visitors can create their own accounts" icon={UserPlus}>
+                      <AdminSection
+                        tone="identity"
+                        icon={UserPlus}
+                        eyebrow="Accounts"
+                        title="Registration"
+                        description="Control whether visitors can create their own accounts"
+                      >
                         <Checkbox
                           label="Allow public registration"
                           description="Allow new users to sign up at /signup and show a link on the login page"
                           checked={registration}
                           onChange={setRegistration}
                         />
-                      </NodeOverviewSection>
-                      <NodeOverviewSection title="Support tickets" description="Let users open tickets for billing, account, and server help" icon={LifeBuoy}>
+                      </AdminSection>
+                      <AdminSection
+                        tone="connection"
+                        icon={LifeBuoy}
+                        eyebrow="Support"
+                        title="Support tickets"
+                        description="Let users open tickets for billing, account, and server help"
+                      >
                         <div className="space-y-3">
                           <Checkbox
                             label="Enable support tickets"
@@ -625,13 +637,19 @@ export function AdminSettings() {
                             </div>
                           </div>
                         </div>
-                      </NodeOverviewSection>
+                      </AdminSection>
                     </>
                   )}
 
                   {tab === 'security' && (
                     <>
-                      <NodeOverviewSection title="Password policy" description="Account security defaults for registration and admin-created users" icon={KeyRound}>
+                      <AdminSection
+                        tone="identity"
+                        icon={KeyRound}
+                        eyebrow="Credentials"
+                        title="Password policy"
+                        description="Account security defaults for registration and admin-created users"
+                      >
                         <div className="space-y-4">
                           <div className="max-w-xs">
                             <Input
@@ -656,11 +674,13 @@ export function AdminSettings() {
                             onChange={(adminServerSupport) => setSecurity({ ...security, adminServerSupport })}
                           />
                         </div>
-                      </NodeOverviewSection>
-                      <NodeOverviewSection
+                      </AdminSection>
+                      <AdminSection
+                        tone="wings"
+                        icon={Shield}
+                        eyebrow="Bot protection"
                         title="Cloudflare Turnstile"
                         description="Bot protection on login, registration, and password reset"
-                        icon={Shield}
                       >
                         <div className="space-y-4">
                           <Checkbox
@@ -699,11 +719,13 @@ export function AdminSettings() {
                             . Use managed or non-interactive mode. Turnstile only activates when enabled and both keys are saved.
                           </p>
                         </div>
-                      </NodeOverviewSection>
-                      <NodeOverviewSection
+                      </AdminSection>
+                      <AdminSection
+                        tone="connection"
+                        icon={DiscordIcon as typeof Shield}
+                        eyebrow="OAuth"
                         title="Discord login"
                         description="Let users link Discord in Security, then sign in with Discord or their password"
-                        icon={DiscordIcon}
                       >
                         <div className="space-y-4">
                           <Checkbox
@@ -767,11 +789,13 @@ export function AdminSettings() {
                             </div>
                           ) : null}
                         </div>
-                      </NodeOverviewSection>
-                      <NodeOverviewSection
+                      </AdminSection>
+                      <AdminSection
+                        tone="capacity"
+                        icon={Globe}
+                        eyebrow="DNS"
                         title="Cloudflare DNS (subdomains)"
                         description="Let users create one subdomain per server under your zone (DNS-only A/AAAA)"
-                        icon={Globe}
                       >
                         <div className="space-y-4">
                           <Checkbox
@@ -855,13 +879,19 @@ export function AdminSettings() {
                             each node’s public IP if allocations use 0.0.0.0.
                           </p>
                         </div>
-                      </NodeOverviewSection>
+                      </AdminSection>
                     </>
                   )}
 
                   {tab === 'email' && (
                     <>
-                      <NodeOverviewSection title="SMTP delivery" description="Outbound mail for password resets and notifications" icon={Mail}>
+                      <AdminSection
+                        tone="connection"
+                        icon={Mail}
+                        eyebrow="Delivery"
+                        title="SMTP delivery"
+                        description="Outbound mail for password resets and notifications"
+                      >
                         <div className="space-y-4">
                           <Checkbox
                             label="Enable email delivery"
@@ -895,9 +925,15 @@ export function AdminSettings() {
                             <Input label="From name" value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Spirit-Panel" />
                           </div>
                         </div>
-                      </NodeOverviewSection>
+                      </AdminSection>
 
-                      <NodeOverviewSection title="Send a test email" description="Confirm delivery using the values currently in the form" icon={Send}>
+                      <AdminSection
+                        tone="trends"
+                        icon={Send}
+                        eyebrow="Verify"
+                        title="Send a test email"
+                        description="Confirm delivery using the values currently in the form"
+                      >
                         <p className="mb-3 text-xs text-[var(--muted)]">
                           Save your changes first, then send a test to confirm delivery. Tests use the values currently in the form.
                         </p>
@@ -922,12 +958,14 @@ export function AdminSettings() {
                             {testResult.message}
                           </div>
                         )}
-                      </NodeOverviewSection>
+                      </AdminSection>
 
-                      <NodeOverviewSection
+                      <AdminSection
+                        tone="identity"
+                        icon={Type}
+                        eyebrow="Content"
                         title="Email templates"
                         description="Customize subject, content, and preview how emails look to users"
-                        icon={Type}
                       >
                         {!smtp.enabled && (
                           <p className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -935,16 +973,18 @@ export function AdminSettings() {
                           </p>
                         )}
                         <EmailTemplatesPanel templates={emailTemplates} onChange={setEmailTemplates} />
-                      </NodeOverviewSection>
+                      </AdminSection>
                     </>
                   )}
 
                   {tab === 'system' && (
                     <>
-                    <NodeOverviewSection
+                    <AdminSection
+                      tone={maintenance.enabled ? 'danger' : 'wings'}
+                      icon={Wrench}
+                      eyebrow="Availability"
                       title="Maintenance mode"
                       description="Temporarily block normal users while you work on the panel"
-                      icon={Wrench}
                       badge={maintenance.enabled ? 'Active' : undefined}
                     >
                       <div className="space-y-4">
@@ -973,12 +1013,14 @@ export function AdminSettings() {
                           </div>
                         )}
                       </div>
-                    </NodeOverviewSection>
+                    </AdminSection>
 
-                    <NodeOverviewSection
+                    <AdminSection
+                      tone="fleet"
+                      icon={RefreshCw}
+                      eyebrow="Diagnostics"
                       title="Server status cache"
                       description="Clear in-memory Wings status and re-poll every server"
-                      icon={RefreshCw}
                     >
                       <p className="mb-3 text-xs text-[var(--muted)]">
                         Server cards read cached container state from the API. Use this if statuses look stuck (for example
@@ -1001,7 +1043,7 @@ export function AdminSettings() {
                           {refreshStatesResult.message}
                         </div>
                       )}
-                    </NodeOverviewSection>
+                    </AdminSection>
                     </>
                   )}
 

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ChevronRight,
+  Globe,
   LayoutGrid,
   List,
+  MapPin,
   Search,
 } from 'lucide-react';
 import { api, type AdminLocationSummary, type AdminNodeSummary } from '../../lib/api';
@@ -16,10 +19,16 @@ import {
   type LocationFleetFilter,
 } from '../../components/admin/locations/location-fleet-utils';
 import { LocationsFleetOverview } from '../../components/admin/locations/LocationsFleetOverview';
-import { LocationsFleetStats } from '../../components/admin/locations/LocationsFleetStats';
 import { LocationsHeader } from '../../components/admin/locations/LocationsHeader';
 import { CreateLocationModal } from '../../components/CreateLocationModal';
-import { AdminLayout, Card, Page } from '../../components/Layout';
+import {
+  AdminCallout,
+  AdminFilterChips,
+  AdminPageStack,
+  AdminSection,
+  AdminSegmentedControl,
+} from '../../components/admin/primitives';
+import { AdminLayout, Page } from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
 import { isFullPanelAdmin } from '../../lib/roles';
 import { AlertBanner, EmptyState, Skeleton } from '../../components/ui';
@@ -152,140 +161,162 @@ export function AdminLocations() {
   return (
     <AdminLayout>
       <Page>
-        <LocationsHeader
-          stats={fleetStats}
-          refreshing={refreshing}
-          loading={loading}
-          fullAdmin={fullAdmin}
-          onRefresh={() => void refresh()}
-          onCreate={() => setShowCreate(true)}
-        />
-
-        {locations.error ? (
-          <AlertBanner tone="error" className="mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span>Couldn&apos;t load locations: {locations.error.message}</span>
-            </div>
-          </AlertBanner>
-        ) : null}
-
-        {nodes.error ? (
-          <AlertBanner tone="warning" className="mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span>Node counts may be incomplete: {nodes.error.message}</span>
-            </div>
-          </AlertBanner>
-        ) : null}
-
-        {!loading || locationList.length > 0 ? (
-          <LocationsFleetStats
+        <AdminPageStack>
+          <LocationsHeader
             stats={fleetStats}
-            onShowEmpty={() => setStatusFilter('empty')}
+            refreshing={refreshing}
+            loading={loading}
+            fullAdmin={fullAdmin}
+            onRefresh={() => void refresh()}
+            onCreate={() => setShowCreate(true)}
           />
-        ) : null}
 
-        {!loading && locationList.length > 0 ? (
-          <LocationsFleetOverview metrics={allMetrics} />
-        ) : null}
-
-        <Card title="All regions">
-          <div className="ds-nodes-toolbar mb-3">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search code, name, UUID…"
-                className="ds-field ds-field--icon-left w-full"
-                aria-label="Search locations"
-              />
-            </div>
-            <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('table')}
-                aria-pressed={viewMode === 'table'}
-              >
-                <List className="h-3.5 w-3.5" aria-hidden />
-                Table
-              </button>
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('cards')}
-                aria-pressed={viewMode === 'cards'}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-                Cards
-              </button>
-            </div>
-          </div>
-
-          <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Location filters">
-            {FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                role="tab"
-                aria-selected={statusFilter === opt.id}
-                className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}`}
-                onClick={() => setStatusFilter(opt.id)}
-              >
-                {opt.label}
-                <span className="ds-nodes-status-pill-count">{filterCounts[opt.id]}</span>
-              </button>
-            ))}
-            {hasActiveFilters ? (
-              <button type="button" className="ds-nodes-clear-filters" onClick={clearFilters}>
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-
-          {lastUpdated ? (
-            <p className="ds-text-xs ds-text-muted mb-3">
-              Updated {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-            </p>
+          {locations.error ? (
+            <AlertBanner tone="error">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Couldn&apos;t load locations: {locations.error.message}</span>
+              </div>
+            </AlertBanner>
           ) : null}
 
-          {loading ? (
-            <div className="ds-locs-card-grid" aria-hidden>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="ds-locs-card-skeleton" />
-              ))}
-            </div>
-          ) : filteredMetrics.length === 0 ? (
-            <EmptyState
-              title={hasActiveFilters ? 'No matching regions' : 'No locations yet'}
-              description={
-                hasActiveFilters
-                  ? 'Try a different search or filter.'
-                  : 'Add a region to organize your nodes.'
+          {nodes.error ? (
+            <AlertBanner tone="warning">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Node counts may be incomplete: {nodes.error.message}</span>
+              </div>
+            </AlertBanner>
+          ) : null}
+
+          {fleetStats.empty > 0 && !locations.error ? (
+            <AdminCallout
+              tone="warning"
+              icon={MapPin}
+              title={`${fleetStats.empty} empty region${fleetStats.empty === 1 ? '' : 's'}`}
+              description="Regions without nodes are unused — assign Wings hosts or remove them to keep inventory tidy."
+              action={
+                <button
+                  type="button"
+                  className="ds-nd-list-alert-action"
+                  onClick={() => setStatusFilter('empty')}
+                >
+                  Show empty
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                </button>
               }
             />
-          ) : viewMode === 'cards' ? (
-            <div className="ds-locs-card-grid">
-              {filteredMetrics.map((metrics) => (
-                <LocationFleetCard key={metrics.location.id} metrics={metrics} />
-              ))}
-            </div>
-          ) : (
-            <LocationFleetTable rows={filteredMetrics} />
-          )}
-        </Card>
+          ) : null}
 
-        {fullAdmin && showCreate ? (
-          <CreateLocationModal
-            onClose={() => setShowCreate(false)}
-            onCreated={() => {
-              setShowCreate(false);
-              void refresh();
-            }}
-          />
-        ) : null}
+          {!loading && locationList.length > 0 ? (
+            <LocationsFleetOverview metrics={allMetrics} />
+          ) : null}
+
+          <AdminSection
+            icon={Globe}
+            eyebrow="Inventory"
+            title="All regions"
+            description="Search, filter, and open any geographic region"
+            badge={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : undefined}
+          >
+            <div className="ds-nd-list-toolbar">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search code, name, UUID…"
+                  className="ds-field ds-field--icon-left w-full"
+                  aria-label="Search locations"
+                />
+              </div>
+              <AdminSegmentedControl
+                label="View mode"
+                value={viewMode}
+                onChange={(id) => setViewMode(id as LocationsViewMode)}
+                options={[
+                  {
+                    id: 'table',
+                    label: (
+                      <>
+                        <List className="h-3.5 w-3.5" aria-hidden />
+                        Table
+                      </>
+                    ),
+                  },
+                  {
+                    id: 'cards',
+                    label: (
+                      <>
+                        <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                        Cards
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+
+            <AdminFilterChips
+              label="Region filters"
+              value={statusFilter}
+              onChange={(id) => setStatusFilter(id as LocationFleetFilter)}
+              options={FILTER_OPTIONS.map((opt) => ({
+                id: opt.id,
+                label: opt.label,
+                count: filterCounts[opt.id],
+                alert: opt.id === 'empty' && filterCounts.empty > 0,
+              }))}
+            />
+
+            <div className="ds-nd-list-meta">
+              <span>
+                Showing <strong>{filteredMetrics.length}</strong>
+                {hasActiveFilters ? ` of ${allMetrics.length}` : ''} regions
+              </span>
+              {hasActiveFilters ? (
+                <button type="button" className="ds-nd-list-clear" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+
+            {loading ? (
+              <div className="ds-nd-list-card-grid" aria-hidden>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="ds-nd-list-card-skeleton" />
+                ))}
+              </div>
+            ) : filteredMetrics.length === 0 ? (
+              <EmptyState
+                title={hasActiveFilters ? 'No matching regions' : 'No locations yet'}
+                description={
+                  hasActiveFilters
+                    ? 'Try a different search or filter.'
+                    : 'Add a region to organize your nodes.'
+                }
+              />
+            ) : viewMode === 'cards' ? (
+              <div className="ds-locs-card-grid">
+                {filteredMetrics.map((metrics) => (
+                  <LocationFleetCard key={metrics.location.id} metrics={metrics} />
+                ))}
+              </div>
+            ) : (
+              <LocationFleetTable rows={filteredMetrics} />
+            )}
+          </AdminSection>
+
+          {fullAdmin && showCreate ? (
+            <CreateLocationModal
+              onClose={() => setShowCreate(false)}
+              onCreated={() => {
+                setShowCreate(false);
+                void refresh();
+              }}
+            />
+          ) : null}
+        </AdminPageStack>
       </Page>
     </AdminLayout>
   );

@@ -73,8 +73,15 @@ export function TicketDetailShell({
 
   return (
     <div className={`ticket-page ticket-page--${variant}${error ? ' ticket-page--has-error' : ''}`}>
-      <header className="ticket-page__header">
-        <Link to={backHref} className="ticket-page__back" aria-label={backLabel} title={backLabel}>
+      <header
+        className={`ticket-page__header${variant === 'admin' ? ' ds-adm-entity ds-adm-entity--online' : ''}`}
+      >
+        <Link
+          to={backHref}
+          className={`ticket-page__back${variant === 'admin' ? ' ds-adm-entity-crumb' : ''}`}
+          aria-label={backLabel}
+          title={backLabel}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
 
@@ -110,7 +117,7 @@ export function TicketDetailShell({
           </div>
         </div>
 
-        <div className="ticket-page__actions">
+        <div className={`ticket-page__actions${variant === 'admin' ? ' ds-adm-entity-actions' : ''}`}>
           {headerActions}
           <button
             type="button"

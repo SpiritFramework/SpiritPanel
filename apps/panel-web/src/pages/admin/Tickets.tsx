@@ -7,46 +7,34 @@ import {
   Clock,
   Headphones,
   Inbox,
-  Layers,
   LifeBuoy,
-  Loader2,
   MessageSquare,
   RefreshCw,
   Search,
   Server,
   User,
   X,
-  type LucideIcon,
 } from 'lucide-react';
-import { api, type TicketSummary, type User as PanelUser } from '../../lib/api';
-import { useAuth } from '../../context/AuthContext';
-import { useBranding } from '../../context/BrandingContext';
-import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../components/PanelName';
-import { sanitizeImageSrc } from '../../lib/safe-url';
-import { AdminLayout, Button, Page } from '../../components/Layout';
+import { api, type TicketSummary } from '../../lib/api';
+import { AdminLayout, Page } from '../../components/Layout';
 import { UserAvatar } from '../../components/UserAvatar';
+import {
+  AdminCallout,
+  AdminFilterChips,
+  AdminHero,
+  AdminKpiStrip,
+  AdminPageStack,
+  AdminSection,
+  AdminToolButton,
+} from '../../components/admin/primitives';
 import { AlertBanner, EmptyState, PageLoading } from '../../components/ui';
 import { TicketPriorityBadge, TicketStatusBadge } from '../../components/tickets/TicketBadges';
 import { displayTicketUser, formatTicketTime, ticketCategoryLabel } from '../../lib/ticket-utils';
-import { normalizeAppearance } from '../../lib/branding-appearance';
 
 type FilterId = 'all' | 'open' | 'needs_reply' | 'urgent' | 'closed';
 
 const OPEN_STATUSES = new Set(['open', 'awaiting_reply', 'in_progress']);
 const CLOSED_STATUSES = new Set(['resolved', 'closed']);
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function displayName(user: PanelUser): string {
-  const first = user.firstName?.trim();
-  if (first) return first;
-  return user.username;
-}
 
 function isOpenTicket(ticket: TicketSummary) {
   return OPEN_STATUSES.has(ticket.status);
@@ -57,10 +45,6 @@ function needsStaffReply(ticket: TicketSummary) {
 }
 
 export function AdminTicketsPage() {
-  const { user } = useAuth();
-  const { branding } = useBranding();
-  const appearance = normalizeAppearance(branding);
-  const logoSrc = sanitizeImageSrc(branding.logoUrl);
   const [items, setItems] = useState<TicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -121,174 +105,134 @@ export function AdminTicketsPage() {
     [items],
   );
 
-  const filterOptions: Array<{ id: FilterId; label: string; count: number }> = [
+  const filterOptions: Array<{ id: FilterId; label: string; count: number; alert?: boolean }> = [
     { id: 'all', label: 'All', count: stats.total },
     { id: 'open', label: 'Open', count: stats.open },
-    { id: 'needs_reply', label: 'Needs reply', count: stats.needsReply },
-    { id: 'urgent', label: 'Urgent', count: stats.urgent },
+    { id: 'needs_reply', label: 'Needs reply', count: stats.needsReply, alert: stats.needsReply > 0 },
+    { id: 'urgent', label: 'Urgent', count: stats.urgent, alert: stats.urgent > 0 },
     { id: 'closed', label: 'Closed', count: stats.closed },
   ];
 
-  const summaryText =
+  const statusLabel =
     stats.total === 0
-      ? 'Queue is clear — new customer tickets will land here.'
-      : [
-          `${stats.open} open`,
-          stats.needsReply > 0 ? `${stats.needsReply} need reply` : null,
-          stats.urgent > 0 ? `${stats.urgent} urgent` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
+      ? 'Queue clear'
+      : stats.needsReply > 0
+        ? `${stats.needsReply} need reply`
+        : stats.urgent > 0
+          ? `${stats.urgent} urgent`
+          : `${stats.open} open`;
 
-  function toggleFilter(next: FilterId) {
-    setFilter((prev) => (prev === next ? 'all' : next));
+  const pillTone =
+    stats.needsReply > 0 || stats.urgent > 0 ? 'warn' : stats.open > 0 ? 'ok' : 'neutral';
+
+  const hasActiveFilters = filter !== 'all' || Boolean(search.trim());
+
+  function clearFilters() {
+    setFilter('all');
+    setSearch('');
   }
 
   return (
     <AdminLayout>
       <Page>
-        <section className="tickets-page tickets-page--admin">
-          <header className="ds-servers-fleet">
-            {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
-
-            <div className="ds-servers-fleet-top">
-              <div className="ds-servers-fleet-identity">
-                {logoSrc ? (
-                  <div className="ds-servers-fleet-mark">
-                    <img src={logoSrc} alt="" />
-                  </div>
-                ) : (
-                  <div
-                    className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback"
-                    style={panelNameGradientStyle()}
-                  >
-                    {panelNameInitial(branding.panelName)}
-                  </div>
-                )}
-                <div className="ds-servers-fleet-copy">
-                  <p className="ds-servers-fleet-greeting">
-                    {getGreeting()}
-                    {user ? `, ${displayName(user)}` : ''}
-                  </p>
-                  <h1 className="ds-servers-fleet-title">Support tickets</h1>
-                  <div className="ds-servers-fleet-brand">
-                    <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-                    <span className="ds-servers-fleet-tagline">Staff queue</span>
-                  </div>
-                  {loading ? (
-                    <p className="ds-servers-fleet-summary ds-servers-fleet-summary-loading">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
-                      Loading tickets…
-                    </p>
-                  ) : (
-                    <p className="ds-servers-fleet-summary">{summaryText}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="ds-servers-fleet-actions">
-                <Button variant="secondary" onClick={() => void load()} disabled={loading} aria-label="Refresh tickets">
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
-                </Button>
-              </div>
-            </div>
-
+        <AdminPageStack>
+          <div className="ds-nd-list-top">
+            <AdminHero
+              eyebrow="Support"
+              title="Support tickets"
+              description="Staff queue for customer tickets — reply, assign, and resolve from each thread"
+              pill={loading ? 'Loading…' : statusLabel}
+              pillTone={loading ? 'neutral' : pillTone}
+              actions={
+                <AdminToolButton onClick={() => void load()} disabled={loading} aria-label="Refresh tickets">
+                  <RefreshCw className={`h-3.5 w-3.5${loading ? ' animate-spin' : ''}`} aria-hidden />
+                  Refresh
+                </AdminToolButton>
+              }
+            />
             {!loading && stats.total > 0 ? (
-              <div className="ds-servers-fleet-stats" role="list" aria-label="Ticket summary">
-                <TicketFleetStat
-                  icon={Inbox}
-                  label="Open"
-                  value={stats.open}
-                  tone="info"
-                  active={filter === 'open'}
-                  onClick={() => toggleFilter('open')}
-                />
-                <TicketFleetStat
-                  icon={MessageSquare}
-                  label="Needs reply"
-                  value={stats.needsReply}
-                  tone="warn"
-                  active={filter === 'needs_reply'}
-                  onClick={() => toggleFilter('needs_reply')}
-                />
-                <TicketFleetStat
-                  icon={AlertTriangle}
-                  label="Urgent"
-                  value={stats.urgent}
-                  tone="danger"
-                  active={filter === 'urgent'}
-                  onClick={() => toggleFilter('urgent')}
-                />
-                <TicketFleetStat
-                  icon={CheckCircle2}
-                  label="Closed"
-                  value={stats.closed}
-                  tone="success"
-                  active={filter === 'closed'}
-                  onClick={() => toggleFilter('closed')}
-                />
-                <TicketFleetStat
-                  icon={Layers}
-                  label="Total"
-                  value={stats.total}
-                  active={filter === 'all'}
-                  onClick={() => setFilter('all')}
-                />
-              </div>
+              <AdminKpiStrip
+                label="Ticket summary"
+                columns={4}
+                items={[
+                  { icon: Inbox, label: 'Open', value: stats.open },
+                  {
+                    icon: MessageSquare,
+                    label: 'Needs reply',
+                    value: stats.needsReply,
+                    tone: stats.needsReply > 0 ? 'warning' : undefined,
+                  },
+                  {
+                    icon: AlertTriangle,
+                    label: 'Urgent',
+                    value: stats.urgent,
+                    tone: stats.urgent > 0 ? 'danger' : undefined,
+                  },
+                  {
+                    icon: CheckCircle2,
+                    label: 'Closed',
+                    value: stats.closed,
+                    tone: stats.closed > 0 ? 'success' : undefined,
+                  },
+                ]}
+              />
             ) : null}
-          </header>
+          </div>
 
           {stats.needsReply > 0 && filter !== 'needs_reply' ? (
-            <button
-              type="button"
-              className="tickets-inbox__callout"
-              onClick={() => setFilter('needs_reply')}
-            >
-              <span className="tickets-inbox__callout-icon" aria-hidden>
-                <MessageSquare className="h-4 w-4" />
-              </span>
-              <span className="tickets-inbox__callout-body">
-                <strong>
-                  {stats.needsReply} ticket{stats.needsReply === 1 ? '' : 's'}{' '}
-                  {stats.needsReply === 1 ? 'needs' : 'need'} a staff reply
-                </strong>
-                <span>
-                  {needsReplyTickets[0]
-                    ? `#${needsReplyTickets[0].number} · ${displayTicketUser(needsReplyTickets[0].user)} — ${needsReplyTickets[0].subject}`
-                    : 'Customers are waiting on your team.'}
-                </span>
-              </span>
-              <ChevronRight className="tickets-inbox__callout-chevron h-4 w-4" aria-hidden />
-            </button>
+            <AdminCallout
+              tone="warning"
+              icon={MessageSquare}
+              title={`${stats.needsReply} ticket${stats.needsReply === 1 ? '' : 's'} ${stats.needsReply === 1 ? 'needs' : 'need'} a staff reply`}
+              description={
+                needsReplyTickets[0]
+                  ? `#${needsReplyTickets[0].number} · ${displayTicketUser(needsReplyTickets[0].user)} — ${needsReplyTickets[0].subject}`
+                  : 'Customers are waiting on your team.'
+              }
+              action={
+                <button
+                  type="button"
+                  className="ds-nd-list-alert-action"
+                  onClick={() => setFilter('needs_reply')}
+                >
+                  Show needs reply
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                </button>
+              }
+            />
           ) : null}
 
           {stats.urgent > 0 && filter !== 'urgent' ? (
-            <button
-              type="button"
-              className="tickets-inbox__callout tickets-inbox__callout--danger"
-              onClick={() => setFilter('urgent')}
-            >
-              <span className="tickets-inbox__callout-icon tickets-inbox__callout-icon--danger" aria-hidden>
-                <AlertTriangle className="h-4 w-4" />
-              </span>
-              <span className="tickets-inbox__callout-body">
-                <strong>
-                  {stats.urgent} urgent open ticket{stats.urgent === 1 ? '' : 's'}
-                </strong>
-                <span>
-                  {urgentTickets[0]
-                    ? `#${urgentTickets[0].number} — ${urgentTickets[0].subject}`
-                    : 'Prioritize these first.'}
-                </span>
-              </span>
-              <ChevronRight className="tickets-inbox__callout-chevron h-4 w-4" aria-hidden />
-            </button>
+            <AdminCallout
+              tone="error"
+              icon={AlertTriangle}
+              title={`${stats.urgent} urgent open ticket${stats.urgent === 1 ? '' : 's'}`}
+              description={
+                urgentTickets[0]
+                  ? `#${urgentTickets[0].number} — ${urgentTickets[0].subject}`
+                  : 'Prioritize these first.'
+              }
+              action={
+                <button
+                  type="button"
+                  className="ds-nd-list-alert-action"
+                  onClick={() => setFilter('urgent')}
+                >
+                  Show urgent
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                </button>
+              }
+            />
           ) : null}
 
           {error ? <AlertBanner tone="error">{error}</AlertBanner> : null}
 
-          <div className="tickets-inbox__panel">
+          <AdminSection
+            icon={Inbox}
+            eyebrow="Queue"
+            title="Ticket inbox"
+            description="Filter and search the staff support queue"
+          >
             <div className="tickets-inbox__toolbar">
               <div className="tickets-inbox__search">
                 <Search className="tickets-inbox__search-icon" aria-hidden />
@@ -310,25 +254,31 @@ export function AdminTicketsPage() {
                   </button>
                 ) : null}
               </div>
-
-              <div className="tickets-inbox__filters" role="tablist" aria-label="Filter tickets">
-                {filterOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={filter === option.id}
-                    className={`tickets-inbox__filter${filter === option.id ? ' is-active' : ''}${
-                      option.id === 'needs_reply' && option.count > 0 ? ' tickets-inbox__filter--pulse' : ''
-                    }${option.id === 'urgent' && option.count > 0 ? ' tickets-inbox__filter--urgent' : ''}`}
-                    onClick={() => setFilter(option.id)}
-                  >
-                    {option.label}
-                    <span className="tickets-inbox__filter-count">{option.count}</span>
-                  </button>
-                ))}
-              </div>
             </div>
+
+            <AdminFilterChips
+              label="Filter tickets"
+              value={filter}
+              onChange={(id) => setFilter(id as FilterId)}
+              options={filterOptions.map((opt) => ({
+                id: opt.id,
+                label: opt.label,
+                count: opt.count,
+                alert: opt.alert,
+              }))}
+            />
+
+            {hasActiveFilters ? (
+              <div className="ds-nd-list-meta">
+                <span>
+                  Showing <strong>{filtered.length}</strong>
+                  {items.length ? ` of ${items.length}` : ''} tickets
+                </span>
+                <button type="button" className="ds-nd-list-clear" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              </div>
+            ) : null}
 
             {loading ? (
               <PageLoading label="Loading tickets…" />
@@ -447,54 +397,9 @@ export function AdminTicketsPage() {
                 })}
               </ul>
             )}
-          </div>
-        </section>
+          </AdminSection>
+        </AdminPageStack>
       </Page>
     </AdminLayout>
-  );
-}
-
-function TicketFleetStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  active,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  tone?: 'success' | 'info' | 'warn' | 'danger';
-  active?: boolean;
-  onClick: () => void;
-}) {
-  const toneClass =
-    tone === 'success'
-      ? 'ds-servers-stat--success'
-      : tone === 'info'
-        ? 'ds-servers-stat--info'
-        : tone === 'warn'
-          ? 'ds-servers-stat--warn'
-          : tone === 'danger'
-            ? 'ds-servers-stat--danger'
-            : '';
-
-  return (
-    <button
-      type="button"
-      role="listitem"
-      className={`ds-servers-stat ${toneClass}${active ? ' is-active' : ''}`}
-      onClick={onClick}
-      aria-pressed={active}
-    >
-      <span className="ds-servers-stat-top">
-        <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className="h-3 w-3" />
-        </span>
-        <span className="ds-servers-stat-label">{label}</span>
-      </span>
-      <span className="ds-servers-stat-value">{value}</span>
-    </button>
   );
 }

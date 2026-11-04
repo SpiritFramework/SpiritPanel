@@ -4,6 +4,7 @@ import { ArrowLeft, Lock, Trash2, UserCheck, UserMinus } from 'lucide-react';
 import { api, type TicketDetail, type TicketPriority, type TicketStatus } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLayout, Button, Page } from '../../components/Layout';
+import { AdminToolButton } from '../../components/admin/primitives';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertBanner, PageHeader, PageLoading } from '../../components/ui';
 import {
@@ -150,10 +151,15 @@ export function AdminTicketDetailPage() {
           </>
         }
         headerActions={
-          <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} disabled={deleting}>
-            <Trash2 className="h-4 w-4" />
+          <AdminToolButton
+            type="button"
+            className="ticket-page__delete-btn"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={deleting}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Delete</span>
-          </Button>
+          </AdminToolButton>
         }
         sidebar={
           <>

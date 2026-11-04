@@ -8,6 +8,7 @@ import { ServerEggIcon } from '../../ServerEggIcon';
 import { StatusPill } from '../../ui';
 import type { EggDetailTab } from '../../../pages/admin/egg-detail/helpers';
 import { EGG_GRADIENT } from '../../../pages/admin/egg-detail/helpers';
+import { AdminSection } from '../primitives';
 
 export function EggDetailTabNav({
   tabs,
@@ -19,12 +20,12 @@ export function EggDetailTabNav({
   onChange: (tab: EggDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="Egg sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="Egg sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -51,8 +52,10 @@ export function EggDetailHeader({ detail }: { detail: AdminEggDetail }) {
   ];
 
   return (
-    <header className={`ds-egg-header${detail.enabled ? '' : ' ds-egg-header--disabled'}`}>
-      <nav className="ds-egg-header-crumb" aria-label="Breadcrumb">
+    <header
+      className={`ds-egg-header ds-adm-entity${detail.enabled ? '' : ' ds-egg-header--disabled'} ds-adm-entity--${detail.enabled ? 'online' : 'warn'}`}
+    >
+      <nav className="ds-egg-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/nests">Nests</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <Link to={`/admin/nests/${detail.nestId}`} className="truncate">
@@ -157,21 +160,16 @@ export function EggDetailPanel({
   tone?: 'danger' | 'warning';
 }) {
   return (
-    <section
+    <AdminSection
       className={`ds-egg-panel${tone ? ` ds-egg-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      icon={Icon}
+      title={title}
+      description={description}
+      badge={badge}
+      tone={tone === 'danger' ? 'danger' : 'default'}
     >
-      <header className="ds-egg-panel-head">
-        <span className="ds-egg-panel-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="ds-egg-panel-title">{title}</h2>
-          {description ? <p className="ds-egg-panel-desc">{description}</p> : null}
-        </div>
-        {badge ? <span className="ds-egg-panel-badge">{badge}</span> : null}
-      </header>
-      <div className="ds-egg-panel-body">{children}</div>
-    </section>
+      {children}
+    </AdminSection>
   );
 }
 

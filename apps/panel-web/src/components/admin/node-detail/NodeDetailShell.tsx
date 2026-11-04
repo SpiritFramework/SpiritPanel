@@ -17,6 +17,7 @@ import type { AdminNodeDetail } from '../../../lib/api';
 import { StatusPill } from '../../ui';
 import { LocationFlag } from '../../LocationFlag';
 import type { NodeDetailTab } from '../../../pages/admin/node-detail/helpers';
+import { AdminSection, AdminToolButton } from '../primitives';
 
 export function NodeDetailTabNav({
   tabs,
@@ -28,12 +29,12 @@ export function NodeDetailTabNav({
   onChange: (tab: NodeDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="Node sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="Node sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -67,6 +68,8 @@ export function NodeDetailHeader({
   copied?: boolean;
 }) {
   const statusTone = detail.maintenanceMode ? 'maintenance' : detail.online ? 'online' : 'offline';
+  const entityTone =
+    statusTone === 'maintenance' ? 'warn' : statusTone === 'online' ? 'online' : 'offline';
   const statusLabel = detail.maintenanceMode ? 'Maintenance' : detail.online ? 'Online' : 'Offline';
   const createdLabel = new Date(detail.createdAt).toLocaleDateString(undefined, {
     month: 'short',
@@ -91,8 +94,8 @@ export function NodeDetailHeader({
   ];
 
   return (
-    <header className={`ds-nd-header ds-nd-header--${statusTone}`}>
-      <nav className="ds-nd-header-crumb" aria-label="Breadcrumb">
+    <header className={`ds-nd-header ds-adm-entity ds-nd-header--${statusTone} ds-adm-entity--${entityTone}`}>
+      <nav className="ds-nd-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
         <Link to="/admin/nodes">Nodes</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <span className="truncate">{detail.name}</span>
@@ -160,21 +163,25 @@ export function NodeDetailHeader({
             </div>
           </div>
 
-          <div className="ds-nd-toolstrip" role="group" aria-label="Node actions">
+          <div
+            className="ds-nd-toolstrip ds-adm-entity-actions ds-nd-header-actions"
+            role="group"
+            aria-label="Node actions"
+          >
             {onCopyJoinData ? (
-              <button type="button" className="ds-nd-tool-btn" onClick={onCopyJoinData}>
+              <AdminToolButton type="button" onClick={onCopyJoinData}>
                 <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
                 {copied ? 'Copied' : 'Join-data'}
-              </button>
+              </AdminToolButton>
             ) : null}
-            <button type="button" className="ds-nd-tool-btn" onClick={onDownloadConfig}>
+            <AdminToolButton type="button" onClick={onDownloadConfig}>
               <Download className="h-3.5 w-3.5" aria-hidden />
               Wings config
-            </button>
-            <button type="button" className="ds-nd-tool-btn" onClick={onDiagnostics}>
+            </AdminToolButton>
+            <AdminToolButton type="button" onClick={onDiagnostics}>
               <Stethoscope className="h-3.5 w-3.5" aria-hidden />
               Diagnostics
-            </button>
+            </AdminToolButton>
           </div>
         </div>
 
@@ -253,19 +260,16 @@ export function NodeOverviewSection({
   className?: string;
 }) {
   return (
-    <section id={id} className={`ds-nd-ov-card${className ? ` ${className}` : ''}`}>
-      <header className="ds-nd-ov-card-head">
-        <span className="ds-nd-ov-card-icon" aria-hidden>
-          <Icon className="ds-icon ds-icon--sm" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="ds-nd-ov-card-title">{title}</h2>
-          {description ? <p className="ds-nd-ov-card-desc">{description}</p> : null}
-        </div>
-        {badge ? <span className="ds-nd-ov-card-badge">{badge}</span> : null}
-      </header>
-      <div className="ds-nd-ov-card-body">{children}</div>
-    </section>
+    <AdminSection
+      id={id}
+      className={`ds-nd-ov-card${className ? ` ${className}` : ''}`}
+      icon={Icon as LucideIcon}
+      title={title}
+      description={description}
+      badge={badge}
+    >
+      {children}
+    </AdminSection>
   );
 }
 

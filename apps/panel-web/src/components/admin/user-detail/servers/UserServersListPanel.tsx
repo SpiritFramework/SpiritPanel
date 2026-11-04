@@ -1,6 +1,6 @@
 import { LayoutGrid, List, Search, Server, Users } from 'lucide-react';
-import { Card } from '../../../Layout';
 import { EmptyState } from '../../../ui';
+import { AdminSection } from '../../primitives';
 import { UserServerFleetCard } from './UserServerFleetCard';
 import { UserServerTableRow } from './UserServerTableRow';
 import { UserSharedAccessCard } from './UserSharedAccessCard';
@@ -69,7 +69,14 @@ export function UserServersListPanel({
   const noMatches = !isEmpty && filteredCount === 0;
 
   return (
-    <Card title="Server access">
+    <AdminSection
+      tone="fleet"
+      icon={Server}
+      eyebrow="Access"
+      title="Server access"
+      description="Owned servers and subuser shares for this account"
+      badge={String(totalCount)}
+    >
       <div className="ds-ud-srv-list-panel">
         <div className="ds-nodes-toolbar mb-3">
           <div className="relative min-w-0 flex-1">
@@ -239,6 +246,6 @@ export function UserServersListPanel({
           </div>
         )}
       </div>
-    </Card>
+    </AdminSection>
   );
 }

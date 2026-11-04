@@ -475,6 +475,7 @@ curl -o server.jar https://launcher.mojang.com/v1/objects/latest/server.jar || c
         ],
       });
     }
+    await seedDemoStats(demoFiveMServer.id, demoFiveMServer.memory, demoFiveMServer.disk);
   }
 
   return { location, nest, demoServer, demoFiveMServer, demoPassword };

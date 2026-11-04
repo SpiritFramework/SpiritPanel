@@ -12,9 +12,9 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { AdminLocationDetail } from '../../../lib/api';
-import { Button } from '../../Layout';
 import { StatusPill } from '../../ui';
 import { LocationFlag } from '../../LocationFlag';
+import { AdminToolButton } from '../primitives';
 
 export type LocationDetailTab = 'settings' | 'nodes';
 
@@ -28,12 +28,12 @@ export function LocationDetailTabNav({
   onChange: (tab: LocationDetailTab) => void;
 }) {
   return (
-    <nav className="ds-nd-header-tabs" aria-label="Location sections">
+    <nav className="ds-nd-header-tabs ds-adm-entity-tabs" aria-label="Location sections">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`ds-nd-header-tab${active === tab.id ? ' ds-nd-header-tab--active' : ''}`}
+          className={`ds-nd-header-tab ds-adm-entity-tab${active === tab.id ? ' ds-nd-header-tab--active ds-adm-entity-tab--active' : ''}`}
           onClick={() => onChange(tab.id)}
           aria-current={active === tab.id ? 'page' : undefined}
         >
@@ -84,8 +84,10 @@ export function LocationDetailHeaderShell({
 
   return (
     <div className="ds-loc-header-wrap">
-      <header className={`ds-loc-header ds-loc-header--${tone}`}>
-        <nav className="ds-loc-header-crumb" aria-label="Breadcrumb">
+      <header
+        className={`ds-loc-header ds-adm-entity ds-loc-header--${tone} ds-adm-entity--${inUse ? 'online' : 'offline'}`}
+      >
+        <nav className="ds-loc-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
           <Link to="/admin/locations">Locations</Link>
           <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
           <span className="truncate">{detail.short}</span>
@@ -150,17 +152,15 @@ export function LocationDetailHeaderShell({
               </div>
             </div>
 
-            <div className="ds-loc-header-actions">
-              <Button type="button" variant="secondary" size="sm" onClick={onViewNodes}>
+            <div className="ds-loc-header-actions ds-adm-entity-actions">
+              <AdminToolButton type="button" onClick={onViewNodes}>
                 <Network className="h-3.5 w-3.5" aria-hidden />
                 View nodes
-              </Button>
-              <Link to="/admin/nodes">
-                <Button type="button" variant="ghost" size="sm">
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Add node
-                </Button>
-              </Link>
+              </AdminToolButton>
+              <AdminToolButton to="/admin/nodes">
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add node
+              </AdminToolButton>
             </div>
           </div>
 

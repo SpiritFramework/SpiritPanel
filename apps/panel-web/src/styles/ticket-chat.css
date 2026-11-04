@@ -221,6 +221,17 @@ html.ticket-chat-page .ticket-chat-host {
   align-self: center;
 }
 
+.ticket-page--admin .ticket-page__delete-btn {
+  color: var(--danger-fg, #f87171);
+  border-color: color-mix(in srgb, var(--danger-fg, #f87171) 35%, var(--border));
+}
+
+.ticket-page--admin .ticket-page__delete-btn:hover:not(:disabled) {
+  color: var(--danger-fg, #f87171);
+  border-color: color-mix(in srgb, var(--danger-fg, #f87171) 55%, var(--border));
+  background: color-mix(in srgb, var(--danger-fg, #f87171) 8%, var(--bg-elevated));
+}
+
 .ticket-page__details-btn {
   display: inline-flex;
   align-items: center;

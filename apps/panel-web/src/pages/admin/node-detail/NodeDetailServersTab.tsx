@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Activity, Server } from 'lucide-react';
 import { formatAllocationAddress } from '../../../lib/allocation';
 import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
+import { AdminToolButton } from '../../../components/admin/primitives';
 import { NodeResourceMeter } from '../../../components/admin/node-detail/NodeResourceMeter';
 import { AdminServerStatusBadge } from '../../../components/admin/AdminServerStatus';
 import { EmptyState } from '../../../components/ui';
@@ -28,10 +29,10 @@ export function NodeDetailServersTab({
         icon={Server}
         actions={
           detail.servers.length > 0 ? (
-            <button type="button" className="ds-nd-tool-btn" onClick={onAnalytics}>
+            <AdminToolButton type="button" onClick={onAnalytics}>
               <Activity className="h-3.5 w-3.5" aria-hidden />
               Live analytics
-            </button>
+            </AdminToolButton>
           ) : null
         }
       >

@@ -1,8 +1,14 @@
 import { Egg, Layers, LayoutGrid, List, Plus, Search, Upload } from 'lucide-react';
 import { AdminEggTable } from '../../AdminEggRow';
 import { AdminNestTable } from '../../AdminNestRow';
-import { Button, Card, FilterSelect } from '../../Layout';
+import { Button, FilterSelect } from '../../Layout';
 import { EmptyState, Skeleton, Spinner } from '../../ui';
+import {
+  AdminFilterChips,
+  AdminSection,
+  AdminSegmentedControl,
+  AdminToolButton,
+} from '../primitives';
 import { EggFleetCard } from './EggFleetCard';
 import { NestFleetCard } from './NestFleetCard';
 import type { AdminEggSummary, AdminNestSummary } from '../../../lib/api';
@@ -84,188 +90,212 @@ export function NestsListPanel({
   const activeFilter = isNests ? nestStatusFilter : eggStatusFilter;
 
   return (
-    <Card title={isNests ? 'Browse nests' : 'Browse eggs'}>
-      <div className="ds-adm-nest-list-panel">
-        <div className="ds-adm-nest-view-tabs" role="tablist" aria-label="Template view">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={isNests}
-            className={`ds-adm-nest-view-tab${isNests ? ' ds-adm-nest-view-tab--active' : ''}`}
-            onClick={() => onViewChange('nests')}
+    <AdminSection
+      icon={isNests ? Layers : Egg}
+      eyebrow="Inventory"
+      title={isNests ? 'Browse nests' : 'Browse eggs'}
+      description={
+        isNests
+          ? 'Search and filter nest groups across your template library'
+          : 'Search eggs by name, author, or nest assignment'
+      }
+      badge={
+        lastUpdated
+          ? `Updated ${lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+          : undefined
+      }
+    >
+      <AdminSegmentedControl
+        label="Template view"
+        value={view}
+        onChange={(id) => onViewChange(id as NestFleetView)}
+        options={[
+          {
+            id: 'nests',
+            label: (
+              <>
+                <Layers className="h-3.5 w-3.5" aria-hidden />
+                Nests
+                <span className="ds-adm-chip-count">{allNestCount}</span>
+              </>
+            ),
+          },
+          {
+            id: 'eggs',
+            label: (
+              <>
+                <Egg className="h-3.5 w-3.5" aria-hidden />
+                Eggs
+                <span className="ds-adm-chip-count">{allEggCount}</span>
+              </>
+            ),
+          },
+        ]}
+      />
+
+      <div className="ds-nd-list-toolbar">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+          <input
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={
+              isNests ? 'Search name, description, UUID…' : 'Search name, author, UUID…'
+            }
+            className="ds-field ds-field--icon-left w-full"
+            aria-label={isNests ? 'Search nests' : 'Search eggs'}
+          />
+        </div>
+        {!isNests ? (
+          <FilterSelect
+            value={nestFilter}
+            onChange={(e) => onNestFilterChange(e.target.value)}
+            aria-label="Filter by nest"
           >
-            <Layers className="h-3.5 w-3.5" aria-hidden />
-            Nests
-            <span className="ds-adm-nest-view-tab-count">{allNestCount}</span>
+            <option value="">All nests</option>
+            {nestList.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.name}
+              </option>
+            ))}
+          </FilterSelect>
+        ) : null}
+        <AdminSegmentedControl
+          label="View mode"
+          value={viewMode}
+          onChange={(id) => onViewModeChange(id as 'table' | 'cards')}
+          options={[
+            {
+              id: 'table',
+              label: (
+                <>
+                  <List className="h-3.5 w-3.5" aria-hidden />
+                  Table
+                </>
+              ),
+            },
+            {
+              id: 'cards',
+              label: (
+                <>
+                  <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                  Cards
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      <AdminFilterChips
+        label="Status filters"
+        value={activeFilter}
+        onChange={(id) =>
+          isNests
+            ? onNestStatusFilterChange(id as NestListFilter)
+            : onEggStatusFilterChange(id as EggListFilter)
+        }
+        options={filters.map((f) => ({
+          id: f.id,
+          label: f.label,
+          count: filterCounts[f.id as keyof typeof filterCounts],
+          alert:
+            f.id === 'disabled' &&
+            !isNests &&
+            (filterCounts as Record<EggListFilter, number>).disabled > 0,
+        }))}
+      />
+
+      <div className="ds-nd-list-meta">
+        <span>
+          Showing <strong>{count}</strong>
+          {hasActiveFilters ? ` of ${total}` : ''} {isNests ? 'nests' : 'eggs'}
+        </span>
+        {hasActiveFilters ? (
+          <button type="button" className="ds-nd-list-clear" onClick={onClearFilters}>
+            Clear filters
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!isNests}
-            className={`ds-adm-nest-view-tab${!isNests ? ' ds-adm-nest-view-tab--active' : ''}`}
-            onClick={() => onViewChange('eggs')}
-          >
-            <Egg className="h-3.5 w-3.5" aria-hidden />
-            Eggs
-            <span className="ds-adm-nest-view-tab-count">{allEggCount}</span>
-          </button>
-        </div>
+        ) : null}
+      </div>
 
-        <div className="ds-nodes-toolbar mb-3">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-            <input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={
-                isNests ? 'Search name, description, UUID…' : 'Search name, author, UUID…'
-              }
-              className="ds-field ds-field--icon-left w-full"
-              aria-label={isNests ? 'Search nests' : 'Search eggs'}
-            />
+      {loading && count === 0 ? (
+        viewMode === 'table' ? (
+          <div className="space-y-2 py-1" aria-hidden>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-lg" />
+            ))}
           </div>
-          {!isNests ? (
-            <FilterSelect
-              value={nestFilter}
-              onChange={(e) => onNestFilterChange(e.target.value)}
-              aria-label="Filter by nest"
-            >
-              <option value="">All nests</option>
-              {nestList.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-            </FilterSelect>
-          ) : null}
-          <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-            <button
-              type="button"
-              className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-              onClick={() => onViewModeChange('table')}
-              aria-pressed={viewMode === 'table'}
-            >
-              <List className="h-3.5 w-3.5" aria-hidden />
-              Table
-            </button>
-            <button
-              type="button"
-              className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-              onClick={() => onViewModeChange('cards')}
-              aria-pressed={viewMode === 'cards'}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-              Cards
-            </button>
-          </div>
-        </div>
-
-        <div className="ds-adm-nest-filter-pills" role="group" aria-label="Status filters">
-          {filters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`ds-adm-nest-filter-pill${
-                activeFilter === f.id ? ' ds-adm-nest-filter-pill--active' : ''
-              }`}
-              onClick={() =>
-                isNests
-                  ? onNestStatusFilterChange(f.id as NestListFilter)
-                  : onEggStatusFilterChange(f.id as EggListFilter)
-              }
-              aria-pressed={activeFilter === f.id}
-            >
-              {f.label}
-              <span className="ds-adm-nest-filter-pill-count">{filterCounts[f.id as keyof typeof filterCounts]}</span>
-            </button>
-          ))}
-          {hasActiveFilters ? (
-            <button type="button" className="ds-adm-nest-filter-clear" onClick={onClearFilters}>
-              Clear filters
-            </button>
-          ) : null}
-        </div>
-
-        <div className="ds-adm-nest-list-meta">
-          <span>
-            Showing {count} of {total}
-            {lastUpdated ? (
-              <span className="ds-adm-nest-list-updated">
-                · Updated {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            ) : null}
-          </span>
-        </div>
-
-        {loading && count === 0 ? (
+        ) : (
           <div className="ds-adm-nest-skeleton-grid">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-36 rounded-xl" />
             ))}
           </div>
-        ) : isNests ? (
-          nests.length === 0 ? (
-            <EmptyState
-              title="No nests found"
-              description={
-                hasActiveFilters
-                  ? 'Try adjusting your search or filters.'
-                  : 'Create a nest to organize your eggs.'
-              }
-              action={
-                fullAdmin && !hasActiveFilters ? (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button type="button" onClick={onCreate}>
-                      <Plus className="h-3.5 w-3.5" aria-hidden />
-                      Create nest
-                    </Button>
-                  </div>
-                ) : undefined
-              }
-            />
-          ) : viewMode === 'cards' ? (
-            <div className="ds-adm-nest-card-grid">
-              {nests.map((nest) => (
-                <NestFleetCard key={nest.id} nest={nest} />
-              ))}
-            </div>
-          ) : (
-            <AdminNestTable nests={nests} />
-          )
-        ) : eggs.length === 0 ? (
+        )
+      ) : isNests ? (
+        nests.length === 0 ? (
           <EmptyState
-            title="No eggs found"
+            title="No nests found"
             description={
               hasActiveFilters
                 ? 'Try adjusting your search or filters.'
-                : 'Import a PTDL_v2 JSON egg into a nest.'
+                : 'Create a nest to organize your eggs.'
             }
             action={
               fullAdmin && !hasActiveFilters ? (
-                <Button type="button" onClick={onImport}>
-                  <Upload className="h-3.5 w-3.5" aria-hidden />
-                  Import egg
-                </Button>
+                <AdminToolButton onClick={onCreate} primary>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Create nest
+                </AdminToolButton>
+              ) : hasActiveFilters ? (
+                <AdminToolButton onClick={onClearFilters}>Clear filters</AdminToolButton>
               ) : undefined
             }
           />
         ) : viewMode === 'cards' ? (
           <div className="ds-adm-nest-card-grid">
-            {eggs.map((egg) => (
-              <EggFleetCard key={egg.id} egg={egg} />
+            {nests.map((nest) => (
+              <NestFleetCard key={nest.id} nest={nest} />
             ))}
           </div>
         ) : (
-          <AdminEggTable eggs={eggs} />
-        )}
+          <AdminNestTable nests={nests} />
+        )
+      ) : eggs.length === 0 ? (
+        <EmptyState
+          title="No eggs found"
+          description={
+            hasActiveFilters
+              ? 'Try adjusting your search or filters.'
+              : 'Import a PTDL_v2 JSON egg into a nest.'
+          }
+          action={
+            fullAdmin && !hasActiveFilters ? (
+              <Button type="button" onClick={onImport}>
+                <Upload className="h-3.5 w-3.5" aria-hidden />
+                Import egg
+              </Button>
+            ) : hasActiveFilters ? (
+              <AdminToolButton onClick={onClearFilters}>Clear filters</AdminToolButton>
+            ) : undefined
+          }
+        />
+      ) : viewMode === 'cards' ? (
+        <div className="ds-adm-nest-card-grid">
+          {eggs.map((egg) => (
+            <EggFleetCard key={egg.id} egg={egg} />
+          ))}
+        </div>
+      ) : (
+        <AdminEggTable eggs={eggs} />
+      )}
 
-        {loading && count > 0 ? (
-          <div className="ds-adm-nest-list-loading" aria-live="polite">
-            <Spinner />
-            Refreshing…
-          </div>
-        ) : null}
-      </div>
-    </Card>
+      {loading && count > 0 ? (
+        <div className="ds-adm-nest-list-loading" aria-live="polite">
+          <Spinner />
+          Refreshing…
+        </div>
+      ) : null}
+    </AdminSection>
   );
 }

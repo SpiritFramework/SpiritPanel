@@ -1,9 +1,14 @@
 import { LayoutGrid, List, Plus, Search, Server } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import type { AdminNodeSummary, AdminServerSummary } from '../../../lib/api';
 import { AdminServerTable } from '../../AdminServerRow';
-import { Button, Card, FilterSelect } from '../../Layout';
+import { FilterSelect } from '../../Layout';
 import { DsIcon, EmptyState, Skeleton } from '../../ui';
+import {
+  AdminFilterChips,
+  AdminSection,
+  AdminSegmentedControl,
+  AdminToolButton,
+} from '../primitives';
 import { ServerFleetCard } from './ServerFleetCard';
 import type { ServerFleetFilter } from './server-fleet-utils';
 
@@ -55,137 +60,130 @@ export function ServersListPanel({
   onServerDeleted: () => void;
 }) {
   return (
-    <Card title="All servers">
-      <div className="ds-adm-srv-list-panel">
-        <div className="ds-nodes-toolbar mb-3">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-            <input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search name, owner, UUID…"
-              className="ds-field ds-field--icon-left w-full"
-              aria-label="Search servers"
-            />
-          </div>
-          <FilterSelect
-            value={nodeFilter}
-            onChange={(e) => onNodeFilterChange(e.target.value)}
-            aria-label="Filter by node"
-          >
-            <option value="">All nodes</option>
-            {nodeList.map((node) => (
-              <option key={node.id} value={node.id}>
-                {node.name}
-              </option>
-            ))}
-          </FilterSelect>
-          <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-            <button
-              type="button"
-              className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-              onClick={() => onViewModeChange('table')}
-              aria-pressed={viewMode === 'table'}
-            >
-              <List className="h-3.5 w-3.5" aria-hidden />
-              Table
-            </button>
-            <button
-              type="button"
-              className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-              onClick={() => onViewModeChange('cards')}
-              aria-pressed={viewMode === 'cards'}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-              Cards
-            </button>
-          </div>
+    <AdminSection
+      icon={Server}
+      eyebrow="Inventory"
+      title="All servers"
+      description="Search, filter, and open any game server in the fleet"
+      badge={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : undefined}
+    >
+      <div className="ds-nd-list-toolbar">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+          <input
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search name, owner, UUID…"
+            className="ds-field ds-field--icon-left w-full"
+            aria-label="Search servers"
+          />
         </div>
+        <FilterSelect
+          value={nodeFilter}
+          onChange={(e) => onNodeFilterChange(e.target.value)}
+          aria-label="Filter by node"
+        >
+          <option value="">All nodes</option>
+          {nodeList.map((node) => (
+            <option key={node.id} value={node.id}>
+              {node.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <AdminSegmentedControl
+          label="View mode"
+          value={viewMode}
+          onChange={(id) => onViewModeChange(id as 'table' | 'cards')}
+          options={[
+            {
+              id: 'table',
+              label: (
+                <>
+                  <List className="h-3.5 w-3.5" aria-hidden />
+                  Table
+                </>
+              ),
+            },
+            {
+              id: 'cards',
+              label: (
+                <>
+                  <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                  Cards
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
 
-        <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Server status filters">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="tab"
-              aria-selected={statusFilter === opt.id}
-              className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}${
-                opt.id === 'suspended' && filterCounts.suspended > 0 ? ' ds-nodes-status-pill--alert' : ''
-              }`}
-              onClick={() => onStatusFilterChange(opt.id)}
-            >
-              {opt.label}
-              <span className="ds-nodes-status-count">{filterCounts[opt.id]}</span>
-            </button>
+      <AdminFilterChips
+        label="Server status filters"
+        value={statusFilter}
+        onChange={(id) => onStatusFilterChange(id as ServerFleetFilter)}
+        options={FILTER_OPTIONS.map((opt) => ({
+          id: opt.id,
+          label: opt.label,
+          count: filterCounts[opt.id],
+          alert: opt.id === 'suspended' && filterCounts.suspended > 0,
+        }))}
+      />
+
+      <div className="ds-nd-list-meta">
+        <span>
+          Showing <strong>{servers.length}</strong>
+          {hasActiveFilters ? ` of ${allCount}` : ''} servers
+        </span>
+        {hasActiveFilters ? (
+          <button type="button" className="ds-nd-list-clear" onClick={onClearFilters}>
+            Clear filters
+          </button>
+        ) : null}
+      </div>
+
+      {loading && servers.length === 0 && allCount === 0 ? (
+        viewMode === 'table' ? (
+          <div className="space-y-2 py-1" aria-hidden>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="ds-nd-list-card-grid" aria-hidden>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="ds-nd-list-card-skeleton" />
+            ))}
+          </div>
+        )
+      ) : servers.length === 0 ? (
+        <EmptyState
+          icon={<DsIcon icon={Server} className="ds-icon--md" />}
+          title={hasActiveFilters ? 'No servers match your filters' : 'No servers yet'}
+          description={
+            hasActiveFilters
+              ? 'Try broadening your search or clearing filters.'
+              : 'Provision a server to populate this fleet.'
+          }
+          action={
+            fullAdmin && !hasActiveFilters ? (
+              <AdminToolButton to="/admin/servers/new" primary>
+                <Plus className="h-3.5 w-3.5" />
+                Provision server
+              </AdminToolButton>
+            ) : hasActiveFilters ? (
+              <AdminToolButton onClick={onClearFilters}>Clear filters</AdminToolButton>
+            ) : undefined
+          }
+        />
+      ) : viewMode === 'cards' ? (
+        <div className="ds-nd-list-card-grid">
+          {servers.map((server) => (
+            <ServerFleetCard key={server.id} server={server} />
           ))}
         </div>
-
-        <div className="ds-nodes-results-meta mb-3">
-          <span>
-            Showing <strong>{servers.length}</strong>
-            {hasActiveFilters ? ` of ${allCount}` : ''} servers
-          </span>
-          <span className="flex items-center gap-2">
-            {hasActiveFilters ? (
-              <button type="button" className="ds-adm-srv-clear-btn" onClick={onClearFilters}>
-                Clear filters
-              </button>
-            ) : null}
-            {lastUpdated ? (
-              <span className="ds-text-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
-            ) : null}
-          </span>
-        </div>
-
-        {loading && servers.length === 0 && allCount === 0 ? (
-          viewMode === 'table' ? (
-            <div className="space-y-2 py-1" aria-hidden>
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : (
-            <ul className="ds-adm-srv-card-grid" aria-hidden>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <li key={i}>
-                  <Skeleton className="ds-adm-srv-card-skeleton h-44 w-full rounded-xl" />
-                </li>
-              ))}
-            </ul>
-          )
-        ) : servers.length === 0 ? (
-          <EmptyState
-            icon={<DsIcon icon={Server} className="ds-icon--md" />}
-            title={hasActiveFilters ? 'No servers match your filters' : 'No servers yet'}
-            description={
-              hasActiveFilters
-                ? 'Try broadening your search or clearing filters.'
-                : 'Provision a server to populate this fleet.'
-            }
-            action={
-              fullAdmin && !hasActiveFilters ? (
-                <Link to="/admin/servers/new">
-                  <Button>Provision server</Button>
-                </Link>
-              ) : hasActiveFilters ? (
-                <Button type="button" variant="secondary" onClick={onClearFilters}>
-                  Clear filters
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : viewMode === 'cards' ? (
-          <ul className="ds-adm-srv-card-grid">
-            {servers.map((server) => (
-              <li key={server.id}>
-                <ServerFleetCard server={server} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <AdminServerTable servers={servers} onServerDeleted={onServerDeleted} />
-        )}
-      </div>
-    </Card>
+      ) : (
+        <AdminServerTable servers={servers} onServerDeleted={onServerDeleted} />
+      )}
+    </AdminSection>
   );
 }

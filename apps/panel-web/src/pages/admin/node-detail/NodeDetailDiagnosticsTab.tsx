@@ -1,6 +1,7 @@
 import { CheckCircle2, Copy, RefreshCw, XCircle } from 'lucide-react';
 import type { NodeDiagnostics } from '../../../lib/api';
 import { NodeDetailPanel } from '../../../components/admin/node-detail/NodeDetailPanel';
+import { AdminSection, AdminToolButton } from '../../../components/admin/primitives';
 import { AdminCopyButton, AdminInfoRow } from '../../../components/AdminDetailLayout';
 import { Spinner } from '../../../components/ui';
 import { useState } from 'react';
@@ -34,10 +35,10 @@ export function NodeDetailDiagnosticsTab({
         description="Verify FeatherWings can reach the panel and routing is configured"
         icon={RefreshCw}
         actions={
-          <button type="button" className="ds-nd-tool-btn" disabled={loading} onClick={onRun}>
+          <AdminToolButton type="button" disabled={loading} onClick={onRun}>
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden />
             {loading ? 'Running…' : diagnostics ? 'Re-run' : 'Run diagnostics'}
-          </button>
+          </AdminToolButton>
         }
       >
         {loading && !diagnostics ? (
@@ -56,32 +57,39 @@ export function NodeDetailDiagnosticsTab({
 
       {diagnostics ? (
         <>
-          <div className="ds-nd-diag-grid">
-            <DiagCard
-              label="Wings daemon"
-              ok={wingsOnline}
-              value={wingsOnline ? diagnostics.wings.wingsVersion ?? 'Online' : 'Offline'}
-              detail={diagnostics.wings.error ?? undefined}
-            />
-            <DiagCard
-              label="Remote URL"
-              ok={remoteConfigured}
-              value={remoteConfigured ? (wingsOnline ? 'Reachable path set' : 'Configured') : 'Missing'}
-              detail={diagnostics.remote.hint}
-            />
-            <DiagCard
-              label="Console routing"
-              ok={wingsOnline}
-              value={wingsOnline ? 'Ready' : 'Needs Wings online'}
-              detail={diagnostics.console.hint}
-            />
-            <DiagCard
-              label="SFTP"
-              ok
-              value={`Port ${diagnostics.sftp.port}`}
-              detail={`${diagnostics.sftp.usernameFormat} @ ${diagnostics.sftp.host}`}
-            />
-          </div>
+          <AdminSection
+            icon={CheckCircle2}
+            title="Check results"
+            description="Summary of daemon reachability and routing"
+            className="ds-nd-diag-results"
+          >
+            <div className="ds-nd-diag-grid">
+              <DiagCard
+                label="Wings daemon"
+                ok={wingsOnline}
+                value={wingsOnline ? diagnostics.wings.wingsVersion ?? 'Online' : 'Offline'}
+                detail={diagnostics.wings.error ?? undefined}
+              />
+              <DiagCard
+                label="Remote URL"
+                ok={remoteConfigured}
+                value={remoteConfigured ? (wingsOnline ? 'Reachable path set' : 'Configured') : 'Missing'}
+                detail={diagnostics.remote.hint}
+              />
+              <DiagCard
+                label="Console routing"
+                ok={wingsOnline}
+                value={wingsOnline ? 'Ready' : 'Needs Wings online'}
+                detail={diagnostics.console.hint}
+              />
+              <DiagCard
+                label="SFTP"
+                ok
+                value={`Port ${diagnostics.sftp.port}`}
+                detail={`${diagnostics.sftp.usernameFormat} @ ${diagnostics.sftp.host}`}
+              />
+            </div>
+          </AdminSection>
 
           <NodeDetailPanel title="Technical details" description="Raw values used by the panel and Wings" icon={Copy}>
             <dl className="ds-nd-diag-tech">

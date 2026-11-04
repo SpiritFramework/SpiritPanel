@@ -14,6 +14,7 @@ import type { DashboardNodeHealth } from '../../../pages/admin/dashboard/types';
 import type { AdminDashboardController } from '../../../pages/admin/dashboard/useAdminDashboard';
 import { Button, Page } from '../../Layout';
 import { EmptyState } from '../../ui';
+import { AdminPageStack } from '../primitives';
 import { DashboardCapacityPanel } from './DashboardCapacityPanel';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardQuickActions } from './DashboardQuickActions';
@@ -28,7 +29,8 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
   const name = user?.firstName?.trim() || user?.username || 'Admin';
 
   return (
-    <Page className="ds-admin-dash">
+    <Page>
+      <AdminPageStack className=" ds-admin-dash">
       <DashboardHeader
         name={name}
         stats={stats}
@@ -155,6 +157,7 @@ export function AdminDashboard({ ctrl }: { ctrl: AdminDashboardController }) {
           </div>
         </section>
       </div>
+      </AdminPageStack>
     </Page>
   );
 }

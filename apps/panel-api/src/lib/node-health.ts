@@ -37,10 +37,9 @@ export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
   }
 }
 
-export function sanitizeAdminNode<T extends { daemonTokenSecret?: string; daemonTokenId?: string }>(
-  node: T,
-) {
-  const { daemonTokenSecret: _secret, daemonTokenId: _id, ...safe } = node;
+/** Strip Wings token secret from admin payloads. Token ID stays — admins need it in the UI. */
+export function sanitizeAdminNode<T extends { daemonTokenSecret?: string }>(node: T) {
+  const { daemonTokenSecret: _secret, ...safe } = node;
   return safe;
 }
 

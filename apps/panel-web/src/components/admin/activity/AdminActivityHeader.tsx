@@ -5,14 +5,9 @@ import {
   ShieldAlert,
   Trash2,
   Users,
-  type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
-import { useBranding } from '../../../context/BrandingContext';
-import { normalizeAppearance } from '../../../lib/branding-appearance';
-import { sanitizeImageSrc } from '../../../lib/safe-url';
-import { PanelName, panelNameGradientStyle, panelNameInitial } from '../../PanelName';
-import { Button } from '../../Layout';
+import { AdminFilterChips, AdminHero, AdminKpiStrip, AdminToolButton } from '../primitives';
 
 export const ACTIVITY_SCOPES = [
   {
@@ -75,129 +70,51 @@ export function AdminActivityHeader({
   onClear: () => void;
 }) {
   const { user } = useAuth();
-  const { branding } = useBranding();
-  const appearance = normalizeAppearance(branding);
-  const logoSrc = sanitizeImageSrc(branding.logoUrl);
   const name = user?.firstName?.trim() || user?.username || 'Admin';
+  const scopeMeta = ACTIVITY_SCOPES.find((s) => s.id === activeScope) ?? ACTIVITY_SCOPES[0];
+
   return (
-    <header className="ds-servers-fleet">
-      {appearance.showHeroStripe ? <div className="ds-hero-stripe" /> : null}
-
-      <div className="ds-servers-fleet-top">
-        <div className="ds-servers-fleet-identity">
-          {logoSrc ? (
-            <div className="ds-servers-fleet-mark">
-              <img src={logoSrc} alt="" />
-            </div>
-          ) : (
-            <div className="ds-servers-fleet-mark ds-servers-fleet-mark-fallback" style={panelNameGradientStyle()}>
-              {panelNameInitial(branding.panelName)}
-            </div>
-          )}
-          <div className="ds-servers-fleet-copy">
-            <p className="ds-servers-fleet-greeting">
-              {greetingForHour()}, {name}
-            </p>
-            <h1 className="ds-servers-fleet-title">System activity</h1>
-            <div className="ds-servers-fleet-brand">
-              <PanelName name={branding.panelName} variant="compact" className="shrink-0" />
-              <span className="ds-servers-fleet-tagline">Audit log</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="ds-servers-fleet-actions">
-          {canClear ? (
-            <Button type="button" variant="secondary" onClick={onClear} disabled={clearing}>
-              <Trash2 className="h-4 w-4" aria-hidden />
-              Clear scope
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onRefresh}
-            disabled={refreshing}
-            aria-label="Refresh activity"
-          >
-            <RefreshCw className={`h-4 w-4${refreshing ? ' animate-spin' : ''}`} aria-hidden />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-        </div>
-      </div>
-
-      <div className="ds-servers-fleet-stats" role="list" aria-label="Activity scopes and totals">
-        {ACTIVITY_SCOPES.map((scope) => (
-          <ScopeStat
-            key={scope.id}
-            icon={scope.icon}
-            label={scope.shortLabel}
-            value={activeScope === scope.id ? loaded : '—'}
-            hint={scope.description}
-            active={activeScope === scope.id}
-            onClick={() => onScopeChange(scope.id)}
-          />
-        ))}
-        <StaticStat icon={ScrollText} label="Total" value={total} />
-        <StaticStat icon={LayoutDashboard} label="Showing" value={filtered} />
-      </div>
-    </header>
-  );
-}
-
-function ScopeStat({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  active,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number | string;
-  hint: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="listitem"
-      className={`ds-servers-stat${active ? ' is-active ds-servers-stat--info' : ''}`}
-      onClick={onClick}
-      aria-pressed={active}
-      title={hint}
-    >
-      <span className="ds-servers-stat-top">
-        <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className="h-3 w-3" />
-        </span>
-        <span className="ds-servers-stat-label">{label}</span>
-      </span>
-      <span className="ds-servers-stat-value">{value}</span>
-    </button>
-  );
-}
-
-function StaticStat({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="ds-servers-stat" role="listitem">
-      <span className="ds-servers-stat-top">
-        <span className="ds-servers-stat-icon" aria-hidden>
-          <Icon className="h-3 w-3" />
-        </span>
-        <span className="ds-servers-stat-label">{label}</span>
-      </span>
-      <span className="ds-servers-stat-value">{value}</span>
+    <div className="ds-nd-list-top">
+      <AdminHero
+        eyebrow={`${greetingForHour()}, ${name}`}
+        title="Activity"
+        description={scopeMeta.description}
+        pill={`${filtered} shown`}
+        pillTone="neutral"
+        actions={
+          <>
+            <AdminToolButton onClick={onRefresh} disabled={refreshing} aria-label="Refresh activity">
+              <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              Refresh
+            </AdminToolButton>
+            {canClear ? (
+              <AdminToolButton onClick={onClear} disabled={clearing}>
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                {clearing ? 'Clearing…' : 'Clear'}
+              </AdminToolButton>
+            ) : null}
+          </>
+        }
+      />
+      <AdminKpiStrip
+        label="Activity summary"
+        columns={4}
+        items={[
+          { icon: ScrollText, label: 'Total', value: total },
+          { icon: LayoutDashboard, label: 'Loaded', value: loaded },
+          { icon: Users, label: 'Filtered', value: filtered },
+          { icon: scopeMeta.icon, label: 'Scope', value: scopeMeta.shortLabel },
+        ]}
+      />
+      <AdminFilterChips
+        label="Activity scope"
+        value={activeScope}
+        onChange={(id) => onScopeChange(id as ActivityScope)}
+        options={ACTIVITY_SCOPES.map((scope) => ({
+          id: scope.id,
+          label: scope.shortLabel,
+        }))}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Globe, LifeBuoy, Lock, Megaphone, Shield, Sparkles, UserPlus } from 'lucide-react';
 import type { SettingsTab } from './SettingsHeader';
-import { NodeOverviewSection } from '../node-detail/NodeDetailShell';
+import { AdminSection } from '../primitives';
 
 export function SettingsSidebar({
   tab,
@@ -24,7 +24,13 @@ export function SettingsSidebar({
 
   return (
     <aside className="ds-set-rail">
-      <NodeOverviewSection icon={Globe} title="Quick status" description="Current panel configuration">
+      <AdminSection
+        tone="trends"
+        icon={Globe}
+        eyebrow="At a glance"
+        title="Quick status"
+        description="Current panel configuration"
+      >
         <ul className="ds-set-status-list">
           <SettingsStatusRow icon={UserPlus} label="Registration" value={registration ? 'Open' : 'Closed'} />
           <SettingsStatusRow icon={LifeBuoy} label="Tickets" value={tickets.enabled ? 'On' : 'Off'} />
@@ -38,9 +44,15 @@ export function SettingsSidebar({
             tone={maintenanceOn ? 'warn' : undefined}
           />
         </ul>
-      </NodeOverviewSection>
+      </AdminSection>
 
-      <NodeOverviewSection icon={Sparkles} title="Related" description="Other configuration pages">
+      <AdminSection
+        tone="fleet"
+        icon={Sparkles}
+        eyebrow="Shortcuts"
+        title="Related"
+        description="Other configuration pages"
+      >
         <div className="ds-set-related-links">
           <Link to="/admin/plugins" className="ds-set-related-link">
             <Sparkles className="h-3.5 w-3.5" />
@@ -55,7 +67,7 @@ export function SettingsSidebar({
             Subdomains
           </Link>
         </div>
-      </NodeOverviewSection>
+      </AdminSection>
     </aside>
   );
 }

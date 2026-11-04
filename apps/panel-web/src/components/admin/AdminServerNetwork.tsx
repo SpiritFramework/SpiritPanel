@@ -10,8 +10,8 @@ import {
 import { Button, Input, Select } from '../Layout';
 import { EmptyState, Spinner } from '../ui';
 import { ConfirmModal } from '../ConfirmModal';
-import { AdminEditPanel } from './AdminEditLayout';
 import { AdminFormStatus } from '../AdminDetailLayout';
+import { AdminSection } from './primitives';
 
 /**
  * Admin-side allocation manager for a server. Wired to the server allocation
@@ -178,8 +178,14 @@ export function AdminServerNetwork({
   }
 
   return (
-    <>
-    <AdminEditPanel title="Subdomain" icon={Globe}>
+    <div className="ds-asd-network space-y-5">
+    <AdminSection
+      tone="connection"
+      icon={Globe}
+      eyebrow="DNS"
+      title="Subdomain"
+      description="Optional player-facing hostname via Cloudflare"
+    >
       {!domainInfo ? (
         <p className="text-sm text-[var(--muted)]">Unable to load subdomain settings.</p>
       ) : !domainInfo.feature.enabled || !domainInfo.feature.canManage ? (
@@ -217,9 +223,16 @@ export function AdminServerNetwork({
           )}
         </div>
       )}
-    </AdminEditPanel>
+    </AdminSection>
 
-    <AdminEditPanel title="Network & allocations" icon={Network}>
+    <AdminSection
+      tone="capacity"
+      icon={Network}
+      eyebrow="Ports"
+      title="Network & allocations"
+      description="Assign, promote, and remove ports on this server’s node"
+      badge={data ? String(data.allocations.length) : undefined}
+    >
       <p className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]/40 px-3 py-2 text-[11px] text-[var(--muted)]">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         Port changes are pushed to FeatherWings immediately, but the running container keeps its
@@ -279,7 +292,7 @@ export function AdminServerNetwork({
           ))}
         </div>
       )}
-    </AdminEditPanel>
+    </AdminSection>
 
     <ConfirmModal
       open={deleteTarget !== null}
@@ -302,7 +315,7 @@ export function AdminServerNetwork({
       onClose={() => setDeleteDomainOpen(false)}
       onConfirm={() => void confirmDeleteDomain()}
     />
-  </>
+  </div>
   );
 }
 

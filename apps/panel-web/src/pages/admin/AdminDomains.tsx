@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
+  ChevronRight,
   Globe,
   LayoutGrid,
   List,
@@ -9,7 +9,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { AdminLayout, Button, Card, Page } from '../../components/Layout';
+import { AdminLayout, Page } from '../../components/Layout';
 import { DomainFleetCard } from '../../components/admin/domains/DomainFleetCard';
 import { DomainFleetTable } from '../../components/admin/domains/DomainFleetTable';
 import {
@@ -20,8 +20,15 @@ import {
   type DomainRow,
 } from '../../components/admin/domains/domain-fleet-utils';
 import { DomainsFleetOverview } from '../../components/admin/domains/DomainsFleetOverview';
-import { DomainsFleetStats } from '../../components/admin/domains/DomainsFleetStats';
 import { DomainsHeader } from '../../components/admin/domains/DomainsHeader';
+import {
+  AdminCallout,
+  AdminFilterChips,
+  AdminPageStack,
+  AdminSection,
+  AdminSegmentedControl,
+  AdminToolButton,
+} from '../../components/admin/primitives';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { AlertBanner, EmptyState, Skeleton } from '../../components/ui';
 
@@ -132,129 +139,154 @@ export function AdminDomainsPage() {
   return (
     <AdminLayout>
       <Page>
-        <DomainsHeader
-          stats={fleetStats}
-          refreshing={refreshing}
-          loading={initialLoading}
-          onRefresh={() => void refresh()}
-        />
-
-        {error ? (
-          <AlertBanner tone="error" className="mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          </AlertBanner>
-        ) : null}
-
-        {!initialLoading || rows.length > 0 ? (
-          <DomainsFleetStats
+        <AdminPageStack>
+          <DomainsHeader
             stats={fleetStats}
-            onShowErrors={() => setStatusFilter('error')}
-            onShowPreferSubdomain={() => setStatusFilter('prefer_subdomain')}
+            refreshing={refreshing}
+            loading={initialLoading}
+            onRefresh={() => void refresh()}
           />
-        ) : null}
 
-        {!initialLoading && rows.length > 0 ? <DomainsFleetOverview rows={rows} /> : null}
-
-        <Card title="All subdomains">
-          <div className="ds-nodes-toolbar mb-3">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search FQDN, server, owner, node, IP…"
-                className="ds-field ds-field--icon-left w-full"
-                aria-label="Search subdomains"
-              />
-            </div>
-            <div className="ds-nodes-view-toggle" role="group" aria-label="View mode">
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'table' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('table')}
-                aria-pressed={viewMode === 'table'}
-              >
-                <List className="h-3.5 w-3.5" aria-hidden />
-                Table
-              </button>
-              <button
-                type="button"
-                className={`ds-nodes-view-btn${viewMode === 'cards' ? ' ds-nodes-view-btn--active' : ''}`}
-                onClick={() => setViewMode('cards')}
-                aria-pressed={viewMode === 'cards'}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
-                Cards
-              </button>
-            </div>
-          </div>
-
-          <div className="ds-nodes-status-pills mb-3" role="tablist" aria-label="Subdomain filters">
-            {FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                role="tab"
-                aria-selected={statusFilter === opt.id}
-                className={`ds-nodes-status-pill${statusFilter === opt.id ? ' ds-nodes-status-pill--active' : ''}`}
-                onClick={() => setStatusFilter(opt.id)}
-              >
-                {opt.label}
-                <span className="ds-nodes-status-pill-count">{filterCounts[opt.id]}</span>
-              </button>
-            ))}
-            {hasActiveFilters ? (
-              <button type="button" className="ds-nodes-clear-filters" onClick={clearFilters}>
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-
-          {lastUpdated ? (
-            <p className="ds-text-xs ds-text-muted mb-3">
-              Updated {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-            </p>
+          {error ? (
+            <AlertBanner tone="error">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            </AlertBanner>
           ) : null}
 
-          {initialLoading ? (
-            <div className="ds-dom-card-grid" aria-hidden>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="ds-dom-card-skeleton" />
-              ))}
-            </div>
-          ) : filteredRows.length === 0 ? (
-            <EmptyState
-              icon={<Globe className="h-8 w-8" />}
-              title={hasActiveFilters ? 'No matching subdomains' : 'No subdomains yet'}
-              description={
-                hasActiveFilters
-                  ? 'Try a different search or filter.'
-                  : 'Users create one subdomain per server from Network once Cloudflare DNS is enabled in Settings.'
-              }
+          {fleetStats.errors > 0 && !error ? (
+            <AdminCallout
+              tone="warning"
+              icon={AlertTriangle}
+              title={`${fleetStats.errors} subdomain error${fleetStats.errors === 1 ? '' : 's'}`}
+              description="DNS records may be out of sync — review errors and retry from the server Network tab."
               action={
-                !hasActiveFilters ? (
-                  <Link to="/admin/settings">
-                    <Button type="button" variant="secondary" size="sm">
-                      <Settings className="h-3.5 w-3.5" aria-hidden />
-                      Open settings
-                    </Button>
-                  </Link>
-                ) : undefined
+                <button
+                  type="button"
+                  className="ds-nd-list-alert-action"
+                  onClick={() => setStatusFilter('error')}
+                >
+                  Show errors
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                </button>
               }
             />
-          ) : viewMode === 'table' ? (
-            <DomainFleetTable rows={filteredRows} onDelete={setDeleteId} />
-          ) : (
-            <div className="ds-dom-card-grid">
-              {filteredRows.map((row) => (
-                <DomainFleetCard key={row.id} row={row} onDelete={setDeleteId} />
-              ))}
+          ) : null}
+
+          {!initialLoading && rows.length > 0 ? <DomainsFleetOverview rows={rows} /> : null}
+
+          <AdminSection
+            icon={Globe}
+            eyebrow="Inventory"
+            title="All subdomains"
+            description="Search and filter Cloudflare DNS records tied to game servers"
+            badge={
+              lastUpdated
+                ? `Updated ${lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+                : undefined
+            }
+          >
+            <div className="ds-nd-list-toolbar">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 ds-icon -translate-y-1/2 ds-icon--muted" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search FQDN, server, owner, node, IP…"
+                  className="ds-field ds-field--icon-left w-full"
+                  aria-label="Search subdomains"
+                />
+              </div>
+              <AdminSegmentedControl
+                label="View mode"
+                value={viewMode}
+                onChange={(id) => setViewMode(id as DomainsViewMode)}
+                options={[
+                  {
+                    id: 'table',
+                    label: (
+                      <>
+                        <List className="h-3.5 w-3.5" aria-hidden />
+                        Table
+                      </>
+                    ),
+                  },
+                  {
+                    id: 'cards',
+                    label: (
+                      <>
+                        <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                        Cards
+                      </>
+                    ),
+                  },
+                ]}
+              />
             </div>
-          )}
-        </Card>
+
+            <AdminFilterChips
+              label="Subdomain filters"
+              value={statusFilter}
+              onChange={(id) => setStatusFilter(id as DomainFleetFilter)}
+              options={FILTER_OPTIONS.map((opt) => ({
+                id: opt.id,
+                label: opt.label,
+                count: filterCounts[opt.id],
+                alert: opt.id === 'error' && filterCounts.error > 0,
+              }))}
+            />
+
+            <div className="ds-nd-list-meta">
+              <span>
+                Showing <strong>{filteredRows.length}</strong>
+                {hasActiveFilters ? ` of ${rows.length}` : ''} subdomains
+              </span>
+              {hasActiveFilters ? (
+                <button type="button" className="ds-nd-list-clear" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+
+            {initialLoading ? (
+              <div className="ds-dom-card-grid" aria-hidden>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="ds-dom-card-skeleton" />
+                ))}
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <EmptyState
+                icon={<Globe className="h-8 w-8" />}
+                title={hasActiveFilters ? 'No matching subdomains' : 'No subdomains yet'}
+                description={
+                  hasActiveFilters
+                    ? 'Try a different search or filter.'
+                    : 'Users create one subdomain per server from Network once Cloudflare DNS is enabled in Settings.'
+                }
+                action={
+                  !hasActiveFilters ? (
+                    <AdminToolButton to="/admin/settings">
+                      <Settings className="h-3.5 w-3.5" aria-hidden />
+                      Open settings
+                    </AdminToolButton>
+                  ) : (
+                    <AdminToolButton onClick={clearFilters}>Clear filters</AdminToolButton>
+                  )
+                }
+              />
+            ) : viewMode === 'table' ? (
+              <DomainFleetTable rows={filteredRows} onDelete={setDeleteId} />
+            ) : (
+              <div className="ds-dom-card-grid">
+                {filteredRows.map((row) => (
+                  <DomainFleetCard key={row.id} row={row} onDelete={setDeleteId} />
+                ))}
+              </div>
+            )}
+          </AdminSection>
+        </AdminPageStack>
       </Page>
 
       <ConfirmModal
