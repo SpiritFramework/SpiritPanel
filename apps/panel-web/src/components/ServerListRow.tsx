@@ -16,6 +16,7 @@ import { useBranding } from '../context/BrandingContext';
 import { normalizeAppearance } from '../lib/branding-appearance';
 import { formatResource, getServerTheme, resolveServerCardStyle } from '../lib/server-theme';
 import { prefetchServerTab } from '../lib/prefetch-server-tabs';
+import { LocationFlag } from './LocationFlag';
 import { ServerEggIcon } from './ServerEggIcon';
 import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
@@ -78,6 +79,7 @@ function ServerListRow({
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
+  const location = server.node.location;
 
   const iconStyle = {
     '--row-accent': theme.accent,
@@ -150,8 +152,14 @@ function ServerListRow({
           </span>
         ) : (
           <span className="ds-servers-row-chip">
-            <MapPin className="h-3 w-3" aria-hidden />
-            <span className="truncate">{metaLabel ?? server.node.name}</span>
+            {location?.flagUrl ? (
+              <LocationFlag url={location.flagUrl} size="sm" />
+            ) : (
+              <MapPin className="h-3 w-3" aria-hidden />
+            )}
+            <span className="truncate">
+              {metaLabel ?? location?.short ?? server.node.name}
+            </span>
           </span>
         )}
       </span>

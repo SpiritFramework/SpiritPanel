@@ -63,6 +63,7 @@ export function ServerCard({
   const address = formatAllocationAddress(server.defaultAllocation, {
     fqdn: server.node.fqdn ?? server.defaultAllocation.ip,
   });
+  const location = footerLocation ?? server.node.location;
 
   const cardVars = {
     '--card-glow': theme.glow,
@@ -120,19 +121,19 @@ export function ServerCard({
               ) : (
                 <span className="truncate">{footerLabel ?? server.node.name}</span>
               )}
-              {footerLocation ? (
+              {location?.short ? (
                 <>
                   <span className="server-card-foot-sep" aria-hidden>
                     ·
                   </span>
                   <span className="server-card-foot-loc inline-flex shrink-0 items-center gap-1 truncate">
-                    {footerLocation.flagUrl ? (
-                      <LocationFlag url={footerLocation.flagUrl} size="sm" />
+                    {location.flagUrl ? (
+                      <LocationFlag url={location.flagUrl} size="sm" />
                     ) : (
                       <MapPin className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                     )}
                     <span className="truncate ds-text-mono uppercase tracking-wide">
-                      {footerLocation.short}
+                      {location.short}
                     </span>
                   </span>
                 </>
