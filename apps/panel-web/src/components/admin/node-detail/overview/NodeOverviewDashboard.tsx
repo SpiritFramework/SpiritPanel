@@ -140,41 +140,35 @@ export function NodeOverviewDashboard({
 
       <NodeOverviewQuickDock items={dockItems} />
 
-      <div className="ds-nd-ov-bento">
-        <div className="ds-nd-ov-bento-main">
-          <NodeOverviewSection
-            icon={Gauge}
-            title="Capacity & resources"
-            description="Live usage from Wings and panel-assigned limits"
-            badge={liveBadge}
-            className="ds-nd-ov-card--capacity"
-          >
-            {detail.capacity ? (
-              <NodeOverviewResourceRings
-                capacity={detail.capacity}
-                liveUsage={detail.liveUsage}
-                memory={detail.memory}
-                memoryOverallocate={detail.memoryOverallocate}
-                disk={detail.disk}
-                diskOverallocate={detail.diskOverallocate}
-                allocationCount={detail.allocationCount}
-                assignedAllocations={detail.assignedAllocations}
-              />
-            ) : (
-              <p className="ds-text-sm ds-text-muted">No capacity data available for this node.</p>
-            )}
-          </NodeOverviewSection>
-        </div>
+      <FeatherWingsVersionCard
+        installedVersion={wingsVersion}
+        online={detail.online}
+        onDownloadConfig={nav.downloadConfig}
+        onCopyJoinData={nav.copyJoinData}
+      />
 
-        <div className="ds-nd-ov-bento-side">
-          <FeatherWingsVersionCard
-            installedVersion={wingsVersion}
-            online={detail.online}
-            onDownloadConfig={nav.downloadConfig}
-            onCopyJoinData={nav.copyJoinData}
+      <NodeOverviewSection
+        icon={Gauge}
+        title="Capacity & resources"
+        description="Live Wings usage, assigned server limits, and port inventory"
+        badge={liveBadge}
+        className="ds-nd-ov-card--capacity"
+      >
+        {detail.capacity ? (
+          <NodeOverviewResourceRings
+            capacity={detail.capacity}
+            liveUsage={detail.liveUsage}
+            memory={detail.memory}
+            memoryOverallocate={detail.memoryOverallocate}
+            disk={detail.disk}
+            diskOverallocate={detail.diskOverallocate}
+            allocationCount={detail.allocationCount}
+            assignedAllocations={detail.assignedAllocations}
           />
-        </div>
-      </div>
+        ) : (
+          <p className="ds-text-sm ds-text-muted">No capacity data available for this node.</p>
+        )}
+      </NodeOverviewSection>
 
       <div className="ds-nd-ov-grid-3">
         <NodeOverviewSection icon={Globe} title="Endpoints" description="How clients and Wings connect">

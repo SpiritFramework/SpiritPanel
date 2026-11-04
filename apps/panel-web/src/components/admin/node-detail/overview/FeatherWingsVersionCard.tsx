@@ -65,83 +65,104 @@ export function FeatherWingsVersionCard({
     };
   }, []);
 
-  const status = compareVersionStatus(installedVersion, release?.latestVersion);
-  const published = release?.publishedAt
-    ? new Date(release.publishedAt).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
+  function refresh() {
+    releaseCache = null;
+    releasePromise = null;
+    setLoading(true);
+    void api.admin
+      .featherWingsRelease()
+      .then((data) => {
+        releaseCache = data;
+        releasePromise = Promise.resolve(data);
+        setRelease(data);
+        setError('');
       })
-    : null;
+      .catch((err) => setError(err instanceof Error ? err.message : 'Refresh failed'))
+      .finally(() => setLoading(false));
+  }
+
+  const status = compareVersionStatus(installedVersion, release?.latestVersion);
+  const installedLabel = installedVersion ?? (online ? '—' : 'Offline');
+  const latestLabel = loading ? '…' : release?.latestVersion ?? '—';
 
   return (
-    <section className={`ds-nd-ov-fw ds-nd-ov-fw--${status}`} aria-label="FeatherWings version">
-      <div className="ds-nd-ov-fw-head">
-        <div className="ds-nd-ov-fw-icon" aria-hidden>
-          <Sparkles className="ds-icon ds-icon--sm" />
+    <section className={`ds-nd-ov-fw ds-nd-ov-fw--bar ds-nd-ov-fw--${status}`} aria-label="FeatherWings version">
+      <div className="ds-nd-ov-fw-bar">
+        <div className="ds-nd-ov-fw-bar-identity">
+          <span className="ds-nd-ov-fw-icon" aria-hidden>
+            <Sparkles className="h-3.5 w-3.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="ds-nd-ov-fw-eyebrow">FeatherWings</p>
+            <h2 className="ds-nd-ov-fw-title">Daemon</h2>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="ds-nd-ov-fw-eyebrow">FeatherWings</p>
-          <h2 className="ds-nd-ov-fw-title">Daemon version</h2>
+
+        <div className="ds-nd-ov-fw-bar-versions" aria-label="Version comparison">
+          <div className="ds-nd-ov-fw-bar-version">
+            <span className="ds-nd-ov-fw-version-label">Installed</span>
+            <span className={`ds-nd-ov-fw-version-value${!installedVersion ? ' ds-nd-ov-fw-version-value--muted' : ''}`}>
+              {installedLabel}
+            </span>
+          </div>
+          <span className="ds-nd-ov-fw-bar-sep" aria-hidden>
+            →
+          </span>
+          <div className="ds-nd-ov-fw-bar-version">
+            <span className="ds-nd-ov-fw-version-label">Latest</span>
+            <span className={`ds-nd-ov-fw-version-value${!release?.latestVersion ? ' ds-nd-ov-fw-version-value--muted' : ''}`}>
+              {latestLabel}
+            </span>
+          </div>
         </div>
-        <button
-          type="button"
-          className="ds-nd-ov-fw-refresh"
-          onClick={() => {
-            releaseCache = null;
-            releasePromise = null;
-            setLoading(true);
-            void api.admin
-              .featherWingsRelease()
-              .then((data) => {
-                releaseCache = data;
-                releasePromise = Promise.resolve(data);
-                setRelease(data);
-                setError('');
-              })
-              .catch((err) => setError(err instanceof Error ? err.message : 'Refresh failed'))
-              .finally(() => setLoading(false));
-          }}
-          disabled={loading}
-          aria-label="Refresh latest version"
-        >
-          <RefreshCw className={`h-3.5 w-3.5${loading ? ' animate-spin' : ''}`} />
-        </button>
-      </div>
 
-      <div className="ds-nd-ov-fw-versions">
-        <VersionCell label="Installed" value={installedVersion ?? (online ? '—' : 'Unreachable')} muted={!installedVersion} />
-        <VersionCell
-          label="Latest"
-          value={loading ? 'Checking…' : release?.latestVersion ?? '—'}
-          muted={!release?.latestVersion}
-        />
-      </div>
+        <div className="ds-nd-ov-fw-bar-status">
+          {loading ? (
+            <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--neutral">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+              Checking…
+            </span>
+          ) : status === 'current' ? (
+            <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--good">
+              <CheckCircle2 className="h-3 w-3" aria-hidden />
+              Up to date
+            </span>
+          ) : status === 'behind' ? (
+            <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--warn">
+              <ArrowUpRight className="h-3 w-3" aria-hidden />
+              Update available
+            </span>
+          ) : status === 'ahead' ? (
+            <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--info">Ahead of release</span>
+          ) : (
+            <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--neutral">
+              {online ? 'Unknown' : 'Not connected'}
+            </span>
+          )}
+        </div>
 
-      <div className="ds-nd-ov-fw-status-row">
-        {loading ? (
-          <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--neutral">
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-            Checking GitHub…
-          </span>
-        ) : status === 'current' ? (
-          <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--good">
-            <CheckCircle2 className="h-3 w-3" aria-hidden />
-            Up to date
-          </span>
-        ) : status === 'behind' ? (
-          <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--warn">
-            <ArrowUpRight className="h-3 w-3" aria-hidden />
-            Update available
-          </span>
-        ) : status === 'ahead' ? (
-          <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--info">Newer than latest release</span>
-        ) : (
-          <span className="ds-nd-ov-fw-badge ds-nd-ov-fw-badge--neutral">
-            {online ? 'Version unknown' : 'Connect Wings to compare'}
-          </span>
-        )}
-        {published ? <span className="ds-nd-ov-fw-published">Latest published {published}</span> : null}
+        <div className="ds-nd-ov-fw-bar-actions">
+          {status === 'behind' && release ? (
+            <a
+              href={release.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ds-btn ds-btn--secondary ds-btn--sm"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Release
+            </a>
+          ) : null}
+          <button
+            type="button"
+            className="ds-nd-ov-fw-refresh"
+            onClick={refresh}
+            disabled={loading}
+            aria-label="Refresh latest version"
+          >
+            <RefreshCw className={`h-3.5 w-3.5${loading ? ' animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {error ? <p className="ds-nd-ov-fw-error">{error}</p> : null}
@@ -149,19 +170,10 @@ export function FeatherWingsVersionCard({
       {status === 'behind' && release ? (
         <div className="ds-nd-ov-fw-update">
           <p className="ds-nd-ov-fw-update-text">
-            This node is running <strong>v{installedVersion}</strong>. Update to{' '}
-            <strong>v{release.latestVersion}</strong> on the host, then restart FeatherWings.
+            Running <strong>v{installedVersion}</strong> — update the host to{' '}
+            <strong>v{release.latestVersion}</strong>, then restart FeatherWings.
           </p>
           <div className="ds-nd-ov-fw-actions">
-            <a
-              href={release.releaseUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ds-btn ds-btn--primary ds-btn--sm"
-            >
-              <ExternalLink className="ds-icon ds-icon--sm" aria-hidden />
-              View release
-            </a>
             {onCopyJoinData ? (
               <Button type="button" variant="secondary" size="sm" onClick={onCopyJoinData}>
                 <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
@@ -178,27 +190,9 @@ export function FeatherWingsVersionCard({
 
       {!online && !installedVersion ? (
         <p className="ds-nd-ov-fw-hint">
-          Install FeatherWings, then paste join-data into <code className="text-[11px]">featherwings configure</code>{' '}
-          (or download the YAML) so the panel can report the running version.
+          Connect FeatherWings with join-data or the YAML config so the panel can report the daemon version.
         </p>
       ) : null}
     </section>
-  );
-}
-
-function VersionCell({
-  label,
-  value,
-  muted,
-}: {
-  label: string;
-  value: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className="ds-nd-ov-fw-version-cell">
-      <span className="ds-nd-ov-fw-version-label">{label}</span>
-      <span className={`ds-nd-ov-fw-version-value${muted ? ' ds-nd-ov-fw-version-value--muted' : ''}`}>{value}</span>
-    </div>
   );
 }
