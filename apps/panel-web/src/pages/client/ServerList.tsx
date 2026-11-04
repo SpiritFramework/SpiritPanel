@@ -33,7 +33,8 @@ import {
   isServerEffectivelyOffline,
   type ServerStatusFilter,
 } from '../../lib/server-runtime';
-import { AlertBanner, DsIcon, EmptyState, ListPageSkeleton } from '../../components/ui';
+import { ClientCallout } from '../../components/client/primitives';
+import { DsIcon, EmptyState, ListPageSkeleton } from '../../components/ui';
 
 type StatusFilter = ServerStatusFilter;
 type SortKey = 'name' | 'status' | 'node';
@@ -194,7 +195,7 @@ export function ServerListPage() {
       const first = list.find((s) => s.suspended);
       return {
         filter: 'suspended' as const,
-        tone: 'warn' as const,
+        tone: 'warning' as const,
         icon: Ban,
         title: `${stats.suspended} suspended server${stats.suspended === 1 ? '' : 's'}`,
         detail: first ? `Includes “${first.name}”. Contact your host if you need this lifted.` : 'Contact your host if you need access restored.',
@@ -213,7 +214,7 @@ export function ServerListPage() {
     if (stats.offline > 0 && stats.running === 0 && statusFilter !== 'offline') {
       return {
         filter: 'offline' as const,
-        tone: 'muted' as const,
+        tone: 'info' as const,
         icon: Power,
         title: 'All servers are offline',
         detail: 'Start one from its console when you are ready to play.',
@@ -322,23 +323,28 @@ export function ServerListPage() {
           </div>
 
           {attentionCallout ? (
-            <AttentionCallout
+            <ClientCallout
               tone={attentionCallout.tone}
               icon={attentionCallout.icon}
-              spin={attentionCallout.filter === 'installing'}
+              iconClassName={attentionCallout.filter === 'installing' ? 'animate-spin' : undefined}
               title={attentionCallout.title}
-              detail={attentionCallout.detail}
+              description={attentionCallout.detail}
+              action={<ChevronRight className="h-4 w-4 text-[var(--muted)]" aria-hidden />}
               onClick={() => setStatusFilter(attentionCallout.filter)}
             />
           ) : null}
 
           {error && !loading && list.length > 0 ? (
-            <AlertBanner tone="error" className="flex-wrap justify-between">
-              <p>We couldn&apos;t refresh your servers. You&apos;re seeing the last saved list.</p>
-              <Button type="button" variant="secondary" onClick={() => void refreshServersLive()}>
-                Retry
-              </Button>
-            </AlertBanner>
+            <ClientCallout
+              tone="error"
+              title="Couldn't refresh your servers"
+              description="You're seeing the last saved list."
+              action={
+                <Button type="button" variant="secondary" size="sm" onClick={() => void refreshServersLive()}>
+                  Retry
+                </Button>
+              }
+            />
           ) : null}
 
           {loading ? (
@@ -503,39 +509,6 @@ function FleetStat({
         <span className="ds-servers-stat-label">{label}</span>
       </span>
       <span className="ds-servers-stat-value">{value}</span>
-    </button>
-  );
-}
-
-function AttentionCallout({
-  tone,
-  icon: Icon,
-  spin,
-  title,
-  detail,
-  onClick,
-}: {
-  tone: 'warn' | 'info' | 'muted';
-  icon: typeof Server;
-  spin?: boolean;
-  title: string;
-  detail: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`ds-servers-callout ds-servers-callout--${tone}`}
-      onClick={onClick}
-    >
-      <span className="ds-servers-callout-icon" aria-hidden>
-        <Icon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
-      </span>
-      <span className="ds-servers-callout-body">
-        <strong>{title}</strong>
-        <span>{detail}</span>
-      </span>
-      <ChevronRight className="ds-servers-callout-chevron h-4 w-4" aria-hidden />
     </button>
   );
 }

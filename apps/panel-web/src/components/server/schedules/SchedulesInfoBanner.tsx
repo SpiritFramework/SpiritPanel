@@ -1,17 +1,19 @@
-import { Info } from 'lucide-react';
 import type { ScheduleFormSeed } from '../../CreateScheduleModal';
+import { ClientCallout } from '../../client/primitives';
 import { QUICK_TEMPLATES } from '../../../lib/schedule-utils';
 
 export function SchedulesInfoBanner() {
   return (
-    <div className="ds-srv-sch-info">
-      <Info className="h-4 w-4 shrink-0" aria-hidden />
-      <p>
-        Schedules run on the panel in <strong>UTC</strong>. Use them for off-peak restarts, automated backups, or
-        console commands — active schedules fire on their cron timer, or use <strong>Run now</strong> to test
-        immediately.
-      </p>
-    </div>
+    <ClientCallout
+      tone="info"
+      title="Schedules run in UTC"
+      description={
+        <>
+          Use them for off-peak restarts, automated backups, or console commands — active schedules fire on their cron
+          timer, or use <strong>Run now</strong> to test immediately.
+        </>
+      }
+    />
   );
 }
 

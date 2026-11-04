@@ -5988,6 +5988,174 @@ button.ds-nodes-stat:hover {
   margin-left: auto;
 }
 
+/* Client primitives (owner/player chrome — lighter than ds-adm) */
+.ds-cli-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  text-align: left;
+  color: inherit;
+}
+
+.ds-cli-callout--action {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ds-cli-callout--action:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-elevated));
+}
+
+.ds-cli-callout-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+}
+
+.ds-cli-callout-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.ds-cli-callout-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ds-cli-callout-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ds-cli-callout-action {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.ds-cli-callout--info {
+  border-color: color-mix(in srgb, var(--info-fg, #6366f1) 28%, var(--border));
+  background: color-mix(in srgb, var(--info-fg, #6366f1) 8%, transparent);
+}
+
+.ds-cli-callout--info .ds-cli-callout-icon {
+  color: var(--info-fg, #6366f1);
+  background: color-mix(in srgb, var(--info-fg, #6366f1) 14%, transparent);
+  border-color: color-mix(in srgb, var(--info-fg, #6366f1) 22%, transparent);
+}
+
+.ds-cli-callout--warning {
+  border-color: color-mix(in srgb, var(--warning-fg, #f59e0b) 30%, var(--border));
+  background: color-mix(in srgb, var(--warning-fg, #f59e0b) 9%, transparent);
+}
+
+.ds-cli-callout--warning .ds-cli-callout-icon {
+  color: var(--warning-fg, #f59e0b);
+  background: color-mix(in srgb, var(--warning-fg, #f59e0b) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warning-fg, #f59e0b) 22%, transparent);
+}
+
+.ds-cli-callout--error {
+  border-color: color-mix(in srgb, #f87171 32%, var(--border));
+  background: color-mix(in srgb, #f87171 10%, transparent);
+}
+
+.ds-cli-callout--error .ds-cli-callout-icon {
+  color: #fca5a5;
+  background: color-mix(in srgb, #f87171 14%, transparent);
+  border-color: color-mix(in srgb, #f87171 24%, transparent);
+}
+
+.ds-cli-callout--success {
+  border-color: color-mix(in srgb, #34d399 32%, var(--border));
+  background: color-mix(in srgb, #34d399 9%, transparent);
+}
+
+.ds-cli-callout--success .ds-cli-callout-icon {
+  color: #6ee7b7;
+  background: color-mix(in srgb, #34d399 14%, transparent);
+  border-color: color-mix(in srgb, #34d399 24%, transparent);
+}
+
+.ds-cli-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-cli-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.ds-cli-section-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  color: var(--accent-hover, var(--accent));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ds-cli-section-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ds-cli-section-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-cli-section-meta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ds-cli-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.ds-cli-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .ds-nd-port-pills {
   display: flex;
   flex-wrap: wrap;
@@ -20182,13 +20350,26 @@ button.ds-nodes-stat:hover {
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
-.ds-srv-act-action-label {
+.ds-srv-act-action-label,
+.ds-srv-action-label {
   display: none;
 }
 
 @media (min-width: 640px) {
-  .ds-srv-act-action-label {
+  .ds-srv-act-action-label,
+  .ds-srv-action-label {
     display: inline;
+  }
+
+  .ds-srv-fm-action-btn:has(.ds-srv-action-label),
+  .ds-srv-set-action-btn:has(.ds-srv-action-label),
+  .ds-srv-stu-action-btn:has(.ds-srv-action-label),
+  .ds-srv-sch-action-btn:has(.ds-srv-action-label) {
+    width: auto;
+    gap: 0.3rem;
+    padding: 0 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 600;
   }
 }
 
@@ -25103,6 +25284,51 @@ button.ds-nodes-stat:hover {
   background: var(--surface);
   overflow: hidden;
   min-height: 16rem;
+}
+
+.ds-srv-sch-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 40%, transparent);
+}
+
+.ds-srv-sch-panel-head-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  color: var(--accent-hover, var(--accent));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ds-srv-sch-panel-head-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ds-srv-sch-panel-head-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-srv-sch-panel-head-meta {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ds-srv-sch-callout-wrap {
+  padding: 0.75rem 1rem 0;
 }
 
 .ds-srv-sch-panel-toolbar {

@@ -67,6 +67,7 @@ export function SettingsHeader({
               onClick={onRefresh}
             >
               <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="ds-srv-action-label">Refresh</span>
             </button>
             {canEdit ? (
               <>
@@ -78,6 +79,7 @@ export function SettingsHeader({
                   onClick={onReset}
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  <span className="ds-srv-action-label">Reset</span>
                 </button>
                 <button
                   type="button"

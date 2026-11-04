@@ -38,6 +38,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Client UI consistency** — thin `ClientCallout` / `ClientSection` primitives; My Servers attention/error callouts aligned; Console uses `server / Console` identity with labeled Reconnect; Files, Settings, Startup, and Schedules get labeled Refresh and shared callout notices (not an admin clone — still brand-forward).
 - **Admin UI chrome** — lists, create flows, and detail shells share `ds-adm` primitives (headers, KPIs, sections, callouts) for a consistent admin look.
 - **Node detail** — full manage page polish across shell, overview, settings sections, quieter actions, and tabs; Capacity & resources uses live usage rings, assigned meters, limits, and port allocation with FeatherWings version as a compact bar above.
 - **Node manage hero** — redesigned header with status atmosphere, clearer endpoint chip, and tighter actions/stats.

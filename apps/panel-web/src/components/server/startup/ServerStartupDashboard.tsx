@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ClientCallout } from '../../client/primitives';
 import { useServerStartup } from '../../../hooks/useServerStartup';
 import { StartupHeader } from './StartupHeader';
 import { StartupStatsRow } from './StartupStatsRow';
@@ -43,18 +44,23 @@ export function ServerStartupDashboard({
 
       <div className="ds-srv-stu-body">
         {!stu.canUpdate ? (
-          <div className="ds-srv-stu-notice">
-            You can view startup settings but do not have permission to change them.
-          </div>
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can view startup settings but do not have permission to change them."
+          />
         ) : null}
 
-        {stu.error ? <div className="ds-srv-stu-error">{stu.error}</div> : null}
+        {stu.error ? (
+          <ClientCallout tone="error" title="Couldn't save startup" description={stu.error} />
+        ) : null}
 
         {stu.access.isAdminSupport ? (
-          <div className="ds-srv-stu-notice ds-srv-stu-notice--support">
-            Admin support: egg-locked environment variables are editable here for this user&apos;s
-            server.
-          </div>
+          <ClientCallout
+            tone="warning"
+            title="Admin support mode"
+            description="Egg-locked environment variables are editable here for this user's server."
+          />
         ) : null}
 
         {!embedded ? (

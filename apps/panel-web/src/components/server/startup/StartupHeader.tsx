@@ -77,6 +77,7 @@ export function StartupHeader({
               onClick={onRefresh}
             >
               <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="ds-srv-action-label">Refresh</span>
             </button>
             {canUpdate ? (
               <>
@@ -88,6 +89,7 @@ export function StartupHeader({
                   onClick={onReset}
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  <span className="ds-srv-action-label">Reset</span>
                 </button>
                 <button
                   type="button"

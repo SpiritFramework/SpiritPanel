@@ -109,23 +109,31 @@
   gap: 0.35rem 0.5rem;
 }
 
-.ds-con-toolbar-label {
-  font-size: 0.78rem;
+.ds-con-toolbar-server {
+  max-width: min(14rem, 42vw);
+  font-size: 0.9rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--text);
 }
 
-.ds-con-toolbar-server {
-  max-width: 10rem;
-  font-size: 0.68rem;
-  font-weight: 500;
+.ds-con-toolbar-sep {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.ds-con-toolbar-label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--muted);
 }
 
 .ds-con-toolbar-meta {
   margin: 0.15rem 0 0;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   color: var(--muted);
 }
 
@@ -150,13 +158,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.3rem;
   width: 1.85rem;
   height: 1.85rem;
+  padding: 0;
   border-radius: 0.45rem;
   border: 0;
   background: transparent;
   color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
   transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ds-con-action-btn--labeled {
+  width: auto;
+  padding: 0 0.55rem;
 }
 
 .ds-con-action-btn:hover {

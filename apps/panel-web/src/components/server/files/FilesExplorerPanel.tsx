@@ -1,3 +1,5 @@
+import { FolderOpen, Upload } from 'lucide-react';
+import { ClientCallout } from '../../client/primitives';
 import { EmptyState, Spinner } from '../../ui';
 import { FilesToolbar } from './FilesToolbar';
 import { FilesBulkBar } from './FilesBulkBar';
@@ -95,7 +97,9 @@ export function FilesExplorerPanel({
         />
       ) : null}
 
-      {uploadProgress ? <div className="ds-srv-fm-upload-banner">{uploadProgress}</div> : null}
+      {uploadProgress ? (
+        <ClientCallout tone="info" icon={Upload} title="Uploading" description={uploadProgress} />
+      ) : null}
 
       {showNewFolder && access.canCreateFiles ? (
         <FilesCreateBar
@@ -127,11 +131,16 @@ export function FilesExplorerPanel({
           </div>
         ) : loadError ? (
           <div className="ds-srv-fm-empty-wrap">
-            <EmptyState title="Could not load directory" description={loadError} />
+            <EmptyState
+              icon={<FolderOpen className="h-5 w-5" />}
+              title="Could not load directory"
+              description={loadError}
+            />
           </div>
         ) : visibleFiles.length === 0 ? (
           <div className="ds-srv-fm-empty-wrap">
             <EmptyState
+              icon={<FolderOpen className="h-5 w-5" />}
               title={search ? 'No matching files' : 'Empty directory'}
               description={
                 search

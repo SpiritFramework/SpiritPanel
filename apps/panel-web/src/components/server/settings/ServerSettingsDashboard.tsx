@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ClientCallout } from '../../client/primitives';
 import { useServerSettings } from '../../../hooks/useServerSettings';
 import { SettingsHeader } from './SettingsHeader';
 import { SettingsStatsRow } from './SettingsStatsRow';
@@ -34,7 +35,16 @@ export function ServerSettingsDashboard() {
       />
 
       <div className="ds-srv-set-body">
-        {set.error ? <div className="ds-srv-set-error">{set.error}</div> : null}
+        {!set.canEditSettings ? (
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can browse settings but do not have permission to change them."
+          />
+        ) : null}
+        {set.error ? (
+          <ClientCallout tone="error" title="Couldn't save settings" description={set.error} />
+        ) : null}
 
         <SettingsStatsRow
           memory={set.server.memory}

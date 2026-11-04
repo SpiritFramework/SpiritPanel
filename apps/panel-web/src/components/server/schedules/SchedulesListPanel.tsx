@@ -1,4 +1,5 @@
 import { CalendarClock, Plus, Search } from 'lucide-react';
+import { ClientCallout } from '../../client/primitives';
 import { Button } from '../../Layout';
 import { EmptyState, Spinner } from '../../ui';
 import type { ScheduleFormSeed } from '../../CreateScheduleModal';
@@ -51,6 +52,19 @@ export function SchedulesListPanel({
 }) {
   return (
     <section className="ds-srv-sch-panel">
+      <header className="ds-srv-sch-panel-head">
+        <span className="ds-srv-sch-panel-head-icon" aria-hidden>
+          <CalendarClock className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="ds-srv-sch-panel-head-title">Scheduled tasks</h3>
+          <p className="ds-srv-sch-panel-head-desc">Search and filter automation for this server</p>
+        </div>
+        {!loading && schedules.length > 0 ? (
+          <span className="ds-srv-sch-panel-head-meta">{filteredSchedules.length} shown</span>
+        ) : null}
+      </header>
+
       <div className="ds-srv-sch-panel-toolbar">
         <div className="ds-srv-sch-search-wrap">
           <Search className="ds-srv-sch-search-icon" aria-hidden />
@@ -76,10 +90,20 @@ export function SchedulesListPanel({
         </div>
       </div>
 
-      {error ? <div className="ds-srv-sch-error">{error}</div> : null}
+      {error ? (
+        <div className="ds-srv-sch-callout-wrap">
+          <ClientCallout tone="error" title="Couldn't load schedules" description={error} />
+        </div>
+      ) : null}
 
       {!access.canManageSchedules && !loading && schedules.length === 0 ? (
-        <div className="ds-srv-sch-notice">You can view schedules but do not have permission to manage them.</div>
+        <div className="ds-srv-sch-callout-wrap">
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can view schedules but do not have permission to manage them."
+          />
+        </div>
       ) : null}
 
       <div className="ds-srv-sch-panel-body">

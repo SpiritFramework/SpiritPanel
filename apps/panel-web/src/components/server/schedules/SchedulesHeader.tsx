@@ -59,6 +59,7 @@ export function SchedulesHeader({
               onClick={onRefresh}
             >
               <RefreshCw className={`h-3.5 w-3.5${refreshing ? ' animate-spin' : ''}`} aria-hidden />
+              <span className="ds-srv-action-label">Refresh</span>
             </button>
             {canManage ? (
               <button type="button" className="ds-srv-sch-create-btn" onClick={onCreate}>

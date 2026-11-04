@@ -58,10 +58,13 @@ export function ConsoleHeader({
           </div>
           <div className="ds-con-toolbar-copy min-w-0">
             <div className="ds-con-toolbar-title-row">
-              <span className="ds-con-toolbar-label">Console</span>
               <span className="ds-con-toolbar-server truncate" title={serverName}>
                 {serverName}
               </span>
+              <span className="ds-con-toolbar-sep" aria-hidden>
+                /
+              </span>
+              <span className="ds-con-toolbar-label">Console</span>
               <StatusPill
                 label={statusLabel}
                 tone={tone}
@@ -69,7 +72,9 @@ export function ConsoleHeader({
                 compact
               />
             </div>
-            {subtitle ? <p className="ds-con-toolbar-meta truncate">{subtitle}</p> : null}
+            <p className="ds-con-toolbar-meta truncate">
+              {subtitle?.trim() || 'Live output, power, and resource usage'}
+            </p>
           </div>
         </div>
 
@@ -80,7 +85,7 @@ export function ConsoleHeader({
         ) : null}
 
         <div className="ds-con-toolbar-actions" role="toolbar" aria-label="Console actions">
-          <ConsoleActionBtn icon={RefreshCw} label="Reconnect" onClick={onReconnect} priority />
+          <ConsoleActionBtn icon={RefreshCw} label="Reconnect" onClick={onReconnect} priority showLabel />
           <ConsoleActionBtn icon={Eraser} label="Clear (Ctrl+L)" onClick={onClear} />
           <ConsoleActionBtn icon={Download} label="Download log" onClick={onDownload} />
           <ConsoleActionBtn
@@ -102,6 +107,7 @@ function ConsoleActionBtn({
   active,
   disabled,
   priority,
+  showLabel,
 }: {
   icon: LucideIcon;
   label: string;
@@ -109,6 +115,7 @@ function ConsoleActionBtn({
   active?: boolean;
   disabled?: boolean;
   priority?: boolean;
+  showLabel?: boolean;
 }) {
   return (
     <button
@@ -117,9 +124,10 @@ function ConsoleActionBtn({
       title={label}
       aria-label={label}
       disabled={disabled}
-      className={`ds-con-action-btn${active ? ' ds-con-action-btn--active' : ''}${priority ? ' ds-con-action-btn--priority' : ' ds-con-action-btn--secondary'}`}
+      className={`ds-con-action-btn${active ? ' ds-con-action-btn--active' : ''}${priority ? ' ds-con-action-btn--priority' : ' ds-con-action-btn--secondary'}${showLabel ? ' ds-con-action-btn--labeled' : ''}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
+      {showLabel ? <span className="ds-srv-action-label">{label}</span> : null}
     </button>
   );
 }
