@@ -6,7 +6,7 @@ import {
   DEFAULT_ANNOUNCEMENT,
   type PanelAnnouncementSettings,
 } from '../../lib/panel-settings';
-import { AdminLayout, Button } from '../../components/Layout';
+import { AdminLayout, Button, Page } from '../../components/Layout';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AnnounceHeader } from '../../components/admin/announce/AnnounceHeader';
 import { AnnounceWorkspace } from '../../components/admin/announce/AnnounceWorkspace';
@@ -95,64 +95,68 @@ export function AdminAnnouncePage() {
   if (loading) {
     return (
       <AdminLayout>
-        <AdminEditLoading />
+        <Page>
+          <AdminEditLoading />
+        </Page>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <form onSubmit={(e) => void handleSubmit(e)} className="ds-ann-page">
-        <AnnounceHeader
-          announcement={announcement}
-          locationSummary={locationSummary}
-          placementCount={placementCount}
-          onToggleEnabled={() => setAnnouncement({ ...announcement, enabled: !announcement.enabled })}
-        />
+      <Page>
+        <form onSubmit={(e) => void handleSubmit(e)} className="ds-ann-page">
+          <AnnounceHeader
+            announcement={announcement}
+            locationSummary={locationSummary}
+            placementCount={placementCount}
+            onToggleEnabled={() => setAnnouncement({ ...announcement, enabled: !announcement.enabled })}
+          />
 
-        <AnnounceWorkspace
-          announcement={announcement}
-          setAnnouncement={setAnnouncement}
-          previewReady={previewReady}
-          noLocations={noLocations}
-        />
+          <AnnounceWorkspace
+            announcement={announcement}
+            setAnnouncement={setAnnouncement}
+            previewReady={previewReady}
+            noLocations={noLocations}
+          />
 
-        <div
-          className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : savedFlash ? ' ds-nd-st-savebar--saved' : ''}`}
-          role="status"
-        >
-          <div className="ds-nd-st-savebar-status">
-            {error ? (
-              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--error">{error}</span>
-            ) : savedFlash ? (
-              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--success">Changes saved</span>
-            ) : hasChanges ? (
-              <span className="ds-nd-st-savebar-msg">
-                <span className="ds-nd-st-savebar-dot" aria-hidden />
-                Unsaved changes
-              </span>
-            ) : (
-              <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--idle">All changes saved</span>
-            )}
+          <div
+            className={`ds-nd-st-savebar${hasChanges ? ' ds-nd-st-savebar--dirty' : savedFlash ? ' ds-nd-st-savebar--saved' : ''}`}
+            role="status"
+          >
+            <div className="ds-nd-st-savebar-status">
+              {error ? (
+                <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--error">{error}</span>
+              ) : savedFlash ? (
+                <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--success">Changes saved</span>
+              ) : hasChanges ? (
+                <span className="ds-nd-st-savebar-msg">
+                  <span className="ds-nd-st-savebar-dot" aria-hidden />
+                  Unsaved changes
+                </span>
+              ) : (
+                <span className="ds-nd-st-savebar-msg ds-nd-st-savebar-msg--idle">All changes saved</span>
+              )}
+            </div>
+            <div className="ds-nd-st-savebar-actions">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                disabled={!hasChanges || saving}
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Reset
+              </Button>
+              <Button type="submit" size="sm" disabled={saving || !hasChanges}>
+                <Save className="h-3.5 w-3.5" aria-hidden />
+                {saving ? 'Saving…' : 'Save changes'}
+              </Button>
+            </div>
           </div>
-          <div className="ds-nd-st-savebar-actions">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-              disabled={!hasChanges || saving}
-            >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-              Reset
-            </Button>
-            <Button type="submit" size="sm" disabled={saving || !hasChanges}>
-              <Save className="h-3.5 w-3.5" aria-hidden />
-              {saving ? 'Saving…' : 'Save changes'}
-            </Button>
-          </div>
-        </div>
-      </form>
+        </form>
+      </Page>
     </AdminLayout>
   );
 }

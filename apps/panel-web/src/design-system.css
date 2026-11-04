@@ -5284,6 +5284,710 @@ button.ds-nodes-stat:hover {
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 
+/* Node detail — database hosts */
+.ds-nd-db {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ds-nd-db-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.ds-nd-db-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+}
+
+.ds-nd-db-kpi-label {
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-nd-db-kpi-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-nd-db-empty {
+  padding: 0.5rem 0 0.25rem;
+}
+
+.ds-nd-db-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-nd-db-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem 0.85rem;
+  align-items: center;
+  padding: 0.85rem 0.9rem 0.85rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--accent) 6%, transparent), transparent 44%),
+    color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+  overflow: hidden;
+}
+
+.ds-nd-db-card-accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), transparent 90%);
+  opacity: 0.85;
+}
+
+.ds-nd-db-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+  color: white;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 80%, #0f172a), color-mix(in srgb, #38bdf8 45%, #0f172a));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 12%, transparent);
+}
+
+.ds-nd-db-card-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ds-nd-db-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+.ds-nd-db-card-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.ds-nd-db-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-nd-db-card-badge--warn {
+  border-color: color-mix(in srgb, var(--warning, #f59e0b) 35%, var(--border));
+  background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent);
+  color: var(--warning-fg, #fde68a);
+}
+
+.ds-nd-db-card-endpoint {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.ds-nd-db-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ds-nd-db-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  font-size: 0.625rem;
+  color: var(--muted);
+}
+
+.ds-nd-db-card-meter {
+  height: 0.28rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--border) 55%, transparent);
+  overflow: hidden;
+}
+
+.ds-nd-db-card-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--accent) 75%, #34d399);
+}
+
+.ds-nd-db-card-meter-fill--warn {
+  background: color-mix(in srgb, var(--warning, #f59e0b) 80%, #f97316);
+}
+
+.ds-nd-db-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .ds-nd-db-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .ds-nd-db-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ds-nd-db-card-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+
+  .ds-nd-db-card-actions > * {
+    flex: 1;
+  }
+}
+
+/* Add / edit database host modal */
+.ds-nd-db-modal-header-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 120% at 0% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, #0ea5e9 12%, transparent), transparent 50%);
+  pointer-events: none;
+}
+
+.ds-nd-db-modal-mark {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 85%, #0f172a), color-mix(in srgb, #38bdf8 50%, #0f172a));
+  box-shadow:
+    0 10px 24px -12px color-mix(in srgb, var(--accent) 55%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 14%, transparent);
+}
+
+.ds-nd-db-modal-eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-nd-db-modal-steps {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0 1.25rem 0.95rem;
+  list-style: none;
+}
+
+.ds-nd-db-modal-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-nd-db-modal-step.is-active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+}
+
+.ds-nd-db-modal-step.is-done {
+  border-color: color-mix(in srgb, #34d399 35%, var(--border));
+  color: #6ee7b7;
+}
+
+.ds-nd-db-modal-step-num {
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.ds-nd-db-modal-step.is-active .ds-nd-db-modal-step-num {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.ds-nd-db-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.ds-nd-db-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-nd-db-modal-section--connection {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 55%),
+    color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-nd-db-modal-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.ds-nd-db-modal-section-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  color: var(--accent-hover, var(--accent));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.ds-nd-db-modal-section-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ds-nd-db-modal-section-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-nd-db-modal-endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+}
+
+.ds-nd-db-modal-endpoint-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-nd-db-modal-endpoint-value {
+  min-width: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ds-nd-db-modal-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .ds-nd-db-modal-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ds-nd-db-modal-span {
+    grid-column: 1 / -1;
+  }
+}
+
+.ds-nd-db-modal-fqdn-row {
+  margin-top: 0.45rem;
+}
+
+.ds-nd-db-modal-fqdn-btn {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  max-width: 100%;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.ds-nd-db-modal-fqdn-btn:hover,
+.ds-nd-db-modal-fqdn-btn.is-active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.ds-nd-db-modal-fqdn-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.ds-nd-db-modal-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+}
+
+.ds-nd-db-modal-banner--ok {
+  border-color: color-mix(in srgb, #34d399 35%, var(--border));
+  background: color-mix(in srgb, #34d399 10%, transparent);
+  color: #6ee7b7;
+}
+
+.ds-nd-db-modal-banner--error {
+  border-color: color-mix(in srgb, #f87171 35%, var(--border));
+  background: color-mix(in srgb, #f87171 10%, transparent);
+  color: #fca5a5;
+}
+
+.ds-nd-db-modal-banner-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.ds-nd-db-modal-banner-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+.ds-nd-db-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ds-nd-db-modal-footer-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6ee7b7;
+}
+
+.ds-nd-db-modal-footer-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ds-nd-db-modal-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+/* Add location modal */
+.ds-loc-modal-header-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 120% at 0% 0%, color-mix(in srgb, #10b981 28%, transparent), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, #059669 14%, transparent), transparent 50%);
+  pointer-events: none;
+}
+
+.ds-loc-modal-mark {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow:
+    0 10px 24px -12px color-mix(in srgb, #10b981 55%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #fff 14%, transparent);
+}
+
+.ds-loc-modal-eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-loc-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.ds-loc-modal-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+}
+
+.ds-loc-modal-preview-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-loc-modal-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.25rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, #10b981 28%, var(--border));
+  background: color-mix(in srgb, #10b981 10%, transparent);
+  font-size: 0.75rem;
+}
+
+.ds-loc-modal-preview-code {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.ds-loc-modal-preview-sep {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.ds-loc-modal-preview-name {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ds-loc-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 0.95rem;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-loc-modal-section--identity {
+  border-color: color-mix(in srgb, #10b981 22%, var(--border));
+  background:
+    linear-gradient(160deg, color-mix(in srgb, #10b981 7%, transparent), transparent 55%),
+    color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+}
+
+.ds-loc-modal-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.ds-loc-modal-section-icon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.55rem;
+  color: #34d399;
+  background: color-mix(in srgb, #10b981 14%, transparent);
+  border: 1px solid color-mix(in srgb, #10b981 22%, transparent);
+}
+
+.ds-loc-modal-section-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ds-loc-modal-section-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-loc-modal-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .ds-loc-modal-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ds-loc-modal-flag-help {
+  margin: -0.25rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ds-loc-modal-flag-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+}
+
+.ds-loc-modal-flag-preview-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ds-loc-modal-flag-preview-desc {
+  margin: 0.1rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.ds-loc-modal-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+}
+
+.ds-loc-modal-banner--error {
+  border-color: color-mix(in srgb, #f87171 35%, var(--border));
+  background: color-mix(in srgb, #f87171 10%, transparent);
+  color: #fca5a5;
+}
+
+.ds-loc-modal-banner-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.ds-loc-modal-banner-desc {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+
+.ds-loc-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.ds-loc-modal-footer-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ds-loc-modal-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
 .ds-nd-port-pills {
   display: flex;
   flex-wrap: wrap;
