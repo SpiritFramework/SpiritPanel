@@ -1,5 +1,6 @@
 import { Network, Plus, Search } from 'lucide-react';
 import { Button } from '../../Layout';
+import { ClientCallout } from '../../client/primitives';
 import { EmptyState, Spinner } from '../../ui';
 import type { ServerAllocationEntry } from '../../../lib/api';
 import type { AllocationFilter } from '../../../lib/network-utils';
@@ -80,16 +81,30 @@ export function NetworkListPanel({
         </div>
       </div>
 
-      {error ? <div className="ds-srv-net-error">{error}</div> : null}
+      {error ? (
+        <div className="ds-srv-net-callout-wrap">
+          <ClientCallout tone="error" title="Couldn't load network" description={error} />
+        </div>
+      ) : null}
 
       {limit === 0 && !loading ? (
-        <div className="ds-srv-net-notice ds-srv-net-notice--warning">
-          Additional ports are disabled on this server (limit 0).
+        <div className="ds-srv-net-callout-wrap">
+          <ClientCallout
+            tone="warning"
+            title="Additional ports disabled"
+            description="Additional ports are disabled on this server (limit 0)."
+          />
         </div>
       ) : null}
 
       {!access.canCreateAllocations && !loading && allocations.length === 0 ? (
-        <div className="ds-srv-net-notice">You can view network settings but do not have permission to manage ports.</div>
+        <div className="ds-srv-net-callout-wrap">
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can view network settings but do not have permission to manage ports."
+          />
+        </div>
       ) : null}
 
       <div className="ds-srv-net-panel-body">
@@ -138,8 +153,12 @@ export function NetworkListPanel({
       </div>
 
       {allocations.length > 0 && !canCreateFromApi && access.canCreateAllocations && limit > 0 ? (
-        <div className="ds-srv-net-limit-banner">
-          Port limit reached ({limit}). Ask an admin to raise it.
+        <div className="ds-srv-net-callout-wrap ds-srv-net-callout-wrap--footer">
+          <ClientCallout
+            tone="warning"
+            title="Limit reached"
+            description={`Port limit reached (${limit}). Ask an admin to raise it.`}
+          />
         </div>
       ) : null}
 

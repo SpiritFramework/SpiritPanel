@@ -151,7 +151,7 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           <div className="flex items-center gap-1.5">
             <AlertBell />
             <LiveAlertToasts />
-            <ThemeToggle compact />
+            <ThemeToggle cycle />
           </div>
         </div>
         <SidebarFooterLink to="/servers" icon={Server} label="Client area" />
@@ -191,12 +191,24 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
           <CommandPaletteButton compact />
           <AlertBell />
           <LiveAlertToasts />
-          <ThemeToggle compact />
+          <ThemeToggle cycle />
           <Link to="/servers" className="app-navbar__text-link" title="Client area">
             Client
           </Link>
-          <button type="button" onClick={logout} className="app-navbar__text-link app-navbar__text-link--danger">
-            Logout
+          {user ? (
+            <Link to="/profile" className="app-navbar__user" title={user.username}>
+              <UserAvatar user={user} size="sm" ring className="shrink-0" />
+              <span className="app-navbar__user-name">{user.username}</span>
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={logout}
+            className="app-navbar__icon-btn app-navbar__icon-btn--danger"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </>
@@ -273,7 +285,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
           <div className="flex items-center gap-1.5">
             <AlertBell />
             <LiveAlertToasts />
-            <ThemeToggle compact />
+            <ThemeToggle cycle />
           </div>
         </div>
         {user && (
@@ -324,15 +336,21 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
           <CommandPaletteButton compact />
           <AlertBell />
           <LiveAlertToasts />
-          <ThemeToggle compact />
+          <ThemeToggle cycle />
           {user ? (
             <Link to="/profile" className="app-navbar__user" title={user.username}>
               <UserAvatar user={user} size="sm" ring className="shrink-0" />
               <span className="app-navbar__user-name">{user.username}</span>
             </Link>
           ) : null}
-          <button type="button" onClick={logout} className="app-navbar__text-link app-navbar__text-link--danger">
-            Logout
+          <button
+            type="button"
+            onClick={logout}
+            className="app-navbar__icon-btn app-navbar__icon-btn--danger"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </>

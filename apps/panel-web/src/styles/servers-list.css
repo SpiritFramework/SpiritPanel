@@ -265,6 +265,10 @@
   color: var(--muted);
 }
 
+[data-theme='light'] .ds-servers-stat-label {
+  color: color-mix(in srgb, var(--muted) 72%, var(--text));
+}
+
 .ds-servers-stat--success .ds-servers-stat-value,
 .ds-servers-stat--success .ds-servers-stat-icon {
   color: var(--success-fg);

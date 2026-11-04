@@ -10,6 +10,7 @@ import {
   type ActivityFilterCategory,
   type ActivityPageResult,
 } from '../../../lib/activity';
+import { ClientCallout } from '../../client/primitives';
 import { ActivityEventRow } from './ActivityEventRow';
 
 const PAGE_SIZE = 20;
@@ -167,8 +168,8 @@ export function ActivityFeedPanel({
       </div>
 
       {loadError ? (
-        <div className="ds-srv-act-notice ds-srv-act-notice--danger" role="alert">
-          {loadError}
+        <div className="ds-srv-act-callout-wrap" role="alert">
+          <ClientCallout tone="error" title="Couldn't load activity" description={loadError} />
         </div>
       ) : null}
 

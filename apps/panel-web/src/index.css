@@ -86,8 +86,8 @@
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
   --text: #0f172a;
-  --muted: #5b6677;
-  --faint: #8a95a6;
+  --muted: #475569;
+  --faint: #64748b;
 
   --success: #16a34a;
   --success-fg: #15803d;
@@ -110,12 +110,12 @@
   --shadow-md: 0 6px 20px -10px rgba(15, 23, 42, 0.18);
   --shadow-lg: 0 24px 48px -24px rgba(15, 23, 42, 0.22);
 
-  /* Glassmorphism */
-  --glass-bg: color-mix(in srgb, #ffffff 68%, transparent);
-  --glass-border: color-mix(in srgb, #ffffff 55%, var(--border));
-  --glass-highlight: rgba(255, 255, 255, 0.65);
-  --glass-sidebar-from: color-mix(in srgb, #ffffff 78%, transparent);
-  --glass-sidebar-to: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  /* Glassmorphism — more opaque so light shells don’t read as washed dark */
+  --glass-bg: color-mix(in srgb, #ffffff 90%, transparent);
+  --glass-border: color-mix(in srgb, var(--border) 88%, transparent);
+  --glass-highlight: rgba(255, 255, 255, 0.92);
+  --glass-sidebar-from: color-mix(in srgb, #ffffff 94%, transparent);
+  --glass-sidebar-to: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
 
   color-scheme: light;
 }
@@ -3367,9 +3367,12 @@ body {
   gap: 0.35rem;
   flex-shrink: 0;
   margin-left: auto;
+  padding-left: 0.7rem;
+  border-left: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
 }
 
-.app-navbar__icon-btn {
+.app-navbar__icon-btn,
+.theme-toggle-cycle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3379,14 +3382,27 @@ body {
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--muted);
+  cursor: pointer;
   transition:
     color 0.15s ease,
-    background 0.15s ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.app-navbar__icon-btn:hover {
+.app-navbar__icon-btn:hover,
+.theme-toggle-cycle:hover {
   color: var(--text);
   background: var(--surface-hover);
+}
+
+.app-navbar__icon-btn--danger {
+  color: var(--danger-fg);
+}
+
+.app-navbar__icon-btn--danger:hover {
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+  border-color: transparent;
 }
 
 .app-navbar__text-link {

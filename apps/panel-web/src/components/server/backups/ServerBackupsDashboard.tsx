@@ -58,6 +58,8 @@ export function ServerBackupsDashboard() {
             actioning={bk.actioning}
             access={bk.access}
             canCreate={bk.canCreate}
+            limit={bk.limit}
+            atLimit={bk.atLimit}
             onSearchChange={bk.setSearch}
             onFilterChange={bk.setFilter}
             onCreate={() => bk.setShowCreate(true)}

@@ -127,7 +127,7 @@
 .atm--solid .atm__base {
   background:
     radial-gradient(ellipse 80% 55% at 20% 0%, color-mix(in srgb, var(--atm-accent) 28%, transparent), transparent 60%),
-    linear-gradient(160deg, color-mix(in srgb, var(--atm-accent) 55%, #05070d), #05070d 70%);
+    linear-gradient(160deg, color-mix(in srgb, var(--atm-accent) 55%, var(--atm-deep)), var(--atm-deep) 70%);
 }
 
 .atm--solid .atm__grain,
@@ -230,7 +230,11 @@
 /* ── Constellation ── */
 .atm--constellation .atm__base {
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, #121933 0%, var(--atm-deep) 70%);
+    radial-gradient(
+      ellipse 90% 60% at 50% -10%,
+      color-mix(in srgb, var(--atm-accent) 22%, var(--atm-deep)) 0%,
+      var(--atm-deep) 70%
+    );
 }
 
 .atm--constellation .atm__blob {
@@ -392,7 +396,11 @@
 /* ── Ember ── */
 .atm--ember .atm__base {
   background:
-    radial-gradient(ellipse 80% 50% at 50% 110%, color-mix(in srgb, var(--atm-accent) 35%, #1a0804), var(--atm-deep) 65%);
+    radial-gradient(
+      ellipse 80% 50% at 50% 110%,
+      color-mix(in srgb, var(--atm-accent) 35%, var(--atm-deep)),
+      var(--atm-deep) 65%
+    );
 }
 
 .atm--ember .atm__blob {
@@ -732,4 +740,59 @@
 /* AmbientBackdrop mounts as .atm.ambient-backdrop */
 .ambient-backdrop.atm {
   z-index: 0;
+}
+
+/* ============================================================
+   Light theme — atmospheres must not leave a dark stage behind
+   light UI (panel glass + content). Login still keeps depth via
+   the same tokens, just keyed off --bg instead of navy black.
+   ============================================================ */
+[data-theme='light'] .atm {
+  --atm-deep: var(--bg, #f4f6fb);
+}
+
+[data-theme='light'] .atm__base {
+  background:
+    radial-gradient(
+      ellipse 90% 60% at 50% -8%,
+      color-mix(in srgb, var(--atm-accent) 12%, var(--atm-deep)) 0%,
+      var(--atm-deep) 72%
+    );
+}
+
+[data-theme='light'] .atm__veil {
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 18%,
+    transparent 30%,
+    color-mix(in srgb, var(--atm-deep) 55%, transparent) 100%
+  );
+}
+
+[data-theme='light'] .atm__grain {
+  opacity: 0.028;
+  mix-blend-mode: multiply;
+}
+
+[data-theme='light'] .atm--panel {
+  opacity: 0.4;
+}
+
+[data-theme='light'] .atm--panel.atm--enhanced,
+[data-theme='light'] .atm--panel.atm--cinematic {
+  opacity: 0.52;
+}
+
+[data-theme='light'] .atm--panel .atm__blob {
+  opacity: 0.22;
+  filter: blur(78px) saturate(0.9);
+}
+
+[data-theme='light'] .atm--constellation .atm__particles > span {
+  background: color-mix(in srgb, var(--atm-accent) 55%, #64748b);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--atm-accent) 35%, transparent);
+  opacity: 0.45;
+}
+
+[data-theme='light'] .atm-preview-stage {
+  background: var(--atm-deep, var(--bg, #f4f6fb));
 }

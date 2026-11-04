@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Calendar, Cpu, HardDrive, MapPin, MemoryStick, User } from 'lucide-react';
+import { ArrowUpRight, Calendar, Cpu, HardDrive, MapPin, MemoryStick } from 'lucide-react';
 import type { AdminServerSummary } from '../../../lib/api';
 import { formatAllocationAddress } from '../../../lib/allocation';
 import { formatResource } from '../../../lib/server-theme';
 import { AdminServerStatusBadge } from '../AdminServerStatus';
 import { LocationFlag } from '../../LocationFlag';
 import { ServerEggIcon } from '../../ServerEggIcon';
+import { UserAvatar } from '../../UserAvatar';
 import { getServerTheme } from '../../../lib/server-theme';
 
 export function ServerFleetCard({ server }: { server: AdminServerSummary }) {
@@ -58,7 +59,7 @@ export function ServerFleetCard({ server }: { server: AdminServerSummary }) {
       </div>
 
       <div className="ds-adm-srv-card-owner">
-        <User className="ds-icon ds-icon--sm" aria-hidden />
+        <UserAvatar user={server.owner} size="xs" className="shrink-0" />
         <span className="truncate">@{server.owner.username}</span>
       </div>
 

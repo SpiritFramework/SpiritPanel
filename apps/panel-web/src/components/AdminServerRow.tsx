@@ -11,6 +11,7 @@ import { ServerEggIcon } from './ServerEggIcon';
 import { AdminServerStatusBadge } from './admin/AdminServerStatus';
 import { AdminMobileCard, AdminResponsiveTable } from './admin/AdminMobileCard';
 import { LocationFlag } from './LocationFlag';
+import { UserAvatar } from './UserAvatar';
 
 export function AdminServerTable({
   servers,
@@ -80,10 +81,11 @@ function AdminServerMobileCard({ server }: { server: AdminServerSummary }) {
       }
       meta={
         <>
-          <p>
-            <span className="text-[var(--text)]">{server.owner.username}</span>
-            <span className="mx-1 opacity-40">·</span>
-            {server.node.name}
+          <p className="flex min-w-0 items-center gap-1.5">
+            <UserAvatar user={server.owner} size="xs" className="shrink-0" />
+            <span className="truncate text-[var(--text)]">{server.owner.username}</span>
+            <span className="opacity-40">·</span>
+            <span className="truncate">{server.node.name}</span>
           </p>
           <p className="font-mono text-[10px]">{address}</p>
           <div className="flex flex-wrap gap-1 pt-0.5">
@@ -162,9 +164,12 @@ function AdminServerRow({
       </td>
 
       <td className="px-4 py-3">
-        <div className="min-w-[120px]">
-          <p className="truncate font-medium">{server.owner.username}</p>
-          <p className="truncate text-[11px] text-[var(--muted)]">{server.owner.email}</p>
+        <div className="flex min-w-[140px] items-center gap-2.5">
+          <UserAvatar user={server.owner} size="sm" className="shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate font-medium">{server.owner.username}</p>
+            <p className="truncate text-[11px] text-[var(--muted)]">{server.owner.email}</p>
+          </div>
         </div>
       </td>
 

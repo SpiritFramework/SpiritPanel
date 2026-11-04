@@ -1,5 +1,6 @@
 import { Database, Plus, Search } from 'lucide-react';
 import { Button } from '../../Layout';
+import { ClientCallout } from '../../client/primitives';
 import { EmptyState, Spinner } from '../../ui';
 import type { ServerDatabaseSummary } from '../../../lib/api';
 import type { getServerAccess } from '../../../lib/server-access';
@@ -54,16 +55,30 @@ export function DatabasesListPanel({
         </div>
       </div>
 
-      {error ? <div className="ds-srv-db-error">{error}</div> : null}
+      {error ? (
+        <div className="ds-srv-db-callout-wrap">
+          <ClientCallout tone="error" title="Couldn't load databases" description={error} />
+        </div>
+      ) : null}
 
       {limit === 0 && !loading ? (
-        <div className="ds-srv-db-notice ds-srv-db-notice--warning">
-          Database creation is disabled on this server. Contact your administrator to enable MySQL databases.
+        <div className="ds-srv-db-callout-wrap">
+          <ClientCallout
+            tone="warning"
+            title="Databases disabled"
+            description="Database creation is disabled on this server. Contact your administrator to enable MySQL databases."
+          />
         </div>
       ) : null}
 
       {!access.canCreateDatabases && !loading && databases.length === 0 ? (
-        <div className="ds-srv-db-notice">You can view databases but do not have permission to create them.</div>
+        <div className="ds-srv-db-callout-wrap">
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can view databases but do not have permission to create them."
+          />
+        </div>
       ) : null}
 
       <div className="ds-srv-db-panel-body">
@@ -111,10 +126,16 @@ export function DatabasesListPanel({
       </div>
 
       {databases.length > 0 && !canCreateFromApi && access.canCreateDatabases ? (
-        <div className="ds-srv-db-limit-banner">
-          {limit === 0
-            ? 'Database creation is disabled on this server (limit 0).'
-            : `Database limit reached (${limit}). Delete an existing database to free a slot.`}
+        <div className="ds-srv-db-callout-wrap ds-srv-db-callout-wrap--footer">
+          <ClientCallout
+            tone="warning"
+            title={limit === 0 ? 'Databases disabled' : 'Limit reached'}
+            description={
+              limit === 0
+                ? 'Database creation is disabled on this server (limit 0).'
+                : `Database limit reached (${limit}). Delete an existing database to free a slot.`
+            }
+          />
         </div>
       ) : null}
 

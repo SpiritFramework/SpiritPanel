@@ -1,5 +1,6 @@
 import { Archive, Plus, Search } from 'lucide-react';
 import { Button } from '../../Layout';
+import { ClientCallout } from '../../client/primitives';
 import { EmptyState, Spinner } from '../../ui';
 import type { ServerBackupSummary } from '../../../lib/api';
 import type { BackupFilter } from '../../../lib/backup-utils';
@@ -25,6 +26,8 @@ export function BackupsListPanel({
   actioning,
   access,
   canCreate,
+  limit,
+  atLimit,
   onSearchChange,
   onFilterChange,
   onCreate,
@@ -44,6 +47,8 @@ export function BackupsListPanel({
   actioning: string | null;
   access: ReturnType<typeof getServerAccess>;
   canCreate: boolean;
+  limit: number;
+  atLimit: boolean;
   onSearchChange: (value: string) => void;
   onFilterChange: (filter: BackupFilter) => void;
   onCreate: () => void;
@@ -79,7 +84,41 @@ export function BackupsListPanel({
         </div>
       </div>
 
-      {error ? <div className="ds-srv-bk-error">{error}</div> : null}
+      {error ? (
+        <div className="ds-srv-bk-callout-wrap">
+          <ClientCallout tone="error" title="Couldn't load backups" description={error} />
+        </div>
+      ) : null}
+
+      {limit === 0 && !loading ? (
+        <div className="ds-srv-bk-callout-wrap">
+          <ClientCallout
+            tone="warning"
+            title="Backups disabled"
+            description="Backup creation is disabled on this server. Contact your administrator to enable backups."
+          />
+        </div>
+      ) : null}
+
+      {!access.canCreateBackups && !loading && backups.length === 0 ? (
+        <div className="ds-srv-bk-callout-wrap">
+          <ClientCallout
+            tone="info"
+            title="View only"
+            description="You can view backups but do not have permission to create them."
+          />
+        </div>
+      ) : null}
+
+      {backups.length > 0 && atLimit && access.canCreateBackups && limit > 0 ? (
+        <div className="ds-srv-bk-callout-wrap">
+          <ClientCallout
+            tone="warning"
+            title="Limit reached"
+            description={`Backup limit reached (${limit}). Delete an existing backup to free a slot.`}
+          />
+        </div>
+      ) : null}
 
       <div className="ds-srv-bk-panel-body">
         {loading ? (

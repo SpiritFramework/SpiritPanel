@@ -31,6 +31,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Light mode atmosphere** — panel scenes no longer paint a dark navy stage behind light UI; constellation/solid/ember bases use theme-aware deep tokens, panel opacity softens, and light glass shells are more opaque.
 - **Dependency advisories:** `nodemailer` → `^10.3.1`, `vite` → `^6.4.4`, `zod` → `^4.6.6` (Zod 4 `z.record` two-arg form), and `fast-uri` override → `^3.1.9`. `pnpm audit` / `audit:security` clean.
 - **Duplicate HSTS** on proxied API responses — API skips `Strict-Transport-Security` when `X-Forwarded-Proto` is present (nginx already sets it).
 - **Nginx `server_tokens off`** so responses no longer advertise the nginx version.
@@ -38,6 +39,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Network & Activity manage tabs** — Network gets labeled Refresh + `ClientCallout` notices; Activity load errors use the shared callout.
+- **Databases & Backups manage tabs** — labeled Refresh and shared `ClientCallout` notices (disabled / view-only / limit / load errors) to match Files/Schedules chrome.
+- **Theme cycle control** — sidebar shells (admin/client/server) use the same single cycle button as the navbar.
+- **Light mode contrast** — darker muted/faint tokens and stronger fleet KPI labels.
+- **Navbar polish** — cycle theme button (replaces 3-way cluster), icon-only logout, admin user avatar chip parity with client, and a soft divider before the actions cluster.
+- **Admin Servers owner avatars** — fleet table, mobile cards, and card grid show the owner’s profile picture next to username.
 - **Client UI consistency** — thin `ClientCallout` / `ClientSection` primitives; My Servers attention/error callouts aligned; Console uses `server / Console` identity with labeled Reconnect; Files, Settings, Startup, and Schedules get labeled Refresh and shared callout notices (not an admin clone — still brand-forward).
 - **Admin UI chrome** — lists, create flows, and detail shells share `ds-adm` primitives (headers, KPIs, sections, callouts) for a consistent admin look.
 - **Node detail** — full manage page polish across shell, overview, settings sections, quieter actions, and tabs; Capacity & resources uses live usage rings, assigned meters, limits, and port allocation with FeatherWings version as a compact bar above.

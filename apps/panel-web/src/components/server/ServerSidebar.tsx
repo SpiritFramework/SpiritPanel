@@ -126,7 +126,7 @@ export function ServerSidebar({
       <div className="ds-srv-sidebar-footer border-t border-[var(--border)] p-2">
         <div className="flex items-center justify-between px-1">
           <span className="text-[11px] font-medium text-[var(--muted)]">Theme</span>
-          <ThemeToggle compact />
+          <ThemeToggle cycle />
         </div>
       </div>
     </aside>

@@ -20364,7 +20364,10 @@ button.ds-nodes-stat:hover {
   .ds-srv-fm-action-btn:has(.ds-srv-action-label),
   .ds-srv-set-action-btn:has(.ds-srv-action-label),
   .ds-srv-stu-action-btn:has(.ds-srv-action-label),
-  .ds-srv-sch-action-btn:has(.ds-srv-action-label) {
+  .ds-srv-sch-action-btn:has(.ds-srv-action-label),
+  .ds-srv-db-action-btn:has(.ds-srv-action-label),
+  .ds-srv-bk-action-btn:has(.ds-srv-action-label),
+  .ds-srv-net-action-btn:has(.ds-srv-action-label) {
     width: auto;
     gap: 0.3rem;
     padding: 0 0.55rem;
@@ -20652,6 +20655,10 @@ button.ds-nodes-stat:hover {
 
 .ds-srv-act-feed-meta-muted {
   opacity: 0.7;
+}
+
+.ds-srv-act-callout-wrap {
+  margin: 0.75rem 0.85rem 0;
 }
 
 .ds-srv-act-notice {
@@ -22865,6 +22872,10 @@ button.ds-nodes-stat:hover {
   background: var(--accent-muted);
 }
 
+.ds-srv-bk-callout-wrap {
+  padding: 0.75rem 1rem 0;
+}
+
 .ds-srv-bk-error {
   padding: 0.65rem 1rem;
   border-bottom: 1px solid var(--danger-border);
@@ -23492,6 +23503,15 @@ button.ds-nodes-stat:hover {
 .ds-srv-db-search:focus {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.ds-srv-db-callout-wrap {
+  padding: 0.75rem 1rem 0;
+}
+
+.ds-srv-db-callout-wrap--footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
 }
 
 .ds-srv-db-error {
@@ -26294,6 +26314,15 @@ button.ds-nodes-stat:hover {
   color: var(--accent-hover);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ds-srv-net-callout-wrap {
+  padding: 0.75rem 1rem 0;
+}
+
+.ds-srv-net-callout-wrap--footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
 }
 
 .ds-srv-net-error {
