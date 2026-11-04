@@ -1,63 +1,65 @@
-# 🚀 Spirit-Panel
+# Spirit Panel
 
-Spirit-Panel is a self-hosted game server control panel built by **SpiritFramework**.
+Self-hosted game server control panel by [SpiritFramework](https://github.com/SpiritFramework).
 
-It provides a modern web interface for managing users, nodes, game servers, and infrastructure — similar in scope to Pterodactyl, but designed specifically for **FeatherWings** daemons, whether those run on dedicated game nodes or on the panel machine itself.
+Spirit Panel gives you a modern web UI for users, nodes, servers, and infrastructure — in the same space as Pterodactyl, built for **[FeatherWings](https://docs.mythical.systems/docs/featherpanel/wings)** daemons. Wings can run on dedicated game nodes or on the same machine as the panel.
 
-📚 FeatherWings Documentation: https://docs.mythical.systems/docs/featherpanel/wings
+| | |
+| --- | --- |
+| **Docs** | [framework.spirithost.co.uk/docs](https://framework.spirithost.co.uk/docs?script=spirit-panel) |
+| **FeatherWings** | [docs.mythical.systems](https://docs.mythical.systems/docs/featherpanel/wings) |
+| **License** | [AGPL-3.0](LICENSE) |
+| **Version** | `1.3.5.0` (see [`docs/CHANGELOG.md`](docs/CHANGELOG.md)) |
 
-📚 Spirit-Panel Documentation: https://framework.spirithost.co.uk/docs?script=spirit-panel
-
-> **Deployment note.** The panel itself never executes game workloads — every game server runs in a Docker container managed by FeatherWings, never by `panel-api`. That is a split of responsibility, not a requirement for separate hardware: FeatherWings is fully supported on the same machine as the panel, which is what the `location /wings/` block in `deploy/nginx/spirit-panel.conf` is for. Both topologies are covered in [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
-
----
-
-## 🖼️ Preview
-
-![Spirit-Panel Preview](https://iili.io/nISZy7f.png)
+> **Deployment note.** The panel never runs game workloads. Every game server is a Docker container managed by FeatherWings — never by `panel-api`. That is a split of responsibility, not a requirement for separate hardware. Same-box installs are first-class (nginx `location /wings/` proxies the console WebSocket). Both topologies are covered in [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
 ---
 
-## ✨ Features
+## Preview
 
-### 🛠️ Administration
-
-* Multi-node fleet management (locations, allocations, capacity, diagnostics)
-* User accounts, roles, suspensions, SSH keys, and API keys
-* Server provisioning with nests/eggs and resource limits
-* Unlimited resources when set to `0` (CPU, RAM, disk, IO, swap)
-* Backups, schedules, MySQL databases, and marketplace integration
-* Branding Studio with live preview, announcements, SMTP/mail configuration, and audit logs
-* Built-in plugins (FiveM Marketplace, Minecraft Plugins, Database Manager) — see `docs/PLUGINS.md`
+![Spirit Panel](https://iili.io/nISZy7f.png)
 
 ---
 
-### 👤 Client (End Users)
+## Features
 
-* Live server console with real-time output
-* File manager and built-in file editor
-* Startup configuration and environment variables
-* Power controls (start, stop, restart, kill)
-* Backups, restore system, and database management
-* Cron schedules and automation tools
-* Subuser system with fine-grained permissions
-* SFTP access and server-specific settings
-* Installable as a standalone app (PWA) on desktop, Android, and iOS
+### Admin
+
+- **Fleet management** — locations, nodes, allocations, capacity meters, live health, diagnostics, and activity
+- **Servers** — provision from nests/eggs, suspend, reinstall, network/allocations, startup, and admin live manage
+- **Users** — roles, suspensions, SSH keys, API keys, and per-user server access
+- **Nests & eggs** — import, edit variables/config, and manage service templates
+- **Domains** — panel domain tooling for custom hostnames
+- **Tickets** — staff inbox with priorities and Discord webhook support
+- **Announce** — site-wide announcements for the client area
+- **Activity** — audit-style admin activity views
+- **Settings & branding** — Branding Studio (live preview), shell layout (sidebar/navbar), atmosphere scenes, SMTP/mail, security
+- **Plugins** — FiveM Marketplace, Minecraft Plugins (Modrinth), Database Manager ([`docs/PLUGINS.md`](docs/PLUGINS.md))
+- **Unlimited resources** when limits are set to `0` (CPU, RAM, disk, IO, swap)
+
+### Client
+
+- Live console with Tab completion (FeatherWings suggestions)
+- File manager and built-in editor
+- Startup configuration and environment variables
+- Power controls (start / stop / restart / kill)
+- Backups, restore, databases, and schedules
+- Subusers with fine-grained permissions
+- SFTP access and server settings
+- Support tickets
+- Installable PWA (desktop, Android, iOS) with branding-aware manifest
+
+### Platform
+
+- Pterodactyl-compatible remote API for FeatherWings
+- Application API with scoped keys for automation
+- HttpOnly session auth with optional 2FA
+- Production env validation and safety checks
+- Crash recovery / reconnect options for FeatherWings 1.4.3+
 
 ---
 
-### 🌐 Platform
-
-* Pterodactyl-compatible remote API for FeatherWings
-* Application API for automation and integrations
-* HttpOnly session authentication with optional 2FA
-* API key system for external services
-* Production environment validation and safety checks
-* Branding-aware web manifest and service worker, so an installed app carries your name, icon, and theme
-
----
-
-## 🧱 Architecture
+## Architecture
 
 ```
 Internet → Nginx (HTTPS)
@@ -65,71 +67,71 @@ Internet → Nginx (HTTPS)
      panel-web (React static)
      panel-api (Fastify, localhost:3000)
               ↓
-     MariaDB + Redis (queues/schedules)
+     MariaDB + Redis (queues / schedules)
               ↓
-     FeatherWings nodes (Docker game servers)
+     FeatherWings (Docker game servers — local and/or remote)
 ```
 
-| Component        | Description                    |
-| ---------------- | ------------------------------ |
-| `apps/panel-api` | Fastify API + Prisma + workers |
-| `apps/panel-web` | React (Vite) frontend          |
-| MariaDB          | Primary database               |
-| Redis            | Queue / scheduler system       |
-| FeatherWings     | Game server daemon — local, remote, or both |
+| Component | Role |
+| --- | --- |
+| `apps/panel-api` | Fastify API, Prisma, workers, built-in plugins |
+| `apps/panel-web` | React (Vite) frontend |
+| MariaDB | Primary database |
+| Redis | Queues and schedule worker |
+| FeatherWings | Game daemon — local, remote, or both |
 
-The arrow to FeatherWings is a network hop, not a machine boundary. Two topologies are supported:
+**Single box:** panel + Wings on one host. Node points at `127.0.0.1:8080`; nginx `location /wings/` keeps an HTTPS panel talking to a local daemon.
 
-- **Single box.** Panel and FeatherWings on one server. The node points at `127.0.0.1:8080`, and nginx proxies the console WebSocket through `location /wings/` so an HTTPS panel is not blocked talking to a plaintext local daemon.
-- **Separate nodes.** FeatherWings on its own hardware with TLS on the node's own FQDN, and the node's scheme set to `https`.
+**Separate nodes:** Wings on its own hardware with TLS on the node FQDN (`scheme: https`).
 
-They mix freely — a panel can drive a local daemon and remote ones at the same time.
+They mix freely — one panel can drive a local daemon and remote nodes together.
 
-> ⚠️ `API_URL` in `.env` must match `remote:` in FeatherWings config exactly (HTTPS, no trailing slash).
-
----
-
-## ⚙️ Requirements
-
-| Component  | Dev                     | Production            |
-| ---------- | ----------------------- | --------------------- |
-| OS         | Windows / macOS / Linux | Ubuntu 24.04 LTS      |
-| Node.js    | 20+                     | 20+                   |
-| pnpm       | 9+                      | 9+                    |
-| Database   | Docker MariaDB or MySQL | MariaDB               |
-| Redis      | Docker recommended      | Redis                 |
-| Game nodes | Optional                | FeatherWings required |
+> `API_URL` in `.env` must match `remote:` in the FeatherWings config exactly (HTTPS, no trailing slash).
 
 ---
 
-## 🚀 Quick Start
+## Requirements
+
+| | Development | Production |
+| --- | --- | --- |
+| OS | Windows / macOS / Linux | Ubuntu 22.04+ or Debian 12+ (Ubuntu 24.04 LTS recommended) |
+| Node.js | 20+ | 20+ |
+| pnpm | 9+ | 9+ |
+| Database | Docker MariaDB / MySQL | MariaDB |
+| Redis | Docker recommended | Redis |
+| Game nodes | Optional for UI work | FeatherWings required for live servers |
+
+---
+
+## Quick start
 
 ### Development
 
 ```bash
-./install
+./install          # Linux / macOS
+./install.ps1      # Windows
 pnpm dev
 ```
 
-* Web UI: [http://localhost:5173](http://localhost:5173)
-* API: [http://localhost:3000/health](http://localhost:3000/health)
+| Service | URL |
+| --- | --- |
+| Web UI | http://localhost:5173 |
+| API health | http://localhost:3000/health |
 
-Dev credentials and seed data: `docs/LOCAL.md`
-
----
+Dev credentials and seed data: [`docs/LOCAL.md`](docs/LOCAL.md).
 
 ### Production
 
-On a fresh Ubuntu 22.04+ or Debian 12+ server, download the installer and run it as root:
+On a fresh Ubuntu 22.04+ / Debian 12+ server, download the installer and run it as root:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SpiritFramework/SpiritPanel/main/scripts/spirit.sh -o /tmp/spirit.sh
 sudo bash /tmp/spirit.sh
 ```
 
-That opens a menu with **Install**, **Update**, **Status**, **Backup**, and **Uninstall**. It takes a bare server all the way to a working panel: Node 20, pnpm, MariaDB, Redis (with a password), nginx, and a Let's Encrypt certificate.
+The menu covers **Install**, **Update**, **Status**, **Backup**, and **Uninstall**. It provisions Node 20, pnpm, MariaDB, Redis (with a password), nginx, and Let's Encrypt.
 
-> Download it to a file rather than using `sudo bash <(curl ...)`. Process substitution passes bash a `/dev/fd` path from the calling shell, and `sudo` closes inherited descriptors, so that form dies with `/dev/fd/63: No such file or directory`.
+> Download to a file first — do not use `sudo bash <(curl ...)`. Process substitution breaks under `sudo` (`/dev/fd/…: No such file or directory`).
 
 Unattended (latest GitHub release; add `--channel dev` for unreleased `main`):
 
@@ -137,53 +139,51 @@ Unattended (latest GitHub release; add `--channel dev` for unreleased `main`):
 sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@example.com -y
 ```
 
-Point DNS at the server **before** installing, so certbot can issue a certificate. The channel you pick is saved in the install directory and reused on later updates. `--ref` checks out a specific tag or branch for that run.
+Point DNS at the server **before** install so certbot can issue a certificate. The chosen channel is saved and reused on later updates. `--ref` pins a tag or branch for that run.
 
 #### Updating
-
-Once installed, use the copy in the checkout:
 
 ```bash
 sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update
 ```
 
-Backs up `.env` and the database first, then checks out the saved channel (release tag or `main`), rebuilds, migrates, and restarts. If that commit is already built, install and build are skipped. If the build or a migration fails it stops **before** restarting, so the running version stays up, and the backup path is printed.
+Backs up `.env` and the database, checks out the saved channel, rebuilds, migrates, then restarts. If the commit is already built, install/build are skipped. Failed builds or migrations stop **before** restart so the running version stays up.
 
-#### Already have a checkout?
+#### Existing checkout
 
 ```bash
 pnpm install
 pnpm spirit-install --production --api-url https://panel.example.com
 ```
 
-This configures the database, `.env`, admin user, and build, but leaves systemd, nginx, and TLS to you.
+Configures the database, `.env`, admin user, and build. Systemd, nginx, and TLS remain yours.
 
-> ⚠️ Save the generated credentials. Do not run `spirit-install` itself as root.
+> Save generated credentials. Do not run `spirit-install` itself as root.
 
-Full guide: `docs/PRODUCTION.md`
+Full guide: [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
 ---
 
-## 🧰 Commands
+## Commands
 
 ```bash
-pnpm dev              # start dev environment
+pnpm dev              # start development (API + web)
 pnpm build            # build all apps
-pnpm lint             # lint all packages
+pnpm lint             # lint workspace
 pnpm start:prod       # run production API
 
-pnpm db:migrate       # run dev migrations
+pnpm db:migrate       # development migrations
 pnpm db:deploy        # production migrations
-pnpm db:seed          # seed test data
+pnpm db:seed          # seed data
 
-pnpm import-eggs      # import server templates
+pnpm import-eggs      # import egg templates
 pnpm verify:prod      # production health check
 
-pnpm --filter @spirit/panel-api test    # API unit tests
-pnpm --filter @spirit/panel-web test    # web unit tests
+pnpm --filter @spirit/panel-api test
+pnpm --filter @spirit/panel-web test
 ```
 
-After updates on production:
+After a manual production update:
 
 ```bash
 pnpm db:deploy
@@ -192,63 +192,76 @@ sudo systemctl restart spirit-panel-api
 
 ---
 
-## 📁 Project Structure
+## Repository layout
 
 ```
 Spirit-Panel/
 ├── apps/
-│   ├── panel-api          # Fastify API, Prisma, workers, built-in plugins
-│   └── panel-web          # React (Vite) frontend
+│   ├── panel-api     # Fastify, Prisma, workers, plugins
+│   └── panel-web     # React (Vite) UI
 ├── packages/
-│   ├── shared             # Shared runtime helpers
-│   ├── shared-types       # Types shared across API and web
-│   └── plugin-sdk         # Plugin contract types and manifests
-├── deploy/                # nginx, systemd, env, and Wings templates
+│   ├── shared
+│   ├── shared-types
+│   └── plugin-sdk
+├── deploy/           # nginx, systemd, env, Wings templates
 ├── docs/
-├── scripts/               # Installer, egg import, production verify
+├── scripts/          # spirit.sh installer, egg import, verify
+├── install / install.ps1
 └── LICENSE
 ```
 
 ---
 
-## 📚 Documentation
+## Documentation
 
-| File                    | Purpose                                    |
-| ----------------------- | ------------------------------------------ |
-| `docs/LOCAL.md`         | Local development setup                    |
-| `docs/PRODUCTION.md`    | Deployment guide                           |
-| `docs/SECURITY.md`      | Security model & reporting                 |
-| `docs/PLUGINS.md`       | Built-in plugins and the plugin SDK        |
-| `docs/CHANGELOG.md`     | Release history and versioning scheme      |
+| Doc | Purpose |
+| --- | --- |
+| [`docs/LOCAL.md`](docs/LOCAL.md) | Local development |
+| [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Production deploy |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Security model and reporting |
+| [`docs/PLUGINS.md`](docs/PLUGINS.md) | Built-in plugins and SDK |
+| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Release history and versioning |
 
-Deep-dive engineering notes on FeatherWings crash detection and container state handling also live in `docs/`; both are point-in-time analyses rather than maintained guides.
-
----
-
-## 🔐 Security
-
-Spirit-Panel is designed for self-hosting environments. You are responsible for securing infrastructure, TLS, and system access.
-
-### Built-in protections
-
-* HttpOnly session cookies (no token storage in localStorage)
-* CSP with strict script restrictions
-* URL sanitization and safe link validation
-* Production environment validation checks
-* Secure file path validation (no traversal attacks)
-* Restricted branding uploads (no SVG execution risk)
-
-### Your responsibility
-
-* Enable HTTPS in production
-* Secure `.env` and rotate secrets regularly
-* Restrict admin access and API keys
-* Follow `docs/SECURITY.md` guidelines
+Engineering deep-dives on FeatherWings crash detection and container state also live under `docs/` (point-in-time analyses, not day-to-day guides).
 
 ---
 
-## 📄 License
+## Security
 
-Licensed under **GNU AGPL-3.0**.
+Spirit Panel is built for self-hosting. You own TLS, host hardening, and access control.
 
-If you modify and run this as a network service, you must provide source access under AGPL terms.
+**Built in**
+
+- HttpOnly session cookies (no tokens in `localStorage`)
+- CSP with strict script policy
+- URL sanitization and safe link validation
+- Production environment validation
+- Path-jail for files and backups (no traversal)
+- Restricted branding uploads (no executable SVG)
+- Scoped application API keys
+
+**Your side**
+
+- HTTPS in production
+- Protect `.env` and rotate secrets
+- Restrict admin accounts and API keys
+- Follow [`docs/SECURITY.md`](docs/SECURITY.md)
+
+---
+
+## Contributing
+
+1. Fork and clone the repo
+2. Run `./install` (or `./install.ps1`) then `pnpm dev`
+3. Prefer small, focused PRs against `main`
+4. Note user-facing changes in [`docs/CHANGELOG.md`](docs/CHANGELOG.md) under **Unreleased**
+
+Issues and pull requests: [github.com/SpiritFramework/SpiritPanel](https://github.com/SpiritFramework/SpiritPanel).
+
+---
+
+## License
+
+Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](LICENSE).
+
+If you modify Spirit Panel and run it as a network service, AGPL requires that you offer corresponding source to users of that service.
