@@ -827,7 +827,7 @@ export async function adminRoutes(app: FastifyInstance) {
             memory: true,
             disk: true,
             cpu: true,
-            owner: { select: { username: true } },
+            owner: { select: { username: true, avatarUrl: true } },
             egg: { select: { name: true, logoUrl: true } },
             defaultAllocation: { select: { ip: true, port: true, alias: true } },
           },

@@ -19,17 +19,23 @@ import { prefetchServerTab } from '../lib/prefetch-server-tabs';
 import { ServerEggIcon } from './ServerEggIcon';
 import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
+import { UserAvatar } from './UserAvatar';
+
+export type ServerListMetaOwner = { username: string; avatarUrl?: string | null };
 
 export function ServerListTable({
   servers,
   hrefFor,
   metaLabelFor,
+  metaOwnerFor,
   compact = false,
 }: {
   servers: ServerSummary[];
   hrefFor?: (server: ServerSummary) => string;
   /** Replaces the node chip label (e.g. owner on node detail). */
   metaLabelFor?: (server: ServerSummary) => string;
+  /** When set, shows owner avatar + username instead of the location/node chip. */
+  metaOwnerFor?: (server: ServerSummary) => ServerListMetaOwner | null | undefined;
   compact?: boolean;
 }) {
   return (
@@ -40,6 +46,7 @@ export function ServerListTable({
             server={server}
             href={hrefFor?.(server)}
             metaLabel={metaLabelFor?.(server)}
+            metaOwner={metaOwnerFor?.(server) ?? undefined}
             compact={compact}
           />
         </li>
@@ -52,11 +59,13 @@ function ServerListRow({
   server,
   href: hrefProp,
   metaLabel,
+  metaOwner,
   compact = false,
 }: {
   server: ServerSummary;
   href?: string;
   metaLabel?: string;
+  metaOwner?: ServerListMetaOwner;
   compact?: boolean;
 }) {
   const navigate = useNavigate();
@@ -134,10 +143,17 @@ function ServerListRow({
           <span className="truncate font-mono">{address}</span>
           {!copied ? <Copy className="h-3 w-3 shrink-0 opacity-50" aria-hidden /> : null}
         </button>
-        <span className="ds-servers-row-chip">
-          <MapPin className="h-3 w-3" aria-hidden />
-          <span className="truncate">{metaLabel ?? server.node.name}</span>
-        </span>
+        {metaOwner ? (
+          <span className="ds-servers-row-chip ds-servers-row-chip--owner">
+            <UserAvatar user={metaOwner} size="xs" className="ds-servers-row-owner-avatar" />
+            <span className="truncate">@{metaOwner.username}</span>
+          </span>
+        ) : (
+          <span className="ds-servers-row-chip">
+            <MapPin className="h-3 w-3" aria-hidden />
+            <span className="truncate">{metaLabel ?? server.node.name}</span>
+          </span>
+        )}
       </span>
 
       <span className="ds-servers-row-resources" aria-label="Resources">
@@ -163,11 +179,13 @@ function ServerListRow({
           containerState={server.containerState}
           compact
         />
-        <ServerHostNotice
-          nodeReachable={server.nodeReachable}
-          maintenanceMode={server.node.maintenanceMode}
-          compact
-        />
+        {!compact ? (
+          <ServerHostNotice
+            nodeReachable={server.nodeReachable}
+            maintenanceMode={server.node.maintenanceMode}
+            compact
+          />
+        ) : null}
       </span>
 
       <span className="ds-servers-row-go" aria-hidden>

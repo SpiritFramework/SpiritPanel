@@ -1800,7 +1800,7 @@ export interface AdminNodeDetail extends Omit<AdminNodeSummary, '_count'> {
     memory?: number;
     disk?: number;
     cpu?: number;
-    owner: { username: string };
+    owner: { username: string; avatarUrl?: string | null };
     egg: { name: string; logoUrl?: string | null };
     defaultAllocation: { ip: string; port: number; alias?: string | null };
   }>;

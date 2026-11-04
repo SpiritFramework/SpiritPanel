@@ -12,6 +12,8 @@ import type { NodeDetailController } from './useNodeDetail';
 
 type ViewMode = 'grid' | 'list';
 
+type OwnerInfo = { username: string; avatarUrl?: string | null };
+
 function toServerSummary(
   server: AdminNodeDetail['servers'][number],
   node: Pick<AdminNodeDetail, 'name' | 'fqdn' | 'maintenanceMode' | 'online'>,
@@ -57,18 +59,26 @@ export function NodeDetailServersTab({
     if (!detail) {
       return {
         summaries: [] as ServerSummary[],
-        ownersById: new Map<string, string>(),
+        ownersById: new Map<string, OwnerInfo>(),
       };
     }
-    const ownersById = new Map<string, string>();
+    const ownersById = new Map<string, OwnerInfo>();
     const summaries = detail.servers.map((server) => {
-      ownersById.set(server.id, server.owner.username);
+      ownersById.set(server.id, {
+        username: server.owner.username,
+        avatarUrl: server.owner.avatarUrl,
+      });
       return toServerSummary(server, detail);
     });
     return { summaries, ownersById };
   }, [detail]);
 
   if (!detail) return null;
+
+  const location = {
+    short: detail.location.short,
+    flagUrl: detail.location.flagUrl,
+  };
 
   return (
     <div className="ds-nd-body">
@@ -126,25 +136,26 @@ export function NodeDetailServersTab({
           />
         ) : view === 'grid' ? (
           <div className="ds-servers-fleet-grid ds-servers-fleet-grid--compact">
-            {summaries.map((summary) => (
-              <ServerCard
-                key={summary.id}
-                server={summary}
-                href={`/admin/servers/${summary.id}`}
-                footerLabel={`@${ownersById.get(summary.id) ?? summary.node.name}`}
-                compact
-              />
-            ))}
+            {summaries.map((summary) => {
+              const owner = ownersById.get(summary.id);
+              return (
+                <ServerCard
+                  key={summary.id}
+                  server={summary}
+                  href={`/admin/servers/${summary.id}`}
+                  footerOwner={owner}
+                  footerLocation={location}
+                  compact
+                />
+              );
+            })}
           </div>
         ) : (
           <ServerListTable
             servers={summaries}
             compact
             hrefFor={(server) => `/admin/servers/${server.id}`}
-            metaLabelFor={(server) => {
-              const owner = ownersById.get(server.id);
-              return owner ? `@${owner}` : server.node.name;
-            }}
+            metaOwnerFor={(server) => ownersById.get(server.id)}
           />
         )}
       </NodeDetailPanel>

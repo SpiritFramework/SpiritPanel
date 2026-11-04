@@ -6,6 +6,7 @@ import {
   Cpu,
   FolderOpen,
   HardDrive,
+  MapPin,
   MemoryStick,
   Terminal,
 } from 'lucide-react';
@@ -16,9 +17,11 @@ import { useBranding } from '../context/BrandingContext';
 import { normalizeAppearance } from '../lib/branding-appearance';
 import { formatResource, getServerTheme, resolveServerCardStyle } from '../lib/server-theme';
 import { prefetchServerTab } from '../lib/prefetch-server-tabs';
+import { LocationFlag } from './LocationFlag';
 import { ServerEggIcon } from './ServerEggIcon';
 import { ServerHostNotice } from './ServerHostNotice';
 import { ServerStatusBadge } from './ServerStatusBadge';
+import { UserAvatar } from './UserAvatar';
 
 const BANNER_PATTERN =
   'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)';
@@ -31,6 +34,10 @@ interface ServerCardProps {
   filesHref?: string;
   /** Replaces the node name in the card footer (e.g. owner on node detail). */
   footerLabel?: string;
+  /** Owner avatar + username shown in the footer (node detail). */
+  footerOwner?: { username: string; avatarUrl?: string | null };
+  /** Location chip shown beside the owner in the footer. */
+  footerLocation?: { short: string; flagUrl?: string | null };
   /** Tighter padding and type for dense admin embeds (node/user detail). */
   compact?: boolean;
 }
@@ -41,6 +48,8 @@ export function ServerCard({
   consoleHref,
   filesHref,
   footerLabel,
+  footerOwner,
+  footerLocation,
   compact = false,
 }: ServerCardProps) {
   const { branding } = useBranding();
@@ -102,9 +111,33 @@ export function ServerCard({
           />
 
           <div className="server-card-foot mt-3 flex items-center justify-between gap-2 px-0.5">
-            <span className="truncate text-[11px] text-[var(--muted)]">
-              {footerLabel ?? server.node.name}
-            </span>
+            <div className="server-card-foot-meta min-w-0 flex flex-1 items-center gap-1.5 truncate text-[11px] text-[var(--muted)]">
+              {footerOwner ? (
+                <span className="server-card-foot-owner inline-flex min-w-0 items-center gap-1.5 truncate">
+                  <UserAvatar user={footerOwner} size="xs" className="server-card-foot-avatar shrink-0" />
+                  <span className="truncate">@{footerOwner.username}</span>
+                </span>
+              ) : (
+                <span className="truncate">{footerLabel ?? server.node.name}</span>
+              )}
+              {footerLocation ? (
+                <>
+                  <span className="server-card-foot-sep" aria-hidden>
+                    ·
+                  </span>
+                  <span className="server-card-foot-loc inline-flex shrink-0 items-center gap-1 truncate">
+                    {footerLocation.flagUrl ? (
+                      <LocationFlag url={footerLocation.flagUrl} size="sm" />
+                    ) : (
+                      <MapPin className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                    )}
+                    <span className="truncate ds-text-mono uppercase tracking-wide">
+                      {footerLocation.short}
+                    </span>
+                  </span>
+                </>
+              ) : null}
+            </div>
             <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[var(--muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--accent)]">
               Open
               <ChevronRight className="h-4 w-4" />
@@ -325,12 +358,16 @@ function CardBody({
             containerState={server.containerState}
             compact
           />
-          <ServerHostNotice
-            nodeReachable={server.nodeReachable}
-            maintenanceMode={server.node.maintenanceMode}
-          />
+          {!compact ? (
+            <ServerHostNotice
+              nodeReachable={server.nodeReachable}
+              maintenanceMode={server.node.maintenanceMode}
+            />
+          ) : null}
         </div>
-        <span className="truncate text-[11px] leading-snug text-[var(--muted)]">{server.egg.name}</span>
+        {!compact ? (
+          <span className="truncate text-[11px] leading-snug text-[var(--muted)]">{server.egg.name}</span>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2">
