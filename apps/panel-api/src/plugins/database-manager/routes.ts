@@ -182,7 +182,7 @@ export async function databaseManagerRoutes(app: FastifyInstance) {
       };
       const body = z
         .object({
-          values: z.record(cellValueSchema),
+          values: z.record(z.string(), cellValueSchema),
         })
         .parse(request.body);
 
@@ -217,8 +217,8 @@ export async function databaseManagerRoutes(app: FastifyInstance) {
       };
       const body = z
         .object({
-          primaryKey: z.record(cellValueSchema),
-          values: z.record(cellValueSchema),
+          primaryKey: z.record(z.string(), cellValueSchema),
+          values: z.record(z.string(), cellValueSchema),
         })
         .parse(request.body);
 
@@ -254,7 +254,7 @@ export async function databaseManagerRoutes(app: FastifyInstance) {
       };
       const body = z
         .object({
-          primaryKey: z.record(cellValueSchema),
+          primaryKey: z.record(z.string(), cellValueSchema),
         })
         .parse(request.body);
 

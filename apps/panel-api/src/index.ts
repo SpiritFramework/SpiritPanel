@@ -68,11 +68,13 @@ const app = Fastify({
 
 
 
-app.addHook('onSend', async (_request, reply, payload) => {
+app.addHook('onSend', async (request, reply, payload) => {
   for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) {
     reply.header(name, value);
   }
-  if (config.isProduction) {
+  // When nginx (or another edge) already sets HSTS, skip here to avoid duplicate headers.
+  const proxied = Boolean(request.headers['x-forwarded-proto']);
+  if (config.isProduction && !proxied) {
     reply.header('Strict-Transport-Security', HSTS_HEADER);
   }
   return payload;

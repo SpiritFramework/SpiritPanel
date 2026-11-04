@@ -36,7 +36,7 @@
   "pnpm": {
     "comment": "Security overrides for transitive dependencies whose parents still pin a vulnerable version; drop each once the parent catches up. esbuild is scoped to tsx on purpose - vite requires ^0.25.0, which is below the vulnerable range, and forcing it to 0.28 breaks the web build.",
     "overrides": {
-      "fast-uri": "^3.1.8",
+      "fast-uri": "^3.1.9",
       "@fastify/busboy": "^3.2.3",
       "http-cache-semantics": "^4.3.0",
       "source-map-js": "^1.2.2",

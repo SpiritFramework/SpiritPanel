@@ -367,7 +367,7 @@ export async function applicationRoutes(app: FastifyInstance) {
           memory: z.number().int().min(0).default(1024),
           disk: z.number().int().min(0).default(10240),
           cpu: z.number().int().min(0).default(100),
-          environment: z.record(z.string()).optional(),
+          environment: z.record(z.string(), z.string()).optional(),
           allocationLimit: z.number().int().min(0).default(0),
           backupLimit: z.number().int().min(0).default(0),
           databaseLimit: z.number().int().min(0).default(0),

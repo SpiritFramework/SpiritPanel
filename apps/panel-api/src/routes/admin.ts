@@ -1930,7 +1930,7 @@ export async function adminRoutes(app: FastifyInstance) {
         cpu: z.number().int().min(0).default(100),
         image: z.string().optional(),
         startup: z.string().optional(),
-        environment: z.record(z.string()).optional(),
+        environment: z.record(z.string(), z.string()).optional(),
         allocationLimit: z.number().int().min(0).default(0),
         backupLimit: z.number().int().min(0).default(0),
         databaseLimit: z.number().int().min(0).default(0),

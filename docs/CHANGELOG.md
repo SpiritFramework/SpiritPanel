@@ -31,6 +31,9 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Fixed
 
+- **Dependency advisories:** `nodemailer` → `^10.3.1`, `vite` → `^6.4.4`, `zod` → `^4.6.6` (Zod 4 `z.record` two-arg form), and `fast-uri` override → `^3.1.9`. `pnpm audit` / `audit:security` clean.
+- **Duplicate HSTS** on proxied API responses — API skips `Strict-Transport-Security` when `X-Forwarded-Proto` is present (nginx already sets it).
+- **Nginx `server_tokens off`** so responses no longer advertise the nginx version.
 - **Node online/offline flap.** One slow FeatherWings health check was enough to mark the node offline. The next success marked it online and re-polled every server, which made the following check time out again. A node that answered recently stays online for 45 seconds across a missed check, and the dashboard no longer caches a failed check. Container status reports also return as soon as the database write finishes, so crash and offline alerts no longer hold Wings’ status sync open.
 
 ### Changed

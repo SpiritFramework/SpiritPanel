@@ -99,7 +99,7 @@ export async function adminPluginRoutes(app: FastifyInstance) {
     const body = z
       .object({
         enabled: z.boolean().optional(),
-        settings: z.record(z.unknown()).optional(),
+        settings: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(request.body);
 
