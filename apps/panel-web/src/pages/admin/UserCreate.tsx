@@ -107,7 +107,7 @@ export function AdminUserCreate() {
                   icon: Shield,
                   label: 'Role',
                   value: roleMeta.label,
-                  tone: form.role === 'admin' ? 'warn' : form.role === 'staff' ? 'success' : undefined,
+                  tone: form.role === 'admin' ? 'warning' : form.role === 'staff' ? 'success' : undefined,
                 },
                 {
                   icon: UserPlus,
