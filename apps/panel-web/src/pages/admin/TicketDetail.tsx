@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Lock, Trash2, UserCheck, UserMinus } from 'lucide-react';
 import { api, type TicketDetail, type TicketPriority, type TicketStatus } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useBranding } from '../../context/BrandingContext';
 import { AdminLayout, Button, Page } from '../../components/Layout';
 import { AdminToolButton } from '../../components/admin/primitives';
 import { ConfirmModal } from '../../components/ConfirmModal';
@@ -33,6 +34,8 @@ export function AdminTicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,7 +47,11 @@ export function AdminTicketDetailPage() {
   const [deleteError, setDeleteError] = useState('');
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id || !ticketsEnabled) {
+      setTicket(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -54,7 +61,7 @@ export function AdminTicketDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, ticketsEnabled]);
 
   useEffect(() => {
     void load();
@@ -101,6 +108,10 @@ export function AdminTicketDetailPage() {
       setError(message);
       setDeleting(false);
     }
+  }
+
+  if (!ticketsEnabled) {
+    return <Navigate to="/admin" replace />;
   }
 
   if (loading) {

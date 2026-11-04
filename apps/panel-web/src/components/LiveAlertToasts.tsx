@@ -3,6 +3,7 @@ import { api, type AlertEventSummary } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { isStaffOrPanelAdmin } from '../lib/roles';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 
 const SEEN_KEY = 'spirit-alert-toast-seen';
 const POLL_MS = 12_000;
@@ -28,8 +29,12 @@ function saveSeen(ids: Set<string>) {
   }
 }
 
-function toastHref(event: AlertEventSummary, staff: boolean): string {
-  if (staff && (event.metric === 'ticket_opened' || event.metric === 'ticket_user_reply')) {
+function toastHref(event: AlertEventSummary, staff: boolean, ticketsEnabled: boolean): string {
+  if (
+    staff &&
+    ticketsEnabled &&
+    (event.metric === 'ticket_opened' || event.metric === 'ticket_user_reply')
+  ) {
     return event.ticketId ? `/admin/tickets/${event.ticketId}` : '/admin/tickets';
   }
   return '/alerts';
@@ -44,6 +49,8 @@ function toastTone(severity: string): 'info' | 'warning' | 'error' {
 /** Poll unread alerts and surface new ones as toasts (near real-time, no WebSocket). */
 export function LiveAlertToasts() {
   const { user } = useAuth();
+  const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
   const { info, warning, error } = useToast();
   const staff = isStaffOrPanelAdmin(user);
   const primedRef = useRef(false);
@@ -70,7 +77,7 @@ export function LiveAlertToasts() {
       // Newest first from API — toast oldest first so stack reads chronologically.
       for (const event of [...fresh].reverse()) {
         seen.add(event.id);
-        const href = toastHref(event, staff);
+        const href = toastHref(event, staff, ticketsEnabled);
         const tone = toastTone(event.severity);
         if (tone === 'error') error(event.title, event.message, href);
         else if (tone === 'warning') warning(event.title, event.message, href);
@@ -84,7 +91,7 @@ export function LiveAlertToasts() {
     } finally {
       inFlightRef.current = false;
     }
-  }, [user, staff, info, warning, error]);
+  }, [user, staff, ticketsEnabled, info, warning, error]);
 
   useEffect(() => {
     primedRef.current = false;

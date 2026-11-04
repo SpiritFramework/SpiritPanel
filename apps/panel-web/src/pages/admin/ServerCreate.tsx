@@ -1,12 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Egg, HardDrive, Server, Terminal, Users } from 'lucide-react';
-import { ServerProvisionForm } from '../../components/admin/ServerProvisionForm';
+import { ArrowRight, Egg, HardDrive, Plus, Server, Terminal, Users } from 'lucide-react';
+import {
+  SERVER_PROVISION_FORM_ID,
+  ServerProvisionForm,
+  type ServerProvisionProgressInfo,
+} from '../../components/admin/ServerProvisionForm';
 import { AdminDetailBody, AdminDetailPage } from '../../components/AdminDetailLayout';
 import {
   DEFAULT_SERVER_PROVISION_FORM,
   serverProvisionProgress,
-  type ServerProvisionFormState,
 } from '../../lib/server-provision';
 import { AdminLayout, Button } from '../../components/Layout';
 import {
@@ -18,25 +21,24 @@ import {
   AdminToolButton,
 } from '../../components/admin/primitives';
 
-type ProgressInfo = {
-  form: ServerProvisionFormState;
-  autoAssign: boolean;
-  freeAllocations: number;
-  eggName: string | null;
-  nodeName: string | null;
+const EMPTY_PROGRESS: ServerProvisionProgressInfo = {
+  form: DEFAULT_SERVER_PROVISION_FORM,
+  autoAssign: true,
+  freeAllocations: 0,
+  eggName: null,
+  nodeName: null,
+  ownerName: null,
+  allocationPreview: null,
+  saving: false,
+  error: '',
+  canSubmit: false,
 };
 
 export function AdminServerCreate() {
   const navigate = useNavigate();
-  const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
-    form: DEFAULT_SERVER_PROVISION_FORM,
-    autoAssign: true,
-    freeAllocations: 0,
-    eggName: null,
-    nodeName: null,
-  });
+  const [progressInfo, setProgressInfo] = useState<ServerProvisionProgressInfo>(EMPTY_PROGRESS);
 
-  const handleProgress = useCallback((info: ProgressInfo) => {
+  const handleProgress = useCallback((info: ServerProvisionProgressInfo) => {
     setProgressInfo(info);
   }, []);
 
@@ -49,15 +51,31 @@ export function AdminServerCreate() {
     [progressInfo],
   );
 
+  const nextHint = !progressInfo.form.ownerId
+    ? 'Select an owner to continue.'
+    : !progressInfo.form.name.trim()
+      ? 'Enter a server name to continue.'
+      : !progressInfo.form.eggId
+        ? 'Choose an egg template to continue.'
+        : !progressInfo.form.nodeId
+          ? 'Select a node to continue.'
+          : progressInfo.autoAssign && progressInfo.freeAllocations === 0
+            ? 'This node has no free ports — add allocations first.'
+            : !progressInfo.autoAssign && !progressInfo.form.allocationId
+              ? 'Pick a primary allocation to continue.'
+              : 'Installation starts as soon as the server is created.';
+
   function handleCreated(serverId: string) {
     navigate(`/admin/servers/${serverId}/manage/console`);
   }
 
   return (
     <AdminLayout>
-      <AdminDetailPage breadcrumb={[{ label: 'Servers', to: '/admin/servers' }, { label: 'Provision server' }]}>
+      <AdminDetailPage
+        breadcrumb={[{ label: 'Servers', to: '/admin/servers' }, { label: 'Provision server' }]}
+      >
         <AdminDetailBody>
-          <AdminPageStack className=" ds-nd-create">
+          <AdminPageStack className="ds-nd-create">
             <AdminHero
               eyebrow="Provisioning"
               title="Provision server"
@@ -72,11 +90,16 @@ export function AdminServerCreate() {
                 {
                   icon: Users,
                   label: 'Owner',
-                  value: progressInfo.form.ownerId ? 'Selected' : '—',
+                  value: progressInfo.ownerName ? `@${progressInfo.ownerName}` : '—',
                 },
                 { icon: Egg, label: 'Egg', value: progressInfo.eggName ?? '—' },
                 { icon: HardDrive, label: 'Node', value: progressInfo.nodeName ?? '—' },
-                { icon: Terminal, label: 'Ready', value: `${progress.done}/${progress.total}` },
+                {
+                  icon: Terminal,
+                  label: 'Ready',
+                  value: `${progress.done}/${progress.total}`,
+                  tone: progress.ready ? 'success' : undefined,
+                },
               ]}
             />
 
@@ -88,6 +111,39 @@ export function AdminServerCreate() {
 
               <aside className="ds-nd-create-aside">
                 <section className="ds-nd-create-aside-card">
+                  <p className="ds-nd-create-aside-eyebrow">Live draft</p>
+                  <h2 className="ds-nd-create-aside-title">Preview</h2>
+                  <div className="ds-nd-st-connection-preview-rows">
+                    <div className="ds-nd-st-connection-preview-row">
+                      <span>Name</span>
+                      <code>{progressInfo.form.name.trim() || '—'}</code>
+                    </div>
+                    <div className="ds-nd-st-connection-preview-row">
+                      <span>Port</span>
+                      <code>{progressInfo.allocationPreview || '—'}</code>
+                    </div>
+                    <div className="ds-nd-st-connection-preview-row">
+                      <span>Limits</span>
+                      <code>
+                        {progressInfo.form.memory || '0'} MB · {progressInfo.form.disk || '0'} MB ·{' '}
+                        {progressInfo.form.cpu || '0'}%
+                      </code>
+                    </div>
+                  </div>
+                  <div className="ds-nd-st-dock-tags mt-3">
+                    <span className="ds-nd-tag">
+                      {progressInfo.autoAssign ? 'Auto port' : 'Manual port'}
+                    </span>
+                    <span className="ds-nd-tag">
+                      {progressInfo.freeAllocations} free
+                    </span>
+                    <span className="ds-nd-tag">
+                      {progress.ready ? 'Ready' : 'Incomplete'}
+                    </span>
+                  </div>
+                </section>
+
+                <section className="ds-nd-create-aside-card">
                   <p className="ds-nd-create-aside-eyebrow">Next</p>
                   <h2 className="ds-nd-create-aside-title">After provisioning</h2>
                   <ol className="ds-nd-create-aside-steps">
@@ -97,7 +153,7 @@ export function AdminServerCreate() {
                     </li>
                     <li>
                       <span>2</span>
-                      You&apos;ll be taken to the server console to watch install output.
+                      You&apos;ll open the server console to watch install output.
                     </li>
                     <li>
                       <span>3</span>
@@ -139,21 +195,20 @@ export function AdminServerCreate() {
               </aside>
 
               <AdminFormDock
-                title={progress.ready ? 'Ready to provision' : 'Complete the checklist'}
-                hint={
-                  progress.ready
-                    ? 'Installation starts as soon as the server is created.'
-                    : 'Select owner, egg, node, and allocation to continue.'
-                }
+                title={progress.ready ? 'Ready to provision' : 'Almost there'}
+                hint={nextHint}
                 actions={
                   <>
                     <AdminToolButton to="/admin/servers">Cancel</AdminToolButton>
-                    {progress.ready ? (
-                      <Button type="button" disabled>
-                        Use the form Create button above
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : null}
+                    <Button
+                      type="submit"
+                      form={SERVER_PROVISION_FORM_ID}
+                      disabled={progressInfo.saving || !progress.ready}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {progressInfo.saving ? 'Provisioning…' : 'Create & install'}
+                      {!progressInfo.saving ? <ArrowRight className="h-3.5 w-3.5" /> : null}
+                    </Button>
                   </>
                 }
               />

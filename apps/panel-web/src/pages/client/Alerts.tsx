@@ -144,12 +144,12 @@ function groupLabel(iso: string) {
 
 function eventAction(
   event: AlertEventSummary,
-  opts?: { staff?: boolean },
+  opts?: { staff?: boolean; ticketsEnabled?: boolean },
 ): { to: string; label: string } | null {
-  if (TICKET_METRICS.has(event.metric) && event.ticketId && opts?.staff) {
-    return { to: `/admin/tickets/${event.ticketId}`, label: 'Open ticket' };
-  }
-  if (TICKET_METRICS.has(event.metric) && opts?.staff) {
+  if (TICKET_METRICS.has(event.metric) && opts?.staff && opts.ticketsEnabled !== false) {
+    if (event.ticketId) {
+      return { to: `/admin/tickets/${event.ticketId}`, label: 'Open ticket' };
+    }
     return { to: '/admin/tickets', label: 'View tickets' };
   }
   if (SECURITY_METRICS.has(event.metric) && event.metric !== 'server_subuser') {
@@ -186,6 +186,7 @@ export function AlertsPage() {
   const { user } = useAuth();
   const staff = isStaffOrPanelAdmin(user);
   const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
   const appearance = normalizeAppearance(branding);
   const logoSrc = sanitizeImageSrc(branding.logoUrl);
 
@@ -226,6 +227,12 @@ export function AlertsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!ticketsEnabled && inboxFilter === 'tickets') {
+      setInboxFilter('all');
+    }
+  }, [ticketsEnabled, inboxFilter]);
 
   useEffect(() => {
     const tick = () => {
@@ -493,7 +500,7 @@ export function AlertsPage() {
                   active={inboxFilter === 'security'}
                   onClick={() => toggleFilter('security')}
                 />
-                {ticketCount > 0 ? (
+                {ticketsEnabled && ticketCount > 0 ? (
                   <AlertFleetStat
                     icon={LifeBuoy}
                     label="Tickets"
@@ -692,6 +699,7 @@ export function AlertsPage() {
                               <AlertLetter
                                 event={event}
                                 staff={staff}
+                                ticketsEnabled={ticketsEnabled}
                                 busy={busyId === event.id}
                                 onDelete={() => void deleteOne(event.id)}
                                 onMarkRead={() => void markRead(event.id)}
@@ -727,17 +735,19 @@ export function AlertsPage() {
 function AlertLetter({
   event,
   staff,
+  ticketsEnabled = true,
   busy,
   onDelete,
   onMarkRead,
 }: {
   event: AlertEventSummary;
   staff?: boolean;
+  ticketsEnabled?: boolean;
   busy: boolean;
   onDelete: () => void;
   onMarkRead: () => void;
 }) {
-  const action = eventAction(event, { staff });
+  const action = eventAction(event, { staff, ticketsEnabled });
   const unreadItem = !event.readAt;
 
   return (

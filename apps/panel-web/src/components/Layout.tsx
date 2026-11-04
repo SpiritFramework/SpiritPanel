@@ -108,14 +108,18 @@ export function AdminLayout({ children, fillHeight }: { children: ReactNode; fil
   const fullAdmin = isFullPanelAdmin(user);
   const shellLayout = appearance.shellLayout;
 
+  const ticketsEnabled = branding.ticketsEnabled !== false;
+
   const visibleAdminGroups = adminGroups
     .map((group) => {
-      if (group.label !== 'Configuration') return group;
-      if (fullAdmin) return group;
-      return {
-        ...group,
-        links: group.links.filter((link) => link.to === '/admin/nests'),
-      };
+      let links = group.links;
+      if (!ticketsEnabled) {
+        links = links.filter((link) => link.to !== '/admin/tickets');
+      }
+      if (group.label === 'Configuration' && !fullAdmin) {
+        links = links.filter((link) => link.to === '/admin/nests');
+      }
+      return { ...group, links };
     })
     .filter((group) => group.links.length > 0);
 
@@ -398,6 +402,7 @@ export function Button({
   type = 'button',
   disabled,
   title,
+  form,
   className = '',
 }: {
   children: ReactNode;
@@ -407,6 +412,8 @@ export function Button({
   type?: 'button' | 'submit';
   disabled?: boolean;
   title?: string;
+  /** Associates a submit button with a form by id (HTML form attribute). */
+  form?: string;
   className?: string;
 }) {
   return (
@@ -415,6 +422,7 @@ export function Button({
       disabled={disabled}
       onClick={onClick}
       title={title}
+      form={form}
       className={`ds-btn ${BUTTON_VARIANTS[variant]} ${BUTTON_SIZES[size]} ${className}`}
     >
       {children}

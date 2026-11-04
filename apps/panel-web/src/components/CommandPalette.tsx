@@ -106,7 +106,10 @@ export function CommandPalette() {
         { id: 'admin-activity', label: 'Activity', icon: Activity, to: '/admin/activity', group: 'Admin' },
       );
       if (isFullAdmin) {
-        list.push({ id: 'admin-settings', label: 'Settings', icon: Settings, to: '/admin/settings', group: 'Admin' });
+        list.push(
+          { id: 'admin-users-new', label: 'Create user', icon: Users, to: '/admin/users/new', group: 'Admin', keywords: 'add account' },
+          { id: 'admin-settings', label: 'Settings', icon: Settings, to: '/admin/settings', group: 'Admin' },
+        );
       }
     }
     for (const s of servers) {

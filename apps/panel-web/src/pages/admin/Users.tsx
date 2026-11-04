@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { AdminLayout, Page } from '../../components/Layout';
-import { CreateUserModal } from '../../components/CreateUserModal';
 import { UsersFleetOverview } from '../../components/admin/users/UsersFleetOverview';
 import { UsersHeader } from '../../components/admin/users/UsersHeader';
 import { UsersListPanel } from '../../components/admin/users/UsersListPanel';
@@ -14,7 +12,6 @@ import { AlertBanner } from '../../components/ui';
 export function AdminUsers() {
   const { user: currentUser } = useAuth();
   const fullAdmin = isFullPanelAdmin(currentUser);
-  const [showCreate, setShowCreate] = useState(false);
 
   const {
     search,
@@ -36,7 +33,6 @@ export function AdminUsers() {
     hasActiveFilters,
     clearFilters,
     refresh,
-    reload,
   } = useAdminUsers();
 
   return (
@@ -48,7 +44,6 @@ export function AdminUsers() {
             refreshing={refreshing}
             fullAdmin={fullAdmin}
             onRefresh={() => void refresh()}
-            onCreate={() => setShowCreate(true)}
           />
 
           {error ? (
@@ -99,18 +94,7 @@ export function AdminUsers() {
             lastUpdated={lastUpdated}
             currentUserId={currentUser?.id}
             fullAdmin={fullAdmin}
-            onCreate={() => setShowCreate(true)}
           />
-
-          {fullAdmin && showCreate ? (
-            <CreateUserModal
-              onClose={() => setShowCreate(false)}
-              onCreated={() => {
-                setShowCreate(false);
-                void reload();
-              }}
-            />
-          ) : null}
         </AdminPageStack>
       </Page>
     </AdminLayout>

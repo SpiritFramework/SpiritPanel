@@ -168,12 +168,32 @@
   background: #3b82f6;
 }
 
+.ds-admin-act__bar-fill--users {
+  background: #8b5cf6;
+}
+
+.ds-admin-act__bar-fill--servers {
+  background: #059669;
+}
+
+.ds-admin-act__bar-fill--nodes {
+  background: #0ea5e9;
+}
+
+.ds-admin-act__bar-fill--settings {
+  background: #14b8a6;
+}
+
 .ds-admin-act__bar-fill--admin {
   background: #d97706;
 }
 
 .ds-admin-act__bar-fill--server {
   background: #059669;
+}
+
+.ds-admin-act__scopes {
+  margin-top: 0.15rem;
 }
 
 .ds-admin-act__bar-value {

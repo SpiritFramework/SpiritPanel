@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { api, type TicketSummary } from '../../lib/api';
+import { useBranding } from '../../context/BrandingContext';
 import { AdminLayout, Page } from '../../components/Layout';
 import { UserAvatar } from '../../components/UserAvatar';
 import {
@@ -45,6 +46,8 @@ function needsStaffReply(ticket: TicketSummary) {
 }
 
 export function AdminTicketsPage() {
+  const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
   const [items, setItems] = useState<TicketSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,6 +55,11 @@ export function AdminTicketsPage() {
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
+    if (!ticketsEnabled) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -62,7 +70,7 @@ export function AdminTicketsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ticketsEnabled]);
 
   useEffect(() => {
     void load();
@@ -130,6 +138,10 @@ export function AdminTicketsPage() {
   function clearFilters() {
     setFilter('all');
     setSearch('');
+  }
+
+  if (!ticketsEnabled) {
+    return <Navigate to="/admin" replace />;
   }
 
   return (

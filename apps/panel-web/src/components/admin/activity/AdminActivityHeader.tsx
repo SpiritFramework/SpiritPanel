@@ -1,7 +1,10 @@
 import {
+  HardDrive,
   LayoutDashboard,
   RefreshCw,
   ScrollText,
+  Server,
+  Settings,
   ShieldAlert,
   Trash2,
   Users,
@@ -16,20 +19,55 @@ export const ACTIVITY_SCOPES = [
     shortLabel: 'All',
     description: 'Auth and admin audit events across the panel',
     icon: LayoutDashboard,
+    tone: 'all',
   },
   {
     id: 'auth',
     label: 'Auth & signups',
     shortLabel: 'Auth',
-    description: 'Logins, registrations, and profile changes',
+    description: 'Logins, registrations, Discord links, and profile changes',
     icon: Users,
+    tone: 'auth',
+  },
+  {
+    id: 'users',
+    label: 'User accounts',
+    shortLabel: 'Users',
+    description: 'Account create, update, suspend, and delete actions',
+    icon: Users,
+    tone: 'users',
+  },
+  {
+    id: 'servers',
+    label: 'Servers',
+    shortLabel: 'Servers',
+    description: 'Provisioning, suspend, console, and server admin changes',
+    icon: Server,
+    tone: 'servers',
+  },
+  {
+    id: 'nodes',
+    label: 'Infrastructure',
+    shortLabel: 'Nodes',
+    description: 'Nodes, locations, and allocation changes',
+    icon: HardDrive,
+    tone: 'nodes',
+  },
+  {
+    id: 'settings',
+    label: 'Config & templates',
+    shortLabel: 'Config',
+    description: 'Panel settings, nests, eggs, and activity clears',
+    icon: Settings,
+    tone: 'settings',
   },
   {
     id: 'admin',
-    label: 'Admin actions',
+    label: 'All admin',
     shortLabel: 'Admin',
-    description: 'Staff changes, provisioning, and infrastructure updates',
+    description: 'Every admin.* audit event in one view',
     icon: ShieldAlert,
+    tone: 'admin',
   },
 ] as const;
 
@@ -107,12 +145,16 @@ export function AdminActivityHeader({
         ]}
       />
       <AdminFilterChips
+        className="ds-admin-act__scopes"
         label="Activity scope"
         value={activeScope}
         onChange={(id) => onScopeChange(id as ActivityScope)}
         options={ACTIVITY_SCOPES.map((scope) => ({
           id: scope.id,
           label: scope.shortLabel,
+          icon: scope.icon,
+          tone: scope.tone,
+          hint: scope.description,
         }))}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AdminDetailNotFound } from '../../components/AdminDetailLayout';
@@ -20,7 +20,7 @@ export function AdminEggDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const ctrl = useEggDetail(eggId);
-  const { detail, loading, error, hasChanges, saved } = ctrl;
+  const { detail, loading, error, hasChanges, saved, save } = ctrl;
 
   const tab = readEggDetailTab(searchParams.get('tab'));
 
@@ -48,6 +48,11 @@ export function AdminEggDetail() {
     );
   }
 
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    await save();
+  }
+
   if (loading) {
     return (
       <AdminLayout>
@@ -70,9 +75,14 @@ export function AdminEggDetail() {
 
   return (
     <AdminLayout>
-      <div className="ds-egg-page">
-        <div className="ds-egg-header-wrap">
-          <EggDetailHeader detail={detail} />
+      <form onSubmit={(e) => void handleSave(e)} className="ds-egg-page ds-ud-page">
+        <div className="ds-egg-header-wrap ds-ud-header-wrap">
+          <EggDetailHeader
+            detail={detail}
+            onManage={() => changeTab('manage')}
+            onVariables={() => changeTab('variables')}
+            onConfig={() => changeTab('config')}
+          />
           <EggDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
         </div>
 
@@ -96,7 +106,7 @@ export function AdminEggDetail() {
         {tab !== 'variables' && (tab === 'manage' || hasChanges || saved) ? (
           <EggDetailSaveBar ctrl={ctrl} />
         ) : null}
-      </div>
+      </form>
     </AdminLayout>
   );
 }

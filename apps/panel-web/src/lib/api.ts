@@ -709,7 +709,14 @@ export const api = {
       }),
     deleteServer: (id: string) => request(`/admin/servers/${id}`, { method: 'DELETE' }),
     activity: (
-      scope: 'panel' | 'auth' | 'admin' = 'panel',
+      scope:
+        | 'panel'
+        | 'auth'
+        | 'admin'
+        | 'users'
+        | 'servers'
+        | 'nodes'
+        | 'settings' = 'panel',
       options?: { limit?: number; cursor?: string | null },
     ) => {
       const params = new URLSearchParams({ scope });
@@ -717,7 +724,16 @@ export const api = {
       if (options?.cursor) params.set('cursor', options.cursor);
       return request<ActivityPageResponse>(`/admin/activity?${params}`);
     },
-    clearActivity: (scope: 'panel' | 'auth' | 'admin' = 'panel') =>
+    clearActivity: (
+      scope:
+        | 'panel'
+        | 'auth'
+        | 'admin'
+        | 'users'
+        | 'servers'
+        | 'nodes'
+        | 'settings' = 'panel',
+    ) =>
       request<{ deleted: number; scope: string }>(`/admin/activity?scope=${scope}`, {
         method: 'DELETE',
       }),

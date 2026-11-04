@@ -102,6 +102,7 @@ import {
   upsertPanelSetting,
   DEFAULT_TICKETS,
   getTicketsSettings,
+  isTicketsEnabled,
 } from '../lib/panel-settings.js';
 import { discordRedirectUri } from '../lib/discord-oauth.js';
 import { previewEmailTemplate, emailTemplateSchema } from '../lib/email-templates.js';
@@ -132,6 +133,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.get('/dashboard', async () => {
     const openTicketStatuses = ['open', 'awaiting_reply', 'in_progress'] as const;
+    const ticketsEnabled = await isTicketsEnabled();
 
     const [
       users,
@@ -193,24 +195,26 @@ export async function adminRoutes(app: FastifyInstance) {
           egg: { select: { name: true, logoUrl: true } },
         },
       }),
-      prisma.supportTicket.findMany({
-        where: { status: { in: [...openTicketStatuses] } },
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          number: true,
-          subject: true,
-          priority: true,
-          status: true,
-          updatedAt: true,
-          user: { select: { username: true, firstName: true, lastName: true } },
-          messages: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            select: { isStaff: true },
-          },
-        },
-      }),
+      ticketsEnabled
+        ? prisma.supportTicket.findMany({
+            where: { status: { in: [...openTicketStatuses] } },
+            orderBy: { updatedAt: 'desc' },
+            select: {
+              id: true,
+              number: true,
+              subject: true,
+              priority: true,
+              status: true,
+              updatedAt: true,
+              user: { select: { username: true, firstName: true, lastName: true } },
+              messages: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { isStaff: true },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const allocationTotals = await loadNodeAllocationTotals(prisma);
@@ -2397,7 +2401,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // Activity
   app.get('/activity', async (request) => {
     const q = request.query as { limit?: string; scope?: string; cursor?: string };
-    const scope = q.scope === 'auth' || q.scope === 'admin' ? q.scope : 'panel';
+    const scope = parsePanelActivityScope(q.scope);
     const limit = Math.min(Number(q.limit ?? 15), 50);
 
     return paginateActivityLogs({
@@ -2413,7 +2417,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.delete('/activity', { preHandler: requireFullAdmin }, async (request) => {
     const q = request.query as { scope?: string };
-    const scope = q.scope === 'auth' || q.scope === 'admin' ? q.scope : 'panel';
+    const scope = parsePanelActivityScope(q.scope);
     const where = panelActivityFilter(scope);
     const result = await deleteActivityLogs(where);
     await logAdminActivity(request, {
@@ -3019,9 +3023,56 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 }
 
-function panelActivityFilter(scope: 'panel' | 'auth' | 'admin' = 'panel') {
+type PanelActivityScope =
+  | 'panel'
+  | 'auth'
+  | 'admin'
+  | 'users'
+  | 'servers'
+  | 'nodes'
+  | 'settings';
+
+const PANEL_ACTIVITY_SCOPES: PanelActivityScope[] = [
+  'panel',
+  'auth',
+  'admin',
+  'users',
+  'servers',
+  'nodes',
+  'settings',
+];
+
+function parsePanelActivityScope(value: string | undefined): PanelActivityScope {
+  return PANEL_ACTIVITY_SCOPES.includes(value as PanelActivityScope)
+    ? (value as PanelActivityScope)
+    : 'panel';
+}
+
+function panelActivityFilter(scope: PanelActivityScope = 'panel') {
   if (scope === 'auth') return { event: { startsWith: 'auth.' } };
   if (scope === 'admin') return { event: { startsWith: 'admin.' } };
+  if (scope === 'users') return { event: { startsWith: 'admin.user.' } };
+  if (scope === 'servers') return { event: { startsWith: 'admin.server.' } };
+  if (scope === 'nodes') {
+    return {
+      OR: [
+        { event: { startsWith: 'admin.node.' } },
+        { event: { startsWith: 'admin.allocation.' } },
+        { event: { startsWith: 'admin.location.' } },
+      ],
+    };
+  }
+  if (scope === 'settings') {
+    return {
+      OR: [
+        { event: { startsWith: 'admin.settings.' } },
+        { event: { startsWith: 'admin.nest.' } },
+        { event: { startsWith: 'admin.egg.' } },
+        { event: { startsWith: 'admin.activity.' } },
+        { event: { startsWith: 'admin.plugin.' } },
+      ],
+    };
+  }
   return {
     OR: PANEL_ACTIVITY_PREFIXES.map((prefix) => ({ event: { startsWith: prefix } })),
   };

@@ -28,6 +28,7 @@ export function DashboardHeader({
   onRefresh: () => void;
 }) {
   const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
   const nodesOffline = stats.nodes - stats.nodesOnline;
 
   return (
@@ -35,7 +36,12 @@ export function DashboardHeader({
       <AdminHero
         eyebrow={`${greetingForHour()}, ${name}`}
         title="Admin Panel"
-        description={branding.tagline || 'Fleet overview across servers, nodes, and support'}
+        description={
+          branding.tagline ||
+          (ticketsEnabled
+            ? 'Fleet overview across servers, nodes, and support'
+            : 'Fleet overview across servers and nodes')
+        }
         pill={nodesOffline > 0 ? `${nodesOffline} node offline` : `${stats.nodesOnline} nodes online`}
         pillTone={nodesOffline > 0 ? 'warn' : stats.nodes > 0 ? 'ok' : 'neutral'}
         actions={
@@ -66,12 +72,16 @@ export function DashboardHeader({
             tone: nodesOffline > 0 ? 'warning' : stats.nodesOnline > 0 ? 'success' : undefined,
           },
           { icon: Users, label: 'Users', value: stats.users },
-          {
-            icon: LifeBuoy,
-            label: 'Tickets',
-            value: ticketQueue.open,
-            tone: ticketQueue.open > 0 ? 'warning' : undefined,
-          },
+          ...(ticketsEnabled
+            ? [
+                {
+                  icon: LifeBuoy,
+                  label: 'Tickets',
+                  value: ticketQueue.open,
+                  tone: ticketQueue.open > 0 ? ('warning' as const) : undefined,
+                },
+              ]
+            : []),
           { icon: Server, label: 'Allocations', value: `${stats.allocationsUsed}/${stats.allocationsTotal}` },
         ]}
       />

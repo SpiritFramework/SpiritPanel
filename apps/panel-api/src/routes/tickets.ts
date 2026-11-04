@@ -319,103 +319,127 @@ export async function adminTicketRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireSession);
   app.addHook('preHandler', requireAdmin);
 
-  app.get('/tickets', async (request) => {
-    const query = adminListQuery.parse(request.query);
-    const where = {
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.priority ? { priority: query.priority } : {}),
-      ...(query.assigneeId ? { assigneeId: query.assigneeId } : {}),
-      ...(query.search
-        ? {
-            OR: [
-              { subject: { contains: query.search, mode: 'insensitive' as const } },
-              { user: { username: { contains: query.search, mode: 'insensitive' as const } } },
-              { user: { email: { contains: query.search, mode: 'insensitive' as const } } },
-              ...(Number.isFinite(Number(query.search))
-                ? [{ number: Number(query.search) }]
-                : []),
-            ],
-          }
-        : {}),
-    };
+  app.get('/tickets', async (request, reply) => {
+    try {
+      await assertTicketsEnabledForClients();
+      const query = adminListQuery.parse(request.query);
+      const where = {
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.priority ? { priority: query.priority } : {}),
+        ...(query.assigneeId ? { assigneeId: query.assigneeId } : {}),
+        ...(query.search
+          ? {
+              OR: [
+                { subject: { contains: query.search, mode: 'insensitive' as const } },
+                { user: { username: { contains: query.search, mode: 'insensitive' as const } } },
+                { user: { email: { contains: query.search, mode: 'insensitive' as const } } },
+                ...(Number.isFinite(Number(query.search))
+                  ? [{ number: Number(query.search) }]
+                  : []),
+              ],
+            }
+          : {}),
+      };
 
-    const tickets = await prisma.supportTicket.findMany({
-      where,
-      include: ticketInclude,
-      orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
-      take: 200,
-    });
+      const tickets = await prisma.supportTicket.findMany({
+        where,
+        include: ticketInclude,
+        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+        take: 200,
+      });
 
-    return { items: tickets.map(serializeTicketSummary) };
+      return { items: tickets.map(serializeTicketSummary) };
+    } catch (err) {
+      return ticketError(reply, err);
+    }
   });
 
   app.get('/tickets/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const ticket = await prisma.supportTicket.findUnique({
-      where: { id },
-      include: ticketDetailInclude,
-    });
-    if (!ticket) return reply.status(404).send({ error: 'Not found' });
+    try {
+      await assertTicketsEnabledForClients();
+      const { id } = request.params as { id: string };
+      const ticket = await prisma.supportTicket.findUnique({
+        where: { id },
+        include: ticketDetailInclude,
+      });
+      if (!ticket) return reply.status(404).send({ error: 'Not found' });
 
-    return {
-      ...serializeTicketSummary({ ...ticket, messages: ticket.messages.slice(-1) }),
-      messages: ticket.messages.map(serializeTicketMessage),
-    };
+      return {
+        ...serializeTicketSummary({ ...ticket, messages: ticket.messages.slice(-1) }),
+        messages: ticket.messages.map(serializeTicketMessage),
+      };
+    } catch (err) {
+      return ticketError(reply, err);
+    }
   });
 
   app.patch('/tickets/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = adminPatchSchema.parse(request.body);
+    try {
+      await assertTicketsEnabledForClients();
+      const { id } = request.params as { id: string };
+      const body = adminPatchSchema.parse(request.body);
 
-    const existing = await prisma.supportTicket.findUnique({ where: { id } });
-    if (!existing) return reply.status(404).send({ error: 'Not found' });
+      const existing = await prisma.supportTicket.findUnique({ where: { id } });
+      if (!existing) return reply.status(404).send({ error: 'Not found' });
 
-    if (body.assigneeId) {
-      await assertAssigneeIsStaff(body.assigneeId);
+      if (body.assigneeId) {
+        await assertAssigneeIsStaff(body.assigneeId);
+      }
+
+      const closedAt =
+        body.status === 'closed' || body.status === 'resolved'
+          ? new Date()
+          : body.status && ['open', 'awaiting_reply', 'in_progress'].includes(body.status)
+            ? null
+            : undefined;
+
+      const updated = await prisma.supportTicket.update({
+        where: { id },
+        data: {
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.priority !== undefined ? { priority: body.priority } : {}),
+          ...(body.assigneeId !== undefined ? { assigneeId: body.assigneeId } : {}),
+          ...(closedAt !== undefined ? { closedAt } : {}),
+        },
+        include: ticketDetailInclude,
+      });
+
+      await logAdminActivity(request, {
+        event: 'admin.ticket.updated',
+        description: `Updated ticket #${updated.number} (${updated.status}, ${updated.priority})`,
+      });
+
+      return {
+        ...serializeTicketSummary({ ...updated, messages: updated.messages.slice(-1) }),
+        messages: updated.messages.map(serializeTicketMessage),
+      };
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return reply.status(422).send({ error: err.flatten().fieldErrors });
+      }
+      return ticketError(reply, err);
     }
-
-    const closedAt =
-      body.status === 'closed' || body.status === 'resolved'
-        ? new Date()
-        : body.status && ['open', 'awaiting_reply', 'in_progress'].includes(body.status)
-          ? null
-          : undefined;
-
-    const updated = await prisma.supportTicket.update({
-      where: { id },
-      data: {
-        ...(body.status !== undefined ? { status: body.status } : {}),
-        ...(body.priority !== undefined ? { priority: body.priority } : {}),
-        ...(body.assigneeId !== undefined ? { assigneeId: body.assigneeId } : {}),
-        ...(closedAt !== undefined ? { closedAt } : {}),
-      },
-      include: ticketDetailInclude,
-    });
-
-    await logAdminActivity(request, {
-      event: 'admin.ticket.updated',
-      description: `Updated ticket #${updated.number} (${updated.status}, ${updated.priority})`,
-    });
-
-    return {
-      ...serializeTicketSummary({ ...updated, messages: updated.messages.slice(-1) }),
-      messages: updated.messages.map(serializeTicketMessage),
-    };
   });
 
   app.get('/tickets/attachments/:attachmentId', async (request, reply) => {
-    const { attachmentId } = request.params as { attachmentId: string };
-    const user = request.user!;
-    const file = await loadTicketAttachmentForUser(attachmentId, user.id, user);
-    if (!file) return reply.status(404).send({ error: 'Not found' });
-    return reply
-      .header('Content-Type', file.mimeType)
-      .header('Content-Disposition', `inline; filename="${file.filename}"`)
-      .send(file.data);
+    try {
+      await assertTicketsEnabledForClients();
+      const { attachmentId } = request.params as { attachmentId: string };
+      const user = request.user!;
+      const file = await loadTicketAttachmentForUser(attachmentId, user.id, user);
+      if (!file) return reply.status(404).send({ error: 'Not found' });
+      return reply
+        .header('Content-Type', file.mimeType)
+        .header('Content-Disposition', `inline; filename="${file.filename}"`)
+        .send(file.data);
+    } catch (err) {
+      return ticketError(reply, err);
+    }
   });
 
   app.post('/tickets/:id/messages', async (request, reply) => {
     try {
+      await assertTicketsEnabledForClients();
       const { id } = request.params as { id: string };
       const staffId = request.user!.id;
 
@@ -445,18 +469,23 @@ export async function adminTicketRoutes(app: FastifyInstance) {
   });
 
   app.delete('/tickets/:id', async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.supportTicket.findUnique({ where: { id }, select: { number: true } });
-    if (!existing) return reply.status(404).send({ error: 'Not found' });
+    try {
+      await assertTicketsEnabledForClients();
+      const { id } = request.params as { id: string };
+      const existing = await prisma.supportTicket.findUnique({ where: { id }, select: { number: true } });
+      if (!existing) return reply.status(404).send({ error: 'Not found' });
 
-    await prisma.supportTicket.delete({ where: { id } });
-    await deleteTicketAttachments(id);
+      await prisma.supportTicket.delete({ where: { id } });
+      await deleteTicketAttachments(id);
 
-    await logAdminActivity(request, {
-      event: 'admin.ticket.deleted',
-      description: `Deleted ticket #${existing.number}`,
-    });
+      await logAdminActivity(request, {
+        event: 'admin.ticket.deleted',
+        description: `Deleted ticket #${existing.number}`,
+      });
 
-    return { deleted: true };
+      return { deleted: true };
+    } catch (err) {
+      return ticketError(reply, err);
+    }
   });
 }

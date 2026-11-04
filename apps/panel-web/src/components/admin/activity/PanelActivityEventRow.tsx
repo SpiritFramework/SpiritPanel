@@ -2,21 +2,17 @@ import { Link } from 'react-router-dom';
 import { Server, User } from 'lucide-react';
 import {
   formatActivityTime,
-  getActivityCategory,
   getActivityMeta,
   type ActivityEntry,
 } from '../../../lib/activity';
-import type { PanelActivityCategory } from './panel-activity-utils';
-
-const CATEGORY_LABEL: Record<PanelActivityCategory, string> = {
-  auth: 'Auth',
-  admin: 'Admin',
-  server: 'Server',
-};
+import {
+  getPanelActivityCategory,
+  PANEL_CATEGORY_META,
+} from './panel-activity-utils';
 
 export function PanelActivityEventRow({ entry }: { entry: ActivityEntry }) {
   const meta = getActivityMeta(entry.event);
-  const category = getActivityCategory(entry.event);
+  const category = getPanelActivityCategory(entry.event);
   const Icon = meta.icon;
   const [iconText, iconBg] = meta.color.split(' ');
   const title = entry.description?.trim() || meta.label;
@@ -33,7 +29,9 @@ export function PanelActivityEventRow({ entry }: { entry: ActivityEntry }) {
           <div className="min-w-0 flex-1">
             <div className="ds-ad-act-event-type-row">
               <span className="ds-ad-act-event-type">{meta.label}</span>
-              <span className={`ds-ad-act-cat ds-ad-act-cat--${category}`}>{CATEGORY_LABEL[category]}</span>
+              <span className={`ds-ad-act-cat ds-ad-act-cat--${category}`}>
+                {PANEL_CATEGORY_META[category].shortLabel}
+              </span>
             </div>
             <p className="ds-ad-act-event-title">{title}</p>
           </div>

@@ -20,8 +20,14 @@ export function NestManageDashboard({
   if (!fullAdmin) {
     return (
       <div className="ds-nst-manage">
-        <NestDetailPanel icon={Layers} title="Nest details" description="Read-only view">
-          <dl className="ds-nst-readonly-grid">
+        <NestDetailPanel
+          tone="identity"
+          icon={Layers}
+          eyebrow="Profile"
+          title="Nest details"
+          description="Read-only view"
+        >
+          <dl className="ds-nst-readonly-grid ds-ud-readonly-grid">
             <div>
               <dt>Name</dt>
               <dd>{detail.name}</dd>
@@ -43,11 +49,13 @@ export function NestManageDashboard({
   return (
     <div className="ds-nst-manage">
       <NestDetailPanel
+        tone="identity"
         icon={Layers}
+        eyebrow="Profile"
         title="Nest details"
         description="Name, description, and author contact"
       >
-        <div className="ds-nst-form-grid">
+        <div className="ds-nd-st-fields">
           <Input
             label="Name"
             value={form.name ?? ''}
@@ -58,27 +66,32 @@ export function NestManageDashboard({
             label="Author"
             value={form.author ?? ''}
             onChange={(e) => setForm({ ...form, author: e.target.value })}
+            hint="Usually an email or project name"
           />
-          <Textarea
-            label="Description"
-            value={form.description ?? ''}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-          />
+          <div className="ds-nd-st-fields-span">
+            <Textarea
+              label="Description"
+              value={form.description ?? ''}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              placeholder="Optional summary shown in the nest catalog"
+            />
+          </div>
         </div>
       </NestDetailPanel>
 
       <NestDetailPanel
-        icon={Trash2}
-        title="Danger zone"
-        description="Permanently remove this nest and all its eggs"
         tone="danger"
+        icon={Trash2}
+        eyebrow="Danger zone"
+        title="Delete nest"
+        description="Permanently remove this nest and all its eggs"
       >
         {!confirmDelete ? (
-          <div className="ds-nst-danger-row">
-            <p className="ds-nst-danger-desc">
+          <div className="ds-nst-danger-row ds-ud-danger-row">
+            <p className="ds-nst-danger-desc ds-ud-danger-desc">
               {canDelete
-                ? 'Deleting a nest removes all eggs inside it.'
+                ? 'Deleting a nest removes all eggs inside it. This cannot be undone.'
                 : 'Remove all servers using eggs in this nest before deleting.'}
             </p>
             <Button type="button" variant="danger" disabled={!canDelete} onClick={() => setConfirmDelete(true)}>

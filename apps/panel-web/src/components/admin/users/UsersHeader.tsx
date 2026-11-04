@@ -7,13 +7,11 @@ export function UsersHeader({
   refreshing,
   fullAdmin,
   onRefresh,
-  onCreate,
 }: {
   stats: UserFleetStats;
   refreshing: boolean;
   fullAdmin: boolean;
   onRefresh: () => void;
-  onCreate: () => void;
 }) {
   const statusLabel =
     stats.suspended > 0
@@ -39,7 +37,7 @@ export function UsersHeader({
               Refresh
             </AdminToolButton>
             {fullAdmin ? (
-              <AdminToolButton onClick={onCreate} primary>
+              <AdminToolButton to="/admin/users/new" primary>
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Create user
               </AdminToolButton>

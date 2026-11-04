@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, Copy, Egg, Layers, Server, Upload, User } from 'lucide-react';
+import { ChevronRight, Copy, Egg, Layers, Mail, Server, Upload, User } from 'lucide-react';
 import type { AdminNestDetail } from '../../../lib/api';
 import { StatusPill } from '../../ui';
 import type { NestDetailTab } from '../../../pages/admin/nest-detail/helpers';
@@ -41,12 +41,17 @@ export function NestDetailHeader({
   detail,
   fullAdmin,
   onImport,
+  onManage,
+  onViewEggs,
 }: {
   detail: AdminNestDetail;
   fullAdmin: boolean;
   onImport?: () => void;
+  onManage?: () => void;
+  onViewEggs?: () => void;
 }) {
   const hasEggs = detail.eggCount > 0;
+  const enabledEggs = detail.eggs.filter((e) => e.enabled).length;
   const authorShort = detail.author.includes('@')
     ? detail.author.split('@')[0]!
     : detail.author;
@@ -54,64 +59,87 @@ export function NestDetailHeader({
   const stats: { icon: LucideIcon; label: string; value: string }[] = [
     { icon: Egg, label: 'Eggs', value: String(detail.eggCount) },
     { icon: Server, label: 'Servers', value: String(detail.serverCount) },
+    { icon: Layers, label: 'Enabled', value: String(enabledEggs) },
     { icon: User, label: 'Author', value: authorShort },
   ];
 
   return (
     <header
-      className={`ds-nst-header ds-adm-entity${hasEggs ? '' : ' ds-nst-header--empty'} ds-adm-entity--${hasEggs ? 'online' : 'offline'}`}
+      className={`ds-nst-header ds-adm-entity ds-ud-header${hasEggs ? ' ds-nst-header--ready' : ' ds-nst-header--empty'} ds-adm-entity--${hasEggs ? 'online' : 'offline'}`}
     >
-      <nav className="ds-nst-header-crumb ds-adm-entity-crumb" aria-label="Breadcrumb">
+      <nav className="ds-nst-header-crumb ds-adm-entity-crumb ds-ud-header-crumb" aria-label="Breadcrumb">
         <Link to="/admin/nests">Nests</Link>
         <ChevronRight className="ds-icon ds-icon--sm opacity-40" aria-hidden />
         <span className="truncate">{detail.name}</span>
       </nav>
 
-      <div className="ds-nst-header-body">
-        <div className="ds-nst-header-accent" style={{ background: NEST_GRADIENT }} aria-hidden />
+      <div className="ds-nst-header-body ds-ud-header-body">
+        <div className="ds-ud-header-glow" aria-hidden />
+        <div className="ds-nst-header-accent ds-ud-header-accent" style={{ background: NEST_GRADIENT }} aria-hidden />
 
-        <div className="ds-nst-header-main">
-          <div className="ds-nst-header-identity">
+        <div className="ds-nst-header-main ds-ud-header-main">
+          <div className="ds-nst-header-identity ds-ud-header-identity">
             <div className="ds-nst-header-icon-wrap" style={{ background: NEST_GRADIENT }} aria-hidden>
               <Layers className="h-5 w-5 text-white/90" />
               <span className={`ds-nst-header-pulse${hasEggs ? '' : ' ds-nst-header-pulse--empty'}`} />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="ds-nst-header-title-row">
-                <h1 className="ds-nst-header-title truncate">{detail.name}</h1>
+              <p className="ds-ud-header-eyebrow">Nest manage</p>
+              <div className="ds-nst-header-title-row ds-ud-header-title-row">
+                <h1 className="ds-nst-header-title ds-ud-header-title truncate">{detail.name}</h1>
                 <StatusPill
-                  label={hasEggs ? `${detail.eggCount} eggs` : 'Empty'}
+                  label={hasEggs ? `${detail.eggCount} egg${detail.eggCount === 1 ? '' : 's'}` : 'Empty'}
                   tone={hasEggs ? 'success' : 'neutral'}
                   pulse={hasEggs}
                 />
               </div>
-              <p className="ds-nst-header-sub truncate">
+              <p className="ds-nst-header-sub ds-ud-header-meta truncate">
                 {detail.description || 'No description'}
               </p>
-              <p className="ds-nst-header-meta truncate">by {detail.author}</p>
+              <div className="ds-ud-header-endpoint">
+                <span className="ds-ud-header-scheme" aria-hidden>
+                  <Mail className="h-3 w-3" />
+                </span>
+                <code className="ds-ud-header-fqdn-text truncate">{detail.author}</code>
+              </div>
             </div>
           </div>
 
-          {fullAdmin && onImport ? (
-            <div className="ds-nst-header-actions ds-adm-entity-actions">
+          <div
+            className="ds-nd-toolstrip ds-adm-entity-actions ds-nst-header-actions ds-ud-header-actions"
+            role="group"
+            aria-label="Nest actions"
+          >
+            {onViewEggs ? (
+              <AdminToolButton type="button" onClick={onViewEggs}>
+                <Egg className="h-3.5 w-3.5" aria-hidden />
+                Eggs
+              </AdminToolButton>
+            ) : null}
+            {onManage ? (
+              <AdminToolButton type="button" onClick={onManage}>
+                Manage
+              </AdminToolButton>
+            ) : null}
+            {fullAdmin && onImport ? (
               <AdminToolButton type="button" onClick={onImport} primary>
                 <Upload className="h-3.5 w-3.5" aria-hidden />
                 Import egg
               </AdminToolButton>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
-        <div className="ds-nst-header-stats" role="list" aria-label="Nest summary">
+        <div className="ds-nst-header-stats ds-ud-header-stats" role="list" aria-label="Nest summary">
           {stats.map((stat) => (
-            <div key={stat.label} className="ds-nst-header-stat" role="listitem">
-              <span className="ds-nst-header-stat-icon" aria-hidden>
+            <div key={stat.label} className="ds-nst-header-stat ds-ud-header-stat" role="listitem">
+              <span className="ds-nst-header-stat-icon ds-ud-header-stat-icon" aria-hidden>
                 <stat.icon className="h-3.5 w-3.5" />
               </span>
-              <span className="ds-nst-header-stat-copy">
-                <span className="ds-nst-header-stat-label">{stat.label}</span>
-                <span className="ds-nst-header-stat-value">{stat.value}</span>
+              <span className="ds-nst-header-stat-copy ds-ud-header-stat-copy">
+                <span className="ds-nst-header-stat-label ds-ud-header-stat-label">{stat.label}</span>
+                <span className="ds-nst-header-stat-value ds-ud-header-stat-value">{stat.value}</span>
               </span>
             </div>
           ))}
@@ -121,54 +149,48 @@ export function NestDetailHeader({
   );
 }
 
-export function NestDetailQuickDock({
-  items,
-}: {
-  items: { icon: LucideIcon; label: string; hint: string; onClick: () => void }[];
-}) {
-  return (
-    <nav className="ds-nst-dock" aria-label="Quick navigation">
-      {items.map((item) => (
-        <button key={item.label} type="button" className="ds-nst-dock-item" onClick={item.onClick}>
-          <span className="ds-nst-dock-icon" aria-hidden>
-            <item.icon className="ds-icon ds-icon--sm" />
-          </span>
-          <span className="ds-nst-dock-copy">
-            <span className="ds-nst-dock-label">{item.label}</span>
-            <span className="ds-nst-dock-hint">{item.hint}</span>
-          </span>
-          <ChevronRight className="ds-nst-dock-chevron ds-icon ds-icon--sm" aria-hidden />
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 export function NestDetailPanel({
   icon: Icon,
+  eyebrow,
   title,
   description,
   badge,
+  actions,
   children,
   className,
   tone,
 }: {
   icon: LucideIcon;
+  eyebrow?: string;
   title: string;
   description?: string;
-  badge?: string;
+  badge?: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   className?: string;
-  tone?: 'danger' | 'warning';
+  tone?: 'danger' | 'warning' | 'identity' | 'capacity' | 'connection' | 'trends' | 'wings';
 }) {
+  const sectionTone =
+    tone === 'danger'
+      ? 'danger'
+      : tone === 'identity' ||
+          tone === 'capacity' ||
+          tone === 'connection' ||
+          tone === 'trends' ||
+          tone === 'wings'
+        ? tone
+        : 'default';
+
   return (
     <AdminSection
-      className={`ds-nst-panel${tone ? ` ds-nst-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
+      className={`ds-nst-panel${tone === 'warning' || tone === 'danger' ? ` ds-nst-panel--${tone}` : ''}${className ? ` ${className}` : ''}`}
       icon={Icon}
+      eyebrow={eyebrow}
       title={title}
       description={description}
       badge={badge}
-      tone={tone === 'danger' ? 'danger' : 'default'}
+      actions={actions}
+      tone={sectionTone}
     >
       {children}
     </AdminSection>
@@ -181,16 +203,16 @@ export function NestDetailMetaGrid({
   items: { label: string; value: string; mono?: boolean; onCopy?: () => void; copied?: boolean }[];
 }) {
   return (
-    <dl className="ds-nst-meta-grid">
+    <dl className="ds-nst-meta-grid ds-ud-meta-grid">
       {items.map((item) => (
-        <div key={item.label} className="ds-nst-meta-item">
-          <dt className="ds-nst-meta-label">{item.label}</dt>
-          <dd className={`ds-nst-meta-value${item.mono ? ' ds-text-mono' : ''}`}>
+        <div key={item.label} className="ds-nst-meta-item ds-ud-meta-item">
+          <dt className="ds-nst-meta-label ds-ud-meta-label">{item.label}</dt>
+          <dd className={`ds-nst-meta-value ds-ud-meta-value${item.mono ? ' ds-text-mono' : ''}`}>
             <span className="truncate" title={item.value}>
               {item.value}
             </span>
             {item.onCopy ? (
-              <button type="button" className="ds-nst-meta-copy" onClick={item.onCopy}>
+              <button type="button" className="ds-nst-meta-copy ds-ud-meta-copy" onClick={item.onCopy}>
                 <Copy className="h-3 w-3 inline" aria-hidden />
                 {item.copied ? 'Copied' : 'Copy'}
               </button>
@@ -199,5 +221,39 @@ export function NestDetailMetaGrid({
         </div>
       ))}
     </dl>
+  );
+}
+
+export function NestDetailUsageMeter({
+  label,
+  value,
+  max,
+  hint,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  hint?: string;
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="ds-ud-usage-meter">
+      <div className="ds-ud-usage-meter-head">
+        <span>{label}</span>
+        <span className="ds-ud-usage-meter-value">
+          {value}
+          {max > 0 ? ` / ${max}` : ''}
+        </span>
+      </div>
+      {max > 0 ? (
+        <div className="ds-ud-usage-meter-track" aria-hidden>
+          <span
+            className="ds-ud-usage-meter-fill"
+            style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%` }}
+          />
+        </div>
+      ) : null}
+      {hint ? <p className="ds-ud-usage-meter-hint">{hint}</p> : null}
+    </div>
   );
 }

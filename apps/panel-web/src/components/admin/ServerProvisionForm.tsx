@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Egg, Gauge, Server, Zap } from 'lucide-react';
 import {
   api,
@@ -13,11 +13,13 @@ import {
   serverProvisionPayload,
   type ServerProvisionFormState,
 } from '../../lib/server-provision';
-import { Button, Input, Select } from '../Layout';
+import { Input, Select } from '../Layout';
 import { formatLocationLabel } from '../LocationFlag';
-import { Checkbox } from '../Checkbox';
 import { Spinner } from '../ui';
-import { AdminSection } from './primitives';
+import { AdminChoiceGroup, AdminSection } from './primitives';
+import { AdminFormStatus } from '../AdminDetailLayout';
+
+export const SERVER_PROVISION_FORM_ID = 'admin-server-provision';
 
 type AllocationRow = {
   id: string;
@@ -27,18 +29,25 @@ type AllocationRow = {
   assigned: boolean;
 };
 
+export type ServerProvisionProgressInfo = {
+  form: ServerProvisionFormState;
+  autoAssign: boolean;
+  freeAllocations: number;
+  eggName: string | null;
+  nodeName: string | null;
+  ownerName: string | null;
+  allocationPreview: string | null;
+  saving: boolean;
+  error: string;
+  canSubmit: boolean;
+};
+
 export function ServerProvisionForm({
   onCreated,
   onProgressChange,
 }: {
   onCreated: (serverId: string) => void;
-  onProgressChange?: (info: {
-    form: ServerProvisionFormState;
-    autoAssign: boolean;
-    freeAllocations: number;
-    eggName: string | null;
-    nodeName: string | null;
-  }) => void;
+  onProgressChange?: (info: ServerProvisionProgressInfo) => void;
 }) {
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [nodes, setNodes] = useState<AdminNodeSummary[]>([]);
@@ -53,12 +62,36 @@ export function ServerProvisionForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const patch = (partial: Partial<ServerProvisionFormState>) => setForm((prev) => ({ ...prev, ...partial }));
+  const patch = (partial: Partial<ServerProvisionFormState>) =>
+    setForm((prev) => ({ ...prev, ...partial }));
 
   const selectedNode = nodes.find((n) => n.id === form.nodeId);
+  const selectedOwner = users.find((u) => u.id === form.ownerId);
   const freeAllocations = useMemo(
     () => allocations.filter((a) => !a.assigned).sort((a, b) => a.port - b.port),
     [allocations],
+  );
+
+  function formatAllocLabel(alloc: AllocationRow) {
+    const fqdn = selectedNode?.fqdn ?? alloc.ip;
+    return formatAllocationAddress(alloc, { fqdn });
+  }
+
+  const allocationPreview = useMemo(() => {
+    if (!form.nodeId) return null;
+    if (autoAssign) {
+      return freeAllocations[0] ? formatAllocLabel(freeAllocations[0]) : null;
+    }
+    const selected = freeAllocations.find((a) => a.id === form.allocationId);
+    return selected ? formatAllocLabel(selected) : null;
+  }, [form.nodeId, form.allocationId, autoAssign, freeAllocations, selectedNode?.fqdn]);
+
+  const canSubmit = Boolean(
+    form.ownerId &&
+      form.name.trim() &&
+      form.eggId &&
+      form.nodeId &&
+      (autoAssign ? freeAllocations.length > 0 : form.allocationId),
   );
 
   useEffect(() => {
@@ -105,7 +138,9 @@ export function ServerProvisionForm({
       .egg(form.eggId)
       .then((egg) => {
         setSelectedEgg(egg);
-        setVariableValues(Object.fromEntries(egg.variables.map((v) => [v.envVariable, v.defaultValue])));
+        setVariableValues(
+          Object.fromEntries(egg.variables.map((v) => [v.envVariable, v.defaultValue])),
+        );
       })
       .catch(() => {
         setSelectedEgg(null);
@@ -121,8 +156,25 @@ export function ServerProvisionForm({
       freeAllocations: freeAllocations.length,
       eggName: selectedEgg?.name ?? null,
       nodeName: selectedNode?.name ?? null,
+      ownerName: selectedOwner?.username ?? null,
+      allocationPreview,
+      saving,
+      error,
+      canSubmit,
     });
-  }, [form, autoAssign, freeAllocations.length, selectedEgg?.name, selectedNode?.name, onProgressChange]);
+  }, [
+    form,
+    autoAssign,
+    freeAllocations.length,
+    selectedEgg?.name,
+    selectedNode?.name,
+    selectedOwner?.username,
+    allocationPreview,
+    saving,
+    error,
+    canSubmit,
+    onProgressChange,
+  ]);
 
   const eggsByNest = useMemo(() => {
     const map = new Map<string, AdminEggSummary[]>();
@@ -136,17 +188,15 @@ export function ServerProvisionForm({
 
   const disabledEggCount = eggs.filter((e) => !e.enabled).length;
 
-  function formatAllocLabel(alloc: AllocationRow) {
-    const fqdn = selectedNode?.fqdn ?? alloc.ip;
-    return formatAllocationAddress(alloc, { fqdn });
-  }
-
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!canSubmit || saving) return;
     setSaving(true);
     setError('');
     try {
-      const created = await api.admin.createServer(serverProvisionPayload(form, variableValues, autoAssign));
+      const created = await api.admin.createServer(
+        serverProvisionPayload(form, variableValues, autoAssign),
+      );
       onCreated(created.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create server');
@@ -157,30 +207,23 @@ export function ServerProvisionForm({
 
   if (loadingMeta) {
     return (
-      <div className="flex justify-center py-20">
-        <Spinner className="h-8 w-8" />
+      <div className="ds-nd-create-loading">
+        <Spinner className="h-7 w-7" />
+        <p>Loading provisioning options…</p>
       </div>
     );
   }
 
-  const canSubmit = Boolean(
-    form.ownerId &&
-      form.name.trim() &&
-      form.eggId &&
-      form.nodeId &&
-      (autoAssign ? freeAllocations.length > 0 : form.allocationId),
-  );
-
   return (
-    <form onSubmit={submit} className="ds-nd-create-form space-y-5">
+    <form id={SERVER_PROVISION_FORM_ID} onSubmit={submit} className="ds-nd-create-form">
       <AdminSection
         tone="identity"
         icon={Server}
         eyebrow="Server profile"
-        title="Server details"
+        title="Identity"
         description="Display name and account that owns this server"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="ds-nd-st-fields">
           <Input
             label="Server name"
             value={form.name}
@@ -234,43 +277,37 @@ export function ServerProvisionForm({
           ))}
         </Select>
 
-        {loadingEgg && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-[var(--muted)]">
+        {loadingEgg ? (
+          <div className="ds-nd-create-inline-loading">
             <Spinner className="h-3.5 w-3.5" />
             Loading egg details…
           </div>
-        )}
+        ) : null}
 
-        {selectedEgg && !loadingEgg && (
-          <div className="mt-4 space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400">
+        {selectedEgg && !loadingEgg ? (
+          <div className="ds-srv-create-egg-preview">
+            <div className="ds-srv-create-egg-preview-head">
+              <span className="ds-srv-create-egg-preview-icon" aria-hidden>
                 <Egg className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium">{selectedEgg.name}</p>
-                <p className="text-xs text-[var(--muted)]">{selectedEgg.nest.name}</p>
-                {selectedEgg.description && (
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{selectedEgg.description}</p>
-                )}
+                <p className="ds-srv-create-egg-preview-name">{selectedEgg.name}</p>
+                <p className="ds-srv-create-egg-preview-nest">{selectedEgg.nest.name}</p>
+                {selectedEgg.description ? (
+                  <p className="ds-srv-create-egg-preview-desc">{selectedEgg.description}</p>
+                ) : null}
               </div>
             </div>
 
-            <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                Startup command
-              </p>
-              <pre className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 font-mono text-[10px] leading-relaxed text-[var(--muted)]">
-                {selectedEgg.startup}
-              </pre>
+            <div className="ds-srv-create-egg-preview-block">
+              <p className="ds-srv-create-egg-preview-label">Startup command</p>
+              <pre className="ds-srv-create-egg-preview-code">{selectedEgg.startup}</pre>
             </div>
 
             {selectedEgg.variables.length > 0 ? (
-              <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  Environment variables
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="ds-srv-create-egg-preview-block">
+                <p className="ds-srv-create-egg-preview-label">Environment variables</p>
+                <div className="ds-nd-st-fields">
                   {selectedEgg.variables.map((variable) => (
                     <div key={variable.id}>
                       <Input
@@ -283,18 +320,18 @@ export function ServerProvisionForm({
                           }))
                         }
                       />
-                      {variable.description && (
-                        <p className="mt-1 text-[10px] text-[var(--muted)]">{variable.description}</p>
-                      )}
+                      {variable.description ? (
+                        <p className="ds-nd-st-choice-hint">{variable.description}</p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-[var(--muted)]">This egg has no environment variables.</p>
+              <p className="ds-nd-st-choice-hint">This egg has no environment variables.</p>
             )}
           </div>
-        )}
+        ) : null}
       </AdminSection>
 
       <AdminSection
@@ -304,7 +341,7 @@ export function ServerProvisionForm({
         title="Infrastructure"
         description="Node, primary port, and feature limits for this server"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="ds-nd-st-fields">
           <Select
             label="Node"
             value={form.nodeId}
@@ -345,20 +382,29 @@ export function ServerProvisionForm({
           />
         </div>
 
-        <div className="mt-4 space-y-3">
-          <Checkbox
-            checked={autoAssign}
-            onChange={setAutoAssign}
-            label="Auto-assign first available port"
-            description="Recommended — picks the lowest free allocation on the node"
+        <div className="ds-nd-st-fieldset mt-4">
+          <p className="ds-nd-st-fieldset-label">Primary port</p>
+          <AdminChoiceGroup
+            label="Allocation"
+            value={autoAssign ? 'auto' : 'manual'}
+            onChange={(value) => setAutoAssign(value === 'auto')}
+            options={[
+              { value: 'auto', label: 'Auto-assign' },
+              { value: 'manual', label: 'Pick port' },
+            ]}
+            hint="Auto-assign uses the lowest free allocation on the node"
           />
-          {!autoAssign && (
+          {!autoAssign ? (
             <Select
               label="Primary allocation"
               value={form.allocationId}
               onChange={(e) => patch({ allocationId: e.target.value })}
               required
-              hint={form.nodeId ? `${freeAllocations.length} available on this node` : 'Select a node first'}
+              hint={
+                form.nodeId
+                  ? `${freeAllocations.length} available on this node`
+                  : 'Select a node first'
+              }
             >
               <option value="">Select port</option>
               {freeAllocations.map((a) => (
@@ -367,14 +413,14 @@ export function ServerProvisionForm({
                 </option>
               ))}
             </Select>
-          )}
-          {autoAssign && form.nodeId && (
-            <p className="text-xs text-[var(--muted)]">
+          ) : null}
+          {autoAssign && form.nodeId ? (
+            <p className="ds-nd-st-choice-hint">
               {freeAllocations.length > 0
                 ? `Will use ${formatAllocLabel(freeAllocations[0]!)}`
                 : 'No free allocations on this node — create a port range on the node first.'}
             </p>
-          )}
+          ) : null}
         </div>
       </AdminSection>
 
@@ -384,8 +430,13 @@ export function ServerProvisionForm({
         eyebrow="Limits"
         title="Resources"
         description="Memory, disk, and CPU limits enforced by Wings — 0 = unlimited"
+        badge={
+          <span className="ds-nd-st-capacity-badge">
+            {Number(form.memory) || 0} MB / {Number(form.disk) || 0} MB / {Number(form.cpu) || 0}%
+          </span>
+        }
       >
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="ds-nd-st-fields ds-srv-create-resources">
           <Input
             label="Memory (MB)"
             type="number"
@@ -413,19 +464,7 @@ export function ServerProvisionForm({
         </div>
       </AdminSection>
 
-      {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={saving || !canSubmit}>
-          <Server className="h-3.5 w-3.5" />
-          {saving ? 'Provisioning…' : 'Create & install'}
-        </Button>
-        {!canSubmit && !saving && (
-          <p className="text-xs text-[var(--muted)]">Complete owner, egg, node, and resources to continue.</p>
-        )}
-      </div>
+      <AdminFormStatus error={error || undefined} />
     </form>
   );
 }

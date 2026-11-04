@@ -9,6 +9,7 @@ import {
   Loader2,
   Server,
 } from 'lucide-react';
+import { useBranding } from '../../../context/BrandingContext';
 import type {
   DashboardAttentionServer,
   DashboardTicketQueue,
@@ -39,7 +40,9 @@ export function DashboardWorkQueue({
   ticketQueue: DashboardTicketQueue;
   attentionServers: DashboardAttentionServer[];
 }) {
-  const tickets = ticketQueue.items;
+  const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
+  const tickets = ticketsEnabled ? ticketQueue.items : [];
   const clear = tickets.length === 0 && attentionServers.length === 0;
 
   return (
@@ -54,8 +57,10 @@ export function DashboardWorkQueue({
             {clear
               ? 'Queue is clear'
               : [
-                  ticketQueue.needsReply > 0 ? `${ticketQueue.needsReply} ticket replies` : null,
-                  ticketQueue.urgent > 0 ? `${ticketQueue.urgent} urgent` : null,
+                  ticketsEnabled && ticketQueue.needsReply > 0
+                    ? `${ticketQueue.needsReply} ticket replies`
+                    : null,
+                  ticketsEnabled && ticketQueue.urgent > 0 ? `${ticketQueue.urgent} urgent` : null,
                   attentionServers.length > 0 ? `${attentionServers.length} servers` : null,
                 ]
                   .filter(Boolean)
@@ -63,10 +68,12 @@ export function DashboardWorkQueue({
           </p>
         </div>
         <div className="ds-admin-dash__card-actions">
-          <Link to="/admin/tickets" className="ds-admin-dash__card-link">
-            Tickets
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
+          {ticketsEnabled ? (
+            <Link to="/admin/tickets" className="ds-admin-dash__card-link">
+              Tickets
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          ) : null}
           <Link to="/admin/servers" className="ds-admin-dash__card-link">
             Servers
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -82,53 +89,57 @@ export function DashboardWorkQueue({
           <div>
             <p className="ds-admin-dash__queue-clear-title">Nothing waiting</p>
             <p className="ds-admin-dash__queue-clear-desc">
-              No ticket replies due and no suspended or installing servers.
+              {ticketsEnabled
+                ? 'No ticket replies due and no suspended or installing servers.'
+                : 'No suspended or installing servers.'}
             </p>
           </div>
         </div>
       ) : (
-        <div className="ds-admin-dash__queue-grid">
-          <div className="ds-admin-dash__queue-col">
-            <h3 className="ds-admin-dash__queue-col-title">
-              <LifeBuoy className="h-3.5 w-3.5" aria-hidden />
-              Support
-            </h3>
-            {tickets.length === 0 ? (
-              <p className="ds-admin-dash__queue-empty">No tickets need a staff reply.</p>
-            ) : (
-              <ul className="ds-admin-dash__queue-list">
-                {tickets.map((ticket) => (
-                  <li key={ticket.id}>
-                    <Link to={`/admin/tickets/${ticket.id}`} className="ds-admin-dash__queue-row">
-                      <span
-                        className={`ds-admin-dash__queue-mark ds-admin-dash__queue-mark--${
-                          ticket.priority === 'urgent' ? 'danger' : 'warn'
-                        }`}
-                        aria-hidden
-                      >
-                        {ticket.priority === 'urgent' ? (
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                        ) : (
-                          <LifeBuoy className="h-3.5 w-3.5" />
-                        )}
-                      </span>
-                      <span className="ds-admin-dash__queue-copy">
-                        <span className="ds-admin-dash__queue-title">
-                          #{ticket.number} · {ticket.subject}
+        <div className={`ds-admin-dash__queue-grid${ticketsEnabled ? '' : ' ds-admin-dash__queue-grid--servers-only'}`}>
+          {ticketsEnabled ? (
+            <div className="ds-admin-dash__queue-col">
+              <h3 className="ds-admin-dash__queue-col-title">
+                <LifeBuoy className="h-3.5 w-3.5" aria-hidden />
+                Support
+              </h3>
+              {tickets.length === 0 ? (
+                <p className="ds-admin-dash__queue-empty">No tickets need a staff reply.</p>
+              ) : (
+                <ul className="ds-admin-dash__queue-list">
+                  {tickets.map((ticket) => (
+                    <li key={ticket.id}>
+                      <Link to={`/admin/tickets/${ticket.id}`} className="ds-admin-dash__queue-row">
+                        <span
+                          className={`ds-admin-dash__queue-mark ds-admin-dash__queue-mark--${
+                            ticket.priority === 'urgent' ? 'danger' : 'warn'
+                          }`}
+                          aria-hidden
+                        >
+                          {ticket.priority === 'urgent' ? (
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                          ) : (
+                            <LifeBuoy className="h-3.5 w-3.5" />
+                          )}
                         </span>
-                        <span className="ds-admin-dash__queue-meta">
-                          {ticket.priority === 'urgent' ? 'Urgent · ' : ''}
-                          {ticket.needsReply ? 'Needs reply · ' : ''}
-                          {ticketUserLabel(ticket.user)} · {formatTicketTime(ticket.updatedAt)}
+                        <span className="ds-admin-dash__queue-copy">
+                          <span className="ds-admin-dash__queue-title">
+                            #{ticket.number} · {ticket.subject}
+                          </span>
+                          <span className="ds-admin-dash__queue-meta">
+                            {ticket.priority === 'urgent' ? 'Urgent · ' : ''}
+                            {ticket.needsReply ? 'Needs reply · ' : ''}
+                            {ticketUserLabel(ticket.user)} · {formatTicketTime(ticket.updatedAt)}
+                          </span>
                         </span>
-                      </span>
-                      <ArrowUpRight className="ds-admin-dash__queue-arrow" aria-hidden />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                        <ArrowUpRight className="ds-admin-dash__queue-arrow" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
 
           <div className="ds-admin-dash__queue-col">
             <h3 className="ds-admin-dash__queue-col-title">

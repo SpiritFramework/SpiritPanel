@@ -19,6 +19,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then((m
 const AlertsPage = lazy(() => import('./pages/client/Alerts').then((m) => ({ default: m.AlertsPage })));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminUsers = lazy(() => import('./pages/admin/Users').then((m) => ({ default: m.AdminUsers })));
+const AdminUserCreate = lazy(() => import('./pages/admin/UserCreate').then((m) => ({ default: m.AdminUserCreate })));
 const AdminUserDetail = lazy(() => import('./pages/admin/UserDetail').then((m) => ({ default: m.AdminUserDetail })));
 const AdminNodes = lazy(() => import('./pages/admin/Nodes').then((m) => ({ default: m.AdminNodes })));
 const AdminNodeCreate = lazy(() => import('./pages/admin/NodeCreate').then((m) => ({ default: m.AdminNodeCreate })));
@@ -143,6 +144,7 @@ function PanelRouter() {
                 <Route path="/admin/tickets" element={<AdminTicketsPage />} />
                 <Route path="/admin/tickets/:id" element={<AdminTicketDetailPage />} />
                 <Route element={<RequireFullAdmin />}>
+                  <Route path="/admin/users/new" element={<AdminUserCreate />} />
                   <Route path="/admin/nodes/new" element={<AdminNodeCreate />} />
                   <Route path="/admin/servers/new" element={<AdminServerCreate />} />
                   <Route path="/admin/servers/:serverId/console" element={<AdminConsoleRedirect />} />

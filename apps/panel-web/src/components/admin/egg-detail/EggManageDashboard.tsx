@@ -24,62 +24,74 @@ export function EggManageDashboard({ ctrl }: { ctrl: EggDetailController }) {
 
   return (
     <div className="ds-egg-manage">
-      <EggDetailPanel icon={Egg} title="Egg details" description="Display name and availability">
-        <Input
-          label="Name"
-          value={form.name ?? ''}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
-        <div className="ds-egg-form-spacer">
-          <Textarea
-            label="Description"
-            value={form.description ?? ''}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-          />
-        </div>
-        <div className="ds-egg-form-spacer">
-          <Input
-            label="Logo URL"
-            hint="PNG or WebP over https — shown on server cards"
-            value={form.logoUrl ?? ''}
-            onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
-            placeholder="https://example.com/icon.png"
-          />
-          {(form.logoUrl ?? '').trim() && sanitizeImageSrc(form.logoUrl) ? (
-            <div className="ds-egg-logo-preview">
-              <img
-                src={sanitizeImageSrc(form.logoUrl)!}
-                alt=""
-                className="h-7 w-7 object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <span>Preview</span>
-            </div>
-          ) : null}
-        </div>
-        <div className="ds-egg-form-spacer ds-egg-checkbox-wrap">
-          <Checkbox
-            checked={form.enabled ?? true}
-            onChange={(checked) => setForm({ ...form, enabled: checked })}
-            label="Enabled"
-            description="Disabled eggs cannot be selected when creating new servers"
-          />
+      <EggDetailPanel
+        tone="identity"
+        icon={Egg}
+        eyebrow="Profile"
+        title="Egg details"
+        description="Display name, logo, and availability"
+      >
+        <div className="ds-nd-st-fields">
+          <div className="ds-nd-st-fields-span">
+            <Input
+              label="Name"
+              value={form.name ?? ''}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+          </div>
+          <div className="ds-nd-st-fields-span">
+            <Textarea
+              label="Description"
+              value={form.description ?? ''}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              placeholder="Optional summary shown in the egg catalog"
+            />
+          </div>
+          <div className="ds-nd-st-fields-span">
+            <Input
+              label="Logo URL"
+              hint="PNG or WebP over https — shown on server cards"
+              value={form.logoUrl ?? ''}
+              onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+              placeholder="https://example.com/icon.png"
+            />
+            {(form.logoUrl ?? '').trim() && sanitizeImageSrc(form.logoUrl) ? (
+              <div className="ds-egg-logo-preview">
+                <img
+                  src={sanitizeImageSrc(form.logoUrl)!}
+                  alt=""
+                  className="h-7 w-7 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <span>Preview</span>
+              </div>
+            ) : null}
+          </div>
+          <div className="ds-nd-st-fields-span ds-egg-checkbox-wrap">
+            <Checkbox
+              checked={form.enabled ?? true}
+              onChange={(checked) => setForm({ ...form, enabled: checked })}
+              label="Enabled"
+              description="Disabled eggs cannot be selected when creating new servers"
+            />
+          </div>
         </div>
       </EggDetailPanel>
 
       <EggDetailPanel
-        icon={Trash2}
-        title="Danger zone"
-        description="Permanently remove this egg"
         tone="danger"
+        icon={Trash2}
+        eyebrow="Danger zone"
+        title="Delete egg"
+        description="Permanently remove this service template"
       >
         {!confirmDelete ? (
-          <div className="ds-egg-danger-row">
-            <p className="ds-egg-danger-desc">
+          <div className="ds-egg-danger-row ds-ud-danger-row">
+            <p className="ds-egg-danger-desc ds-ud-danger-desc">
               {canDelete
                 ? 'This action cannot be undone.'
                 : 'Remove all servers using this egg before deleting.'}

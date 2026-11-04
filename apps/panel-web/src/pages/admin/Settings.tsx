@@ -574,7 +574,7 @@ export function AdminSettings() {
                         <div className="space-y-3">
                           <Checkbox
                             label="Enable support tickets"
-                            description="When off, the Support tab is hidden and ticket APIs return forbidden."
+                            description="When off, Support is hidden for users and admins, and ticket APIs return forbidden."
                             checked={tickets.enabled}
                             onChange={(enabled) => setTickets((t) => ({ ...t, enabled }))}
                           />

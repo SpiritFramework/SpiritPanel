@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { AdminEditLoading } from '../../components/admin/AdminEditLayout';
 import { AdminDetailNotFound } from '../../components/AdminDetailLayout';
@@ -25,7 +25,7 @@ export function AdminNestDetail() {
   const [showImport, setShowImport] = useState(false);
 
   const ctrl = useNestDetail(nestId);
-  const { detail, loading, error, load, hasChanges, saved } = ctrl;
+  const { detail, loading, error, load, hasChanges, saved, save } = ctrl;
 
   const tab = readNestDetailTab(searchParams.get('tab'));
 
@@ -52,6 +52,11 @@ export function AdminNestDetail() {
     );
   }
 
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    await save();
+  }
+
   if (loading) {
     return (
       <AdminLayout>
@@ -74,12 +79,14 @@ export function AdminNestDetail() {
 
   return (
     <AdminLayout>
-      <div className="ds-nst-page">
-        <div className="ds-nst-header-wrap">
+      <form onSubmit={(e) => void handleSave(e)} className="ds-nst-page ds-ud-page">
+        <div className="ds-nst-header-wrap ds-ud-header-wrap">
           <NestDetailHeader
             detail={detail}
             fullAdmin={fullAdmin}
             onImport={fullAdmin ? () => setShowImport(true) : undefined}
+            onManage={() => changeTab('manage')}
+            onViewEggs={() => changeTab('eggs')}
           />
           <NestDetailTabNav tabs={tabs} active={tab} onChange={changeTab} />
         </div>
@@ -87,6 +94,8 @@ export function AdminNestDetail() {
         {tab === 'overview' ? (
           <NestOverviewDashboard
             ctrl={ctrl}
+            fullAdmin={fullAdmin}
+            onImport={fullAdmin ? () => setShowImport(true) : undefined}
             nav={{
               onManage: () => changeTab('manage'),
               onEggs: () => changeTab('eggs'),
@@ -105,9 +114,9 @@ export function AdminNestDetail() {
         ) : null}
 
         {fullAdmin && (tab === 'manage' || hasChanges || saved) ? (
-          <NestDetailSaveBar ctrl={ctrl} />
+          <NestDetailSaveBar ctrl={ctrl} fullAdmin={fullAdmin} />
         ) : null}
-      </div>
+      </form>
 
       {fullAdmin && showImport ? (
         <ImportEggModal

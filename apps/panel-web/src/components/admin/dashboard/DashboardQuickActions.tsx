@@ -13,6 +13,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
+import { useBranding } from '../../../context/BrandingContext';
 
 const ACTIONS: { to: string; icon: LucideIcon; label: string }[] = [
   { to: '/admin/tickets', icon: LifeBuoy, label: 'Tickets' },
@@ -27,6 +28,12 @@ const ACTIONS: { to: string; icon: LucideIcon; label: string }[] = [
 ];
 
 export function DashboardQuickActions() {
+  const { branding } = useBranding();
+  const ticketsEnabled = branding.ticketsEnabled !== false;
+  const actions = ticketsEnabled
+    ? ACTIONS
+    : ACTIONS.filter((action) => action.to !== '/admin/tickets');
+
   return (
     <section className="ds-admin-dash__card ds-admin-dash__card--nav">
       <header className="ds-admin-dash__card-head">
@@ -40,7 +47,7 @@ export function DashboardQuickActions() {
       </header>
 
       <div className="ds-admin-dash__actions" role="list">
-        {ACTIONS.map(({ to, icon: Icon, label }) => (
+        {actions.map(({ to, icon: Icon, label }) => (
           <Link key={to} to={to} className="ds-admin-dash__action" role="listitem">
             <span className="ds-admin-dash__action-icon" aria-hidden>
               <Icon className="h-4 w-4" />

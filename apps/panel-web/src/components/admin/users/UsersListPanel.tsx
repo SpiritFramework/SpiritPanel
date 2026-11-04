@@ -37,7 +37,6 @@ export function UsersListPanel({
   lastUpdated,
   currentUserId,
   fullAdmin,
-  onCreate,
 }: {
   users: AdminUserSummary[];
   allCount: number;
@@ -54,7 +53,6 @@ export function UsersListPanel({
   lastUpdated: Date | null;
   currentUserId?: string;
   fullAdmin: boolean;
-  onCreate: () => void;
 }) {
   return (
     <AdminSection
@@ -153,7 +151,7 @@ export function UsersListPanel({
             hasActiveFilters ? (
               <AdminToolButton onClick={onClearFilters}>Clear filters</AdminToolButton>
             ) : fullAdmin ? (
-              <AdminToolButton onClick={onCreate} primary>
+              <AdminToolButton to="/admin/users/new" primary>
                 <Plus className="h-3.5 w-3.5" />
                 Create user
               </AdminToolButton>
