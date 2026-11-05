@@ -218,7 +218,7 @@ Spirit-Panel/
 | --- | --- |
 | [`docs/LOCAL.md`](docs/LOCAL.md) | Local development |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Production deploy |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Security model and reporting |
+| [`SECURITY.md`](SECURITY.md) | Security model and reporting (GitHub Security Policy) |
 | [`docs/PLUGINS.md`](docs/PLUGINS.md) | Built-in plugins and SDK |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Release history and versioning |
 
@@ -245,7 +245,7 @@ Spirit Panel is built for self-hosting. You own TLS, host hardening, and access 
 - HTTPS in production
 - Protect `.env` and rotate secrets
 - Restrict admin accounts and API keys
-- Follow [`docs/SECURITY.md`](docs/SECURITY.md)
+- Follow [`SECURITY.md`](SECURITY.md)
 
 ---
 

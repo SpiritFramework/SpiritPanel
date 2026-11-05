@@ -19,6 +19,10 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Changed
+
+- **Security policy** moved to repository-root [`SECURITY.md`](../SECURITY.md) for GitHub’s Security Policy tab; rewritten with edge/origin L7 guidance, threat-layer table, Cloudflare WAF skip notes, and deploy helper index. `docs/SECURITY.md` points at the root file.
+
 ## [1.3.5.3] - 2026-11-05
 
 ### Added
