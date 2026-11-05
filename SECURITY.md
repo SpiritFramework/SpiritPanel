@@ -76,7 +76,7 @@ App rate limits and Turnstile **do not** stop a distributed HTTPS flood by thems
 
 ## Recommended production edge (panel)
 
-Ship helpers under `deploy/` (see **V1.3.5.3+**):
+Ship helpers under `deploy/` (see **V1.3.5.3+**). **Existing installs:** step-by-step upgrade and troubleshooting are in [`docs/PRODUCTION.md` — Cloudflare origin hardening](docs/PRODUCTION.md#cloudflare-origin-hardening-v1353) (do **not** re-run a full `install` just to refresh nginx).
 
 | Piece | Path |
 |-------|------|

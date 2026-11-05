@@ -14,14 +14,15 @@
 6. [Deploy methods](#deploy-methods)
 7. [systemd](#systemd)
 8. [Nginx + TLS](#nginx--tls)
-9. [FeatherWings (game nodes)](#featherwings-game-nodes)
-10. [Environment variables](#environment-variables)
-11. [Post-install setup](#post-install-setup)
-12. [Installable app (PWA)](#installable-app-pwa)
-13. [Post-deploy checklist](#post-deploy-checklist)
-14. [Updates](#updates)
-15. [Troubleshooting](#troubleshooting)
-16. [Security](#security)
+9. [Cloudflare origin hardening (V1.3.5.3+)](#cloudflare-origin-hardening-v1353)
+10. [FeatherWings (game nodes)](#featherwings-game-nodes)
+11. [Environment variables](#environment-variables)
+12. [Post-install setup](#post-install-setup)
+13. [Installable app (PWA)](#installable-app-pwa)
+14. [Post-deploy checklist](#post-deploy-checklist)
+15. [Updates](#updates)
+16. [Troubleshooting](#troubleshooting)
+17. [Security](#security)
 
 ---
 
@@ -376,19 +377,7 @@ Only **22, 80, 443** should be public. Do not open 3000, 3306, or 6379.
 
 ### 7. Cloudflare in front (recommended against L7 floods)
 
-Orange-cloud the panel hostname, then on the origin:
-
-```bash
-# Visitor IP for logs + rate limits (not a Cloudflare edge IP)
-sudo bash deploy/firewall/sync-cloudflare-realip.sh
-
-# After Proxied DNS works: only Cloudflare may hit 80/443
-sudo bash deploy/firewall/ufw-cloudflare-origin.sh
-```
-
-In the Cloudflare dashboard: enable Bot Fight / Managed Challenge, add a rate-limit rule for the zone, and **Skip** challenges for `/api/remote*` (and health) so FeatherWings is not blocked. Use “Under Attack Mode” only during an active incident.
-
-Existing installs that already customise the site need `--force-nginx` (or a manual merge) to pick up the new `limit_req` / TLS lines; the http zones file is refreshed on every `spirit.sh update`.
+See the full existing-install walkthrough below: [Cloudflare origin hardening (V1.3.5.3+)](#cloudflare-origin-hardening-v1353).
 
 ### 8. Verify
 
@@ -416,7 +405,105 @@ The shipped config sets deliberate `Cache-Control` values. Removing them causes 
 
 ---
 
+## Cloudflare origin hardening (V1.3.5.3+)
 
+Use this when upgrading an **existing** panel to the L7 / origin hardening shipped in **V1.3.5.3** (nginx rate limits, Cloudflare real-IP, UFW Cloudflare-only 80/443, raised nginx open-file limits). Policy overview: [SECURITY.md](../SECURITY.md).
+
+### Do not re-run a full `install`
+
+`spirit.sh install --force-nginx` is still a **full install** path. On a live panel it can re-fetch source and re-touch systemd. Prefer **`update`**, then apply nginx/firewall pieces manually as below.
+
+```bash
+sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --ref V1.3.5.3 -y
+# or: update --channel release -y once that channel includes 1.3.5.3+
+cd /home/spiritpanel/Spirit-Panel
+```
+
+### Apply on the origin (order matters)
+
+```bash
+# 1) Rate / connection zones (required before the site uses limit_req)
+sudo cp deploy/nginx/spirit-panel-http.conf /etc/nginx/conf.d/spirit-panel-http.conf
+
+# 2) Restore visitor IPs when behind Cloudflare
+sudo bash deploy/firewall/sync-cloudflare-realip.sh
+
+# 3) Raise open-file limits (avoids "Too many open files" → HTTP 500 on assets)
+sudo bash deploy/firewall/raise-nginx-nofile.sh
+
+# 4) Site config with limit_req / TLS hardening — backup first, then copy
+sudo cp /etc/nginx/sites-available/spirit-panel /etc/nginx/sites-available/spirit-panel.bak
+sudo cp deploy/nginx/spirit-panel.conf /etc/nginx/sites-available/spirit-panel
+```
+
+Edit the new site file and restore **your** values:
+
+- both `server_name` lines
+- `root` (path to `apps/panel-web/dist`)
+- `ssl_certificate` / `ssl_certificate_key` (Let's Encrypt paths for **your** hostname, not `panel.example.com`)
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Cloudflare dashboard
+
+1. Panel hostname **Proxied** (orange cloud).
+2. Bot Fight / Managed Challenge + a rate-limit rule on the panel host.
+3. Custom **Skip** rule for Wings (skip Bot Fight / challenges / rate limit only — **do not** skip “All managed rules”):
+
+```txt
+(starts_with(http.request.uri.path, "/api/remote")) or (http.request.uri.path eq "/health") or (http.request.uri.path eq "/api/health") or (http.request.uri.path eq "/health/ready")
+```
+
+4. Disable **Rocket Loader**, **Email Address Obfuscation**, and **JS Auto Minify** on the panel hostname (they inject inline scripts that CSP blocks; login/Turnstile can look broken).
+5. SSL/TLS mode **Full (strict)** once origin has a valid cert.
+
+### Lock origin 80/443 (only after the panel works through Cloudflare)
+
+```bash
+sudo bash deploy/firewall/ufw-cloudflare-origin.sh
+```
+
+That script **only** allows Cloudflare → 80/443 (plus SSH). Re-open anything else this host needs:
+
+```bash
+# FeatherWings on this box
+sudo ufw allow 8080/tcp comment 'FeatherWings'
+sudo ufw allow 2022/tcp comment 'FeatherWings SFTP'
+
+# Game allocations (example range — match your node settings)
+sudo ufw allow 30000:30100/tcp comment 'Game allocations'
+sudo ufw allow 30000:30100/udp comment 'Game allocations'
+
+sudo ufw reload
+sudo ufw status numbered
+```
+
+Grey-cloud Wings/game hostnames that use `:8080`. Same-box installs already publish the machine IP via game ports; Cloudflare still protects panel HTTP when 80/443 are Cloudflare-only.
+
+### Troubleshooting (common after this upgrade)
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `nginx -t` fails mentioning `spirit_web` / `spirit_api` / `spirit_conn` | Zones file missing | Copy `deploy/nginx/spirit-panel-http.conf` → `/etc/nginx/conf.d/` |
+| SSL / cert path errors after copying the site | Still `panel.example.com` in cert paths | Set Let's Encrypt paths for your real hostname |
+| Login CSP error / Turnstile chunk **500** / inline script blocked | Rocket Loader or similar CF feature; or nginx FD exhaustion | Turn off Rocket Loader / email obfuscation / JS minify; purge CF cache; run `raise-nginx-nofile.sh`; `systemctl restart nginx` |
+| `Too many open files` in `/var/log/nginx/error.log` | Default nginx FD limit under flood | `sudo bash deploy/firewall/raise-nginx-nofile.sh` then restart nginx |
+| Panel OK through CF, but games/console/SFTP dead after UFW script | Only 80/443 left open | `ufw allow` game ports, `8080`, `2022` as above |
+| Console WS fails; panel fine | Wings hostname / `:8080` / node firewall — not panel CSP | Check node Online; `curl -skI https://NODE:8080/api/system`; keep Wings DNS grey if using port 8080 |
+| `/api/auth/me` **401** on the login page | Not signed in | Expected |
+
+Verify origin vs edge for a static asset:
+
+```bash
+curl -sI https://127.0.0.1/assets/…js -H "Host: panel.example.com" --insecure | head -5
+curl -sI https://panel.example.com/assets/…js | head -10
+```
+
+Both should be **200** when healthy. Origin 200 + public 500 usually means Cloudflare cache or a CF feature — purge and disable Rocket Loader.
+
+---
 
 ## FeatherWings (game nodes)
 

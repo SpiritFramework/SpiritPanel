@@ -22,8 +22,11 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Changed
 
 - **Security policy** moved to repository-root [`SECURITY.md`](../SECURITY.md) for GitHub’s Security Policy tab; rewritten with edge/origin L7 guidance, threat-layer table, Cloudflare WAF skip notes, and deploy helper index. `docs/SECURITY.md` points at the root file.
+- **PRODUCTION.md** — full **Cloudflare origin hardening (V1.3.5.3+)** upgrade walkthrough and troubleshooting table (manual nginx merge, UFW game ports, FD limits, Rocket Loader / CSP, Wings skip rule).
 
 ## [1.3.5.3] - 2026-11-05
+
+Security-focused origin hardening for panels behind Cloudflare. **Upgrade steps and troubleshooting:** [PRODUCTION.md — Cloudflare origin hardening](PRODUCTION.md#cloudflare-origin-hardening-v1353).
 
 ### Added
 
