@@ -129,6 +129,7 @@ App rate limits and Turnstile stop credential stuffing; they do **not** stop a d
 3. **Restore real client IPs on origin** — install `deploy/nginx/cloudflare-realip.conf` into `/etc/nginx/conf.d/` (or run `deploy/firewall/sync-cloudflare-realip.sh`) so nginx / Fastify rate limits see `CF-Connecting-IP`, not one Cloudflare edge address.
 4. **Lock origin 80/443 to Cloudflare** — after orange-cloud is confirmed working, run `sudo bash deploy/firewall/ufw-cloudflare-origin.sh` so attackers cannot bypass the edge by hitting the server IP.
 5. **Origin nginx limits** — the shipped site uses `limit_req` / `limit_conn` (zones from `deploy/nginx/spirit-panel-http.conf`). This is a last line of defence, not a substitute for an edge WAF.
+6. **Raise nginx file descriptors** — under a flood nginx can exhaust its default open-file limit and start returning **500** for `index.html` / `/assets/*` (`Too many open files` in the error log). Run `sudo bash deploy/firewall/raise-nginx-nofile.sh` once on the panel host.
 
 Enable **Turnstile** on login/registration (Admin → Settings → Security) for account abuse; it will not mitigate raw TLS floods by itself.
 
