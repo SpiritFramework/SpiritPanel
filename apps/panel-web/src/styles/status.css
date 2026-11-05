@@ -318,6 +318,12 @@
   }
 }
 
+@media (min-width: 980px) {
+  .ds-status-global {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .ds-status-global-card {
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   border-radius: 0.85rem;

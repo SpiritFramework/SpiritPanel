@@ -352,31 +352,26 @@ function StatusContent() {
 
   const showServers = (data?.detail ?? branding.statusDetail) === 'servers';
 
-  const averageCpuLabel = useMemo(() => {
-    if (!data?.nodes.length) return '—';
-    const samples = data.nodes
-      .map((node) => node.live?.cpuPercent)
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-    if (samples.length === 0) return '—';
-    const avg = samples.reduce((sum, value) => sum + value, 0) / samples.length;
-    return `${Math.round(avg)}%`;
-  }, [data]);
-
   const globalUsage = useMemo(() => {
     if (!data?.nodes.length) {
       return {
         memoryPercent: null as number | null,
         diskPercent: null as number | null,
+        cpuPercent: null as number | null,
         memoryLive: 0,
         diskLive: 0,
         memoryLimitMiB: 0,
         diskLimitMiB: 0,
+        cpuSampleCount: 0,
       };
     }
     let memoryLive = 0;
     let diskLive = 0;
     let memoryLimitMiB = 0;
     let diskLimitMiB = 0;
+    let cpuLiveAbsolute = 0;
+    let cpuLimitAbsolute = 0;
+    let cpuSampleCount = 0;
     for (const node of data.nodes) {
       memoryLive += node.live?.memoryBytes ?? 0;
       diskLive += node.live?.diskBytes ?? 0;
@@ -386,6 +381,20 @@ function StatusContent() {
       if (node.allocated.effectiveDiskLimitMiB > 0) {
         diskLimitMiB += node.allocated.effectiveDiskLimitMiB;
       }
+      // live.cpuPercent is Wings absolute CPU (100 = 1 core), same as the node DualMeter.
+      const cpuLimit = node.allocated.cpuLimit;
+      const cpuLive = node.live?.cpuPercent;
+      if (
+        node.online &&
+        !node.maintenanceMode &&
+        cpuLimit > 0 &&
+        typeof cpuLive === 'number' &&
+        Number.isFinite(cpuLive)
+      ) {
+        cpuLiveAbsolute += cpuLive;
+        cpuLimitAbsolute += cpuLimit;
+        cpuSampleCount += 1;
+      }
     }
     const memoryLimitBytes = memoryLimitMiB * 1024 * 1024;
     const diskLimitBytes = diskLimitMiB * 1024 * 1024;
@@ -394,10 +403,15 @@ function StatusContent() {
         memoryLimitBytes > 0 ? Math.min(100, Math.round((memoryLive / memoryLimitBytes) * 100)) : null,
       diskPercent:
         diskLimitBytes > 0 ? Math.min(100, Math.round((diskLive / diskLimitBytes) * 100)) : null,
+      cpuPercent:
+        cpuLimitAbsolute > 0
+          ? Math.min(100, Math.round((cpuLiveAbsolute / cpuLimitAbsolute) * 100))
+          : null,
       memoryLive,
       diskLive,
       memoryLimitMiB,
       diskLimitMiB,
+      cpuSampleCount,
     };
   }, [data]);
 
@@ -456,13 +470,6 @@ function StatusContent() {
                     <Server className="ds-status-hero-meta-icon" aria-hidden />
                     <span className="ds-status-hero-meta-copy">
                       Running <strong>{data.summary.serversRunning}</strong>
-                    </span>
-                  </span>
-                  <span className="ds-status-hero-dot" aria-hidden />
-                  <span className="ds-status-hero-meta-item">
-                    <Cpu className="ds-status-hero-meta-icon" aria-hidden />
-                    <span className="ds-status-hero-meta-copy">
-                      Average CPU Usage <strong>{averageCpuLabel}</strong>
                     </span>
                   </span>
                   <span className="ds-status-hero-dot" aria-hidden />
@@ -548,6 +555,28 @@ function StatusContent() {
                 <div
                   className="ds-status-global-fill"
                   style={{ width: `${globalUsage.diskPercent ?? 0}%` }}
+                />
+              </div>
+            </div>
+            <div className="ds-status-global-card">
+              <div className="ds-status-global-head">
+                <Cpu className="ds-status-global-icon" aria-hidden />
+                <div>
+                  <p className="ds-status-global-label">Average CPU Usage</p>
+                  <p className="ds-status-global-detail">
+                    {globalUsage.cpuSampleCount > 0
+                      ? `Across ${globalUsage.cpuSampleCount} reporting node${globalUsage.cpuSampleCount === 1 ? '' : 's'}`
+                      : 'No live CPU samples'}
+                  </p>
+                </div>
+                <strong className="ds-status-global-value">
+                  {globalUsage.cpuPercent != null ? `${globalUsage.cpuPercent}%` : '—'}
+                </strong>
+              </div>
+              <div className="ds-status-global-track" aria-hidden>
+                <div
+                  className="ds-status-global-fill"
+                  style={{ width: `${globalUsage.cpuPercent ?? 0}%` }}
                 />
               </div>
             </div>
