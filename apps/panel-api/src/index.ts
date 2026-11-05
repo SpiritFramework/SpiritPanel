@@ -33,6 +33,7 @@ import { minecraftPluginRoutes } from './routes/minecraft-plugins.js';
 import { clientTicketRoutes, adminTicketRoutes } from './routes/tickets.js';
 import { clientPluginRoutes, adminPluginRoutes } from './routes/plugins.js';
 import { alertRoutes, adminAlertRoutes } from './routes/alerts.js';
+import { statusRoutes } from './routes/status.js';
 import { databaseManagerRoutes } from './plugins/database-manager/index.js';
 import { ensureBuiltinPlugins } from './plugins/manager.js';
 
@@ -248,7 +249,7 @@ await app.register(
 
 await app.register(adminTicketRoutes, { prefix: '/api/admin' });
 
-
+await app.register(statusRoutes, { prefix: '/api/status' });
 
 async function shutdown() {
   app.log.info('Shutting down...');

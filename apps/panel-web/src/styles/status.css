@@ -1,0 +1,734 @@
+/* Status — fleet health board */
+
+.ds-status-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* ── Hero ─────────────────────────────────────────────── */
+
+.ds-status-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: calc(var(--radius-xl, 0.9rem) + 0.15rem);
+  background:
+    radial-gradient(
+      ellipse 55% 90% at 100% 0%,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 40% 60% at 0% 100%,
+      color-mix(in srgb, var(--success-fg, #34d399) 8%, transparent),
+      transparent 50%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--bg-elevated) 78%, transparent),
+      color-mix(in srgb, var(--surface) 94%, transparent)
+    );
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset;
+}
+
+.ds-status-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--border) 35%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 48px 100%;
+  opacity: 0.18;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.ds-status-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.35rem 1.25rem 1.3rem;
+}
+
+@media (min-width: 860px) {
+  .ds-status-hero-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.55rem 1.5rem 1.45rem;
+  }
+}
+
+.ds-status-hero-copy {
+  min-width: 0;
+}
+
+.ds-status-hero-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+  margin: 0 0 0.55rem;
+}
+
+.ds-status-hero-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.ds-status-hero-mark {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 0.45rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ds-status-hero-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ds-status-hero-greeting {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ds-status-hero-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.8vw, 2.35rem);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  color: var(--fg);
+  max-width: 14ch;
+}
+
+.ds-status-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1rem;
+  margin-top: 0.85rem;
+}
+
+.ds-status-hero-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ds-status-hero-meta-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--accent) 75%, var(--muted));
+}
+
+.ds-status-hero-meta-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.ds-status-hero-meta-item strong {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.ds-status-hero-dot {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+.ds-status-hero-gauge {
+  justify-self: start;
+}
+
+@media (min-width: 860px) {
+  .ds-status-hero-gauge {
+    justify-self: end;
+  }
+}
+
+.ds-status-gauge {
+  --gauge-size: 9.5rem;
+  position: relative;
+  width: var(--gauge-size);
+  height: var(--gauge-size);
+}
+
+.ds-status-gauge svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ds-status-gauge-track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--border) 85%, transparent);
+  stroke-width: 8;
+}
+
+.ds-status-gauge-arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: var(--gauge-circumference);
+  stroke-dashoffset: var(--gauge-offset);
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.3s ease;
+}
+
+.ds-status-gauge--ok .ds-status-gauge-arc {
+  stroke: var(--success-fg, #34d399);
+}
+
+.ds-status-gauge--warn .ds-status-gauge-arc {
+  stroke: var(--warning-fg, #f59e0b);
+}
+
+.ds-status-gauge--bad .ds-status-gauge-arc {
+  stroke: var(--danger-fg, #ef4444);
+}
+
+.ds-status-gauge-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.ds-status-gauge-value {
+  font-size: 1.85rem;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--fg);
+}
+
+.ds-status-gauge-label {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-status-gauge-ring {
+  position: absolute;
+  inset: 0.55rem;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  pointer-events: none;
+}
+
+.ds-status-gauge-pulse {
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--success-fg, #34d399) 35%, transparent);
+  animation: ds-status-pulse 2.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.ds-status-gauge--warn .ds-status-gauge-pulse {
+  border-color: color-mix(in srgb, var(--warning-fg, #f59e0b) 35%, transparent);
+}
+
+.ds-status-gauge--bad .ds-status-gauge-pulse {
+  border-color: color-mix(in srgb, var(--danger-fg, #ef4444) 35%, transparent);
+  animation: none;
+}
+
+@keyframes ds-status-pulse {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+}
+
+.ds-status-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ── Node board ───────────────────────────────────────── */
+
+.ds-status-board {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ds-status-node {
+  --node-edge: var(--muted);
+  position: relative;
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem 1.05rem 1.05rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 0.85rem;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--node-edge) 12%, transparent),
+      transparent 7rem
+    ),
+    color-mix(in srgb, var(--surface) 97%, transparent);
+  overflow: hidden;
+  animation: ds-status-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.ds-status-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--node-edge);
+}
+
+.ds-status-node--online {
+  --node-edge: var(--success-fg, #34d399);
+}
+
+.ds-status-node--offline {
+  --node-edge: var(--danger-fg, #ef4444);
+}
+
+.ds-status-node--maintenance {
+  --node-edge: var(--warning-fg, #f59e0b);
+}
+
+.ds-status-node-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding-left: 0.35rem;
+}
+
+.ds-status-node-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.ds-status-node-copy {
+  min-width: 0;
+}
+
+.ds-status-node-name {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--fg);
+}
+
+.ds-status-node-loc {
+  margin: 0.2rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ds-status-node-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ds-status-live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-status-live-dot i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ds-status-live-dot--on {
+  color: var(--success-fg, #34d399);
+}
+
+.ds-status-live-dot--on i {
+  box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent);
+  animation: ds-status-dot 1.8s ease-out infinite;
+}
+
+.ds-status-live-dot--off {
+  color: var(--danger-fg, #ef4444);
+}
+
+.ds-status-live-dot--maint {
+  color: var(--warning-fg, #f59e0b);
+}
+
+.ds-status-uptime {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.ds-status-uptime-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--accent) 70%, var(--muted));
+}
+
+@keyframes ds-status-dot {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 40%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 0.45rem transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Count ribbon — not mini-cards */
+
+.ds-status-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0;
+  padding: 0.55rem 0.7rem;
+  margin-left: 0.35rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.ds-status-ribbon-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ds-status-ribbon-item + .ds-status-ribbon-item {
+  border-left: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.ds-status-ribbon-item strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.ds-status-ribbon-item--running strong {
+  color: var(--success-fg, #34d399);
+}
+
+.ds-status-ribbon-item--suspended strong {
+  color: var(--warning-fg, #f59e0b);
+}
+
+/* Dual meters — open board, no nested boxes */
+
+.ds-status-meters {
+  display: grid;
+  gap: 0.85rem 1.25rem;
+  padding-left: 0.35rem;
+}
+
+@media (min-width: 760px) {
+  .ds-status-meters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ds-status-meter {
+  min-width: 0;
+}
+
+.ds-status-meter-label {
+  margin: 0 0 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-status-meter-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--accent) 75%, var(--muted));
+}
+
+.ds-status-meter-pair {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.ds-status-meter-line {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ds-status-meter-kind {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ds-status-meter-value {
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.ds-status-meter-track {
+  height: 0.28rem;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  overflow: hidden;
+}
+
+.ds-status-meter-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ds-status-meter-fill--live {
+  background: color-mix(in srgb, var(--accent) 88%, #fff 6%);
+}
+
+.ds-status-meter-fill--allocated {
+  background: color-mix(in srgb, var(--fg) 28%, var(--accent) 40%);
+  opacity: 0.85;
+}
+
+.ds-status-meter-fill--warn {
+  background: var(--warning-fg, #f59e0b);
+}
+
+.ds-status-meter-fill--bad {
+  background: var(--danger-fg, #ef4444);
+}
+
+.ds-status-meter-limit {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.ds-status-meter-limit-name {
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-status-meter-limit-value {
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--fg) 88%, var(--muted));
+}
+
+/* Server list */
+
+.ds-status-servers {
+  margin-left: 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding-top: 0.7rem;
+}
+
+.ds-status-servers-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.ds-status-servers-title {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ds-status-servers-list {
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 720px) {
+  .ds-status-servers-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1.25rem;
+  }
+}
+
+.ds-status-server-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.42rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+.ds-status-server-row:last-child {
+  border-bottom: none;
+}
+
+.ds-status-server-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+  font-weight: 550;
+  color: var(--fg);
+}
+
+.ds-status-servers-empty {
+  margin: 0;
+  padding: 0.35rem 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Empty / loading / public */
+
+.ds-status-loading {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+}
+
+@keyframes ds-status-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.55rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ds-status-public-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      ellipse 70% 50% at 50% -10%,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 55%
+    ),
+    var(--bg);
+  color: var(--fg);
+}
+
+.ds-status-public-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.ds-status-public-main {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.35rem 0 3rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-status-node,
+  .ds-status-gauge-arc,
+  .ds-status-meter-fill,
+  .ds-status-gauge-pulse,
+  .ds-status-live-dot--on i {
+    animation: none !important;
+    transition: none !important;
+  }
+}

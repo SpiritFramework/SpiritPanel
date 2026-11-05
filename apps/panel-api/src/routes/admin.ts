@@ -90,6 +90,7 @@ import {
   minecraftPluginsSchema,
   registrationSchema,
   ticketsSchema,
+  statusPageSchema,
   securitySchema,
   smtpSchema,
   EMAIL_TEMPLATE_IDS,
@@ -101,7 +102,9 @@ import {
   DEFAULT_CLOUDFLARE_DNS,
   upsertPanelSetting,
   DEFAULT_TICKETS,
+  DEFAULT_STATUS_PAGE,
   getTicketsSettings,
+  getStatusPageSettings,
   isTicketsEnabled,
 } from '../lib/panel-settings.js';
 import { discordRedirectUri } from '../lib/discord-oauth.js';
@@ -2517,6 +2520,7 @@ export async function adminRoutes(app: FastifyInstance) {
         discordWebhookUrlSet: Boolean(tickets.discordWebhookUrl),
       };
     }
+    result.status = await getStatusPageSettings();
     return result;
   });
 
@@ -2588,6 +2592,7 @@ export async function adminRoutes(app: FastifyInstance) {
       'marketplace',
       'minecraft_plugins',
       'tickets',
+      'status',
       'security',
       'registration_enabled',
       'smtp',
@@ -2700,6 +2705,17 @@ export async function adminRoutes(app: FastifyInstance) {
         ...DEFAULT_TICKETS,
         ...parsed.data,
         discordWebhookUrl: webhookUrl,
+      });
+    }
+
+    if (body.status !== undefined) {
+      const parsed = statusPageSchema.safeParse(body.status);
+      if (!parsed.success) {
+        return reply.status(422).send({ error: parsed.error.flatten().fieldErrors });
+      }
+      await upsertPanelSetting('status', {
+        ...DEFAULT_STATUS_PAGE,
+        ...parsed.data,
       });
     }
 

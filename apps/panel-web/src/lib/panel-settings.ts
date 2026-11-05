@@ -91,6 +91,23 @@ export const DEFAULT_TICKETS: PanelTicketsSettings = {
   discordWebhookUrl: '',
 };
 
+export type StatusPageVisibility = 'authenticated' | 'public';
+export type StatusPageDetail = 'servers' | 'summary';
+
+export interface PanelStatusSettings {
+  enabled: boolean;
+  visibility: StatusPageVisibility;
+  detail: StatusPageDetail;
+  showUptime: boolean;
+}
+
+export const DEFAULT_STATUS_PAGE: PanelStatusSettings = {
+  enabled: false,
+  visibility: 'authenticated',
+  detail: 'servers',
+  showUptime: false,
+};
+
 export interface PanelBranding {
   panelName: string;
   tagline: string;
@@ -129,6 +146,10 @@ export interface PanelBranding {
   announcement: PanelAnnouncementSettings;
   registrationEnabled: boolean;
   ticketsEnabled: boolean;
+  statusEnabled: boolean;
+  statusVisibility: StatusPageVisibility;
+  statusDetail: StatusPageDetail;
+  statusShowUptime: boolean;
   minPasswordLength: number;
   turnstileEnabled: boolean;
   turnstileSiteKey: string;
@@ -169,6 +190,10 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
   announcement: DEFAULT_ANNOUNCEMENT,
   registrationEnabled: false,
   ticketsEnabled: true,
+  statusEnabled: false,
+  statusVisibility: 'authenticated',
+  statusDetail: 'servers',
+  statusShowUptime: false,
   minPasswordLength: 8,
   turnstileEnabled: false,
   turnstileSiteKey: '',

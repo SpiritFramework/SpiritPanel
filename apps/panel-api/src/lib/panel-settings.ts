@@ -200,6 +200,13 @@ export const ticketsSchema = z
     }
   });
 
+export const statusPageSchema = z.object({
+  enabled: z.boolean(),
+  visibility: z.enum(['authenticated', 'public']).default('authenticated'),
+  detail: z.enum(['servers', 'summary']).default('servers'),
+  showUptime: z.boolean().default(false),
+});
+
 export const smtpSchema = z.object({
   enabled: z.boolean(),
   host: z.string().max(255),
@@ -421,6 +428,16 @@ export interface TicketsSettings {
   discordWebhookUrl: string;
 }
 
+export type StatusPageVisibility = 'authenticated' | 'public';
+export type StatusPageDetail = 'servers' | 'summary';
+
+export interface StatusPageSettings {
+  enabled: boolean;
+  visibility: StatusPageVisibility;
+  detail: StatusPageDetail;
+  showUptime: boolean;
+}
+
 export interface SmtpSettings {
   enabled: boolean;
   host: string;
@@ -510,6 +527,13 @@ export const DEFAULT_TICKETS: TicketsSettings = {
   maxOpenPerUser: 10,
   discordWebhookEnabled: false,
   discordWebhookUrl: '',
+};
+
+export const DEFAULT_STATUS_PAGE: StatusPageSettings = {
+  enabled: false,
+  visibility: 'authenticated',
+  detail: 'servers',
+  showUptime: false,
 };
 
 export const DEFAULT_SMTP: SmtpSettings = {
@@ -807,9 +831,31 @@ export async function assertTicketsEnabledForClients(): Promise<void> {
   }
 }
 
+export async function getStatusPageSettings(): Promise<StatusPageSettings> {
+  const raw = await readSetting('status', DEFAULT_STATUS_PAGE);
+  const visibility = raw.visibility === 'public' ? 'public' : 'authenticated';
+  const detail = raw.detail === 'summary' ? 'summary' : 'servers';
+  return {
+    enabled: Boolean(raw.enabled),
+    visibility,
+    detail,
+    showUptime: Boolean(raw.showUptime),
+  };
+}
+
 export async function getPublicPanelConfig() {
-  const [branding, general, maintenance, announcement, registrationEnabled, security, turnstile, tickets, discordAuth] =
-    await Promise.all([
+  const [
+    branding,
+    general,
+    maintenance,
+    announcement,
+    registrationEnabled,
+    security,
+    turnstile,
+    tickets,
+    discordAuth,
+    status,
+  ] = await Promise.all([
     getBrandingSettings(),
     getGeneralSettings(),
     getMaintenanceSettings(),
@@ -819,6 +865,7 @@ export async function getPublicPanelConfig() {
     getTurnstileSettings(),
     getTicketsSettings(),
     getDiscordAuthSettings(),
+    getStatusPageSettings(),
   ]);
 
   const turnstileActive = turnstile.enabled && Boolean(turnstile.siteKey) && Boolean(turnstile.secretKey);
@@ -843,6 +890,10 @@ export async function getPublicPanelConfig() {
     registrationEnabled,
     minPasswordLength: security.minPasswordLength,
     ticketsEnabled: tickets.enabled,
+    statusEnabled: status.enabled,
+    statusVisibility: status.visibility,
+    statusDetail: status.detail,
+    statusShowUptime: status.showUptime,
     turnstileEnabled: turnstileActive,
     turnstileSiteKey: turnstileActive ? turnstile.siteKey : '',
     discordLoginEnabled: Boolean(discordAuth.enabled && discordAuth.clientId && discordAuth.clientSecret),

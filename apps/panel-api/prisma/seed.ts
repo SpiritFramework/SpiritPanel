@@ -14,6 +14,7 @@ config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../.env') });
 const prisma = new PrismaClient();
 
 const DEMO_NODE_UUID = '00000000-0000-0000-0000-000000000010';
+const DEMO_NODE_2_UUID = '00000000-0000-0000-0000-000000000011';
 const DEMO_SERVER_UUID = '00000000-0000-0000-0000-000000000020';
 const DEMO_FIVEM_NEST_UUID = '00000000-0000-0000-0000-000000000002';
 /** Distinct leading hex so uuidShort does not collide with the Minecraft demo. */
@@ -163,6 +164,30 @@ async function ensureDemoNode(locationId: string) {
       daemonTokenSecret: 'demoTokenSecretLocalDevOnlyNotForProduction',
       daemonListen: 8080,
       daemonSftp: 2022,
+    },
+  });
+}
+
+/** Second preview node so Status / Nodes UIs have more than one row locally. */
+async function ensureDemoNodeTwo(locationId: string) {
+  return prisma.node.upsert({
+    where: { uuid: DEMO_NODE_2_UUID },
+    update: { name: 'Demo Node NL' },
+    create: {
+      uuid: DEMO_NODE_2_UUID,
+      locationId,
+      name: 'Demo Node NL',
+      description: 'Second local preview node — UI only, no Wings required',
+      fqdn: '127.0.0.2',
+      scheme: 'http',
+      memory: 32768,
+      disk: 250000,
+      memoryOverallocate: 50,
+      diskOverallocate: 20,
+      daemonTokenId: 'demoTokenId00002',
+      daemonTokenSecret: 'demoTokenSecretLocalDevOnlyNode2NotProd',
+      daemonListen: 8081,
+      daemonSftp: 2023,
     },
   });
 }
@@ -375,6 +400,12 @@ async function seedDevelopmentContent(admin: { id: string; username: string }) {
     create: { short: 'uk', long: 'United Kingdom' },
   });
 
+  const locationNl = await prisma.location.upsert({
+    where: { short: 'nl' },
+    update: {},
+    create: { short: 'nl', long: 'Netherlands' },
+  });
+
   const nest = await prisma.nest.upsert({
     where: { uuid: '00000000-0000-0000-0000-000000000001' },
     update: {},
@@ -429,6 +460,9 @@ curl -o server.jar https://launcher.mojang.com/v1/objects/latest/server.jar || c
 
   const demoServer = await seedDemoServer(admin.id, location.id, nest.id);
   const demoFiveMServer = await seedDemoFiveMServer(admin.id, location.id);
+  const demoNodeTwo = await ensureDemoNodeTwo(locationNl.id);
+  await ensureAllocation(demoNodeTwo.id, 25565);
+  await ensureAllocation(demoNodeTwo.id, 25566);
 
   if (demoServer) {
     const existingLogs = await prisma.activityLog.count({ where: { serverId: demoServer.id } });
@@ -478,7 +512,7 @@ curl -o server.jar https://launcher.mojang.com/v1/objects/latest/server.jar || c
     await seedDemoStats(demoFiveMServer.id, demoFiveMServer.memory, demoFiveMServer.disk);
   }
 
-  return { location, nest, demoServer, demoFiveMServer, demoPassword };
+  return { location, locationNl, nest, demoServer, demoFiveMServer, demoNodeTwo, demoPassword };
 }
 
 async function main() {
@@ -500,7 +534,9 @@ async function main() {
     const dev = await seedDevelopmentContent(admin);
     console.log('  Admin password: see ADMIN_PASSWORD in apps/panel-api/.env (default admin123!)');
     console.log(`  Location: ${dev.location.short}`);
+    console.log(`  Location: ${dev.locationNl.short} (second demo node)`);
     console.log(`  Nest: ${dev.nest.name} with Vanilla Minecraft egg`);
+    console.log(`  Demo node 2: "${dev.demoNodeTwo.name}" (${dev.demoNodeTwo.fqdn})`);
     if (dev.demoServer) {
       console.log(`  Demo Minecraft: "${dev.demoServer.name}" → /servers/${dev.demoServer.id}`);
     }

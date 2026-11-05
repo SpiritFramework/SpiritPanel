@@ -15,6 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { isStaffOrPanelAdmin, isFullPanelAdmin } from '../lib/roles';
 import { api, type ServerSummary } from '../lib/api';
 import { getServerTheme } from '../lib/server-theme';
@@ -40,6 +41,7 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { branding } = useBranding();
   const isStaffAdmin = isStaffOrPanelAdmin(user);
   const isFullAdmin = isFullPanelAdmin(user);
 
@@ -95,6 +97,16 @@ export function CommandPalette() {
       { id: 'alerts', label: 'Alerts', icon: Bell, to: '/alerts', group: 'Navigate', keywords: 'inbox notify notifications' },
       { id: 'profile', label: 'Profile', icon: User, to: '/profile', group: 'Navigate' },
     ];
+    if (branding.statusEnabled) {
+      list.splice(1, 0, {
+        id: 'status',
+        label: 'Status',
+        icon: Activity,
+        to: '/status',
+        group: 'Navigate',
+        keywords: 'nodes fleet online offline health',
+      });
+    }
     if (isStaffAdmin) {
       list.push(
         { id: 'admin', label: 'Admin dashboard', icon: LayoutDashboard, to: '/admin', group: 'Admin' },
@@ -124,7 +136,7 @@ export function CommandPalette() {
       });
     }
     return list;
-  }, [isStaffAdmin, isFullAdmin, servers]);
+  }, [branding.statusEnabled, isStaffAdmin, isFullAdmin, servers]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

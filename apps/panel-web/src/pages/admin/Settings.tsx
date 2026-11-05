@@ -10,6 +10,7 @@ import {
   Sparkles,
   RefreshCw,
   LifeBuoy,
+  Activity,
   Type,
   UserPlus,
   Wrench,
@@ -29,10 +30,12 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAINTENANCE,
   DEFAULT_TICKETS,
+  DEFAULT_STATUS_PAGE,
   DEFAULT_SECURITY,
   type PanelGeneralSettings,
   type PanelMaintenanceSettings,
   type PanelTicketsSettings,
+  type PanelStatusSettings,
   type PanelSecuritySettings,
 } from '../../lib/panel-settings';
 import { AdminLayout, Button, Input, Textarea } from '../../components/Layout';
@@ -92,6 +95,7 @@ export function AdminSettings() {
   const [security, setSecurity] = useState<PanelSecuritySettings>(DEFAULT_SECURITY);
   const [registration, setRegistration] = useState(false);
   const [tickets, setTickets] = useState<PanelTicketsSettings>(DEFAULT_TICKETS);
+  const [statusPage, setStatusPage] = useState<PanelStatusSettings>(DEFAULT_STATUS_PAGE);
   const [smtp, setSmtp] = useState<SmtpForm>(DEFAULT_SMTP_FORM);
   const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplatesSettings>(DEFAULT_EMAIL_TEMPLATES);
@@ -140,6 +144,13 @@ export function AdminSettings() {
       const nextSecurity = { ...DEFAULT_SECURITY, ...(s.security as PanelSecuritySettings | undefined) };
       const nextRegistration = Boolean((s.registration_enabled as { enabled?: boolean } | undefined)?.enabled);
       const nextTickets = { ...DEFAULT_TICKETS, ...(s.tickets as PanelTicketsSettings | undefined) };
+      const rawStatus = (s.status ?? {}) as Partial<PanelStatusSettings>;
+      const nextStatus: PanelStatusSettings = {
+        enabled: Boolean(rawStatus.enabled),
+        visibility: rawStatus.visibility === 'public' ? 'public' : 'authenticated',
+        detail: rawStatus.detail === 'summary' ? 'summary' : 'servers',
+        showUptime: Boolean(rawStatus.showUptime),
+      };
       const rawSmtp = (s.smtp ?? {}) as Partial<SmtpForm> & { passwordSet?: boolean };
       const nextSmtp: SmtpForm = {
         enabled: Boolean(rawSmtp.enabled),
@@ -196,6 +207,7 @@ export function AdminSettings() {
       setSecurity(nextSecurity);
       setRegistration(nextRegistration);
       setTickets(nextTickets);
+      setStatusPage(nextStatus);
       setSmtp(nextSmtp);
       setSmtpPasswordSet(Boolean(rawSmtp.passwordSet));
       setEmailTemplates(nextEmailTemplates);
@@ -213,6 +225,7 @@ export function AdminSettings() {
         security: nextSecurity,
         registration: nextRegistration,
         tickets: nextTickets,
+        statusPage: nextStatus,
         smtp: nextSmtp,
         emailTemplates: nextEmailTemplates,
         turnstile: nextTurnstile,
@@ -239,8 +252,8 @@ export function AdminSettings() {
 
   const hasChanges = useMemo(() => {
     if (loading || loadError || !initial) return false;
-    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns });
-  }, [branding, general, maintenance, security, registration, tickets, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading, loadError]);
+    return initial !== JSON.stringify({ branding, general, maintenance, security, registration, tickets, statusPage, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns });
+  }, [branding, general, maintenance, security, registration, tickets, statusPage, smtp, emailTemplates, turnstile, discordAuth, cloudflareDns, initial, loading, loadError]);
 
   function setTab(next: SettingsTab) {
     if (next === tab) return;
@@ -322,6 +335,7 @@ export function AdminSettings() {
         security,
         registration_enabled: { enabled: registration },
         tickets,
+        status: statusPage,
         smtp: smtpPayload,
         email_templates: emailTemplates,
         turnstile: turnstilePayload,
@@ -344,6 +358,7 @@ export function AdminSettings() {
         security,
         registration,
         tickets,
+        statusPage,
         smtp: { ...smtp, password: '' },
         emailTemplates,
         turnstile: { ...turnstile, secretKey: '' },
@@ -368,6 +383,7 @@ export function AdminSettings() {
       security: PanelSecuritySettings;
       registration: boolean;
       tickets: PanelTicketsSettings;
+      statusPage: PanelStatusSettings;
       smtp: SmtpForm;
       emailTemplates: EmailTemplatesSettings;
       turnstile: TurnstileForm;
@@ -380,6 +396,7 @@ export function AdminSettings() {
     setSecurity(s.security);
     setRegistration(s.registration);
     setTickets(s.tickets);
+    setStatusPage(s.statusPage ?? DEFAULT_STATUS_PAGE);
     setSmtp(s.smtp);
     setEmailTemplates(s.emailTemplates);
     setTurnstile(s.turnstile);
@@ -551,20 +568,6 @@ export function AdminSettings() {
                   {tab === 'features' && (
                     <>
                       <AdminSection
-                        tone="identity"
-                        icon={UserPlus}
-                        eyebrow="Accounts"
-                        title="Registration"
-                        description="Control whether visitors can create their own accounts"
-                      >
-                        <Checkbox
-                          label="Allow public registration"
-                          description="Allow new users to sign up at /signup and show a link on the login page"
-                          checked={registration}
-                          onChange={setRegistration}
-                        />
-                      </AdminSection>
-                      <AdminSection
                         tone="connection"
                         icon={LifeBuoy}
                         eyebrow="Support"
@@ -638,86 +641,104 @@ export function AdminSettings() {
                           </div>
                         </div>
                       </AdminSection>
-                    </>
-                  )}
-
-                  {tab === 'security' && (
-                    <>
                       <AdminSection
-                        tone="identity"
-                        icon={KeyRound}
-                        eyebrow="Credentials"
-                        title="Password policy"
-                        description="Account security defaults for registration and admin-created users"
-                      >
-                        <div className="space-y-4">
-                          <div className="max-w-xs">
-                            <Input
-                              label="Minimum password length"
-                              type="number"
-                              min={8}
-                              max={128}
-                              value={String(security.minPasswordLength)}
-                              onChange={(e) => setSecurity({ ...security, minPasswordLength: Number(e.target.value) || 8 })}
-                            />
-                          </div>
-                          <Checkbox
-                            label="Block common weak passwords"
-                            description="Reject passwords that appear on common breach lists during registration and password changes"
-                            checked={security.blockWeakPasswords ?? true}
-                            onChange={(blockWeakPasswords) => setSecurity({ ...security, blockWeakPasswords })}
-                          />
-                          <Checkbox
-                            label="Allow admin server support access"
-                            description="Let full admins open any server via Admin → Servers → Manage (console, files, startup, etc.)"
-                            checked={security.adminServerSupport ?? true}
-                            onChange={(adminServerSupport) => setSecurity({ ...security, adminServerSupport })}
-                          />
-                        </div>
-                      </AdminSection>
-                      <AdminSection
-                        tone="wings"
-                        icon={Shield}
-                        eyebrow="Bot protection"
-                        title="Cloudflare Turnstile"
-                        description="Bot protection on login, registration, and password reset"
+                        tone="connection"
+                        icon={Activity}
+                        eyebrow="Fleet"
+                        title="Status page"
+                        description="Show node reachability, server counters, and live vs allocated resources"
                       >
                         <div className="space-y-4">
                           <Checkbox
-                            label="Enable Turnstile"
-                            description="Requires a Cloudflare Turnstile site key and secret key"
-                            checked={turnstile.enabled}
-                            onChange={(enabled) => setTurnstile({ ...turnstile, enabled })}
+                            label="Enable Status page"
+                            description="When off, Status is hidden from navigation and the status API returns not found."
+                            checked={statusPage.enabled}
+                            onChange={(enabled) => setStatusPage((s) => ({ ...s, enabled }))}
                           />
-                          <div className="grid w-full gap-4 sm:grid-cols-2">
-                            <Input
-                              label="Site key"
-                              value={turnstile.siteKey}
-                              onChange={(e) => setTurnstile({ ...turnstile, siteKey: e.target.value })}
-                              placeholder="0x4AAAAAAA..."
-                              autoComplete="off"
-                            />
-                            <Input
-                              label="Secret key"
-                              type="password"
-                              value={turnstile.secretKey}
-                              onChange={(e) => setTurnstile({ ...turnstile, secretKey: e.target.value })}
-                              placeholder={turnstileSecretSet ? '•••••••• (unchanged)' : 'Turnstile secret key'}
-                              autoComplete="new-password"
-                            />
-                          </div>
-                          <p className="text-xs text-[var(--muted)]">
-                            Create a widget at{' '}
-                            <a
-                              href="https://dash.cloudflare.com/?to=/:account/turnstile"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="accent-text underline"
-                            >
-                              Cloudflare Turnstile
-                            </a>
-                            . Use managed or non-interactive mode. Turnstile only activates when enabled and both keys are saved.
-                          </p>
+                          <fieldset disabled={!statusPage.enabled} className="space-y-2 disabled:opacity-60">
+                            <legend className="mb-1 text-xs font-medium text-[var(--muted)]">Who can view</legend>
+                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="status-visibility"
+                                className="mt-1"
+                                checked={statusPage.visibility === 'authenticated'}
+                                onChange={() => setStatusPage((s) => ({ ...s, visibility: 'authenticated' }))}
+                              />
+                              <span>
+                                <span className="font-medium">Logged-in users</span>
+                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                                  Status appears in the client area after sign-in.
+                                </span>
+                              </span>
+                            </label>
+                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="status-visibility"
+                                className="mt-1"
+                                checked={statusPage.visibility === 'public'}
+                                onChange={() => setStatusPage((s) => ({ ...s, visibility: 'public' }))}
+                              />
+                              <span>
+                                <span className="font-medium">Public</span>
+                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                                  Anyone can open /status without logging in.
+                                </span>
+                              </span>
+                            </label>
+                          </fieldset>
+                          <fieldset disabled={!statusPage.enabled} className="space-y-2 disabled:opacity-60">
+                            <legend className="mb-1 text-xs font-medium text-[var(--muted)]">Detail level</legend>
+                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="status-detail"
+                                className="mt-1"
+                                checked={statusPage.detail === 'servers'}
+                                onChange={() => setStatusPage((s) => ({ ...s, detail: 'servers' }))}
+                              />
+                              <span>
+                                <span className="font-medium">Server names and status</span>
+                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                                  Lists every server on each node (visible to all viewers of this page).
+                                </span>
+                              </span>
+                            </label>
+                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                              <input
+                                type="radio"
+                                name="status-detail"
+                                className="mt-1"
+                                checked={statusPage.detail === 'summary'}
+                                onChange={() => setStatusPage((s) => ({ ...s, detail: 'summary' }))}
+                              />
+                              <span>
+                                <span className="font-medium">Counts only</span>
+                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                                  Shows running / offline / suspended totals without server names.
+                                </span>
+                              </span>
+                            </label>
+                          </fieldset>
+                          <Checkbox
+                            label="Show node uptime"
+                            description="Display how long each node has stayed reachable since it last came online."
+                            checked={statusPage.showUptime}
+                            disabled={!statusPage.enabled}
+                            onChange={(showUptime) => setStatusPage((s) => ({ ...s, showUptime }))}
+                          />
+                          {statusPage.enabled &&
+                          statusPage.visibility === 'public' &&
+                          statusPage.detail === 'servers' ? (
+                            <div className="flex gap-2 rounded-lg border border-[var(--warning-border,var(--border))] bg-[var(--warning-bg,transparent)] px-3 py-2 text-xs text-[var(--warning-fg,var(--muted))]">
+                              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                              <span>
+                                Public mode with server names exposes every server name and status to the internet.
+                                Prefer counts-only unless that is intentional.
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                       </AdminSection>
                       <AdminSection
@@ -877,6 +898,102 @@ export function AdminSettings() {
                             DNS-only (not proxied) so game ports work. Minecraft Java eggs also get an
                             SRV record so players can join with the hostname only on random ports. Set
                             each node’s public IP if allocations use 0.0.0.0.
+                          </p>
+                        </div>
+                      </AdminSection>
+                    </>
+                  )}
+
+                  {tab === 'security' && (
+                    <>
+                      <AdminSection
+                        tone="identity"
+                        icon={UserPlus}
+                        eyebrow="Accounts"
+                        title="Registration"
+                        description="Control whether visitors can create their own accounts"
+                      >
+                        <Checkbox
+                          label="Allow public registration"
+                          description="Allow new users to sign up at /signup and show a link on the login page"
+                          checked={registration}
+                          onChange={setRegistration}
+                        />
+                      </AdminSection>
+                      <AdminSection
+                        tone="identity"
+                        icon={KeyRound}
+                        eyebrow="Credentials"
+                        title="Password policy"
+                        description="Account security defaults for registration and admin-created users"
+                      >
+                        <div className="space-y-4">
+                          <div className="max-w-xs">
+                            <Input
+                              label="Minimum password length"
+                              type="number"
+                              min={8}
+                              max={128}
+                              value={String(security.minPasswordLength)}
+                              onChange={(e) => setSecurity({ ...security, minPasswordLength: Number(e.target.value) || 8 })}
+                            />
+                          </div>
+                          <Checkbox
+                            label="Block common weak passwords"
+                            description="Reject passwords that appear on common breach lists during registration and password changes"
+                            checked={security.blockWeakPasswords ?? true}
+                            onChange={(blockWeakPasswords) => setSecurity({ ...security, blockWeakPasswords })}
+                          />
+                          <Checkbox
+                            label="Allow admin server support access"
+                            description="Let full admins open any server via Admin → Servers → Manage (console, files, startup, etc.)"
+                            checked={security.adminServerSupport ?? true}
+                            onChange={(adminServerSupport) => setSecurity({ ...security, adminServerSupport })}
+                          />
+                        </div>
+                      </AdminSection>
+                      <AdminSection
+                        tone="wings"
+                        icon={Shield}
+                        eyebrow="Bot protection"
+                        title="Cloudflare Turnstile"
+                        description="Bot protection on login, registration, and password reset"
+                      >
+                        <div className="space-y-4">
+                          <Checkbox
+                            label="Enable Turnstile"
+                            description="Requires a Cloudflare Turnstile site key and secret key"
+                            checked={turnstile.enabled}
+                            onChange={(enabled) => setTurnstile({ ...turnstile, enabled })}
+                          />
+                          <div className="grid w-full gap-4 sm:grid-cols-2">
+                            <Input
+                              label="Site key"
+                              value={turnstile.siteKey}
+                              onChange={(e) => setTurnstile({ ...turnstile, siteKey: e.target.value })}
+                              placeholder="0x4AAAAAAA..."
+                              autoComplete="off"
+                            />
+                            <Input
+                              label="Secret key"
+                              type="password"
+                              value={turnstile.secretKey}
+                              onChange={(e) => setTurnstile({ ...turnstile, secretKey: e.target.value })}
+                              placeholder={turnstileSecretSet ? '•••••••• (unchanged)' : 'Turnstile secret key'}
+                              autoComplete="new-password"
+                            />
+                          </div>
+                          <p className="text-xs text-[var(--muted)]">
+                            Create a widget at{' '}
+                            <a
+                              href="https://dash.cloudflare.com/?to=/:account/turnstile"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="accent-text underline"
+                            >
+                              Cloudflare Turnstile
+                            </a>
+                            . Use managed or non-interactive mode. Turnstile only activates when enabled and both keys are saved.
                           </p>
                         </div>
                       </AdminSection>

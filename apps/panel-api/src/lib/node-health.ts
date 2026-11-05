@@ -6,6 +6,8 @@ export interface NodeHealthProbe {
   online: boolean;
   wingsVersion: string | null;
   error: string | null;
+  /** Continuous reachability window while the node stays online (incl. grace). */
+  uptimeMs: number | null;
 }
 
 /** One slow `GET /api/system` must not flip the node offline. Server list, admin
@@ -14,25 +16,34 @@ export interface NodeHealthProbe {
  * and re-polled every server, and that load made the following probe miss again. */
 const ONLINE_GRACE_MS = 45_000;
 
-type RecentOnline = { at: number; wingsVersion: string | null };
+type RecentOnline = { at: number; wingsVersion: string | null; since: number };
 const recentOnline = new Map<string, RecentOnline>();
 
 export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
   try {
     const sys = await wingsForNode(node).getSystem();
     const wingsVersion = typeof sys.version === 'string' ? sys.version : null;
-    recentOnline.set(node.id, { at: Date.now(), wingsVersion });
-    return { online: true, wingsVersion, error: null };
+    const now = Date.now();
+    const existing = recentOnline.get(node.id);
+    const since = existing?.since ?? now;
+    recentOnline.set(node.id, { at: now, wingsVersion, since });
+    return { online: true, wingsVersion, error: null, uptimeMs: now - since };
   } catch (e) {
     const recent = recentOnline.get(node.id);
     if (recent && Date.now() - recent.at < ONLINE_GRACE_MS) {
-      return { online: true, wingsVersion: recent.wingsVersion, error: null };
+      return {
+        online: true,
+        wingsVersion: recent.wingsVersion,
+        error: null,
+        uptimeMs: Date.now() - recent.since,
+      };
     }
     recentOnline.delete(node.id);
     return {
       online: false,
       wingsVersion: null,
       error: e instanceof Error ? e.message : 'FeatherWings unreachable',
+      uptimeMs: null,
     };
   }
 }
@@ -137,7 +148,7 @@ export async function probeNodesReachability(
 
   for (const id of unique) {
     if (!results.has(id)) {
-      results.set(id, { online: false, wingsVersion: null, error: 'Node not found' });
+      results.set(id, { online: false, wingsVersion: null, error: 'Node not found', uptimeMs: null });
     }
   }
 

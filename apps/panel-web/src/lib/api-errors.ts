@@ -31,6 +31,7 @@ const AUTH_ATTEMPT_PATHS = new Set([
   '/auth/register',
   '/auth/forgot-password',
   '/auth/reset-password',
+  '/status/nodes',
 ]);
 
 export function shouldTreat401AsSessionExpired(path: string): boolean {

@@ -1436,7 +1436,68 @@ export const api = {
   },
 
   branding: () => request<import('./panel-settings').PanelBranding>('/auth/branding'),
+
+  status: {
+    nodes: () => request<StatusNodesResponse>('/status/nodes'),
+  },
 };
+
+export type StatusTone = 'success' | 'warning' | 'danger' | 'muted' | 'info';
+
+export interface StatusServerRow {
+  id: string;
+  name: string;
+  statusTone: StatusTone;
+  statusLabel: string;
+  suspended: boolean;
+  containerState: string | null;
+}
+
+export interface StatusNodePayload {
+  id: string;
+  name: string;
+  location: { short: string; long: string; flagUrl: string | null };
+  online: boolean;
+  maintenanceMode: boolean;
+  counts: {
+    total: number;
+    running: number;
+    offline: number;
+    suspended: number;
+    installing: number;
+  };
+  allocated: {
+    memoryMiB: number;
+    diskMiB: number;
+    memoryPercent: number;
+    diskPercent: number;
+    cpuLimit: number;
+    effectiveMemoryLimitMiB: number;
+    effectiveDiskLimitMiB: number;
+  };
+  live: {
+    memoryBytes: number;
+    diskBytes: number;
+    cpuPercent: number;
+    memoryPercent: number;
+    diskPercent: number;
+    serverCount: number;
+  } | null;
+  uptimeMs?: number | null;
+  servers?: StatusServerRow[];
+}
+
+export interface StatusNodesResponse {
+  detail: 'servers' | 'summary';
+  showUptime: boolean;
+  nodes: StatusNodePayload[];
+  summary: {
+    nodesOnline: number;
+    nodesTotal: number;
+    serversRunning: number;
+    serversTotal: number;
+  };
+}
 
 export interface AdminLocationSummary {
   id: string;

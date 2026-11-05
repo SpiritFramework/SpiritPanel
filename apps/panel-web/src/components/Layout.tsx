@@ -243,8 +243,10 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
   const isAdmin = isStaffOrPanelAdmin(user);
   const shellLayout = appearance.shellLayout;
 
+  const statusEnabled = branding.statusEnabled === true;
   const accountLinks = [
     ...clientLinks,
+    ...(statusEnabled ? [{ to: '/status', label: 'Status', icon: Activity }] : []),
     ...(branding.ticketsEnabled !== false
       ? [{ to: '/tickets', label: 'Support', icon: LifeBuoy }]
       : []),
@@ -266,6 +268,7 @@ export function ClientLayout({ children, fillHeight }: { children: ReactNode; wi
           {clientLinks.map(({ to, label, icon }) => (
             <SideNavItem key={to} to={to} end={to === '/servers'} icon={icon} label={label} />
           ))}
+          {statusEnabled ? <SideNavItem to="/status" icon={Activity} label="Status" /> : null}
           {branding.ticketsEnabled !== false ? (
             <SideNavItem to="/tickets" icon={LifeBuoy} label="Support" />
           ) : null}

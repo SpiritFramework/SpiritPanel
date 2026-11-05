@@ -21,6 +21,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Added
 
+- **Status page** — optional client/public fleet status under Settings → Features. Admins choose logged-in vs public visibility, server names vs counts-only, and optional node uptime. Shows per-node online/maintenance, running/offline/suspended counters, and live vs allocated CPU/memory/disk meters (`GET /api/status/nodes`). Fleet health board UI with online gauge, edge-lit node rows, count ribbons, and dual live/allocated meters.
 - **Shell layout branding** — choose Sidebar or Navbar for the admin and client areas (Settings → Branding → Layout → Navigation). Phones keep a drawer in both modes. Server pages still use a left nav.
 - **Navbar style presets** — when shell layout is Navbar, pick Classic / Pills / Underline / Compact icons / Split for admin and client top bars. Sidebar style pickers only show in Sidebar mode. Material is labeled Nav material and applies to both.
 - **Atmosphere scenes** — login and panel backdrops are a fresh set of layered animations (Aurora, Orbits, Constellation, Ripple, Beams, Tide, Ember, Lattice, Prism, Halo, Mist, Solid). Old preset IDs map across automatically.
@@ -39,6 +40,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Changed
 
+- **Admin Settings tabs** — Registration moves under Security; Discord login and Cloudflare DNS (subdomains) move under Features.
 - **Network & Activity manage tabs** — Network gets labeled Refresh + `ClientCallout` notices; Activity load errors use the shared callout.
 - **Databases & Backups manage tabs** — labeled Refresh and shared `ClientCallout` notices (disabled / view-only / limit / load errors) to match Files/Schedules chrome.
 - **Theme cycle control** — sidebar shells (admin/client/server) use the same single cycle button as the navbar.

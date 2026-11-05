@@ -69,6 +69,7 @@ const AdminTicketDetailPage = lazy(() => import('./pages/admin/TicketDetail').th
 const ProfilePage = lazy(() => import('./pages/client/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const TicketsPage = lazy(() => import('./pages/client/Tickets').then((m) => ({ default: m.TicketsPage })));
 const TicketDetailPage = lazy(() => import('./pages/client/TicketDetail').then((m) => ({ default: m.TicketDetailPage })));
+const StatusPage = lazy(() => import('./pages/client/Status').then((m) => ({ default: m.StatusPage })));
 
 function RouteFallback() {
   return (
@@ -103,6 +104,7 @@ function PanelRouter() {
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/status" element={<StatusPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/servers" element={<ServerListPage />} />
               <Route path="/profile" element={<ProfilePage />} />

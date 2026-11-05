@@ -82,6 +82,9 @@ Default database URL (Docker): `mysql://spirit:spirit@127.0.0.1:3306/spirit_pane
 | Admin user | From `.env` or defaults above |
 | Demo user | `demo@example.com` |
 | UK location | Short code `uk` |
+| NL location | Short code `nl` (hosts Demo Node NL) |
+| Demo Node | `127.0.0.1` — Minecraft + FiveM demos |
+| Demo Node NL | Second preview node (`127.0.0.2`) for Status/Nodes UI |
 | Minecraft nest + egg | Vanilla Minecraft |
 | Demo server | UI preview — no real Wings connection |
 | Panel settings | Branding, registration disabled |
