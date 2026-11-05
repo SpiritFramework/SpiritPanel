@@ -19,6 +19,12 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Added
+
+- **Nginx connection and request limits** — shipped site config rate-limits web/API/auth separately, keeps a higher budget for `/api/remote` (FeatherWings), and caps concurrent connections per IP. Zones live in `deploy/nginx/spirit-panel-http.conf` (`/etc/nginx/conf.d/`).
+- **Cloudflare origin hardening helpers** — `deploy/nginx/cloudflare-realip.conf` (restore visitor IPs), `deploy/firewall/sync-cloudflare-realip.sh`, and `deploy/firewall/ufw-cloudflare-origin.sh` (allow 80/443 from Cloudflare only). Documented edge WAF / Managed Challenge guidance in SECURITY.md and PRODUCTION.md.
+- **TLS session hardening** in the reference nginx site (`TLSv1.2`/`TLSv1.3`, shared session cache, tickets off).
+
 ## [1.3.5.2] - 2026-11-05
 
 ### Added

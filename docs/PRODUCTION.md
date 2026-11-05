@@ -353,7 +353,18 @@ chmod -R o+rX /home/spiritpanel/Spirit-Panel/apps/panel-web/dist
 
 
 
-### 5. Firewall (panel server)
+### 5. Rate-limit zones (required with the shipped site)
+
+The site config references named zones. Install them into nginx’s http context (the installer does this automatically):
+
+```bash
+sudo cp deploy/nginx/spirit-panel-http.conf /etc/nginx/conf.d/spirit-panel-http.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Without that file, `nginx -t` fails once the site uses `limit_req` / `limit_conn`.
+
+### 6. Firewall (panel server)
 
 ```bash
 sudo ufw allow OpenSSH
@@ -363,7 +374,23 @@ sudo ufw enable
 
 Only **22, 80, 443** should be public. Do not open 3000, 3306, or 6379.
 
-### 6. Verify
+### 7. Cloudflare in front (recommended against L7 floods)
+
+Orange-cloud the panel hostname, then on the origin:
+
+```bash
+# Visitor IP for logs + rate limits (not a Cloudflare edge IP)
+sudo bash deploy/firewall/sync-cloudflare-realip.sh
+
+# After Proxied DNS works: only Cloudflare may hit 80/443
+sudo bash deploy/firewall/ufw-cloudflare-origin.sh
+```
+
+In the Cloudflare dashboard: enable Bot Fight / Managed Challenge, add a rate-limit rule for the zone, and **Skip** challenges for `/api/remote*` (and health) so FeatherWings is not blocked. Use “Under Attack Mode” only during an active incident.
+
+Existing installs that already customise the site need `--force-nginx` (or a manual merge) to pick up the new `limit_req` / TLS lines; the http zones file is refreshed on every `spirit.sh update`.
+
+### 8. Verify
 
 ```bash
 curl -s https://panel.example.com/health
@@ -372,7 +399,7 @@ curl -s https://panel.example.com/health/ready
 
 Browser: open `https://panel.example.com/admin`
 
-### 7. Caching rules (do not skip)
+### 9. Caching rules (do not skip)
 
 The shipped config sets deliberate `Cache-Control` values. Removing them causes deploys to roll out inconsistently:
 

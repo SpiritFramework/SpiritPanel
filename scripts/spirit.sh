@@ -1227,14 +1227,25 @@ PY
   fi
 }
 
+install_nginx_http_limits() {
+  local src="${INSTALL_DIR}/deploy/nginx/spirit-panel-http.conf"
+  local dest="/etc/nginx/conf.d/spirit-panel-http.conf"
+  [[ -f "$src" ]] || return 0
+  install -m 644 "$src" "$dest"
+  ok "nginx rate-limit zones → ${dest}"
+}
+
 install_nginx() {
   local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
   local dest="/etc/nginx/sites-available/${NGINX_SITE}"
   [[ -f "$src" ]] || die "Missing ${src}"
 
+  install_nginx_http_limits
+
   if [[ -f "$dest" && "$FORCE_NGINX" != "1" ]]; then
     warn "${dest} exists — leaving your config untouched"
     info "Reference: ${src}"
+    info "To pick up connection/rate limits: sudo bash ${INSTALL_DIR}/scripts/spirit.sh install --force-nginx"
     sync_nginx_csp
   else
     install -m 644 "$src" "$dest"
@@ -1762,12 +1773,18 @@ action_update() {
     die "Stopped before restarting the API so the current version keeps running."
   fi
 
+  install_nginx_http_limits
   sync_nginx_csp
 
   phase "Restarting services"
   fix_permissions >/dev/null
   systemctl restart "$SERVICE_NAME" || die "Failed to restart ${SERVICE_NAME}"
-  systemctl reload nginx 2>/dev/null || true
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || true
+  else
+    warn "nginx -t failed after update — check rate-limit zones and site config"
+    nginx -t || true
+  fi
   ok "${SERVICE_NAME} restarted"
 
   phase "Verifying"

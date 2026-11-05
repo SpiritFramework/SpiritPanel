@@ -120,9 +120,21 @@ Recommended production layout:
 - **Do not expose** MariaDB (3306), Redis (6379), or the raw API port (3000)
 - **`API_URL`** must exactly match `remote:` in every FeatherWings `config.yml` (HTTPS, no trailing slash)
 
+### Layer-7 / TLS floods (edge first)
+
+App rate limits and Turnstile stop credential stuffing; they do **not** stop a distributed HTTPS flood. The origin still pays for TLS and nginx work before Fastify runs. Prefer this stack:
+
+1. **Cloudflare (or similar) in front of the panel** — Proxied DNS (orange cloud), Bot Fight / Managed Challenge, and a rate-limit rule that challenges or blocks abusive IPs.
+2. **Skip challenges on daemon paths** — WAF exception (Skip / Allow) for `/api/remote*` and health checks so FeatherWings keeps talking during “Under Attack” or JS challenges. Never put a browser challenge on the Wings remote API.
+3. **Restore real client IPs on origin** — install `deploy/nginx/cloudflare-realip.conf` into `/etc/nginx/conf.d/` (or run `deploy/firewall/sync-cloudflare-realip.sh`) so nginx / Fastify rate limits see `CF-Connecting-IP`, not one Cloudflare edge address.
+4. **Lock origin 80/443 to Cloudflare** — after orange-cloud is confirmed working, run `sudo bash deploy/firewall/ufw-cloudflare-origin.sh` so attackers cannot bypass the edge by hitting the server IP.
+5. **Origin nginx limits** — the shipped site uses `limit_req` / `limit_conn` (zones from `deploy/nginx/spirit-panel-http.conf`). This is a last line of defence, not a substitute for an edge WAF.
+
+Enable **Turnstile** on login/registration (Admin → Settings → Security) for account abuse; it will not mitigate raw TLS floods by itself.
+
 Additional hardening:
 
-- Disable public registration unless needed (**Admin → Settings → Access**)
+- Disable public registration unless needed (**Admin → Settings → Features / Security**)
 - Enable SMTP for password-reset email
 - Restrict admin panel access (VPN, IP allowlist, or separate admin hostname)
 
@@ -220,6 +232,7 @@ The panel UI does not use `dangerouslySetInnerHTML`. User-controlled strings are
 | **Content-Security-Policy** | `script-src 'self'` plus Cloudflare Turnstile when enabled, with `manifest-src 'self'` and `worker-src 'self'` for the installable app. `connect-src` allows `'self'`, Turnstile, and `https:`/`http:`/`wss:`/`ws:` so the browser can probe FeatherWings node endpoints (e.g. `:8080`). Delivered via **Nginx/Vite headers** (not `<meta>`). |
 | **Strict-Transport-Security** | Nginx (`deploy/nginx/spirit-panel.conf`) sets `max-age=31536000; includeSubDomains; preload`. The API only adds HSTS when it is not behind a reverse proxy (no `X-Forwarded-Proto`), so proxied responses do not send duplicate HSTS headers. |
 | **Server version disclosure** | Nginx `server_tokens off` so responses do not advertise the nginx version. |
+| **Origin request limits** | Nginx `limit_req` / `limit_conn` on the shipped site (auth tighter than API; `/api/remote` higher). Edge WAF still required for serious L7 floods. |
 | **URL sinks** | Avatar, logo, egg icon, support, markdown, and console link URLs are validated client-side (`sanitizeImageSrc` / `sanitizeLinkHref`) and server-side (`safe-url.ts`) — only `http:`/`https:` or same-origin asset paths. |
 | **Branding uploads** | SVG blocked; MIME allowlist on upload. |
 | **Email template preview** | Sandboxed iframe (`sandbox=""`) with no script execution. |
