@@ -651,43 +651,22 @@ export function AdminSettings() {
                         <div className="space-y-4">
                           <Checkbox
                             label="Enable Status page"
-                            description="When off, Status is hidden from navigation and the status API returns not found."
+                            description="When on, logged-in users see Status in the client area. When off, Status is hidden and the API returns not found."
                             checked={statusPage.enabled}
                             onChange={(enabled) => setStatusPage((s) => ({ ...s, enabled }))}
                           />
-                          <fieldset disabled={!statusPage.enabled} className="space-y-2 disabled:opacity-60">
-                            <legend className="mb-1 text-xs font-medium text-[var(--muted)]">Who can view</legend>
-                            <label className="flex cursor-pointer items-start gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name="status-visibility"
-                                className="mt-1"
-                                checked={statusPage.visibility === 'authenticated'}
-                                onChange={() => setStatusPage((s) => ({ ...s, visibility: 'authenticated' }))}
-                              />
-                              <span>
-                                <span className="font-medium">Logged-in users</span>
-                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                                  Status appears in the client area after sign-in.
-                                </span>
-                              </span>
-                            </label>
-                            <label className="flex cursor-pointer items-start gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name="status-visibility"
-                                className="mt-1"
-                                checked={statusPage.visibility === 'public'}
-                                onChange={() => setStatusPage((s) => ({ ...s, visibility: 'public' }))}
-                              />
-                              <span>
-                                <span className="font-medium">Public</span>
-                                <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                                  Anyone can open /status without logging in.
-                                </span>
-                              </span>
-                            </label>
-                          </fieldset>
+                          <Checkbox
+                            label="Allow public access"
+                            description="Also let anyone open /status without signing in. Logged-in users keep access either way."
+                            checked={statusPage.visibility === 'public'}
+                            disabled={!statusPage.enabled}
+                            onChange={(allowPublic) =>
+                              setStatusPage((s) => ({
+                                ...s,
+                                visibility: allowPublic ? 'public' : 'authenticated',
+                              }))
+                            }
+                          />
                           <fieldset disabled={!statusPage.enabled} className="space-y-2 disabled:opacity-60">
                             <legend className="mb-1 text-xs font-medium text-[var(--muted)]">Detail level</legend>
                             <label className="flex cursor-pointer items-start gap-2 text-sm">
