@@ -19,6 +19,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+## [1.3.5.2] - 2026-11-05
+
 ### Added
 
 - **Status page** — optional fleet status under Settings → Features. When enabled, logged-in users always have access; admins can also allow public `/status`. Choose server names vs counts-only. Shows per-node online/maintenance, counters, and live vs allocated meters (`GET /api/status/nodes`).
