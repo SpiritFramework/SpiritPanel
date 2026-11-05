@@ -6,8 +6,8 @@ export interface NodeHealthProbe {
   online: boolean;
   wingsVersion: string | null;
   error: string | null;
-  /** Continuous reachability window while the node stays online (incl. grace). */
-  uptimeMs: number | null;
+  /** Host CPU threads/cores from Wings `GET /api/system`, when known. */
+  cpuCores: number | null;
 }
 
 /** One slow `GET /api/system` must not flip the node offline. Server list, admin
@@ -16,18 +16,34 @@ export interface NodeHealthProbe {
  * and re-polled every server, and that load made the following probe miss again. */
 const ONLINE_GRACE_MS = 45_000;
 
-type RecentOnline = { at: number; wingsVersion: string | null; since: number };
+type RecentOnline = { at: number; wingsVersion: string | null; cpuCores: number | null };
 const recentOnline = new Map<string, RecentOnline>();
+
+function readCpuCores(sys: Record<string, unknown>): number | null {
+  const asPositive = (value: unknown): number | null => {
+    const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.round(n);
+  };
+
+  const direct = asPositive(sys.cpu_count) ?? asPositive(sys.cpu_threads);
+  if (direct != null) return direct;
+
+  const nested = sys.system;
+  if (nested && typeof nested === 'object') {
+    const system = nested as Record<string, unknown>;
+    return asPositive(system.cpu_threads) ?? asPositive(system.cpu_count);
+  }
+  return null;
+}
 
 export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
   try {
-    const sys = await wingsForNode(node).getSystem();
+    const sys = (await wingsForNode(node).getSystem()) as Record<string, unknown>;
     const wingsVersion = typeof sys.version === 'string' ? sys.version : null;
-    const now = Date.now();
-    const existing = recentOnline.get(node.id);
-    const since = existing?.since ?? now;
-    recentOnline.set(node.id, { at: now, wingsVersion, since });
-    return { online: true, wingsVersion, error: null, uptimeMs: now - since };
+    const cpuCores = readCpuCores(sys);
+    recentOnline.set(node.id, { at: Date.now(), wingsVersion, cpuCores });
+    return { online: true, wingsVersion, error: null, cpuCores };
   } catch (e) {
     const recent = recentOnline.get(node.id);
     if (recent && Date.now() - recent.at < ONLINE_GRACE_MS) {
@@ -35,7 +51,7 @@ export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
         online: true,
         wingsVersion: recent.wingsVersion,
         error: null,
-        uptimeMs: Date.now() - recent.since,
+        cpuCores: recent.cpuCores,
       };
     }
     recentOnline.delete(node.id);
@@ -43,7 +59,7 @@ export async function probeNodeHealth(node: Node): Promise<NodeHealthProbe> {
       online: false,
       wingsVersion: null,
       error: e instanceof Error ? e.message : 'FeatherWings unreachable',
-      uptimeMs: null,
+      cpuCores: null,
     };
   }
 }
@@ -148,7 +164,7 @@ export async function probeNodesReachability(
 
   for (const id of unique) {
     if (!results.has(id)) {
-      results.set(id, { online: false, wingsVersion: null, error: 'Node not found', uptimeMs: null });
+      results.set(id, { online: false, wingsVersion: null, error: 'Node not found', cpuCores: null });
     }
   }
 

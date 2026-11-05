@@ -98,14 +98,12 @@ export interface PanelStatusSettings {
   enabled: boolean;
   visibility: StatusPageVisibility;
   detail: StatusPageDetail;
-  showUptime: boolean;
 }
 
 export const DEFAULT_STATUS_PAGE: PanelStatusSettings = {
   enabled: false,
   visibility: 'authenticated',
   detail: 'servers',
-  showUptime: false,
 };
 
 export interface PanelBranding {
@@ -149,7 +147,6 @@ export interface PanelBranding {
   statusEnabled: boolean;
   statusVisibility: StatusPageVisibility;
   statusDetail: StatusPageDetail;
-  statusShowUptime: boolean;
   minPasswordLength: number;
   turnstileEnabled: boolean;
   turnstileSiteKey: string;
@@ -193,7 +190,6 @@ export const DEFAULT_PANEL_BRANDING: PanelBranding = {
   statusEnabled: false,
   statusVisibility: 'authenticated',
   statusDetail: 'servers',
-  statusShowUptime: false,
   minPasswordLength: 8,
   turnstileEnabled: false,
   turnstileSiteKey: '',

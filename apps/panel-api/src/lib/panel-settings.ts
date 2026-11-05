@@ -204,7 +204,6 @@ export const statusPageSchema = z.object({
   enabled: z.boolean(),
   visibility: z.enum(['authenticated', 'public']).default('authenticated'),
   detail: z.enum(['servers', 'summary']).default('servers'),
-  showUptime: z.boolean().default(false),
 });
 
 export const smtpSchema = z.object({
@@ -435,7 +434,6 @@ export interface StatusPageSettings {
   enabled: boolean;
   visibility: StatusPageVisibility;
   detail: StatusPageDetail;
-  showUptime: boolean;
 }
 
 export interface SmtpSettings {
@@ -533,7 +531,6 @@ export const DEFAULT_STATUS_PAGE: StatusPageSettings = {
   enabled: false,
   visibility: 'authenticated',
   detail: 'servers',
-  showUptime: false,
 };
 
 export const DEFAULT_SMTP: SmtpSettings = {
@@ -839,7 +836,6 @@ export async function getStatusPageSettings(): Promise<StatusPageSettings> {
     enabled: Boolean(raw.enabled),
     visibility,
     detail,
-    showUptime: Boolean(raw.showUptime),
   };
 }
 
@@ -893,7 +889,6 @@ export async function getPublicPanelConfig() {
     statusEnabled: status.enabled,
     statusVisibility: status.visibility,
     statusDetail: status.detail,
-    statusShowUptime: status.showUptime,
     turnstileEnabled: turnstileActive,
     turnstileSiteKey: turnstileActive ? turnstile.siteKey : '',
     discordLoginEnabled: Boolean(discordAuth.enabled && discordAuth.clientId && discordAuth.clientSecret),

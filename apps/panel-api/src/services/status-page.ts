@@ -36,7 +36,12 @@ export interface StatusNodePayload {
     diskMiB: number;
     memoryPercent: number;
     diskPercent: number;
+    /** Sum of server CPU limits (100 = 1 core). */
+    cpuAllocated: number;
+    /** Host CPU capacity in the same units (cores × 100), when Wings reports cores. */
     cpuLimit: number;
+    /** Host CPU thread/core count from Wings, when known. */
+    cpuCores: number | null;
     effectiveMemoryLimitMiB: number;
     effectiveDiskLimitMiB: number;
   };
@@ -48,14 +53,11 @@ export interface StatusNodePayload {
     diskPercent: number;
     serverCount: number;
   } | null;
-  /** Reachability uptime while the node stays online; only set when showUptime is on. */
-  uptimeMs?: number | null;
   servers?: StatusServerRow[];
 }
 
 export interface StatusNodesResponse {
   detail: StatusPageDetail;
-  showUptime: boolean;
   nodes: StatusNodePayload[];
   summary: {
     nodesOnline: number;
@@ -118,7 +120,6 @@ async function buildNodeStatus(
     servers: Server[];
   },
   detail: StatusPageDetail,
-  showUptime: boolean,
 ): Promise<StatusNodePayload> {
   const allocated = node.servers.reduce(
     (acc, s) => ({
@@ -154,6 +155,9 @@ async function buildNodeStatus(
   }
 
   const health = await probeNodeHealth(node);
+  const cpuCores = health.cpuCores;
+  const cpuLimit = cpuCores != null && cpuCores > 0 ? cpuCores * 100 : 0;
+
   let live: StatusNodePayload['live'] = null;
   if (health.online) {
     const summary = await getNodeLiveUsageSummary(node, node.servers);
@@ -195,20 +199,18 @@ async function buildNodeStatus(
       diskMiB: capacity.allocatedDisk,
       memoryPercent: capacity.memoryUsedPercent,
       diskPercent: capacity.diskUsedPercent,
-      cpuLimit: allocated.cpu,
+      cpuAllocated: allocated.cpu,
+      cpuLimit,
+      cpuCores,
       effectiveMemoryLimitMiB: capacity.effectiveMemoryLimit,
       effectiveDiskLimitMiB: capacity.effectiveDiskLimit,
     },
     live,
-    ...(showUptime ? { uptimeMs: health.online ? health.uptimeMs : null } : {}),
     ...(detail === 'servers' ? { servers: serverRows } : {}),
   };
 }
 
-export async function getStatusNodesPayload(
-  detail: StatusPageDetail,
-  showUptime = false,
-): Promise<StatusNodesResponse> {
+export async function getStatusNodesPayload(detail: StatusPageDetail): Promise<StatusNodesResponse> {
   const nodes = await prisma.node.findMany({
     include: {
       location: { select: { short: true, long: true, flagUrl: true } },
@@ -217,13 +219,10 @@ export async function getStatusNodesPayload(
     orderBy: { name: 'asc' },
   });
 
-  const payloads = await mapWithConcurrency(nodes, 2, (node) =>
-    buildNodeStatus(node, detail, showUptime),
-  );
+  const payloads = await mapWithConcurrency(nodes, 2, (node) => buildNodeStatus(node, detail));
 
   return {
     detail,
-    showUptime,
     nodes: payloads,
     summary: {
       nodesOnline: payloads.filter((n) => n.online).length,

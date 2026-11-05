@@ -21,7 +21,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ### Added
 
-- **Status page** — optional fleet status under Settings → Features. When enabled, logged-in users always have access; admins can also allow public `/status`. Choose server names vs counts-only and optional node uptime. Shows per-node online/maintenance, counters, and live vs allocated meters (`GET /api/status/nodes`).
+- **Status page** — optional fleet status under Settings → Features. When enabled, logged-in users always have access; admins can also allow public `/status`. Choose server names vs counts-only. Shows per-node online/maintenance, counters, and live vs allocated meters (`GET /api/status/nodes`).
 - **Shell layout branding** — choose Sidebar or Navbar for the admin and client areas (Settings → Branding → Layout → Navigation). Phones keep a drawer in both modes. Server pages still use a left nav.
 - **Navbar style presets** — when shell layout is Navbar, pick Classic / Pills / Underline / Compact icons / Split for admin and client top bars. Sidebar style pickers only show in Sidebar mode. Material is labeled Nav material and applies to both.
 - **Atmosphere scenes** — login and panel backdrops are a fresh set of layered animations (Aurora, Orbits, Constellation, Ripple, Beams, Tide, Ember, Lattice, Prism, Halo, Mist, Solid). Old preset IDs map across automatically.

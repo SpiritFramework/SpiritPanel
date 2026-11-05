@@ -17,6 +17,6 @@ export async function statusRoutes(app: FastifyInstance) {
       }
     }
 
-    return getStatusNodesPayload(settings.detail, settings.showUptime);
+    return getStatusNodesPayload(settings.detail);
   });
 }

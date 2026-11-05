@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { Clock, Cpu, HardDrive, MemoryStick, RefreshCw, Server, ShieldAlert, type LucideIcon } from 'lucide-react';
+import {
+  CircleOff,
+  Clock,
+  Cpu,
+  HardDrive,
+  Layers,
+  MemoryStick,
+  Pause,
+  Play,
+  RefreshCw,
+  Server,
+  ShieldAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   api,
   type StatusNodePayload,
@@ -18,7 +31,6 @@ import { BrandMark } from '../../components/Nav';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { AlertBanner, DsIcon, EmptyState, Spinner, StatusPill, type Tone } from '../../components/ui';
 import { formatBytes } from '../../lib/stats';
-import { formatUptime } from '../../lib/format-uptime';
 import { formatCpuLimit, formatResource, formatResourceAmount } from '../../lib/server-theme';
 
 const GAUGE_RADIUS = 42;
@@ -159,20 +171,25 @@ function nodeEdgeClass(node: StatusNodePayload): string {
 function NodeBoard({
   node,
   showServers,
-  showUptime,
   index,
 }: {
   node: StatusNodePayload;
   showServers: boolean;
-  showUptime: boolean;
   index: number;
 }) {
   const live = node.live;
   const cpuLimit = node.allocated.cpuLimit;
+  const cpuAllocated = node.allocated.cpuAllocated;
+  const cpuCores = node.allocated.cpuCores;
   const liveCpu = live?.cpuPercent ?? 0;
   const liveCpuPct =
     cpuLimit > 0 ? Math.min(100, Math.round((liveCpu / cpuLimit) * 100)) : Math.min(100, Math.round(liveCpu));
-  const allocatedCpuPct = cpuLimit > 0 ? 100 : 0;
+  const allocatedCpuPct =
+    cpuLimit > 0 ? Math.min(100, Math.round((cpuAllocated / cpuLimit) * 100)) : 0;
+  const cpuLimitLabel =
+    cpuCores != null && cpuCores > 0
+      ? `${cpuCores} ${cpuCores === 1 ? 'core' : 'cores'}`
+      : '—';
 
   const liveTone = node.maintenanceMode ? 'maint' : node.online ? 'on' : 'off';
   const liveLabel = node.maintenanceMode ? 'Maintenance' : node.online ? 'Online' : 'Offline';
@@ -203,14 +220,6 @@ function NodeBoard({
             <i aria-hidden />
             {liveLabel}
           </span>
-          {showUptime ? (
-            <span className="ds-status-uptime" title="Node reachability uptime">
-              <Clock className="ds-status-uptime-icon" aria-hidden />
-              {node.online && node.uptimeMs != null && node.uptimeMs > 0
-                ? formatUptime(node.uptimeMs)
-                : '—'}
-            </span>
-          ) : null}
           {node.counts.installing > 0 ? (
             <StatusPill label={`${node.counts.installing} installing`} tone="info" compact />
           ) : null}
@@ -219,18 +228,22 @@ function NodeBoard({
 
       <div className="ds-status-ribbon" role="list" aria-label={`${node.name} server counts`}>
         <div className="ds-status-ribbon-item ds-status-ribbon-item--running" role="listitem">
+          <Play className="ds-status-ribbon-icon" aria-hidden />
           <strong>{node.counts.running}</strong>
           <span>Running</span>
         </div>
         <div className="ds-status-ribbon-item" role="listitem">
+          <CircleOff className="ds-status-ribbon-icon" aria-hidden />
           <strong>{node.counts.offline}</strong>
           <span>Offline</span>
         </div>
         <div className="ds-status-ribbon-item ds-status-ribbon-item--suspended" role="listitem">
+          <Pause className="ds-status-ribbon-icon" aria-hidden />
           <strong>{node.counts.suspended}</strong>
           <span>Suspended</span>
         </div>
         <div className="ds-status-ribbon-item" role="listitem">
+          <Layers className="ds-status-ribbon-icon" aria-hidden />
           <strong>{node.counts.total}</strong>
           <span>Total</span>
         </div>
@@ -261,11 +274,11 @@ function NodeBoard({
           label="CPU"
           icon={Cpu}
           liveLabel={`${Math.round(liveCpu)}%`}
-          allocatedLabel={formatCpuLimit(cpuLimit)}
+          allocatedLabel={formatCpuLimit(cpuAllocated)}
           livePercent={liveCpuPct}
           allocatedPercent={allocatedCpuPct}
           limitName="CPU limit"
-          limitValue={formatCpuLimit(cpuLimit)}
+          limitValue={cpuLimitLabel}
         />
       </div>
 
@@ -338,7 +351,6 @@ function StatusContent() {
   }, [load]);
 
   const showServers = (data?.detail ?? branding.statusDetail) === 'servers';
-  const showUptime = data?.showUptime ?? branding.statusShowUptime === true;
 
   const averageCpuLabel = useMemo(() => {
     if (!data?.nodes.length) return '—';
@@ -348,6 +360,45 @@ function StatusContent() {
     if (samples.length === 0) return '—';
     const avg = samples.reduce((sum, value) => sum + value, 0) / samples.length;
     return `${Math.round(avg)}%`;
+  }, [data]);
+
+  const globalUsage = useMemo(() => {
+    if (!data?.nodes.length) {
+      return {
+        memoryPercent: null as number | null,
+        diskPercent: null as number | null,
+        memoryLive: 0,
+        diskLive: 0,
+        memoryLimitMiB: 0,
+        diskLimitMiB: 0,
+      };
+    }
+    let memoryLive = 0;
+    let diskLive = 0;
+    let memoryLimitMiB = 0;
+    let diskLimitMiB = 0;
+    for (const node of data.nodes) {
+      memoryLive += node.live?.memoryBytes ?? 0;
+      diskLive += node.live?.diskBytes ?? 0;
+      if (node.allocated.effectiveMemoryLimitMiB > 0) {
+        memoryLimitMiB += node.allocated.effectiveMemoryLimitMiB;
+      }
+      if (node.allocated.effectiveDiskLimitMiB > 0) {
+        diskLimitMiB += node.allocated.effectiveDiskLimitMiB;
+      }
+    }
+    const memoryLimitBytes = memoryLimitMiB * 1024 * 1024;
+    const diskLimitBytes = diskLimitMiB * 1024 * 1024;
+    return {
+      memoryPercent:
+        memoryLimitBytes > 0 ? Math.min(100, Math.round((memoryLive / memoryLimitBytes) * 100)) : null,
+      diskPercent:
+        diskLimitBytes > 0 ? Math.min(100, Math.round((diskLive / diskLimitBytes) * 100)) : null,
+      memoryLive,
+      diskLive,
+      memoryLimitMiB,
+      diskLimitMiB,
+    };
   }, [data]);
 
   return (
@@ -374,7 +425,22 @@ function StatusContent() {
               </p>
             </div>
 
-            <h1 className="ds-status-hero-title">Infrastructure Status</h1>
+            <div className="ds-status-hero-title-row">
+              <h1 className="ds-status-hero-title">Infrastructure Status</h1>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="ds-status-hero-refresh"
+                onClick={() => void load({ soft: true })}
+                disabled={refreshing || (loading && !loadedRef.current)}
+                aria-label="Refresh status"
+                title="Refresh status"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="ds-status-hero-refresh-label">Refresh</span>
+              </Button>
+            </div>
 
             <div className="ds-status-hero-meta">
               {data ? (
@@ -403,23 +469,11 @@ function StatusContent() {
                 </>
               ) : null}
               <span className="ds-status-hero-meta-item">
+                <Clock className="ds-status-hero-meta-icon" aria-hidden />
                 <span className="ds-status-hero-meta-copy">
                   Updated <strong>{formatUpdatedAt(updatedAt)}</strong>
                 </span>
               </span>
-            </div>
-
-            <div className="ds-status-hero-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void load({ soft: true })}
-                disabled={refreshing || (loading && !loadedRef.current)}
-                aria-label="Refresh status"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
             </div>
           </div>
 
@@ -449,17 +503,67 @@ function StatusContent() {
       ) : null}
 
       {data && data.nodes.length > 0 ? (
-        <div className="ds-status-board">
-          {data.nodes.map((node, index) => (
-            <NodeBoard
-              key={node.id}
-              node={node}
-              showServers={showServers}
-              showUptime={showUptime}
-              index={index}
-            />
-          ))}
-        </div>
+        <>
+          <section className="ds-status-global" aria-label="Fleet resource usage">
+            <div className="ds-status-global-card">
+              <div className="ds-status-global-head">
+                <MemoryStick className="ds-status-global-icon" aria-hidden />
+                <div>
+                  <p className="ds-status-global-label">Global Memory Usage</p>
+                  <p className="ds-status-global-detail">
+                    {formatBytes(globalUsage.memoryLive)}
+                    {globalUsage.memoryLimitMiB > 0
+                      ? ` of ${formatResource(globalUsage.memoryLimitMiB, 'MiB')}`
+                      : ''}
+                  </p>
+                </div>
+                <strong className="ds-status-global-value">
+                  {globalUsage.memoryPercent != null ? `${globalUsage.memoryPercent}%` : '—'}
+                </strong>
+              </div>
+              <div className="ds-status-global-track" aria-hidden>
+                <div
+                  className="ds-status-global-fill"
+                  style={{ width: `${globalUsage.memoryPercent ?? 0}%` }}
+                />
+              </div>
+            </div>
+            <div className="ds-status-global-card">
+              <div className="ds-status-global-head">
+                <HardDrive className="ds-status-global-icon" aria-hidden />
+                <div>
+                  <p className="ds-status-global-label">Global Disk Usage</p>
+                  <p className="ds-status-global-detail">
+                    {formatBytes(globalUsage.diskLive)}
+                    {globalUsage.diskLimitMiB > 0
+                      ? ` of ${formatResource(globalUsage.diskLimitMiB, 'MiB')}`
+                      : ''}
+                  </p>
+                </div>
+                <strong className="ds-status-global-value">
+                  {globalUsage.diskPercent != null ? `${globalUsage.diskPercent}%` : '—'}
+                </strong>
+              </div>
+              <div className="ds-status-global-track" aria-hidden>
+                <div
+                  className="ds-status-global-fill"
+                  style={{ width: `${globalUsage.diskPercent ?? 0}%` }}
+                />
+              </div>
+            </div>
+          </section>
+
+          <div className="ds-status-board">
+            {data.nodes.map((node, index) => (
+              <NodeBoard
+                key={node.id}
+                node={node}
+                showServers={showServers}
+                index={index}
+              />
+            ))}
+          </div>
+        </>
       ) : null}
     </Page>
   );

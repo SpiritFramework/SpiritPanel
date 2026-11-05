@@ -1471,7 +1471,9 @@ export interface StatusNodePayload {
     diskMiB: number;
     memoryPercent: number;
     diskPercent: number;
+    cpuAllocated: number;
     cpuLimit: number;
+    cpuCores: number | null;
     effectiveMemoryLimitMiB: number;
     effectiveDiskLimitMiB: number;
   };
@@ -1483,13 +1485,11 @@ export interface StatusNodePayload {
     diskPercent: number;
     serverCount: number;
   } | null;
-  uptimeMs?: number | null;
   servers?: StatusServerRow[];
 }
 
 export interface StatusNodesResponse {
   detail: 'servers' | 'summary';
-  showUptime: boolean;
   nodes: StatusNodePayload[];
   summary: {
     nodesOnline: number;

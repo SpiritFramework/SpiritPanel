@@ -149,7 +149,6 @@ export function AdminSettings() {
         enabled: Boolean(rawStatus.enabled),
         visibility: rawStatus.visibility === 'public' ? 'public' : 'authenticated',
         detail: rawStatus.detail === 'summary' ? 'summary' : 'servers',
-        showUptime: Boolean(rawStatus.showUptime),
       };
       const rawSmtp = (s.smtp ?? {}) as Partial<SmtpForm> & { passwordSet?: boolean };
       const nextSmtp: SmtpForm = {
@@ -700,13 +699,6 @@ export function AdminSettings() {
                               </span>
                             </label>
                           </fieldset>
-                          <Checkbox
-                            label="Show node uptime"
-                            description="Display how long each node has stayed reachable since it last came online."
-                            checked={statusPage.showUptime}
-                            disabled={!statusPage.enabled}
-                            onChange={(showUptime) => setStatusPage((s) => ({ ...s, showUptime }))}
-                          />
                           {statusPage.enabled &&
                           statusPage.visibility === 'public' &&
                           statusPage.detail === 'servers' ? (
