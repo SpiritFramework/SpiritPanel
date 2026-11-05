@@ -956,7 +956,7 @@ If database was seeded in development mode on production:
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting, session handling, and API key guidance.
+See [SECURITY.md](../SECURITY.md) for vulnerability reporting, session handling, edge/origin hardening, and API key guidance.
 
 1. Store admin password safely after install
 2. **Admin → Settings** — disable public registration
