@@ -19,6 +19,8 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+## [1.3.5.3] - 2026-11-05
+
 ### Added
 
 - **Nginx connection and request limits** — shipped site config rate-limits web/API/auth separately, keeps a higher budget for `/api/remote` (FeatherWings), and caps concurrent connections per IP. Zones live in `deploy/nginx/spirit-panel-http.conf` (`/etc/nginx/conf.d/`).

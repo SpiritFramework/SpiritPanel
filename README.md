@@ -9,7 +9,7 @@ Spirit Panel gives you a modern web UI for users, nodes, servers, and infrastruc
 | **Docs** | [framework.spirithost.co.uk/docs](https://framework.spirithost.co.uk/docs?script=spirit-panel) |
 | **FeatherWings** | [docs.mythical.systems](https://docs.mythical.systems/docs/featherpanel/wings) |
 | **License** | [AGPL-3.0](LICENSE) |
-| **Version** | `1.3.5.2` (see [`docs/CHANGELOG.md`](docs/CHANGELOG.md)) |
+| **Version** | `1.3.5.3` (see [`docs/CHANGELOG.md`](docs/CHANGELOG.md)) |
 
 > **Deployment note.** The panel never runs game workloads. Every game server is a Docker container managed by FeatherWings — never by `panel-api`. That is a split of responsibility, not a requirement for separate hardware. Same-box installs are first-class (nginx `location /wings/` proxies the console WebSocket). Both topologies are covered in [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
