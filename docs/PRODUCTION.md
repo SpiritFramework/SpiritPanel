@@ -77,12 +77,12 @@ sudo bash /tmp/spirit.sh install --domain panel.example.com --admin-email you@ex
 | `--channel release\|dev` | Latest GitHub release, or unreleased `main`. Saved to `.spirit-channel`. `-y` with no channel installs `release`. |
 | `--ref REF`             | Check out this branch or tag for this run. Overrides `--channel`. |
 | `--no-tls`              | Skip certbot — use behind an existing proxy or load balancer |
-| `--force-nginx`         | Overwrite an existing nginx site config                     |
+| `--force-nginx`         | During **install** only: overwrite an existing nginx site. Not an update shortcut — a full `install` re-fetches source and re-touches systemd. |
 | `--install-dir DIR`     | Install somewhere other than `/home/spiritpanel/Spirit-Panel` |
 | `-y`, `--yes`           | Never prompt                                                |
 
 
-Re-running it is safe: an existing `.env` is kept as-is, and a customised nginx site is left alone unless you pass `--force-nginx`.
+Re-running install keeps an existing `.env`. A customised nginx site is left alone unless you pass `--force-nginx` on that install. To pick up rate limits on a panel that is already running, use `update` (it warns when the live site has no `limit_req`) and merge the site by hand — see [Cloudflare origin hardening](#cloudflare-origin-hardening-v1353).
 
 ### Manual install (existing checkout)
 
@@ -409,17 +409,17 @@ The shipped config sets deliberate `Cache-Control` values. Removing them causes 
 
 Use this when upgrading an **existing** panel to the L7 / origin hardening shipped in **V1.3.5.3** (nginx rate limits, Cloudflare real-IP, UFW Cloudflare-only 80/443, raised nginx open-file limits). Policy overview: [SECURITY.md](../SECURITY.md).
 
-### Do not re-run a full `install`
-
-`spirit.sh install --force-nginx` is still a **full install** path. On a live panel it can re-fetch source and re-touch systemd. Prefer **`update`**, then apply nginx/firewall pieces manually as below.
+`spirit.sh update` installs the rate-limit zone file, raises nginx's open-file limit, refreshes CSP, and **warns** when the live site still has no `limit_req zone=spirit_`. It does **not** overwrite `/etc/nginx/sites-available/spirit-panel` (that file holds your hostname and certificates). Do **not** run `install --force-nginx` on a live panel — that flag only replaces nginx during a full install.
 
 ```bash
 sudo bash /home/spiritpanel/Spirit-Panel/scripts/spirit.sh update --ref V1.3.5.3 -y
-# or: update --channel release -y once that channel includes 1.3.5.3+
+# or: update --channel release -y once that channel includes this updater
 cd /home/spiritpanel/Spirit-Panel
 ```
 
-### Apply on the origin (order matters)
+### Still manual after update
+
+Zones and the open-file limit are applied by `update` (re-running the copies below is safe). The **site file** and Cloudflare firewall steps are not:
 
 ```bash
 # 1) Rate / connection zones (required before the site uses limit_req)
@@ -878,12 +878,14 @@ Order of operations, which is what makes it safe to run on a live panel:
 2. Fetches and checks out **only** the selected ref — the release tag, or `main`. A release checkout does not fall through to `origin/main`. Zip/tarball deploys download that same ref. Local modifications prompt to stash rather than being silently discarded.
 3. `pnpm install --frozen-lockfile`, then `pnpm build`, unless that commit and lockfile were already built.
 4. `prisma migrate deploy`. One compatibility step runs `prisma migrate resolve --rolled-back 20261028120000_wings_runtime_options` first, so a previously failed copy of that migration can apply. That is the only one-off migration fix in the installer.
-5. Syncs `Content-Security-Policy` on the live nginx site from the shipped reference (so FeatherWings HTTPS probes stay allowed) without overwriting your `server_name`, TLS paths, or other customisations.
-6. Restarts the API, reloads nginx, then polls `/health`.
+5. Installs nginx rate-limit zones (`/etc/nginx/conf.d/spirit-panel-http.conf`) and syncs `Content-Security-Policy` on the live site without overwriting `server_name`, TLS paths, or other customisations.
+6. Raises nginx's open-file limit (`deploy/firewall/raise-nginx-nofile.sh`) and restarts nginx so `LimitNOFILE` applies.
+7. If the live site has no `limit_req zone=spirit_`, prints backup-and-copy steps. It does not replace the site file.
+8. Restarts the API, reloads nginx, then polls `/health`.
 
 **A failure in step 3 or 4 stops before the restart**, so the previously built version keeps serving. The backup path is printed either way. `status` prints the installed version, channel, commit, latest release, and whether `main` is ahead of that release.
 
-`.env`, `apps/panel-api/data/` (uploaded logos and ticket files), and `node_modules/` are never overwritten or deleted by the source sync. Zip/tarball sync also excludes `apps/panel-web/dist/`, `apps/panel-api/dist/`, and `packages/*/dist/` so a mid-update failure can still serve the previously built assets until `pnpm build` replaces them. Full nginx site replacement still requires `--force-nginx` (or a manual re-copy).
+`.env`, `apps/panel-api/data/` (uploaded logos and ticket attachments), and `node_modules/` are never overwritten or deleted by the source sync. Zip/tarball sync also excludes `apps/panel-web/dist/`, `apps/panel-api/dist/`, and `packages/*/dist/` so a mid-update failure can still serve the previously built assets until `pnpm build` replaces them. Replacing the nginx **site** (rate limits, TLS session lines) is a manual copy: back up `/etc/nginx/sites-available/spirit-panel`, copy `deploy/nginx/spirit-panel.conf`, then put your `server_name` and certificate paths back. `update` tells you when that merge is still outstanding. Do not use `install --force-nginx` for this.
 
 ### Manual update
 

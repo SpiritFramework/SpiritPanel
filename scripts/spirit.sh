@@ -1163,7 +1163,8 @@ sync_nginx_csp() {
   fi
   if ! grep -q 'add_header Content-Security-Policy' "$dest"; then
     warn "Live nginx site has no Content-Security-Policy — not patching"
-    info "Re-copy with: sudo bash ${INSTALL_DIR}/scripts/spirit.sh install --force-nginx"
+    info "Merge the shipped site by hand. Do not re-run install."
+    info "See docs/PRODUCTION.md — Cloudflare origin hardening."
     return 0
   fi
 
@@ -1235,6 +1236,39 @@ install_nginx_http_limits() {
   ok "nginx rate-limit zones → ${dest}"
 }
 
+# Live vhosts keep the operator's server_name and certificates. Never overwrite
+# them from update. Tell them how to merge limit_req when it is still missing.
+warn_nginx_site_limits() {
+  local dest="/etc/nginx/sites-available/${NGINX_SITE}"
+  local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
+  [[ -f "$dest" ]] || return 0
+  if grep -q 'limit_req zone=spirit_' "$dest"; then
+    return 0
+  fi
+  warn "Live nginx site has no Spirit rate limits (limit_req zone=spirit_)"
+  info "Do not re-run install. Back up the site, copy the shipped file, then restore server_name, root, and ssl_certificate paths:"
+  info "  sudo cp ${dest} ${dest}.bak"
+  info "  sudo cp ${src} ${dest}"
+  info "Walkthrough: docs/PRODUCTION.md — Cloudflare origin hardening."
+  info "Behind Cloudflare, also run:"
+  info "  sudo bash ${INSTALL_DIR}/deploy/firewall/sync-cloudflare-realip.sh"
+  info "Lock 80/443 to Cloudflare only after the panel loads through the proxy (then re-open game, 8080, and 2022):"
+  info "  sudo bash ${INSTALL_DIR}/deploy/firewall/ufw-cloudflare-origin.sh"
+}
+
+# Idempotent open-file headroom. Restarts nginx when the config test passes so
+# systemd LimitNOFILE actually applies (reload does not).
+raise_nginx_nofile() {
+  local script="${INSTALL_DIR}/deploy/firewall/raise-nginx-nofile.sh"
+  [[ -f "$script" ]] || return 0
+  if bash "$script"; then
+    ok "nginx open-file limits applied"
+  else
+    warn "Could not raise nginx open-file limits"
+    info "Retry: sudo bash ${script}"
+  fi
+}
+
 install_nginx() {
   local src="${INSTALL_DIR}/deploy/nginx/${NGINX_SITE}.conf"
   local dest="/etc/nginx/sites-available/${NGINX_SITE}"
@@ -1245,7 +1279,7 @@ install_nginx() {
   if [[ -f "$dest" && "$FORCE_NGINX" != "1" ]]; then
     warn "${dest} exists — leaving your config untouched"
     info "Reference: ${src}"
-    info "To pick up connection/rate limits: sudo bash ${INSTALL_DIR}/scripts/spirit.sh install --force-nginx"
+    warn_nginx_site_limits
     sync_nginx_csp
   else
     install -m 644 "$src" "$dest"
@@ -1775,6 +1809,8 @@ action_update() {
 
   install_nginx_http_limits
   sync_nginx_csp
+  raise_nginx_nofile
+  warn_nginx_site_limits
 
   phase "Restarting services"
   fix_permissions >/dev/null
@@ -1950,7 +1986,7 @@ Options:
   --ref REF               Git branch or tag for this run. Overrides --channel.
                           A release checkout stays on that tag.
   --no-tls                Skip certbot
-  --force-nginx           Overwrite existing nginx site
+  --force-nginx           During install, overwrite an existing nginx site (not an update shortcut)
   --install-dir DIR       Override install path
   --user NAME             Override panel system user
   -y, --yes               Skip confirmations. A terminal still asks for a

@@ -22,7 +22,7 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 ### Changed
 
 - **Security policy** moved to repository-root [`SECURITY.md`](../SECURITY.md) for GitHub’s Security Policy tab; rewritten with edge/origin L7 guidance, threat-layer table, Cloudflare WAF skip notes, and deploy helper index. `docs/SECURITY.md` points at the root file.
-- **PRODUCTION.md** — full **Cloudflare origin hardening (V1.3.5.3+)** upgrade walkthrough and troubleshooting table (manual nginx merge, UFW game ports, FD limits, Rocket Loader / CSP, Wings skip rule).
+- **Updater** — `spirit.sh update` installs nginx rate-limit zones, raises the nginx open-file limit, and warns (with backup-and-copy steps) when the live site still has no `limit_req`. It does not overwrite the site file and no longer suggests `install --force-nginx` for that merge. Cloudflare real-IP and the origin UFW lock stay manual.
 
 ## [1.3.5.3] - 2026-11-05
 
