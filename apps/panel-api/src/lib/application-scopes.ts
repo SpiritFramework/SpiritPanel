@@ -21,6 +21,7 @@ export const applicationScopeZod = z.enum([
   'servers.write',
   'servers.suspend',
   'servers.delete',
+  APPLICATION_SCOPE_ALL,
 ]);
 
 export interface ApplicationApiKeyContext {

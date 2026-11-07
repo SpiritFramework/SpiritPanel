@@ -19,6 +19,10 @@ Format: `## [MAJOR.MINOR.FEATURE.PATCH] - YYYY-MM-DD`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Application API key create** no longer returns 422 Validation failed when the UI sends the default full-access scope `application.*` — that value is accepted by the request schema and expanded to the concrete scope list on store.
+
 ### Changed
 
 - **Security policy** moved to repository-root [`SECURITY.md`](../SECURITY.md) for GitHub’s Security Policy tab; rewritten with edge/origin L7 guidance, threat-layer table, Cloudflare WAF skip notes, and deploy helper index. `docs/SECURITY.md` points at the root file.

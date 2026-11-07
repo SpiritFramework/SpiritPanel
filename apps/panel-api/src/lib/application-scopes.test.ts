@@ -4,6 +4,7 @@ import {
   APPLICATION_SCOPES,
   APPLICATION_SCOPE_ALL,
   applicationKeyHasScope,
+  applicationScopeZod,
   normalizeApplicationPermissions,
   type ApplicationApiKeyContext,
 } from './application-scopes.js';
@@ -38,6 +39,14 @@ describe('application scopes', () => {
 
   it('normalize expands application.* to the full scope list', () => {
     assert.deepEqual(normalizeApplicationPermissions([APPLICATION_SCOPE_ALL]), [...APPLICATION_SCOPES]);
+  });
+
+  it('request schema accepts application.* (create key default)', () => {
+    assert.equal(applicationScopeZod.parse(APPLICATION_SCOPE_ALL), APPLICATION_SCOPE_ALL);
+    assert.deepEqual(
+      applicationScopeZod.array().min(1).parse([APPLICATION_SCOPE_ALL]),
+      [APPLICATION_SCOPE_ALL],
+    );
   });
 
   it('normalize rejects unknown scopes', () => {
